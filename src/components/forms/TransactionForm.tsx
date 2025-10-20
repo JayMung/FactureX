@@ -8,10 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, X, Calendar } from 'lucide-react';
-import type { CreateTransactionData, Client } from '@/types';
+import type { CreateTransactionData, Client, ExchangeRates, Fees } from '@/types';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useClients } from '@/hooks/useClients';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { useSettings } from '@/hooks/useSettings';
 import { showSuccess, showError } from '@/utils/toast';
 
 interface TransactionFormProps {
@@ -46,13 +47,21 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   const { createTransaction, isCreating } = useTransactions();
   const { clients } = useClients(1, { search: '' });
   const { paymentMethods } = usePaymentMethods();
+  const { rates: exchangeRates, isLoading: ratesLoading } = useSettings() as any;
+  const { fees, isLoading: feesLoading } = useSettings() as any;
   
   const isLoading = isCreating;
 
+  // Récupérer les taux et frais configurés
+  const currentRates = exchangeRates || { usdToCny: 7.25, usdToCdf: 2850 };
+  const currentFees = fees || { transfert: 5, commande: 10, partenaire: 3 };
+
   // Calcul des montants en temps réel
   useEffect(() => {
-    calculateAmounts();
-  }, [formData.montant, formData.devise, formData.motif]);
+    if (!ratesLoading && !feesLoading) {
+      calculateAmounts();
+    }
+  }, [formData.montant, formData.devise, formData.motif, currentRates, currentFees]);
 
   const calculateAmounts = () => {
     const montant = parseFloat(formData.montant.toString()) || 0;
@@ -62,24 +71,27 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       return;
     }
 
-    // Taux de change (à récupérer depuis les settings ou API)
-    const tauxUsdCny = 7.25; // 1 USD = 7.25 CNY
-    const tauxCdfUsd = 0.00035; // 1 CDF = 0.00035 USD (approx)
+    // Utiliser les taux de change configurés
+    const tauxUsdCny = currentRates.usdToCny || 7.25;
+    const tauxUsdCdf = currentRates.usdToCdf || 2850;
     
     // Convertir le montant en USD si nécessaire
     let montantEnUsd = montant;
     if (formData.devise === 'CDF') {
-      montantEnUsd = montant * tauxCdfUsd;
+      montantEnUsd = montant / tauxUsdCdf;
     } else if (formData.devise === 'CNY') {
       montantEnUsd = montant / tauxUsdCny;
     }
     
-    // Calculer les frais selon le motif
-    const fraisPercentage = formData.motif === 'Commande' ? 0.10 : 0.05; // 10% pour commande, 5% pour transfert
+    // Utiliser les frais configurés selon le motif
+    const fraisPercentage = formData.motif === 'Commande' 
+      ? (currentFees.commande / 100) 
+      : (currentFees.transfert / 100);
     const frais = montantEnUsd * fraisPercentage;
     
-    // Calculer le bénéfice (60% des frais vont à l'entreprise)
-    const benefice = frais * 0.6;
+    // Calculer le bénéfice selon la commission partenaire configurée
+    const beneficePercentage = (currentFees.partenaire / 100);
+    const benefice = frais * (1 - beneficePercentage); // Part de l'entreprise
     
     // Calculer le montant net en CNY (montant - frais)
     const montantNetEnUsd = montantEnUsd - frais;
@@ -190,7 +202,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Card className="w-full max-w-2xl max-h-[90hv] overflow-y-auto">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
           <CardTitle className="text-2xl font-bold text-gray-900">Nouvelle transaction</CardTitle>
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
@@ -359,6 +371,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                   <SelectItem value="En attente">En attente</SelectItem>
                   <SelectItem value="Servi">Servi</SelectItem>
                   <SelectItem value="Remboursé">Remboursé</SelectItem>
+                  <SelectItem value="En cours">En cours</SelectItem>
                   <SelectItem value="Annulé">Annulé</SelectItem>
                 </SelectContent>
               </Select>
@@ -371,7 +384,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
               <div className="grid grid-cols-3 gap-6">
                 {/* Frais */}
                 <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-2 font-medium">Frais</p>
+                  <p className="text-sm text-gray-600 mb-2 font-medium">
+                    Frais ({formData.motif === 'Commande' ? currentFees.commande : currentFees.transfert}%)
+                  </p>
                   <p className="text-2xl font-bold text-gray-900">
                     ${calculatedAmounts.frais.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
@@ -379,7 +394,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
                 {/* Bénéfice */}
                 <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-2 font-medium">Bénéfice</p>
+                  <p className="text-sm text-gray-600 mb-2 font-medium">
+                    Bénéfice ({(100 - currentFees.partenaire).toFixed(1)}% des frais)
+                  </p>
                   <p className="text-2xl font-bold text-green-600">
                     ${calculatedAmounts.benefice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
@@ -387,7 +404,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
                 {/* Montant CNY */}
                 <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-2 font-medium">Montant CNY</p>
+                  <p className="text-sm text-gray-600 mb-2 font-medium">
+                    Montant CNY (1 USD = {currentRates.usdToCny} CNY)
+                  </p>
                   <p className="text-2xl font-bold text-green-600">
                     ¥{calculatedAmounts.montantCny.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
@@ -397,7 +416,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
               {/* Info supplémentaire */}
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <p className="text-xs text-gray-500 text-center">
-                  * Les calculs sont basés sur un taux de change de 1 USD = 7.25 CNY
+                  * Les calculs utilisent les taux et frais configurés dans les paramètres de l'application
                 </p>
               </div>
             </div>

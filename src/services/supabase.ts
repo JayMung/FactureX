@@ -31,7 +31,6 @@ class SupabaseService {
         .from('clients')
         .select('*', { count: 'exact' });
 
-      // Appliquer les filtres
       if (filters.search) {
         query = query.or(`nom.ilike.%${filters.search}%,telephone.ilike.%${filters.search}%,ville.ilike.%${filters.search}%`);
       }
@@ -93,7 +92,6 @@ class SupabaseService {
 
       if (error) throw error;
 
-      // Logger l'activité
       await this.logActivity('Création client', 'Client', data.id, { nom: clientData.nom });
 
       return { data, message: 'Client créé avec succès' };
@@ -116,7 +114,6 @@ class SupabaseService {
 
       if (error) throw error;
 
-      // Logger l'activité
       await this.logActivity('Modification client', 'Client', id, clientData);
 
       return { data, message: 'Client mis à jour avec succès' };
@@ -134,7 +131,6 @@ class SupabaseService {
 
       if (error) throw error;
 
-      // Logger l'activité
       await this.logActivity('Suppression client', 'Client', id);
 
       return { message: 'Client supprimé avec succès' };
@@ -158,7 +154,6 @@ class SupabaseService {
           client:clients(id, nom, telephone, ville)
         `, { count: 'exact' });
 
-      // Appliquer les filtres
       if (filters.status && filters.status !== 'all') {
         query = query.eq('statut', filters.status);
       }
@@ -228,12 +223,15 @@ class SupabaseService {
     try {
       console.log('Création de transaction avec données:', transactionData);
 
-      // Récupérer les taux de change actuels
-      const { data: settings } = await this.getExchangeRates();
+      const [ratesResponse, feesResponse] = await Promise.all([
+        this.getExchangeRates(),
+        this.getFees()
+      ]);
       
-      // Calculer les montants
-      const tauxUsdCny = settings?.usdToCny || 7.25;
-      const tauxUsdCdf = settings?.usdToCdf || 2850;
+      const tauxUsdCny = ratesResponse.data?.usdToCny || 7.25;
+      const tauxUsdCdf = ratesResponse.data?.usdToCdf || 2850;
+      
+      const fraisConfig = feesResponse.data || { transfert: 5, commande: 10, partenaire: 3 };
       
       let montantEnUSD = transactionData.montant;
       if (transactionData.devise === 'CDF') {
@@ -242,17 +240,16 @@ class SupabaseService {
         montantEnUSD = transactionData.montant / tauxUsdCny;
       }
       
-      // Calculer les frais (5% pour transfert, 10% pour commande)
-      const fraisPercentage = transactionData.motif === 'Commande' ? 0.10 : 0.05;
+      const fraisPercentage = transactionData.motif === 'Commande' 
+        ? (fraisConfig.commande / 100) 
+        : (fraisConfig.transfert / 100);
       const frais = montantEnUSD * fraisPercentage;
       
-      // Calculer le montant en CNY
       const montantCny = (montantEnUSD - frais) * tauxUsdCny;
       
-      // Calculer le bénéfice
-      const benefice = frais * 0.6; // 60% pour l'entreprise
+      const beneficePercentage = (fraisConfig.partenaire / 100);
+      const benefice = frais * (1 - beneficePercentage);
 
-      // Préparer les données pour l'insertion
       const insertData = {
         reference: transactionData.reference || `TRX-${Date.now()}`,
         client_id: transactionData.client_id,
@@ -286,10 +283,8 @@ class SupabaseService {
 
       console.log('Transaction créée:', data);
 
-      // Mettre à jour le total payé du client
       await this.updateClientTotal(transactionData.client_id, montantEnUSD);
 
-      // Logger l'activité
       if (data?.id) {
         await this.logActivity('Création transaction', 'Transaction', data.id, { 
           reference: transactionData.reference,
@@ -320,7 +315,6 @@ class SupabaseService {
 
       if (error) throw error;
 
-      // Logger l'activité
       await this.logActivity('Modification transaction', 'Transaction', id, updateData);
 
       return { data, message: 'Transaction mise à jour avec succès' };
@@ -338,7 +332,6 @@ class SupabaseService {
 
       if (error) throw error;
 
-      // Logger l'activité
       await this.logActivity('Suppression transaction', 'Transaction', id);
 
       return { message: 'Transaction supprimée avec succès' };
@@ -453,12 +446,8 @@ class SupabaseService {
 
   async updateSetting(categorie: string, settings: Record<string, string>): Promise<ApiResponse<Setting[]>> {
     try {
-      console.log('Updating settings:', { categorie, settings });
-      
-      // Vérifier si l'utilisateur est authentifié
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
-        console.error('Auth error:', authError);
         return { error: 'Utilisateur non authentifié' };
       }
 
@@ -469,26 +458,17 @@ class SupabaseService {
         updated_at: new Date().toISOString()
       }));
 
-      console.log('Updates to apply:', updates);
-
       const { data, error } = await supabase
         .from('settings')
         .upsert(updates, { onConflict: 'categorie,cle' })
         .select();
 
-      if (error) {
-        console.error('Supabase upsert error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log('Settings updated successfully:', data);
-
-      // Logger l'activité
       await this.logActivity('Modification paramètres', 'Settings', undefined, { categorie, settings });
 
       return { data: data || [], message: 'Paramètres mis à jour avec succès' };
     } catch (error: any) {
-      console.error('Update setting error:', error);
       return { error: error.message };
     }
   }
@@ -520,7 +500,6 @@ class SupabaseService {
 
       if (error) throw error;
 
-      // Logger l'activité
       await this.logActivity('Création mode de paiement', 'PaymentMethod', data.id, { name: methodData.name });
 
       return { data, message: 'Mode de paiement créé avec succès' };
@@ -543,7 +522,6 @@ class SupabaseService {
 
       if (error) throw error;
 
-      // Logger l'activité
       await this.logActivity('Modification mode de paiement', 'PaymentMethod', id, methodData);
 
       return { data, message: 'Mode de paiement mis à jour avec succès' };
@@ -561,7 +539,6 @@ class SupabaseService {
 
       if (error) throw error;
 
-      // Logger l'activité
       await this.logActivity('Suppression mode de paiement', 'PaymentMethod', id);
 
       return { message: 'Mode de paiement supprimé avec succès' };
@@ -584,7 +561,6 @@ class SupabaseService {
 
       if (error) throw error;
 
-      // Logger l'activité
       await this.logActivity(
         isActive ? 'Activation mode de paiement' : 'Désactivation mode de paiement', 
         'PaymentMethod', 
@@ -627,7 +603,6 @@ class SupabaseService {
 
       if (error) throw error;
 
-      // Logger l'activité
       await this.logActivity('Création profil utilisateur', 'UserProfile', data.id, { 
         full_name: profileData.full_name,
         role: profileData.role
@@ -653,7 +628,6 @@ class SupabaseService {
 
       if (error) throw error;
 
-      // Logger l'activité
       await this.logActivity('Modification profil utilisateur', 'UserProfile', id, profileData);
 
       return { data, message: 'Profil utilisateur mis à jour avec succès' };
@@ -676,7 +650,6 @@ class SupabaseService {
 
       if (error) throw error;
 
-      // Logger l'activité
       await this.logActivity(
         isActive ? 'Activation utilisateur' : 'Désactivation utilisateur', 
         'UserProfile', 
@@ -745,34 +718,28 @@ class SupabaseService {
   
   async getDashboardStats(): Promise<ApiResponse<DashboardStats>> {
     try {
-      // Get transactions stats
       const { data: transactions, error: txError } = await supabase
         .from('transactions')
         .select('montant, devise, benefice, created_at');
 
       if (txError) throw txError;
 
-      // Get clients count
       const { count: clientsCount } = await supabase
         .from('clients')
         .select('*', { count: 'exact', head: true });
 
-      // Calculate stats
       const totalUSD = transactions?.filter(t => t.devise === 'USD').reduce((sum, t) => sum + t.montant, 0) || 0;
       const totalCDF = transactions?.filter(t => t.devise === 'CDF').reduce((sum, t) => sum + t.montant, 0) || 0;
       const beneficeNet = transactions?.reduce((sum, t) => sum + t.benefice, 0) || 0;
       
-      // Get exchange rates for CNY conversion
       const { data: rates } = await this.getExchangeRates();
       const totalCNY = (totalUSD / rates?.usdToCny) || 0;
 
-      // Today's transactions
       const today = new Date().toISOString().split('T')[0];
       const todayTransactions = transactions?.filter(t => 
         t.created_at.startsWith(today)
       ).length || 0;
 
-      // Monthly revenue
       const thisMonth = new Date().toISOString().slice(0, 7);
       const monthlyRevenue = transactions?.filter(t => 
         t.created_at.startsWith(thisMonth) && t.devise === 'USD'

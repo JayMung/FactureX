@@ -250,8 +250,8 @@ class SupabaseService {
       const beneficePercentage = (fraisConfig.partenaire / 100);
       const benefice = frais * (1 - beneficePercentage);
 
+      // Remove reference from insertData since it doesn't exist in the table
       const insertData = {
-        reference: transactionData.reference || `TRX-${Date.now()}`,
         client_id: transactionData.client_id,
         montant: transactionData.montant,
         devise: transactionData.devise,
@@ -287,7 +287,6 @@ class SupabaseService {
 
       if (data?.id) {
         await this.logActivity('Création transaction', 'Transaction', data.id, { 
-          reference: transactionData.reference,
           montant: transactionData.montant,
           devise: transactionData.devise
         });

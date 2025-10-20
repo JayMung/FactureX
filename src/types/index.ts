@@ -13,7 +13,6 @@ export interface Client {
 
 export interface Transaction {
   id: string;
-  reference: string;
   client_id: string;
   montant: number;
   devise: 'USD' | 'CDF' | 'CNY';
@@ -138,7 +137,6 @@ export interface CreateClientData {
 }
 
 export interface CreateTransactionData {
-  reference?: string;
   client_id: string;
   montant: number;
   devise: 'USD' | 'CDF' | 'CNY';

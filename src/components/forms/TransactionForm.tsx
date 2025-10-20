@@ -27,7 +27,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   onSuccess 
 }) => {
   const [formData, setFormData] = useState<CreateTransactionData>({
-    reference: '',
     client_id: '',
     montant: 0,
     devise: 'USD',
@@ -67,7 +66,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   useEffect(() => {
     if (isOpen) {
       setFormData({
-        reference: '',
         client_id: '',
         montant: 0,
         devise: 'USD',
@@ -174,9 +172,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     }
 
     try {
-      // S'assurer que tous les champs requis sont présents
+      // S'assurer que tous les champs requis sont présents (sans reference)
       const finalData: CreateTransactionData = {
-        reference: formData.reference || `TRX-${Date.now()}`,
         client_id: formData.client_id,
         montant: formData.montant,
         devise: formData.devise as 'USD' | 'CDF' | 'CNY',

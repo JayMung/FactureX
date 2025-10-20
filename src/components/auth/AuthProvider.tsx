@@ -55,7 +55,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isAdmin = user?.user_metadata?.role === 'admin' || 
-                 user?.app_metadata?.role === 'admin';
+                 user?.app_metadata?.role === 'admin' ||
+                 user?.user_metadata?.is_admin === true;
 
   const value = {
     user,

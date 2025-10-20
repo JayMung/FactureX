@@ -63,6 +63,24 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     [fees]
   );
 
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        reference: '',
+        client_id: '',
+        montant: 0,
+        devise: 'USD',
+        motif: 'Transfert',
+        mode_paiement: '',
+        date_paiement: new Date().toISOString().split('T')[0],
+        statut: 'En attente'
+      });
+      setErrors({});
+      setCalculatedAmounts({ frais: 0, benefice: 0, montantCny: 0 });
+    }
+  }, [isOpen]);
+
   // Calcul des montants en temps réel
   useEffect(() => {
     if (!ratesLoading && !feesLoading) {
@@ -176,18 +194,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       
       onSuccess?.();
       onClose();
-      // Reset form
-      setFormData({
-        reference: '',
-        client_id: '',
-        montant: 0,
-        devise: 'USD',
-        motif: 'Transfert',
-        mode_paiement: '',
-        date_paiement: new Date().toISOString().split('T')[0],
-        statut: 'En attente'
-      });
-      setErrors({});
     } catch (error: any) {
       console.error('Erreur lors de la création:', error); // Debug
       showError(error.message || 'Une erreur est survenue lors de la création de la transaction');
@@ -214,20 +220,35 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   };
 
+  // Handle click outside
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[90hv] overflow-y-auto">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
-          <CardTitle className="text-2xl font-bold text-gray-900">Nouvelle transaction</CardTitle>
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={handleBackdropClick}
+    >
+      <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white shadow-xl">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b">
+          <CardTitle className="text-xl font-bold text-gray-900">Nouvelle transaction</CardTitle>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onClose} 
+            className="h-8 w-8 rounded-full hover:bg-gray-100"
+          >
             <X className="h-4 w-4" />
           </Button>
         </CardHeader>
         
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <CardContent className="pt-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {errors.general && (
               <Alert className="border-red-200 bg-red-50">
                 <AlertDescription className="text-red-800">
@@ -245,7 +266,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                 value={formData.client_id}
                 onValueChange={(value) => handleSelectChange('client_id', value)}
               >
-                <SelectTrigger className={`h-11 ${errors.client_id ? 'border-red-500' : ''}`}>
+                <SelectTrigger className={`h-10 ${errors.client_id ? 'border-red-500' : ''}`}>
                   <SelectValue placeholder="Sélectionner un client" />
                 </SelectTrigger>
                 <SelectContent>
@@ -273,14 +294,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                   type="date"
                   value={formData.date_paiement}
                   onChange={handleChange}
-                  className="h-11 pl-4 pr-10"
+                  className="h-10 pl-4 pr-10"
                 />
                 <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
               </div>
             </div>
 
             {/* Montant et Devise */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="montant" className="text-sm font-medium text-gray-700">
                   Montant <span className="text-red-500">*</span>
@@ -293,7 +314,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                   value={formData.montant || ''}
                   onChange={handleChange}
                   placeholder="0.00"
-                  className={`h-11 ${errors.montant ? 'border-red-500' : ''}`}
+                  className={`h-10 ${errors.montant ? 'border-red-500' : ''}`}
                 />
                 {errors.montant && (
                   <p className="text-sm text-red-600">{errors.montant}</p>
@@ -308,7 +329,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                   value={formData.devise}
                   onValueChange={(value) => handleSelectChange('devise', value)}
                 >
-                  <SelectTrigger className={`h-11 ${errors.devise ? 'border-red-500' : ''}`}>
+                  <SelectTrigger className={`h-10 ${errors.devise ? 'border-red-500' : ''}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -324,7 +345,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             </div>
 
             {/* Motif et Mode de paiement */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="motif" className="text-sm font-medium text-gray-700">
                   Motif <span className="text-red-500">*</span>
@@ -333,7 +354,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                   value={formData.motif}
                   onValueChange={(value) => handleSelectChange('motif', value)}
                 >
-                  <SelectTrigger className={`h-11 ${errors.motif ? 'border-red-500' : ''}`}>
+                  <SelectTrigger className={`h-10 ${errors.motif ? 'border-red-500' : ''}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -354,7 +375,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                   value={formData.mode_paiement}
                   onValueChange={(value) => handleSelectChange('mode_paiement', value)}
                 >
-                  <SelectTrigger className={`h-11 ${errors.mode_paiement ? 'border-red-500' : ''}`}>
+                  <SelectTrigger className={`h-10 ${errors.mode_paiement ? 'border-red-500' : ''}`}>
                     <SelectValue placeholder="Sélectionner un mode" />
                   </SelectTrigger>
                   <SelectContent>
@@ -380,7 +401,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                 value={formData.statut}
                 onValueChange={(value) => handleSelectChange('statut', value)}
               >
-                <SelectTrigger className="h-11">
+                <SelectTrigger className="h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -394,63 +415,63 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             </div>
 
             {/* Section Calculs automatiques */}
-            <div className="mt-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">Calculs automatiques</h3>
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <h3 className="text-base font-semibold text-gray-900 mb-4">Calculs automatiques</h3>
               
-              <div className="grid grid-cols-3 gap-6">
+              <div className="space-y-3">
                 {/* Frais */}
-                <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-2 font-medium">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">
                     Frais ({formData.motif === 'Commande' ? currentFees.commande : currentFees.transfert}%)
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  </span>
+                  <span className="text-lg font-bold text-gray-900">
                     ${calculatedAmounts.frais.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
+                  </span>
                 </div>
 
                 {/* Bénéfice */}
-                <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-2 font-medium">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">
                     Bénéfice ({(100 - currentFees.partenaire).toFixed(1)}% des frais)
-                  </p>
-                  <p className="text-2xl font-bold text-green-600">
+                  </span>
+                  <span className="text-lg font-bold text-green-600">
                     ${calculatedAmounts.benefice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
+                  </span>
                 </div>
 
                 {/* Montant CNY */}
-                <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-2 font-medium">
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <span className="text-sm text-gray-600">
                     Montant CNY (1 USD = {currentRates.usdToCny} CNY)
-                  </p>
-                  <p className="text-2xl font-bold text-green-600">
+                  </span>
+                  <span className="text-lg font-bold text-green-600">
                     ¥{calculatedAmounts.montantCny.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
+                  </span>
                 </div>
               </div>
 
               {/* Info supplémentaire */}
-              <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="mt-3 pt-3 border-t border-gray-200">
                 <p className="text-xs text-gray-500 text-center">
-                  * Les calculs utilisent les taux et frais configurés dans les paramètres de l'application
+                  * Les calculs utilisent les taux et frais configurés dans les paramètres
                 </p>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 pt-6 border-t">
+            <div className="flex gap-3 pt-4 border-t">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
                 disabled={isLoading}
-                className="flex-1 h-11"
+                className="flex-1 h-10"
               >
                 Annuler
               </Button>
               <Button
                 type="submit"
-                className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700"
+                className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700"
                 disabled={isLoading}
               >
                 {isLoading ? (

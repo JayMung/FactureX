@@ -226,6 +226,8 @@ class SupabaseService {
 
   async createTransaction(transactionData: CreateTransactionData): Promise<ApiResponse<Transaction>> {
     try {
+      console.log('Création de transaction avec données:', transactionData);
+
       // Récupérer les taux de change actuels
       const { data: settings } = await this.getExchangeRates();
       
@@ -236,6 +238,8 @@ class SupabaseService {
       let montantEnUSD = transactionData.montant;
       if (transactionData.devise === 'CDF') {
         montantEnUSD = transactionData.montant / tauxUsdCdf;
+      } else if (transactionData.devise === 'CNY') {
+        montantEnUSD = transactionData.montant / tauxUsdCny;
       }
       
       // Calculer les frais (5% pour transfert, 10% pour commande)
@@ -246,40 +250,58 @@ class SupabaseService {
       const montantCny = (montantEnUSD - frais) * tauxUsdCny;
       
       // Calculer le bénéfice
-      const benefice = frais * 0.6; // 60% pour l'entreprise, 40% pour le partenaire
+      const benefice = frais * 0.6; // 60% pour l'entreprise
+
+      // Préparer les données pour l'insertion
+      const insertData = {
+        reference: transactionData.reference || `TRX-${Date.now()}`,
+        client_id: transactionData.client_id,
+        montant: transactionData.montant,
+        devise: transactionData.devise,
+        motif: transactionData.motif,
+        mode_paiement: transactionData.mode_paiement,
+        statut: transactionData.statut || 'En attente',
+        date_paiement: transactionData.date_paiement || new Date().toISOString().split('T')[0],
+        frais,
+        taux_usd_cny: tauxUsdCny,
+        taux_usd_cdf: tauxUsdCdf,
+        benefice,
+        montant_cny: montantCny,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('Données à insérer:', insertData);
 
       const { data, error } = await supabase
         .from('transactions')
-        .insert({
-          ...transactionData,
-          frais,
-          taux_usd_cny: tauxUsdCny,
-          taux_usd_cdf: tauxUsdCdf,
-          benefice,
-          montant_cny: montantCny,
-          statut: transactionData.statut || 'En attente',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          date_paiement: transactionData.date_paiement || new Date().toISOString()
-        })
+        .insert(insertData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erreur Supabase:', error);
+        throw error;
+      }
+
+      console.log('Transaction créée:', data);
 
       // Mettre à jour le total payé du client
       await this.updateClientTotal(transactionData.client_id, montantEnUSD);
 
       // Logger l'activité
-      await this.logActivity('Création transaction', 'Transaction', data.id, { 
-        reference: transactionData.reference,
-        montant: transactionData.montant,
-        devise: transactionData.devise
-      });
+      if (data?.id) {
+        await this.logActivity('Création transaction', 'Transaction', data.id, { 
+          reference: transactionData.reference,
+          montant: transactionData.montant,
+          devise: transactionData.devise
+        });
+      }
 
       return { data, message: 'Transaction créée avec succès' };
     } catch (error: any) {
-      return { error: error.message };
+      console.error('Erreur détaillée lors de la création de transaction:', error);
+      return { error: error.message || 'Erreur lors de la création de la transaction' };
     }
   }
 
@@ -439,19 +461,6 @@ class SupabaseService {
         console.error('Auth error:', authError);
         return { error: 'Utilisateur non authentifié' };
       }
-
-      console.log('User authenticated:', user.email);
-      console.log('User metadata:', user.user_metadata);
-      console.log('App metadata:', user.app_metadata);
-
-      // Pour le développement, permettre à tous les utilisateurs authentifiés
-      // Plus tard, vous pourrez décommenter la vérification du rôle admin
-      /*
-      const userRole = user.user_metadata?.role || user.app_metadata?.role;
-      if (userRole !== 'admin') {
-        return { error: 'Permissions insuffisantes. Seul un administrateur peut modifier les paramètres.' };
-      }
-      */
 
       const updates = Object.entries(settings).map(([cle, valeur]) => ({
         categorie,

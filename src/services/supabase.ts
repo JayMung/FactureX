@@ -257,10 +257,10 @@ class SupabaseService {
           taux_usd_cdf: tauxUsdCdf,
           benefice,
           montant_cny: montantCny,
-          statut: 'En attente',
+          statut: transactionData.statut || 'En attente',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          date_paiement: new Date().toISOString()
+          date_paiement: transactionData.date_paiement || new Date().toISOString()
         })
         .select()
         .single();

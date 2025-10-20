@@ -144,6 +144,8 @@ export interface CreateTransactionData {
   devise: 'USD' | 'CDF' | 'CNY';
   motif: 'Commande' | 'Transfert';
   mode_paiement: string;
+  date_paiement?: string;
+  statut?: 'En attente' | 'Servi' | 'Remboursé' | 'Annulé';
 }
 
 export interface UpdateTransactionData {

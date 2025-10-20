@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState } from 'react';
-import Layout from '@/components/layout/Layout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Layout from '../components/layout/Layout';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { 
   Search, 
   Plus, 
@@ -17,91 +17,36 @@ import {
   XCircle,
   RotateCcw
 } from 'lucide-react';
-
-interface Transaction {
-  id: string;
-  client: string;
-  datePaiement: string;
-  montant: string;
-  devise: string;
-  motif: string;
-  frais: string;
-  taux: string;
-  benefice: string;
-  montantCny: string;
-  modePaiement: string;
-  statut: string;
-  validePar: string;
-}
+import { useTransactions } from '../hooks/useTransactions';
+import Pagination from '../components/ui/pagination-custom';
+import { Skeleton } from '../components/ui/skeleton';
 
 const Transactions = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currencyFilter, setCurrencyFilter] = useState('all');
-  
-  // Mock data - will be replaced with Supabase data
-  const transactions: Transaction[] = [
-    {
-      id: "TRX-001",
-      client: "Jean Mukendi",
-      datePaiement: "20/10/2025 14:30",
-      montant: "500",
-      devise: "USD",
-      motif: "Commande",
-      frais: "50 (10%)",
-      taux: "7.25",
-      benefice: "35",
-      montantCny: "3,262.50",
-      modePaiement: "Airtel Money",
-      statut: "Servi",
-      validePar: "Admin"
-    },
-    {
-      id: "TRX-002",
-      client: "Marie Kabeya", 
-      datePaiement: "20/10/2025 13:15",
-      montant: "280,000",
-      devise: "CDF",
-      motif: "Transfert",
-      frais: "14,000 (5%)",
-      taux: "2,850",
-      benefice: "5,600",
-      montantCny: "468.42",
-      modePaiement: "Orange Money",
-      statut: "En attente",
-      validePar: "-"
-    },
-    {
-      id: "TRX-003",
-      client: "Pierre Ntumba",
-      datePaiement: "19/10/2025 16:45",
-      montant: "1,200",
-      devise: "USD",
-      motif: "Transfert", 
-      frais: "60 (5%)",
-      taux: "7.25",
-      benefice: "24",
-      montantCny: "8,190",
-      modePaiement: "Cash",
-      statut: "Servi",
-      validePar: "Admin"
-    },
-    {
-      id: "TRX-004",
-      client: "Sophie Mbuyi",
-      datePaiement: "19/10/2025 11:20",
-      montant: "150,000",
-      devise: "CDF",
-      motif: "Commande",
-      frais: "15,000 (10%)",
-      taux: "2,850",
-      benefice: "10,500",
-      montantCny: "473.68",
-      modePaiement: "M-Pesa",
-      statut: "Remboursé",
-      validePar: "Admin"
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const {
+    transactions,
+    pagination,
+    isLoading,
+    error,
+    updateTransaction
+  } = useTransactions(currentPage, {
+    status: statusFilter,
+    currency: currencyFilter,
+    modePaiement: searchTerm
+  });
+
+  const formatCurrency = (amount: number, currency: string) => {
+    if (currency === 'USD') {
+      return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    } else if (currency === 'CDF') {
+      return `${amount.toLocaleString('fr-FR')} F`;
     }
-  ];
+    return amount.toString();
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -133,25 +78,44 @@ const Transactions = () => {
     }
   };
 
-  const filteredTransactions = transactions.filter(transaction => {
-    const matchesSearch = 
-      transaction.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.modePaiement.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || transaction.statut === statusFilter;
-    const matchesCurrency = currencyFilter === 'all' || transaction.devise === currencyFilter;
-    
-    return matchesSearch && matchesStatus && matchesCurrency;
-  });
+  const handleValidateTransaction = (transactionId: string) => {
+    updateTransaction({
+      id: transactionId,
+      data: {
+        statut: 'Servi',
+        valide_par: 'current_user' // TODO: Get from auth context
+      }
+    });
+  };
 
-  const totalUSD = transactions
-    .filter(t => t.devise === 'USD')
-    .reduce((sum, t) => sum + parseFloat(t.montant.replace(',', '')), 0);
-  
-  const totalCDF = transactions
-    .filter(t => t.devise === 'CDF')
-    .reduce((sum, t) => sum + parseFloat(t.montant.replace(',', '')), 0);
+  const calculateStats = () => {
+    const totalUSD = transactions
+      .filter(t => t.devise === 'USD')
+      .reduce((sum, t) => sum + t.montant, 0);
+    
+    const totalCDF = transactions
+      .filter(t => t.devise === 'CDF')
+      .reduce((sum, t) => sum + t.montant, 0);
+
+    const totalBenefice = transactions.reduce((sum, t) => sum + t.benefice, 0);
+
+    return { totalUSD, totalCDF, totalBenefice };
+  };
+
+  const { totalUSD, totalCDF, totalBenefice } = calculateStats();
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-red-600 mb-2">Erreur de chargement des transactions</p>
+            <p className="text-gray-500">{error}</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -175,7 +139,9 @@ const Transactions = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total USD</p>
-                  <p className="text-2xl font-bold text-emerald-600">${totalUSD.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-emerald-600">
+                    {formatCurrency(totalUSD, 'USD')}
+                  </p>
                 </div>
                 <div className="text-emerald-600">
                   <span className="text-2xl font-bold">$</span>
@@ -188,7 +154,9 @@ const Transactions = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total CDF</p>
-                  <p className="text-2xl font-bold text-blue-600">{totalCDF.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {formatCurrency(totalCDF, 'CDF')}
+                  </p>
                 </div>
                 <div className="text-blue-600">
                   <span className="text-2xl font-bold">F</span>
@@ -201,7 +169,9 @@ const Transactions = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Bénéfice total</p>
-                  <p className="text-2xl font-bold text-purple-600">$16,159</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {formatCurrency(totalBenefice, 'USD')}
+                  </p>
                 </div>
                 <div className="text-purple-600">
                   <span className="text-2xl font-bold">↑</span>
@@ -214,7 +184,9 @@ const Transactions = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Transactions</p>
-                  <p className="text-2xl font-bold text-gray-900">{transactions.length}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {pagination?.count || 0}
+                  </p>
                 </div>
                 <div className="text-gray-600">
                   <span className="text-2xl font-bold">T</span>
@@ -231,11 +203,17 @@ const Transactions = () => {
             <Input
               placeholder="Rechercher par client, ID ou mode de paiement..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
               className="pl-10"
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(value) => {
+            setStatusFilter(value);
+            setCurrentPage(1);
+          }}>
             <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder="Statut" />
             </SelectTrigger>
@@ -247,7 +225,10 @@ const Transactions = () => {
               <SelectItem value="Annulé">Annulé</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
+          <Select value={currencyFilter} onValueChange={(value) => {
+            setCurrencyFilter(value);
+            setCurrentPage(1);
+          }}>
             <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder="Devise" />
             </SelectTrigger>
@@ -287,48 +268,99 @@ const Transactions = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredTransactions.map((transaction) => (
-                    <tr key={transaction.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4 font-medium">{transaction.id}</td>
-                      <td className="py-3 px-4">{transaction.client}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{transaction.datePaiement}</td>
-                      <td className="py-3 px-4">
-                        <span className="font-medium">{transaction.montant} {transaction.devise}</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge variant={transaction.motif === 'Commande' ? 'default' : 'secondary'}>
-                          {transaction.motif}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 text-sm">{transaction.frais}</td>
-                      <td className="py-3 px-4 text-sm font-medium text-green-600">{transaction.benefice}</td>
-                      <td className="py-3 px-4 text-sm font-medium text-blue-600">{transaction.montantCny}</td>
-                      <td className="py-3 px-4 text-sm">{transaction.modePaiement}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-1">
-                          {getStatusIcon(transaction.statut)}
-                          <Badge className={getStatusColor(transaction.statut)}>
-                            {transaction.statut}
-                          </Badge>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-2">
-                          <Button variant="ghost" size="icon">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {transaction.statut === 'En attente' && (
-                            <Button variant="ghost" size="icon" className="text-green-600">
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
+                  {isLoading ? (
+                    Array.from({ length: 10 }).map((_, index) => (
+                      <tr key={index} className="border-b">
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
+                      </tr>
+                    ))
+                  ) : transactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={11} className="py-8 text-center text-gray-500">
+                        Aucune transaction trouvée
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    transactions.map((transaction) => (
+                      <tr key={transaction.id} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-4 font-medium">{transaction.id.slice(0, 8)}...</td>
+                        <td className="py-3 px-4">{transaction.client?.nom || 'Client inconnu'}</td>
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          {new Date(transaction.created_at).toLocaleDateString('fr-FR')}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="font-medium">
+                            {formatCurrency(transaction.montant, transaction.devise)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <Badge variant={transaction.motif === 'Commande' ? 'default' : 'secondary'}>
+                            {transaction.motif}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4 text-sm">
+                          {formatCurrency(transaction.frais, 'USD')}
+                        </td>
+                        <td className="py-3 px-4 text-sm font-medium text-green-600">
+                          {formatCurrency(transaction.benefice, 'USD')}
+                        </td>
+                        <td className="py-3 px-4 text-sm font-medium text-blue-600">
+                          {formatCurrency(transaction.montant_cny, 'CNY')}
+                        </td>
+                        <td className="py-3 px-4 text-sm">{transaction.mode_paiement}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-1">
+                            {getStatusIcon(transaction.statut)}
+                            <Badge className={getStatusColor(transaction.statut)}>
+                              {transaction.statut}
+                            </Badge>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-2">
+                            <Button variant="ghost" size="icon">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {transaction.statut === 'En attente' && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="text-green-600"
+                                onClick={() => handleValidateTransaction(transaction.id)}
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination */}
+            {pagination && pagination.totalPages > 1 && (
+              <div className="mt-6">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={pagination.totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

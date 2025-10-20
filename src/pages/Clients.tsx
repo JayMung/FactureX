@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState } from 'react';
-import Layout from '@/components/layout/Layout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import Layout from '../components/layout/Layout';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
 import { 
   Search, 
   Plus, 
@@ -16,60 +16,50 @@ import {
   Phone,
   MapPin
 } from 'lucide-react';
-
-interface Client {
-  id: string;
-  nom: string;
-  telephone: string;
-  ville: string;
-  totalPaye: string;
-  transactionCount: number;
-}
+import { useClients } from '../hooks/useClients';
+import Pagination from '../components/ui/pagination-custom';
+import { Skeleton } from '../components/ui/skeleton';
 
 const Clients = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Mock data - will be replaced with Supabase data
-  const clients: Client[] = [
-    {
-      id: "1",
-      nom: "Jean Mukendi",
-      telephone: "+243 812 345 678",
-      ville: "Kinshasa",
-      totalPaye: "$5,500",
-      transactionCount: 12
-    },
-    {
-      id: "2", 
-      nom: "Marie Kabeya",
-      telephone: "+243 823 456 789",
-      ville: "Lubumbashi",
-      totalPaye: "$3,200",
-      transactionCount: 8
-    },
-    {
-      id: "3",
-      nom: "Pierre Ntumba",
-      telephone: "+243 834 567 890",
-      ville: "Goma",
-      totalPaye: "$7,800",
-      transactionCount: 15
-    },
-    {
-      id: "4",
-      nom: "Sophie Mbuyi",
-      telephone: "+243 845 678 901",
-      ville: "Bukavu",
-      totalPaye: "$2,100",
-      transactionCount: 5
-    }
-  ];
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const filteredClients = clients.filter(client =>
-    client.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.telephone.includes(searchTerm) ||
-    client.ville.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const {
+    clients,
+    pagination,
+    isLoading,
+    error,
+    deleteClient
+  } = useClients(currentPage, {
+    search: searchTerm
+  });
+
+  const formatCurrency = (amount: number) => {
+    return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const handleDeleteClient = (clientId: string) => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) {
+      deleteClient(clientId);
+    }
+  };
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-red-600 mb-2">Erreur de chargement des clients</p>
+            <p className="text-gray-500">{error}</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Calculate stats from current page data
+  const uniqueCities = [...new Set(clients.map(client => client.ville))].length;
+  const totalPayed = clients.reduce((sum, client) => sum + client.total_paye, 0);
 
   return (
     <Layout>
@@ -94,7 +84,7 @@ const Clients = () => {
                 <Users className="h-8 w-8 text-emerald-600" />
                 <div>
                   <p className="text-sm text-gray-600">Total Clients</p>
-                  <p className="text-2xl font-bold">{clients.length}</p>
+                  <p className="text-2xl font-bold">{pagination?.count || 0}</p>
                 </div>
               </div>
             </CardContent>
@@ -105,7 +95,7 @@ const Clients = () => {
                 <MapPin className="h-8 w-8 text-blue-600" />
                 <div>
                   <p className="text-sm text-gray-600">Villes couvertes</p>
-                  <p className="text-2xl font-bold">4</p>
+                  <p className="text-2xl font-bold">{uniqueCities}</p>
                 </div>
               </div>
             </CardContent>
@@ -127,7 +117,7 @@ const Clients = () => {
                 <div className="h-8 w-8 text-orange-600">$</div>
                 <div>
                   <p className="text-sm text-gray-600">Total cumulé</p>
-                  <p className="text-2xl font-bold">$18.6K</p>
+                  <p className="text-2xl font-bold">{formatCurrency(totalPayed)}</p>
                 </div>
               </div>
             </CardContent>
@@ -140,7 +130,10 @@ const Clients = () => {
           <Input
             placeholder="Rechercher par nom, téléphone ou ville..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
             className="pl-10"
           />
         </div>
@@ -164,46 +157,97 @@ const Clients = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredClients.map((client) => (
-                    <tr key={client.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                            <span className="text-emerald-600 font-medium">
-                              {client.nom.split(' ').map(n => n[0]).join('')}
-                            </span>
+                  {isLoading ? (
+                    Array.from({ length: 10 }).map((_, index) => (
+                      <tr key={index} className="border-b">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-3">
+                            <Skeleton className="h-10 w-10 rounded-full" />
+                            <Skeleton className="h-4 w-24" />
                           </div>
-                          <div>
-                            <p className="font-medium">{client.nom}</p>
+                        </td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-32" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-2">
+                            <Skeleton className="h-8 w-8" />
+                            <Skeleton className="h-8 w-8" />
+                            <Skeleton className="h-8 w-8" />
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-gray-600">{client.telephone}</td>
-                      <td className="py-3 px-4">
-                        <Badge variant="outline">{client.ville}</Badge>
-                      </td>
-                      <td className="py-3 px-4 font-medium text-emerald-600">{client.totalPaye}</td>
-                      <td className="py-3 px-4">
-                        <Badge variant="secondary">{client.transactionCount} transactions</Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-2">
-                          <Button variant="ghost" size="icon">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : clients.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-gray-500">
+                        Aucun client trouvé
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    clients.map((client) => (
+                      <tr key={client.id} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                              <span className="text-emerald-600 font-medium">
+                                {client.nom.split(' ').map(n => n[0]).join('')}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium">{client.nom}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-gray-600">{client.telephone}</td>
+                        <td className="py-3 px-4">
+                          <Badge variant="outline">{client.ville}</Badge>
+                        </td>
+                        <td className="py-3 px-4 font-medium text-emerald-600">
+                          {formatCurrency(client.total_paye)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <Badge variant="secondary">
+                            {/* TODO: Get transaction count from service */}
+                            0 transactions
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-2">
+                            <Button variant="ghost" size="icon">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => handleDeleteClient(client.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination */}
+            {pagination && pagination.totalPages > 1 && (
+              <div className="mt-6">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={pagination.totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

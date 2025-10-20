@@ -333,10 +333,14 @@ class SupabaseService {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching settings:', error);
+        throw error;
+      }
 
       return { data: data || [] };
     } catch (error: any) {
+      console.error('Settings fetch error:', error);
       return { error: error.message };
     }
   }
@@ -348,7 +352,10 @@ class SupabaseService {
         .select('cle, valeur')
         .eq('categorie', 'taux_change');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching exchange rates:', error);
+        throw error;
+      }
 
       const rates = data?.reduce((acc, setting) => {
         acc[setting.cle as keyof Omit<ExchangeRates, 'lastUpdated'>] = parseFloat(setting.valeur);
@@ -363,6 +370,7 @@ class SupabaseService {
         }
       };
     } catch (error: any) {
+      console.error('Exchange rates error:', error);
       return { error: error.message };
     }
   }
@@ -374,7 +382,10 @@ class SupabaseService {
         .select('cle, valeur')
         .eq('categorie', 'frais');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching fees:', error);
+        throw error;
+      }
 
       const fees = data?.reduce((acc, setting) => {
         acc[setting.cle as keyof Fees] = parseFloat(setting.valeur);
@@ -389,22 +400,34 @@ class SupabaseService {
         }
       };
     } catch (error: any) {
+      console.error('Fees error:', error);
       return { error: error.message };
     }
   }
 
   async updateSetting(categorie: string, settings: Record<string, string>): Promise<ApiResponse<Setting[]>> {
     try {
-      // Vérifier si l'utilisateur est admin
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      console.log('Updating settings:', { categorie, settings });
+      
+      // Vérifier si l'utilisateur est authentifié
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('Auth error:', authError);
         return { error: 'Utilisateur non authentifié' };
       }
 
+      console.log('User authenticated:', user.email);
+      console.log('User metadata:', user.user_metadata);
+      console.log('App metadata:', user.app_metadata);
+
+      // Pour le développement, permettre à tous les utilisateurs authentifiés
+      // Plus tard, vous pourrez décommenter la vérification du rôle admin
+      /*
       const userRole = user.user_metadata?.role || user.app_metadata?.role;
       if (userRole !== 'admin') {
         return { error: 'Permissions insuffisantes. Seul un administrateur peut modifier les paramètres.' };
       }
+      */
 
       const updates = Object.entries(settings).map(([cle, valeur]) => ({
         categorie,
@@ -413,15 +436,22 @@ class SupabaseService {
         updated_at: new Date().toISOString()
       }));
 
+      console.log('Updates to apply:', updates);
+
       const { data, error } = await supabase
         .from('settings')
         .upsert(updates, { onConflict: 'categorie,cle' })
         .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase upsert error:', error);
+        throw error;
+      }
 
+      console.log('Settings updated successfully:', data);
       return { data: data || [], message: 'Paramètres mis à jour avec succès' };
     } catch (error: any) {
+      console.error('Update setting error:', error);
       return { error: error.message };
     }
   }

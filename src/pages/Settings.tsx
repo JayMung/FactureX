@@ -10,6 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Settings as SettingsIcon,
   TrendingUp,
@@ -21,11 +24,17 @@ import {
   Edit,
   Trash2,
   Save,
-  Loader2
+  Loader2,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useSettings, useExchangeRates, useFees } from '@/hooks/useSettings';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { useUserProfiles } from '@/hooks/useUserProfiles';
+import { useActivityLogs } from '@/hooks/useActivityLogs';
 import { showSuccess, showError } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
+import type { PaymentMethod, UserProfile } from '@/types';
 
 const Settings = () => {
   const [exchangeRates, setExchangeRates] = useState({
@@ -40,9 +49,48 @@ const Settings = () => {
     partenaire: '3'
   });
 
+  // États pour les dialogues
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [userDialogOpen, setUserDialogOpen] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+
+  // Formulaires
+  const [paymentForm, setPaymentForm] = useState({
+    name: '',
+    code: '',
+    icon: '',
+    description: '',
+    is_active: true
+  });
+
+  const [userForm, setUserForm] = useState({
+    user_id: '',
+    full_name: '',
+    role: 'operateur' as 'admin' | 'operateur',
+    phone: '',
+    is_active: true
+  });
+
   const { updateSettings, isUpdating } = useSettings();
   const { rates, isLoading: ratesLoading } = useExchangeRates();
   const { fees: currentFees, isLoading: feesLoading } = useFees();
+  const { 
+    paymentMethods, 
+    isLoading: paymentsLoading, 
+    togglePaymentMethod, 
+    createPaymentMethod, 
+    updatePaymentMethod, 
+    deletePaymentMethod 
+  } = usePaymentMethods();
+  const { 
+    userProfiles, 
+    isLoading: usersLoading, 
+    toggleUserProfile, 
+    createUserProfile, 
+    updateUserProfile 
+  } = useUserProfiles();
+  const { logs, isLoading: logsLoading } = useActivityLogs();
 
   // Charger les données actuelles
   React.useEffect(() => {
@@ -65,7 +113,7 @@ const Settings = () => {
     }
   }, [currentFees]);
 
-  // Ajoutez ceci dans le composant Settings pour déboguer
+  // Debug user role
   React.useEffect(() => {
     const checkUserRole = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -105,37 +153,118 @@ const Settings = () => {
     }
   };
 
-  const paymentMethods = [
-    { id: 1, name: 'Cash', active: true },
-    { id: 2, name: 'Airtel Money', active: true },
-    { id: 3, name: 'Orange Money', active: true },
-    { id: 4, name: 'M-Pesa', active: true },
-    { id: 5, name: 'Banque', active: true }
-  ];
+  const handleTogglePayment = async (id: string, isActive: boolean) => {
+    try {
+      await togglePaymentMethod(id, isActive);
+      showSuccess(`Mode de paiement ${isActive ? 'activé' : 'désactivé'} avec succès`);
+    } catch (error: any) {
+      showError(error.message);
+    }
+  };
+
+  const handleToggleUser = async (id: string, isActive: boolean) => {
+    try {
+      await toggleUserProfile(id, isActive);
+      showSuccess(`Utilisateur ${isActive ? 'activé' : 'désactivé'} avec succès`);
+    } catch (error: any) {
+      showError(error.message);
+    }
+  };
+
+  const handleSavePayment = async () => {
+    try {
+      if (editingPayment) {
+        await updatePaymentMethod(editingPayment.id, paymentForm);
+        showSuccess('Mode de paiement mis à jour avec succès');
+      } else {
+        await createPaymentMethod(paymentForm as any);
+        showSuccess('Mode de paiement créé avec succès');
+      }
+      setPaymentDialogOpen(false);
+      resetPaymentForm();
+    } catch (error: any) {
+      showError(error.message);
+    }
+  };
+
+  const handleSaveUser = async () => {
+    try {
+      if (editingUser) {
+        await updateUserProfile(editingUser.id, userForm);
+        showSuccess('Profil utilisateur mis à jour avec succès');
+      } else {
+        await createUserProfile(userForm as any);
+        showSuccess('Profil utilisateur créé avec succès');
+      }
+      setUserDialogOpen(false);
+      resetUserForm();
+    } catch (error: any) {
+      showError(error.message);
+    }
+  };
+
+  const handleEditPayment = (payment: PaymentMethod) => {
+    setEditingPayment(payment);
+    setPaymentForm({
+      name: payment.name,
+      code: payment.code,
+      icon: payment.icon || '',
+      description: payment.description || '',
+      is_active: payment.is_active
+    });
+    setPaymentDialogOpen(true);
+  };
+
+  const handleEditUser = (user: UserProfile) => {
+    setEditingUser(user);
+    setUserForm({
+      user_id: user.user_id,
+      full_name: user.full_name,
+      role: user.role,
+      phone: user.phone || '',
+      is_active: user.is_active
+    });
+    setUserDialogOpen(true);
+  };
+
+  const handleDeletePayment = async (id: string) => {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce mode de paiement ?')) {
+      try {
+        await deletePaymentMethod(id);
+        showSuccess('Mode de paiement supprimé avec succès');
+      } catch (error: any) {
+        showError(error.message);
+      }
+    }
+  };
+
+  const resetPaymentForm = () => {
+    setPaymentForm({
+      name: '',
+      code: '',
+      icon: '',
+      description: '',
+      is_active: true
+    });
+    setEditingPayment(null);
+  };
+
+  const resetUserForm = () => {
+    setUserForm({
+      user_id: '',
+      full_name: '',
+      role: 'operateur',
+      phone: '',
+      is_active: true
+    });
+    setEditingUser(null);
+  };
 
   const transactionStatuses = [
     { id: 1, name: 'En attente', color: 'yellow' },
     { id: 2, name: 'Servi', color: 'green' },
     { id: 3, name: 'Remboursé', color: 'blue' },
     { id: 4, name: 'Annulé', color: 'red' }
-  ];
-
-  const paymentMotifs = [
-    { id: 1, name: 'Commande', fee: '10%' },
-    { id: 2, name: 'Transfert', fee: '5%' }
-  ];
-
-  const users = [
-    { id: 1, name: 'Admin', email: 'admin@coxipay.com', role: 'admin', status: 'Actif' },
-    { id: 2, name: 'Opérateur 1', email: 'op1@coxipay.com', role: 'operateur', status: 'Actif' },
-    { id: 3, name: 'Opérateur 2', email: 'op2@coxipay.com', role: 'operateur', status: 'Inactif' }
-  ];
-
-  const recentLogs = [
-    { id: 1, user: 'Admin', action: 'Validation transaction TRX-001', target: 'Transaction', date: '20/10/2025 14:30' },
-    { id: 2, user: 'Opérateur 1', action: 'Création client Jean Mukendi', target: 'Client', date: '20/10/2025 13:15' },
-    { id: 3, user: 'Admin', action: 'Modification taux USD→CNY', target: 'Paramètres', date: '20/10/2025 10:00' },
-    { id: 4, user: 'Opérateur 2', action: 'Création transaction TRX-002', target: 'Transaction', date: '19/10/2025 16:45' }
   ];
 
   return (
@@ -329,31 +458,126 @@ const Settings = () => {
                     <CreditCard className="h-5 w-5" />
                     <span>Modes de paiement</span>
                   </div>
-                  <Button size="sm">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Ajouter
-                  </Button>
+                  <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" onClick={resetPaymentForm}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Ajouter
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>
+                          {editingPayment ? 'Modifier le mode de paiement' : 'Ajouter un mode de paiement'}
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="payment-name">Nom</Label>
+                          <Input
+                            id="payment-name"
+                            value={paymentForm.name}
+                            onChange={(e) => setPaymentForm({...paymentForm, name: e.target.value})}
+                            placeholder="Ex: Airtel Money"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="payment-code">Code</Label>
+                          <Input
+                            id="payment-code"
+                            value={paymentForm.code}
+                            onChange={(e) => setPaymentForm({...paymentForm, code: e.target.value})}
+                            placeholder="Ex: airtel_money"
+                            disabled={!!editingPayment}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="payment-icon">Icône</Label>
+                          <Input
+                            id="payment-icon"
+                            value={paymentForm.icon}
+                            onChange={(e) => setPaymentForm({...paymentForm, icon: e.target.value})}
+                            placeholder="Ex: smartphone"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="payment-description">Description</Label>
+                          <Textarea
+                            id="payment-description"
+                            value={paymentForm.description}
+                            onChange={(e) => setPaymentForm({...paymentForm, description: e.target.value})}
+                            placeholder="Description du mode de paiement"
+                          />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            checked={paymentForm.is_active}
+                            onCheckedChange={(checked) => setPaymentForm({...paymentForm, is_active: checked})}
+                          />
+                          <Label>Actif</Label>
+                        </div>
+                        <div className="flex justify-end space-x-2">
+                          <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
+                            Annuler
+                          </Button>
+                          <Button onClick={handleSavePayment}>
+                            {editingPayment ? 'Mettre à jour' : 'Créer'}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {paymentMethods.map((method) => (
-                    <div key={method.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <Switch checked={method.active} />
-                        <span className="font-medium">{method.name}</span>
+                {paymentsLoading ? (
+                  <div className="space-y-4">
+                    {Array.from({ length: 4 }).map((_, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <Skeleton className="h-6 w-6" />
+                          <Skeleton className="h-4 w-32" />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Skeleton className="h-8 w-8" />
+                          <Skeleton className="h-8 w-8" />
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Button variant="ghost" size="icon">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="text-red-600">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {paymentMethods.map((method) => (
+                      <div key={method.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <Switch 
+                            checked={method.is_active} 
+                            onCheckedChange={(checked) => handleTogglePayment(method.id, checked)}
+                          />
+                          <div>
+                            <span className="font-medium">{method.name}</span>
+                            {method.description && (
+                              <p className="text-sm text-gray-500">{method.description}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditPayment(method)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-red-600"
+                            onClick={() => handleDeletePayment(method.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -400,54 +624,147 @@ const Settings = () => {
                     <Users className="h-5 w-5" />
                     <span>Utilisateurs & Permissions</span>
                   </div>
-                  <Button size="sm">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Ajouter un utilisateur
-                  </Button>
+                  <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" onClick={resetUserForm}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Ajouter un utilisateur
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>
+                          {editingUser ? 'Modifier le profil utilisateur' : 'Ajouter un profil utilisateur'}
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="user-id">ID Utilisateur</Label>
+                          <Input
+                            id="user-id"
+                            value={userForm.user_id}
+                            onChange={(e) => setUserForm({...userForm, user_id: e.target.value})}
+                            placeholder="UUID de l'utilisateur"
+                            disabled={!!editingUser}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="user-name">Nom complet</Label>
+                          <Input
+                            id="user-name"
+                            value={userForm.full_name}
+                            onChange={(e) => setUserForm({...userForm, full_name: e.target.value})}
+                            placeholder="Nom complet de l'utilisateur"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="user-role">Rôle</Label>
+                          <Select value={userForm.role} onValueChange={(value: 'admin' | 'operateur') => setUserForm({...userForm, role: value})}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="operateur">Opérateur</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="user-phone">Téléphone</Label>
+                          <Input
+                            id="user-phone"
+                            value={userForm.phone}
+                            onChange={(e) => setUserForm({...userForm, phone: e.target.value})}
+                            placeholder="Numéro de téléphone"
+                          />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            checked={userForm.is_active}
+                            onCheckedChange={(checked) => setUserForm({...userForm, is_active: checked})}
+                          />
+                          <Label>Actif</Label>
+                        </div>
+                        <div className="flex justify-end space-x-2">
+                          <Button variant="outline" onClick={() => setUserDialogOpen(false)}>
+                            Annuler
+                          </Button>
+                          <Button onClick={handleSaveUser}>
+                            {editingUser ? 'Mettre à jour' : 'Créer'}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-3 px-4 font-medium text-gray-700">Nom</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-700">Email</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-700">Rôle</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-700">Statut</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map((user) => (
-                        <tr key={user.id} className="border-b hover:bg-gray-50">
-                          <td className="py-3 px-4 font-medium">{user.name}</td>
-                          <td className="py-3 px-4 text-gray-600">{user.email}</td>
-                          <td className="py-3 px-4">
-                            <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                              {user.role === 'admin' ? 'Admin' : 'Opérateur'}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4">
-                            <Badge className={user.status === 'Actif' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                              {user.status}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center space-x-2">
-                              <Button variant="ghost" size="icon">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="text-red-600">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
+                {usersLoading ? (
+                  <div className="space-y-4">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <Skeleton className="h-10 w-10 rounded-full" />
+                          <div>
+                            <Skeleton className="h-4 w-24 mb-1" />
+                            <Skeleton className="h-3 w-32" />
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Skeleton className="h-6 w-16" />
+                          <Skeleton className="h-8 w-8" />
+                          <Skeleton className="h-8 w-8" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Nom</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Email</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Rôle</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Statut</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {userProfiles.map((user) => (
+                          <tr key={user.id} className="border-b hover:bg-gray-50">
+                            <td className="py-3 px-4 font-medium">{user.full_name}</td>
+                            <td className="py-3 px-4 text-gray-600">{user.user?.email}</td>
+                            <td className="py-3 px-4">
+                              <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                                {user.role === 'admin' ? 'Admin' : 'Opérateur'}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4">
+                              <Badge className={user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                                {user.is_active ? 'Actif' : 'Inactif'}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center space-x-2">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => handleToggleUser(user.id, !user.is_active)}
+                                >
+                                  {user.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -462,23 +779,44 @@ const Settings = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {recentLogs.map((log) => (
-                    <div key={log.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium">{log.user}</span>
-                          <span className="text-gray-400">•</span>
-                          <span className="text-gray-600">{log.action}</span>
-                        </div>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Badge variant="outline">{log.target}</Badge>
-                          <span className="text-xs text-gray-500">{log.date}</span>
+                {logsLoading ? (
+                  <div className="space-y-4">
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-4 w-48" />
+                          </div>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Skeleton className="h-5 w-20" />
+                            <Skeleton className="h-3 w-24" />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {logs.data.map((log) => (
+                      <div key={log.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium">{log.user?.email || 'Utilisateur inconnu'}</span>
+                            <span className="text-gray-400">•</span>
+                            <span className="text-gray-600">{log.action}</span>
+                          </div>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge variant="outline">{log.entity_type || 'Système'}</Badge>
+                            <span className="text-xs text-gray-500">
+                              {new Date(log.created_at).toLocaleString('fr-FR')}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

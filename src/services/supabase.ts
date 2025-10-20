@@ -4,6 +4,8 @@ import type {
   Transaction, 
   Setting, 
   ActivityLog,
+  PaymentMethod,
+  UserProfile,
   PaginatedResponse,
   TransactionFilters,
   ClientFilters,
@@ -91,6 +93,9 @@ class SupabaseService {
 
       if (error) throw error;
 
+      // Logger l'activité
+      await this.logActivity('Création client', 'Client', data.id, { nom: clientData.nom });
+
       return { data, message: 'Client créé avec succès' };
     } catch (error: any) {
       return { error: error.message };
@@ -111,6 +116,9 @@ class SupabaseService {
 
       if (error) throw error;
 
+      // Logger l'activité
+      await this.logActivity('Modification client', 'Client', id, clientData);
+
       return { data, message: 'Client mis à jour avec succès' };
     } catch (error: any) {
       return { error: error.message };
@@ -125,6 +133,9 @@ class SupabaseService {
         .eq('id', id);
 
       if (error) throw error;
+
+      // Logger l'activité
+      await this.logActivity('Suppression client', 'Client', id);
 
       return { message: 'Client supprimé avec succès' };
     } catch (error: any) {
@@ -259,6 +270,13 @@ class SupabaseService {
       // Mettre à jour le total payé du client
       await this.updateClientTotal(transactionData.client_id, montantEnUSD);
 
+      // Logger l'activité
+      await this.logActivity('Création transaction', 'Transaction', data.id, { 
+        reference: transactionData.reference,
+        montant: transactionData.montant,
+        devise: transactionData.devise
+      });
+
       return { data, message: 'Transaction créée avec succès' };
     } catch (error: any) {
       return { error: error.message };
@@ -280,6 +298,9 @@ class SupabaseService {
 
       if (error) throw error;
 
+      // Logger l'activité
+      await this.logActivity('Modification transaction', 'Transaction', id, updateData);
+
       return { data, message: 'Transaction mise à jour avec succès' };
     } catch (error: any) {
       return { error: error.message };
@@ -294,6 +315,9 @@ class SupabaseService {
         .eq('id', id);
 
       if (error) throw error;
+
+      // Logger l'activité
+      await this.logActivity('Suppression transaction', 'Transaction', id);
 
       return { message: 'Transaction supprimée avec succès' };
     } catch (error: any) {
@@ -449,10 +473,262 @@ class SupabaseService {
       }
 
       console.log('Settings updated successfully:', data);
+
+      // Logger l'activité
+      await this.logActivity('Modification paramètres', 'Settings', undefined, { categorie, settings });
+
       return { data: data || [], message: 'Paramètres mis à jour avec succès' };
     } catch (error: any) {
       console.error('Update setting error:', error);
       return { error: error.message };
+    }
+  }
+
+  // ===== PAYMENT METHODS =====
+  
+  async getPaymentMethods(): Promise<ApiResponse<PaymentMethod[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+
+      return { data: data || [] };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  }
+
+  async createPaymentMethod(methodData: Omit<PaymentMethod, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<PaymentMethod>> {
+    try {
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .insert(methodData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Logger l'activité
+      await this.logActivity('Création mode de paiement', 'PaymentMethod', data.id, { name: methodData.name });
+
+      return { data, message: 'Mode de paiement créé avec succès' };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  }
+
+  async updatePaymentMethod(id: string, methodData: Partial<PaymentMethod>): Promise<ApiResponse<PaymentMethod>> {
+    try {
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .update({
+          ...methodData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Logger l'activité
+      await this.logActivity('Modification mode de paiement', 'PaymentMethod', id, methodData);
+
+      return { data, message: 'Mode de paiement mis à jour avec succès' };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  }
+
+  async deletePaymentMethod(id: string): Promise<ApiResponse<void>> {
+    try {
+      const { error } = await supabase
+        .from('payment_methods')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Logger l'activité
+      await this.logActivity('Suppression mode de paiement', 'PaymentMethod', id);
+
+      return { message: 'Mode de paiement supprimé avec succès' };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  }
+
+  async togglePaymentMethod(id: string, isActive: boolean): Promise<ApiResponse<PaymentMethod>> {
+    try {
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .update({
+          is_active: isActive,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Logger l'activité
+      await this.logActivity(
+        isActive ? 'Activation mode de paiement' : 'Désactivation mode de paiement', 
+        'PaymentMethod', 
+        id
+      );
+
+      return { data, message: `Mode de paiement ${isActive ? 'activé' : 'désactivé'} avec succès` };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  }
+
+  // ===== USER PROFILES =====
+  
+  async getUserProfiles(): Promise<ApiResponse<UserProfile[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select(`
+          *,
+          user:auth.users(email, created_at)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return { data: (data as any) || [] };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  }
+
+  async createUserProfile(profileData: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<UserProfile>> {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .insert(profileData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Logger l'activité
+      await this.logActivity('Création profil utilisateur', 'UserProfile', data.id, { 
+        full_name: profileData.full_name,
+        role: profileData.role
+      });
+
+      return { data, message: 'Profil utilisateur créé avec succès' };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  }
+
+  async updateUserProfile(id: string, profileData: Partial<UserProfile>): Promise<ApiResponse<UserProfile>> {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .update({
+          ...profileData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Logger l'activité
+      await this.logActivity('Modification profil utilisateur', 'UserProfile', id, profileData);
+
+      return { data, message: 'Profil utilisateur mis à jour avec succès' };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  }
+
+  async toggleUserProfile(id: string, isActive: boolean): Promise<ApiResponse<UserProfile>> {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .update({
+          is_active: isActive,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Logger l'activité
+      await this.logActivity(
+        isActive ? 'Activation utilisateur' : 'Désactivation utilisateur', 
+        'UserProfile', 
+        id
+      );
+
+      return { data, message: `Utilisateur ${isActive ? 'activé' : 'désactivé'} avec succès` };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  }
+
+  // ===== ACTIVITY LOGS =====
+  
+  async getActivityLogs(page: number = 1, pageSize: number = 10): Promise<ApiResponse<PaginatedResponse<ActivityLog & { user: { email: string } }>>> {
+    try {
+      const { data, error, count } = await supabase
+        .from('activity_logs')
+        .select(`
+          *,
+          user:auth.users(email)
+        `, { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range((page - 1) * pageSize, page * pageSize - 1);
+
+      if (error) throw error;
+
+      const totalPages = count ? Math.ceil(count / pageSize) : 0;
+
+      return {
+        data: {
+          data: (data as any) || [],
+          count: count || 0,
+          page,
+          pageSize,
+          totalPages
+        }
+      };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  }
+
+  async logActivity(action: string, entityType?: string, entityId?: string, details?: Record<string, any>): Promise<void> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      await supabase
+        .from('activity_logs')
+        .insert({
+          user_id: user.id,
+          action,
+          entity_type: entityType,
+          entity_id: entityId,
+          details,
+          created_at: new Date().toISOString()
+        });
+    } catch (error) {
+      console.error('Error logging activity:', error);
     }
   }
 

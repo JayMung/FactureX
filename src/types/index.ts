@@ -1,43 +1,35 @@
-export interface User {
-  id: string;
-  first_name?: string;
-  last_name?: string;
-  role: 'admin' | 'operateur';
-  avatar_url?: string;
-  updated_at: string;
-}
-
 export interface Client {
   id: string;
   nom: string;
   telephone: string;
-  ville: string;
+  email?: string;
+  adresse?: string;
+  ville?: string;
+  pays?: string;
   total_paye: number;
   created_at: string;
   updated_at: string;
-  created_by?: string;
 }
 
 export interface Transaction {
   id: string;
+  reference: string;
   client_id: string;
-  date_paiement: string;
   montant: number;
-  devise: 'USD' | 'CDF';
-  motif: 'Commande' | 'Transfert';
-  frais: number;
+  devise: 'USD' | 'CDF' | 'CNY';
   taux_usd_cny: number;
   taux_usd_cdf: number;
-  benefice: number;
   montant_cny: number;
+  frais: number;
+  benefice: number;
+  motif: 'Commande' | 'Transfert';
   mode_paiement: string;
   statut: 'En attente' | 'Servi' | 'Remboursé' | 'Annulé';
-  valide_par?: string;
+  date_paiement: string;
   date_validation?: string;
+  valide_par?: string;
   created_at: string;
   updated_at: string;
-  created_by?: string;
-  client?: Client;
 }
 
 export interface Setting {
@@ -54,10 +46,39 @@ export interface ActivityLog {
   id: string;
   user_id: string;
   action: string;
-  cible?: string;
-  cible_id?: string;
-  details?: any;
-  date: string;
+  entity_type?: string;
+  entity_id?: string;
+  details?: Record<string, any>;
+  ip_address?: string;
+  user_agent?: string;
+  created_at: string;
+}
+
+export interface PaymentMethod {
+  id: string;
+  name: string;
+  code: string;
+  is_active: boolean;
+  icon?: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserProfile {
+  id: string;
+  user_id: string;
+  full_name: string;
+  role: 'admin' | 'operateur';
+  phone?: string;
+  is_active: boolean;
+  last_login?: string;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    email: string;
+    created_at: string;
+  };
 }
 
 export interface PaginatedResponse<T> {
@@ -72,9 +93,9 @@ export interface TransactionFilters {
   status?: string;
   currency?: string;
   clientId?: string;
+  modePaiement?: string;
   dateFrom?: string;
   dateTo?: string;
-  modePaiement?: string;
   minAmount?: number;
   maxAmount?: number;
 }
@@ -82,11 +103,6 @@ export interface TransactionFilters {
 export interface ClientFilters {
   search?: string;
   ville?: string;
-  telephone?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  minTotal?: number;
-  maxTotal?: number;
 }
 
 export interface DashboardStats {
@@ -115,42 +131,37 @@ export interface Fees {
 export interface CreateClientData {
   nom: string;
   telephone: string;
-  ville: string;
+  email?: string;
+  adresse?: string;
+  ville?: string;
+  pays?: string;
 }
 
 export interface CreateTransactionData {
+  reference?: string;
   client_id: string;
   montant: number;
-  devise: 'USD' | 'CDF';
+  devise: 'USD' | 'CDF' | 'CNY';
   motif: 'Commande' | 'Transfert';
   mode_paiement: string;
 }
 
 export interface UpdateTransactionData {
   statut?: 'En attente' | 'Servi' | 'Remboursé' | 'Annulé';
+  mode_paiement?: string;
   valide_par?: string;
 }
 
-export interface ApiResponse<T> {
+export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   message?: string;
 }
 
-export interface ChartData {
-  month: string;
-  USD: number;
-  CDF: number;
-  CNY: number;
-}
-
-export interface MotifData {
-  name: string;
-  value: number;
-  count: number;
-}
-
-export interface StatusData {
-  name: string;
-  value: number;
+export interface User {
+  id: string;
+  email: string;
+  user_metadata?: Record<string, any>;
+  app_metadata?: Record<string, any>;
+  created_at: string;
 }

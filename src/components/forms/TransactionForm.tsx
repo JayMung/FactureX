@@ -25,6 +25,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   onSuccess 
 }) => {
   const [formData, setFormData] = useState<CreateTransactionData>({
+    reference: '',
     client_id: '',
     montant: 0,
     devise: 'USD',
@@ -105,13 +106,20 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     if (!validateForm()) return;
 
     try {
-      await createTransaction(formData);
+      // Générer une référence automatiquement si non fournie
+      const transactionData = {
+        ...formData,
+        reference: formData.reference || `TRX-${Date.now()}`
+      };
+
+      await createTransaction(transactionData);
       showSuccess('Transaction créée avec succès');
       
       onSuccess?.();
       onClose();
       // Reset form
       setFormData({
+        reference: '',
         client_id: '',
         montant: 0,
         devise: 'USD',
@@ -220,6 +228,17 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
+                <Label htmlFor="reference">Référence</Label>
+                <Input
+                  id="reference"
+                  name="reference"
+                  value={formData.reference}
+                  onChange={handleChange}
+                  placeholder="Auto-générée si vide"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="montant">Montant *</Label>
                 <Input
                   id="montant"
@@ -251,21 +270,21 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="mode_paiement">Mode de paiement *</Label>
-                <Input
-                  id="mode_paiement"
-                  name="mode_paiement"
-                  value={formData.mode_paiement}
-                  onChange={handleChange}
-                  placeholder="Cash, Airtel Money..."
-                  className={errors.mode_paiement ? 'border-red-500' : ''}
-                />
-                {errors.mode_paiement && (
-                  <p className="text-sm text-red-600">{errors.mode_paiement}</p>
-                )}
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="mode_paiement">Mode de paiement *</Label>
+              <Input
+                id="mode_paiement"
+                name="mode_paiement"
+                value={formData.mode_paiement}
+                onChange={handleChange}
+                placeholder="Cash, Airtel Money..."
+                className={errors.mode_paiement ? 'border-red-500' : ''}
+              />
+              {errors.mode_paiement && (
+                <p className="text-sm text-red-600">{errors.mode_paiement}</p>
+              )}
             </div>
 
             {/* Calculs automatiques */}

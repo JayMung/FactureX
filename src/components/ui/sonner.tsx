@@ -2,9 +2,9 @@
 
 import { Toaster as Sonner } from "sonner"
 
-export { Toaster as Sonner }
+type ToasterProps = React.ComponentProps<typeof Sonner>
 
-export function Toaster() {
+const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       className="toaster group"
@@ -19,6 +19,9 @@ export function Toaster() {
             "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
         },
       }}
+      {...props}
     />
   )
 }
+
+export { Toaster }

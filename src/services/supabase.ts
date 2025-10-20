@@ -395,6 +395,17 @@ class SupabaseService {
 
   async updateSetting(categorie: string, settings: Record<string, string>): Promise<ApiResponse<Setting[]>> {
     try {
+      // Vérifier si l'utilisateur est admin
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { error: 'Utilisateur non authentifié' };
+      }
+
+      const userRole = user.user_metadata?.role || user.app_metadata?.role;
+      if (userRole !== 'admin') {
+        return { error: 'Permissions insuffisantes. Seul un administrateur peut modifier les paramètres.' };
+      }
+
       const updates = Object.entries(settings).map(([cle, valeur]) => ({
         categorie,
         cle,

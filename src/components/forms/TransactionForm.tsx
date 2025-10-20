@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -52,16 +52,32 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   
   const isLoading = isCreating;
 
-  // Récupérer les taux et frais configurés
-  const currentRates = exchangeRates || { usdToCny: 7.25, usdToCdf: 2850 };
-  const currentFees = fees || { transfert: 5, commande: 10, partenaire: 3 };
+  // Utiliser useMemo pour éviter la recréation d'objets à chaque render
+  const currentRates = useMemo(() => 
+    exchangeRates || { usdToCny: 7.25, usdToCdf: 2850 }, 
+    [exchangeRates]
+  );
+  
+  const currentFees = useMemo(() => 
+    fees || { transfert: 5, commande: 10, partenaire: 3 }, 
+    [fees]
+  );
 
   // Calcul des montants en temps réel
   useEffect(() => {
     if (!ratesLoading && !feesLoading) {
       calculateAmounts();
     }
-  }, [formData.montant, formData.devise, formData.motif, currentRates, currentFees]);
+  }, [
+    formData.montant, 
+    formData.devise, 
+    formData.motif, 
+    currentRates.usdToCny, 
+    currentRates.usdToCdf,
+    currentFees.transfert,
+    currentFees.commande,
+    currentFees.partenaire
+  ]);
 
   const calculateAmounts = () => {
     const montant = parseFloat(formData.montant.toString()) || 0;

@@ -234,9 +234,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
       onClick={handleBackdropClick}
     >
-      <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white shadow-xl">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b">
-          <CardTitle className="text-xl font-bold text-gray-900">Nouvelle transaction</CardTitle>
+      <div className="w-full max-w-md bg-white rounded-lg shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold text-gray-900">Nouvelle transaction</h2>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -245,28 +246,28 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
           >
             <X className="h-4 w-4" />
           </Button>
-        </CardHeader>
+        </div>
         
-        <CardContent className="pt-4">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col" style={{ height: 'calc(100vh - 8rem)' }}>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {errors.general && (
               <Alert className="border-red-200 bg-red-50">
-                <AlertDescription className="text-red-800">
+                <AlertDescription className="text-red-800 text-sm">
                   {errors.general}
                 </AlertDescription>
               </Alert>
             )}
 
             {/* Client */}
-            <div className="space-y-2">
-              <Label htmlFor="client_id" className="text-sm font-medium text-gray-700">
+            <div className="space-y-1">
+              <Label htmlFor="client_id" className="text-xs font-medium text-gray-700">
                 Client <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={formData.client_id}
                 onValueChange={(value) => handleSelectChange('client_id', value)}
               >
-                <SelectTrigger className={`h-10 ${errors.client_id ? 'border-red-500' : ''}`}>
+                <SelectTrigger className={`h-8 text-sm ${errors.client_id ? 'border-red-500' : ''}`}>
                   <SelectValue placeholder="Sélectionner un client" />
                 </SelectTrigger>
                 <SelectContent>
@@ -278,13 +279,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                 </SelectContent>
               </Select>
               {errors.client_id && (
-                <p className="text-sm text-red-600">{errors.client_id}</p>
+                <p className="text-xs text-red-600">{errors.client_id}</p>
               )}
             </div>
 
             {/* Date de paiement */}
-            <div className="space-y-2">
-              <Label htmlFor="date_paiement" className="text-sm font-medium text-gray-700">
+            <div className="space-y-1">
+              <Label htmlFor="date_paiement" className="text-xs font-medium text-gray-700">
                 Date de paiement <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
@@ -294,16 +295,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                   type="date"
                   value={formData.date_paiement}
                   onChange={handleChange}
-                  className="h-10 pl-4 pr-10"
+                  className="h-8 text-sm pl-8 pr-8"
                 />
-                <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
               </div>
             </div>
 
             {/* Montant et Devise */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="montant" className="text-sm font-medium text-gray-700">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="montant" className="text-xs font-medium text-gray-700">
                   Montant <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -314,22 +315,22 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                   value={formData.montant || ''}
                   onChange={handleChange}
                   placeholder="0.00"
-                  className={`h-10 ${errors.montant ? 'border-red-500' : ''}`}
+                  className={`h-8 text-sm ${errors.montant ? 'border-red-500' : ''}`}
                 />
                 {errors.montant && (
-                  <p className="text-sm text-red-600">{errors.montant}</p>
+                  <p className="text-xs text-red-600">{errors.montant}</p>
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="devise" className="text-sm font-medium text-gray-700">
+              <div className="space-y-1">
+                <Label htmlFor="devise" className="text-xs font-medium text-gray-700">
                   Devise <span className="text-red-500">*</span>
                 </Label>
                 <Select
                   value={formData.devise}
                   onValueChange={(value) => handleSelectChange('devise', value)}
                 >
-                  <SelectTrigger className={`h-10 ${errors.devise ? 'border-red-500' : ''}`}>
+                  <SelectTrigger className={`h-8 text-sm ${errors.devise ? 'border-red-500' : ''}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -339,22 +340,22 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                   </SelectContent>
                 </Select>
                 {errors.devise && (
-                  <p className="text-sm text-red-600">{errors.devise}</p>
+                  <p className="text-xs text-red-600">{errors.devise}</p>
                 )}
               </div>
             </div>
 
             {/* Motif et Mode de paiement */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="motif" className="text-sm font-medium text-gray-700">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="motif" className="text-xs font-medium text-gray-700">
                   Motif <span className="text-red-500">*</span>
                 </Label>
                 <Select
                   value={formData.motif}
                   onValueChange={(value) => handleSelectChange('motif', value)}
                 >
-                  <SelectTrigger className={`h-10 ${errors.motif ? 'border-red-500' : ''}`}>
+                  <SelectTrigger className={`h-8 text-sm ${errors.motif ? 'border-red-500' : ''}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -363,20 +364,20 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                   </SelectContent>
                 </Select>
                 {errors.motif && (
-                  <p className="text-sm text-red-600">{errors.motif}</p>
+                  <p className="text-xs text-red-600">{errors.motif}</p>
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="mode_paiement" className="text-sm font-medium text-gray-700">
-                  Mode de paiement <span className="text-red-500">*</span>
+              <div className="space-y-1">
+                <Label htmlFor="mode_paiement" className="text-xs font-medium text-gray-700">
+                  Mode paiement <span className="text-red-500">*</span>
                 </Label>
                 <Select
                   value={formData.mode_paiement}
                   onValueChange={(value) => handleSelectChange('mode_paiement', value)}
                 >
-                  <SelectTrigger className={`h-10 ${errors.mode_paiement ? 'border-red-500' : ''}`}>
-                    <SelectValue placeholder="Sélectionner un mode" />
+                  <SelectTrigger className={`h-8 text-sm ${errors.mode_paiement ? 'border-red-500' : ''}`}>
+                    <SelectValue placeholder="Mode" />
                   </SelectTrigger>
                   <SelectContent>
                     {paymentMethods.filter(m => m.is_active).map((method) => (
@@ -387,21 +388,21 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                   </SelectContent>
                 </Select>
                 {errors.mode_paiement && (
-                  <p className="text-sm text-red-600">{errors.mode_paiement}</p>
+                  <p className="text-xs text-red-600">{errors.mode_paiement}</p>
                 )}
               </div>
             </div>
 
             {/* Statut */}
-            <div className="space-y-2">
-              <Label htmlFor="statut" className="text-sm font-medium text-gray-700">
+            <div className="space-y-1">
+              <Label htmlFor="statut" className="text-xs font-medium text-gray-700">
                 Statut
               </Label>
               <Select
                 value={formData.statut}
                 onValueChange={(value) => handleSelectChange('statut', value)}
               >
-                <SelectTrigger className="h-10">
+                <SelectTrigger className="h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -415,78 +416,80 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             </div>
 
             {/* Section Calculs automatiques */}
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <h3 className="text-base font-semibold text-gray-900 mb-4">Calculs automatiques</h3>
+            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">Calculs automatiques</h3>
               
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {/* Frais */}
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">
+                  <span className="text-xs text-gray-600">
                     Frais ({formData.motif === 'Commande' ? currentFees.commande : currentFees.transfert}%)
                   </span>
-                  <span className="text-lg font-bold text-gray-900">
+                  <span className="text-sm font-bold text-gray-900">
                     ${calculatedAmounts.frais.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
 
                 {/* Bénéfice */}
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">
-                    Bénéfice ({(100 - currentFees.partenaire).toFixed(1)}% des frais)
+                  <span className="text-xs text-gray-600">
+                    Bénéfice ({(100 - currentFees.partenaire).toFixed(1)}%)
                   </span>
-                  <span className="text-lg font-bold text-green-600">
+                  <span className="text-sm font-bold text-green-600">
                     ${calculatedAmounts.benefice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
 
                 {/* Montant CNY */}
                 <div className="flex justify-between items-center pt-2 border-t">
-                  <span className="text-sm text-gray-600">
-                    Montant CNY (1 USD = {currentRates.usdToCny} CNY)
+                  <span className="text-xs text-gray-600">
+                    Montant CNY
                   </span>
-                  <span className="text-lg font-bold text-green-600">
+                  <span className="text-sm font-bold text-green-600">
                     ¥{calculatedAmounts.montantCny.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>
 
               {/* Info supplémentaire */}
-              <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="mt-2 pt-2 border-t border-gray-200">
                 <p className="text-xs text-gray-500 text-center">
-                  * Les calculs utilisent les taux et frais configurés dans les paramètres
+                  * Taux: 1 USD = {currentRates.usdToCny} CNY
                 </p>
               </div>
             </div>
+          </div>
 
-            {/* Actions */}
-            <div className="flex gap-3 pt-4 border-t">
+          {/* Actions */}
+          <div className="p-4 border-t bg-gray-50">
+            <div className="flex gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
                 disabled={isLoading}
-                className="flex-1 h-10"
+                className="flex-1 h-8 text-sm"
               >
                 Annuler
               </Button>
               <Button
                 type="submit"
-                className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700"
+                className="flex-1 h-8 text-sm bg-emerald-600 hover:bg-emerald-700"
                 disabled={isLoading}
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                     Création...
                   </>
                 ) : (
-                  'Créer la transaction'
+                  'Créer'
                 )}
               </Button>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

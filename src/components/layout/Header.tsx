@@ -1,12 +1,21 @@
 "use client";
 
 import React from 'react';
-import { Bell, Search, User } from 'lucide-react';
+import { Bell, Search, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/AuthContext';
+import { showSuccess } from '@/utils/toast';
 
 const Header = () => {
+  const { user, signOut } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+    showSuccess('Déconnexion réussie');
+  };
+
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -40,12 +49,17 @@ const Header = () => {
           {/* User */}
           <div className="flex items-center space-x-3">
             <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">Admin</p>
-              <p className="text-xs text-gray-500">admin@coxipay.com</p>
+              <p className="text-sm font-medium text-gray-900">
+                {user?.email?.split('@')[0] || 'Admin'}
+              </p>
+              <p className="text-xs text-gray-500">{user?.email || 'admin@coxipay.com'}</p>
             </div>
             <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center">
               <User className="h-5 w-5 text-white" />
             </div>
+            <Button variant="ghost" size="icon" onClick={handleLogout}>
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </div>

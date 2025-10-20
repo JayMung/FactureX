@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
   LayoutDashboard, 
@@ -13,6 +13,8 @@ import {
   LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { showSuccess } from '@/utils/toast';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Tableau de bord', path: '/' },
@@ -25,6 +27,14 @@ const menuItems = [
 
 const Sidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+    showSuccess('Déconnexion réussie');
+    navigate('/login');
+  };
 
   return (
     <div className="w-64 bg-emerald-600 text-white h-screen flex flex-col">
@@ -84,6 +94,7 @@ const Sidebar = () => {
         <Button
           variant="ghost"
           className="w-full justify-start text-white hover:bg-emerald-700 hover:text-white"
+          onClick={handleLogout}
         >
           <LogOut className="mr-3 h-4 w-4" />
           Déconnexion

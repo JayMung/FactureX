@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Settings as SettingsIcon,
   TrendingUp,
@@ -18,8 +19,12 @@ import {
   Activity,
   Plus,
   Edit,
-  Trash2
+  Trash2,
+  Save,
+  Loader2
 } from 'lucide-react';
+import { useSettings, useExchangeRates, useFees } from '@/hooks/useSettings';
+import { showSuccess, showError } from '@/utils/toast';
 
 const Settings = () => {
   const [exchangeRates, setExchangeRates] = useState({
@@ -33,6 +38,60 @@ const Settings = () => {
     commande: '10',
     partenaire: '3'
   });
+
+  const { updateSettings, isUpdating } = useSettings();
+  const { rates, isLoading: ratesLoading } = useExchangeRates();
+  const { fees: currentFees, isLoading: feesLoading } = useFees();
+
+  // Charger les données actuelles
+  React.useEffect(() => {
+    if (rates) {
+      setExchangeRates({
+        usdToCny: rates.usdToCny.toString(),
+        usdToCdf: rates.usdToCdf.toString(),
+        autoMode: false
+      });
+    }
+  }, [rates]);
+
+  React.useEffect(() => {
+    if (currentFees) {
+      setFees({
+        transfert: currentFees.transfert.toString(),
+        commande: currentFees.commande.toString(),
+        partenaire: currentFees.partenaire.toString()
+      });
+    }
+  }, [currentFees]);
+
+  const handleSaveExchangeRates = async () => {
+    try {
+      await updateSettings({
+        categorie: 'taux_change',
+        settings: {
+          usdToCny: exchangeRates.usdToCny,
+          usdToCdf: exchangeRates.usdToCdf
+        }
+      });
+    } catch (error: any) {
+      showError(error.message || 'Erreur lors de la sauvegarde des taux');
+    }
+  };
+
+  const handleSaveFees = async () => {
+    try {
+      await updateSettings({
+        categorie: 'frais',
+        settings: {
+          transfert: fees.transfert,
+          commande: fees.commande,
+          partenaire: fees.partenaire
+        }
+      });
+    } catch (error: any) {
+      showError(error.message || 'Erreur lors de la sauvegarde des frais');
+    }
+  };
 
   const paymentMethods = [
     { id: 1, name: 'Cash', active: true },
@@ -96,38 +155,73 @@ const Settings = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="usd-cny">USD → CNY</Label>
-                    <Input
-                      id="usd-cny"
-                      value={exchangeRates.usdToCny}
-                      onChange={(e) => setExchangeRates({...exchangeRates, usdToCny: e.target.value})}
-                      placeholder="7.25"
-                    />
+                {ratesLoading ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="usd-cdf">USD → CDF</Label>
-                    <Input
-                      id="usd-cdf"
-                      value={exchangeRates.usdToCdf}
-                      onChange={(e) => setExchangeRates({...exchangeRates, usdToCdf: e.target.value})}
-                      placeholder="2850"
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={exchangeRates.autoMode}
-                    onCheckedChange={(checked) => setExchangeRates({...exchangeRates, autoMode: checked})}
-                  />
-                  <Label>Mode automatique via API</Label>
-                </div>
-                
-                <Button className="bg-emerald-600 hover:bg-emerald-700">
-                  Enregistrer les taux
-                </Button>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="usd-cny">USD → CNY</Label>
+                        <Input
+                          id="usd-cny"
+                          type="number"
+                          step="0.01"
+                          value={exchangeRates.usdToCny}
+                          onChange={(e) => setExchangeRates({...exchangeRates, usdToCny: e.target.value})}
+                          placeholder="7.25"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="usd-cdf">USD → CDF</Label>
+                        <Input
+                          id="usd-cdf"
+                          type="number"
+                          step="1"
+                          value={exchangeRates.usdToCdf}
+                          onChange={(e) => setExchangeRates({...exchangeRates, usdToCdf: e.target.value})}
+                          placeholder="2850"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={exchangeRates.autoMode}
+                        onCheckedChange={(checked) => setExchangeRates({...exchangeRates, autoMode: checked})}
+                      />
+                      <Label>Mode automatique via API</Label>
+                    </div>
+                    
+                    <Button 
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                      onClick={handleSaveExchangeRates}
+                      disabled={isUpdating}
+                    >
+                      {isUpdating ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sauvegarde...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Enregistrer les taux
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -142,39 +236,74 @@ const Settings = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="fee-transfert">Frais transfert (%)</Label>
-                    <Input
-                      id="fee-transfert"
-                      value={fees.transfert}
-                      onChange={(e) => setFees({...fees, transfert: e.target.value})}
-                      placeholder="5"
-                    />
+                {feesLoading ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {Array.from({ length: 3 }).map((_, index) => (
+                        <div key={index} className="space-y-2">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="fee-commande">Frais commande (%)</Label>
-                    <Input
-                      id="fee-commande"
-                      value={fees.commande}
-                      onChange={(e) => setFees({...fees, commande: e.target.value})}
-                      placeholder="10"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="fee-partenaire">Commission partenaire (%)</Label>
-                    <Input
-                      id="fee-partenaire"
-                      value={fees.partenaire}
-                      onChange={(e) => setFees({...fees, partenaire: e.target.value})}
-                      placeholder="3"
-                    />
-                  </div>
-                </div>
-                
-                <Button className="bg-emerald-600 hover:bg-emerald-700">
-                  Enregistrer les frais
-                </Button>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="fee-transfert">Frais transfert (%)</Label>
+                        <Input
+                          id="fee-transfert"
+                          type="number"
+                          step="0.1"
+                          value={fees.transfert}
+                          onChange={(e) => setFees({...fees, transfert: e.target.value})}
+                          placeholder="5"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="fee-commande">Frais commande (%)</Label>
+                        <Input
+                          id="fee-commande"
+                          type="number"
+                          step="0.1"
+                          value={fees.commande}
+                          onChange={(e) => setFees({...fees, commande: e.target.value})}
+                          placeholder="10"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="fee-partenaire">Commission partenaire (%)</Label>
+                        <Input
+                          id="fee-partenaire"
+                          type="number"
+                          step="0.1"
+                          value={fees.partenaire}
+                          onChange={(e) => setFees({...fees, partenaire: e.target.value})}
+                          placeholder="3"
+                        />
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                      onClick={handleSaveFees}
+                      disabled={isUpdating}
+                    >
+                      {isUpdating ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sauvegarde...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Enregistrer les frais
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

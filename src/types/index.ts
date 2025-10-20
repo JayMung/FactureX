@@ -37,6 +37,7 @@ export interface Transaction {
   created_at: string;
   updated_at: string;
   created_by?: string;
+  client?: Client;
 }
 
 export interface Setting {
@@ -74,11 +75,18 @@ export interface TransactionFilters {
   dateFrom?: string;
   dateTo?: string;
   modePaiement?: string;
+  minAmount?: number;
+  maxAmount?: number;
 }
 
 export interface ClientFilters {
   search?: string;
   ville?: string;
+  telephone?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  minTotal?: number;
+  maxTotal?: number;
 }
 
 export interface DashboardStats {
@@ -127,4 +135,22 @@ export interface ApiResponse<T> {
   data?: T;
   error?: string;
   message?: string;
+}
+
+export interface ChartData {
+  month: string;
+  USD: number;
+  CDF: number;
+  CNY: number;
+}
+
+export interface MotifData {
+  name: string;
+  value: number;
+  count: number;
+}
+
+export interface StatusData {
+  name: string;
+  value: number;
 }

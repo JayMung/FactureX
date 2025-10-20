@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Layout from '../components/layout/Layout';
 import StatCard from '../components/dashboard/StatCard';
+import TransactionChart from '../components/charts/TransactionChart';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -14,12 +15,14 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { useDashboardStats, useRecentTransactions, useExchangeRates } from '../hooks/useDashboard';
+import { useTransactions } from '../hooks/useTransactions';
 import { Skeleton } from '../components/ui/skeleton';
 
 const Index = () => {
   const { stats, isLoading: statsLoading, error: statsError } = useDashboardStats();
-  const { transactions, isLoading: transactionsLoading } = useRecentTransactions();
+  const { transactions, isLoading: transactionsLoading } = useRecentTransactions(50); // Plus de données pour les graphiques
   const { rates, isLoading: ratesLoading } = useExchangeRates();
+  const { transactions: allTransactions, isLoading: allTransactionsLoading } = useTransactions(1, {});
 
   const formatCurrency = (amount: number, currency: string) => {
     if (currency === 'USD') {
@@ -136,68 +139,75 @@ const Index = () => {
           )}
         </div>
 
-        {/* Charts and Recent Transactions */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Chart Placeholder */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Évolution des transactions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-80 flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                <div className="text-center">
-                  <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Graphique Recharts</p>
-                  <p className="text-sm text-gray-400">Volume mensuel USD/CDF</p>
+        {/* Charts Section */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold text-gray-900">Analyse des transactions</h3>
+            <Badge variant="outline">
+              {allTransactions.length} transactions analysées
+            </Badge>
+          </div>
+          
+          {allTransactionsLoading ? (
+            <Card>
+              <CardContent className="p-8">
+                <div className="space-y-4">
+                  <Skeleton className="h-64 w-full" />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Skeleton className="h-64 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ) : (
+            <TransactionChart transactions={allTransactions} />
+          )}
+        </div>
 
-          {/* Recent Transactions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Transactions récentes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {transactionsLoading ? (
-                <div className="space-y-4">
-                  {Array.from({ length: 4 }).map((_, index) => (
-                    <div key={index} className="p-3 bg-gray-50 rounded-lg">
-                      <Skeleton className="h-4 w-24 mb-2" />
-                      <Skeleton className="h-3 w-32 mb-1" />
-                      <Skeleton className="h-3 w-20" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {transactions.map((transaction) => (
-                    <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <p className="text-sm font-medium">{transaction.client?.nom || 'Client inconnu'}</p>
-                          <Badge variant="secondary" className={getStatusColor(transaction.statut)}>
-                            {transaction.statut}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <p className="text-sm text-gray-600">
-                            {formatCurrency(transaction.montant, transaction.devise)}
-                          </p>
-                          <span className="text-xs text-gray-400">•</span>
-                          <p className="text-xs text-gray-500">
-                            {new Date(transaction.created_at).toLocaleDateString('fr-FR')}
-                          </p>
-                        </div>
+        {/* Recent Transactions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Transactions récentes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {transactionsLoading ? (
+              <div className="space-y-4">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-3 w-32 mb-1" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {transactions.slice(0, 5).map((transaction) => (
+                  <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <p className="text-sm font-medium">{transaction.client?.nom || 'Client inconnu'}</p>
+                        <Badge variant="secondary" className={getStatusColor(transaction.statut)}>
+                          {transaction.statut}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <p className="text-sm text-gray-600">
+                          {formatCurrency(transaction.montant, transaction.devise)}
+                        </p>
+                        <span className="text-xs text-gray-400">•</span>
+                        <p className="text-xs text-gray-500">
+                          {new Date(transaction.created_at).toLocaleDateString('fr-FR')}
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Exchange Rates */}
         <Card>

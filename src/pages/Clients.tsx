@@ -19,17 +19,22 @@ import {
 import { useClients } from '../hooks/useClients';
 import Pagination from '../components/ui/pagination-custom';
 import { Skeleton } from '../components/ui/skeleton';
+import ClientForm from '../components/forms/ClientForm';
+import type { Client } from '@/types';
 
 const Clients = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | undefined>();
 
   const {
     clients,
     pagination,
     isLoading,
     error,
-    deleteClient
+    deleteClient,
+    refetch
   } = useClients(currentPage, {
     search: searchTerm
   });
@@ -42,6 +47,20 @@ const Clients = () => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) {
       deleteClient(clientId);
     }
+  };
+
+  const handleEditClient = (client: Client) => {
+    setSelectedClient(client);
+    setIsFormOpen(true);
+  };
+
+  const handleAddClient = () => {
+    setSelectedClient(undefined);
+    setIsFormOpen(true);
+  };
+
+  const handleFormSuccess = () => {
+    refetch();
   };
 
   if (error) {
@@ -70,7 +89,7 @@ const Clients = () => {
             <h2 className="text-2xl font-bold text-gray-900">Gestion des Clients</h2>
             <p className="text-gray-500">Centralisez les informations clients et leur historique</p>
           </div>
-          <Button className="bg-emerald-600 hover:bg-emerald-700">
+          <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleAddClient}>
             <Plus className="mr-2 h-4 w-4" />
             Nouveau Client
           </Button>
@@ -218,7 +237,11 @@ const Clients = () => {
                             <Button variant="ghost" size="icon">
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => handleEditClient(client)}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button 
@@ -250,6 +273,14 @@ const Clients = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Client Form Modal */}
+        <ClientForm
+          isOpen={isFormOpen}
+          onClose={() => setIsFormOpen(false)}
+          onSuccess={handleFormSuccess}
+          client={selectedClient}
+        />
       </div>
     </Layout>
   );

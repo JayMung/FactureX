@@ -20,19 +20,23 @@ import {
 import { useTransactions } from '../hooks/useTransactions';
 import Pagination from '../components/ui/pagination-custom';
 import { Skeleton } from '../components/ui/skeleton';
+import TransactionForm from '../components/forms/TransactionForm';
+import type { Transaction } from '@/types';
 
 const Transactions = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currencyFilter, setCurrencyFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   const {
     transactions,
     pagination,
     isLoading,
     error,
-    updateTransaction
+    updateTransaction,
+    refetch
   } = useTransactions(currentPage, {
     status: statusFilter,
     currency: currencyFilter,
@@ -88,6 +92,14 @@ const Transactions = () => {
     });
   };
 
+  const handleAddTransaction = () => {
+    setIsFormOpen(true);
+  };
+
+  const handleFormSuccess = () => {
+    refetch();
+  };
+
   const calculateStats = () => {
     const totalUSD = transactions
       .filter(t => t.devise === 'USD')
@@ -126,7 +138,7 @@ const Transactions = () => {
             <h2 className="text-2xl font-bold text-gray-900">Gestion des Transactions</h2>
             <p className="text-gray-500">Enregistrez, suivez et validez chaque transfert</p>
           </div>
-          <Button className="bg-emerald-600 hover:bg-emerald-700">
+          <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleAddTransaction}>
             <Plus className="mr-2 h-4 w-4" />
             Nouvelle Transaction
           </Button>
@@ -363,6 +375,13 @@ const Transactions = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Transaction Form Modal */}
+        <TransactionForm
+          isOpen={isFormOpen}
+          onClose={() => setIsFormOpen(false)}
+          onSuccess={handleFormSuccess}
+        />
       </div>
     </Layout>
   );

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useSettings, useExchangeRates, useFees } from '@/hooks/useSettings';
 import { showSuccess, showError } from '@/utils/toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Settings = () => {
   const [exchangeRates, setExchangeRates] = useState({
@@ -53,16 +54,6 @@ const Settings = () => {
       });
     }
   }, [rates]);
-// Ajoutez ceci dans le composant Settings pour déboguer
-React.useEffect(() => {
-  const checkUserRole = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    console.log('User metadata:', user?.user_metadata);
-    console.log('App metadata:', user?.app_metadata);
-    console.log('JWT claims:', user?.aud);
-  };
-  checkUserRole();
-}, []);
 
   React.useEffect(() => {
     if (currentFees) {
@@ -73,6 +64,17 @@ React.useEffect(() => {
       });
     }
   }, [currentFees]);
+
+  // Ajoutez ceci dans le composant Settings pour déboguer
+  React.useEffect(() => {
+    const checkUserRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('User metadata:', user?.user_metadata);
+      console.log('App metadata:', user?.app_metadata);
+      console.log('JWT claims:', user?.aud);
+    };
+    checkUserRole();
+  }, []);
 
   const handleSaveExchangeRates = async () => {
     try {

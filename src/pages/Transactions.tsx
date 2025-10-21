@@ -47,7 +47,7 @@ const Transactions = () => {
     if (currency === 'USD') {
       return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     } else if (currency === 'CDF') {
-      return `${amount.toLocaleString('fr-FR')} F`;
+      return `${amount.toLocaleString('fr-FR')} CDF`;
     }
     return amount.toString();
   };
@@ -177,7 +177,7 @@ const Transactions = () => {
                   </p>
                 </div>
                 <div className="text-blue-600">
-                  <span className="text-2xl font-bold">F</span>
+                  <span className="text-2xl font-bold">CDF</span>
                 </div>
               </div>
             </CardContent>

@@ -49,11 +49,12 @@ const Transactions = () => {
     isLoading,
     error,
     updateTransaction,
+    deleteTransaction,
     refetch
   } = useTransactions(currentPage, {
-    status: statusFilter,
-    currency: currencyFilter,
-    modePaiement: searchTerm
+    status: statusFilter === 'all' ? undefined : statusFilter,
+    currency: currencyFilter === 'all' ? undefined : currencyFilter,
+    modePaiement: searchTerm || undefined
   });
 
   const formatCurrency = (amount: number, currency: string) => {
@@ -105,11 +106,9 @@ const Transactions = () => {
     
     setIsDeleting(true);
     try {
-      // TODO: Implémenter la suppression dans le hook useTransactions
-      // await deleteTransaction(transactionToDelete.id);
+      await deleteTransaction(transactionToDelete.id);
       setDeleteDialogOpen(false);
       setTransactionToDelete(null);
-      showSuccess('Transaction supprimée avec succès');
     } catch (error: any) {
       showError(error.message || 'Erreur lors de la suppression');
     } finally {
@@ -131,12 +130,12 @@ const Transactions = () => {
         id: transactionToValidate.id,
         data: {
           statut: 'Servi',
-          valide_par: 'current_user' // TODO: Get from auth context
+          valide_par: 'current_user', // TODO: Get from auth context
+          date_validation: new Date().toISOString()
         }
       });
       setValidateDialogOpen(false);
       setTransactionToValidate(null);
-      showSuccess('Transaction validée avec succès');
     } catch (error: any) {
       showError(error.message || 'Erreur lors de la validation');
     } finally {

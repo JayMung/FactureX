@@ -175,7 +175,7 @@ const Index = () => {
                           {getEntityTypeLabel(log.entity_type)}
                         </Badge>
                         <span className="text-xs text-gray-500">
-                          par {log.user?.email || 'Utilisateur inconnu'} • {new Date(log.created_at).toLocaleString('fr-FR')}
+                          par {log.user?.email || 'Utilisateur inconnu'} • {new Date(log.date || log.created_at).toLocaleString('fr-FR')}
                         </span>
                       </div>
                     </div>

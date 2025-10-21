@@ -911,7 +911,7 @@ const Settings = () => {
                           <div className="flex items-center space-x-2 mt-1">
                             <Badge variant="outline">{log.entity_type || 'Système'}</Badge>
                             <span className="text-xs text-gray-500">
-                              {new Date(log.created_at).toLocaleString('fr-FR')}
+                              {new Date(log.date || log.created_at).toLocaleString('fr-FR')}
                             </span>
                           </div>
                         </div>

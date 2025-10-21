@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Filter, X, Search } from 'lucide-react';
@@ -221,7 +222,7 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                 {Object.entries(localFilters).map(([key, value]) => 
                   value && value !== 'all' && value !== '' ? (
                     <Badge key={key} variant="secondary" className="text-xs">
-                      {key}: {typeof value === 'string' && value.length > 10 ? value.slice(0, 10) + '...' : value}
+                      {key}: {typeof value === 'string' && value.length > 10 ? value.slice(0, 10) + '...' : String(value)}
                     </Badge>
                   ) : null
                 )}

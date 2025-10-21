@@ -125,8 +125,7 @@ const ClientsImporter: React.FC<ClientsImporterProps> = ({ isOpen, onClose, onSu
     return results;
   };
 
-  const handleSuccess = (results: any) => {
-    onSuccess?.(results);
+  const handleClose = () => {
     onClose();
   };
 
@@ -136,7 +135,7 @@ const ClientsImporter: React.FC<ClientsImporterProps> = ({ isOpen, onClose, onSu
       description="Importez vos clients depuis un fichier CSV. L'assistant détectera automatiquement les doublons et vous fournira un rapport détaillé."
       onImport={handleImport}
       isOpen={isOpen}
-      onClose={handleSuccess}
+      onClose={handleClose}
       acceptedColumns={acceptedColumns}
       requiredColumns={requiredColumns}
       sampleData={sampleData}

@@ -1,0 +1,56 @@
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/components/auth/AuthProvider";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import Index from "./pages/Index";
+import ClientsExtended from "./pages/Clients-Extended";
+import Transactions from "./pages/Transactions";
+import Settings from "./pages/Settings";
+import Login from "./pages/Login";
+import AdminSetup from "./pages/AdminSetup";
+import NotFound from "./pages/NotFound";
+
+const queryClient = new QueryClient();
+
+const AppExtended = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path="/admin-setup" element={<AdminSetup />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Index />
+              </ProtectedRoute>
+            } />
+            <Route path="/clients" element={
+              <ProtectedRoute>
+                <ClientsExtended />
+              </ProtectedRoute>
+            } />
+            <Route path="/transactions" element={
+              <ProtectedRoute>
+                <Transactions />
+              </ProtectedRoute>
+            } />
+            <Route path="/settings" element={
+              <ProtectedRoute adminOnly>
+                <Settings />
+              </ProtectedRoute>
+            } />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
+
+export default AppExtended;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { Button } from '@/components/ui/button';
@@ -50,6 +50,12 @@ const Transactions = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
 
+  const filters = useMemo(() => ({
+    status: statusFilter === 'all' ? undefined : statusFilter,
+    currency: currencyFilter === 'all' ? undefined : currencyFilter,
+    modePaiement: searchTerm || undefined
+  }), [statusFilter, currencyFilter, searchTerm]);
+
   const {
     transactions,
     pagination,
@@ -60,11 +66,7 @@ const Transactions = () => {
     updateTransaction,
     deleteTransaction,
     refetch
-  } = useTransactions(currentPage, {
-    status: statusFilter === 'all' ? undefined : statusFilter,
-    currency: currencyFilter === 'all' ? undefined : currencyFilter,
-    modePaiement: searchTerm || undefined
-  });
+  } = useTransactions(currentPage, filters);
 
   const formatCurrency = (amount: number, currency: string) => {
     if (currency === 'USD') {
@@ -140,6 +142,7 @@ const Transactions = () => {
     try {
       await updateTransaction(transactionToValidate.id, {
         statut: 'Servi',
+        valide_par: 'current_user',
         date_validation: new Date().toISOString()
       });
       setValidateDialogOpen(false);

@@ -1,51 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
-
-interface Transaction {
-  id: string;
-  client_id: string;
-  montant: number;
-  devise: string;
-  motif: string;
-  mode_paiement: string;
-  statut: string;
-  frais: number;
-  benefice: number;
-  montant_cny: number;
-  taux_usd_cny: number;
-  taux_usd_cdf: number;
-  date_paiement?: string;
-  created_at: string;
-  client?: {
-    id: string;
-    nom: string;
-    telephone: string;
-    ville: string;
-  };
-}
-
-interface CreateTransactionData {
-  client_id: string;
-  montant: number;
-  devise: string;
-  motif: string;
-  mode_paiement: string;
-  date_paiement?: string;
-  statut?: string;
-}
-
-interface TransactionFilters {
-  search?: string;
-  status?: string;
-  currency?: string;
-  clientId?: string;
-  modePaiement?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  minAmount?: string;
-  maxAmount?: string;
-}
+import type { Transaction, UpdateTransactionData, CreateTransactionData, TransactionFilters } from '@/types';
 
 export const useTransactions = (page: number = 1, filters: TransactionFilters = {}) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -60,7 +16,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     totalPages: 0
   });
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -116,7 +72,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, filters, pagination.pageSize]);
 
   const createTransaction = async (data: CreateTransactionData) => {
     setIsCreating(true);
@@ -193,7 +149,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     }
   };
 
-  const updateTransaction = async (id: string, data: Partial<Transaction>) => {
+  const updateTransaction = async (id: string, data: UpdateTransactionData) => {
     setIsUpdating(true);
     setError(null);
 
@@ -250,7 +206,11 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
 
   useEffect(() => {
     fetchTransactions();
-  }, [page, filters]);
+  }, [fetchTransactions]);
+
+  const refetch = useCallback(() => {
+    return fetchTransactions();
+  }, [fetchTransactions]);
 
   return {
     transactions,
@@ -262,6 +222,6 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     createTransaction,
     updateTransaction,
     deleteTransaction,
-    refetch: fetchTransactions
+    refetch
   };
 };

@@ -108,20 +108,18 @@ export class SupabaseService {
 
   async deleteClient(id: string): Promise<ApiResponse<void>> {
     try {
-      const { data: transactions, error: txError } = await supabase
+      // Supprimer d'abord toutes les transactions du client
+      const { error: txDeleteError } = await supabase
         .from('transactions')
-        .select('id')
-        .eq('client_id', id)
-        .limit(1);
+        .delete()
+        .eq('client_id', id);
 
-      if (txError) throw txError;
-
-      if (transactions && transactions.length > 0) {
-        return { 
-          error: 'Impossible de supprimer ce client car il a des transactions associées. Supprimez d\'abord les transactions.' 
-        };
+      if (txDeleteError) {
+        console.warn('Erreur lors de la suppression des transactions:', txDeleteError);
+        // Continuer quand même pour supprimer le client
       }
 
+      // Ensuite supprimer le client
       const { error } = await supabase
         .from('clients')
         .delete()

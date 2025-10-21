@@ -507,7 +507,7 @@ export class SupabaseService {
       const profilesWithEmail = profiles.map(profile => ({
         ...profile,
         user: { 
-          email: authUsers.users.find(u => u.id === profile.user_id)?.email || ''
+          email: (authUsers.users as any[]).find((u: any) => u.id === profile.user_id)?.email || ''
         }
       }));
 
@@ -603,7 +603,7 @@ export class SupabaseService {
 
       if (error) throw error;
 
-      await this.logActivity(`${isActive ? 'Activation' : 'Désactivation'} profil utilisateur', 'UserProfile', id);
+      await this.logActivity(`${isActive ? 'Activation' : 'Désactivation'} profil utilisateur`, 'UserProfile', id);
 
       return { message: `Profil utilisateur ${isActive ? 'activé' : 'désactivé'} avec succès` };
     } catch (error: any) {
@@ -636,13 +636,13 @@ export class SupabaseService {
         return { data: result };
       }
 
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      const { data: authUsersData, error: authError } = await supabase.auth.admin.listUsers();
       if (authError) throw authError;
 
       const logsWithEmail = logs.map(log => ({
         ...log,
         user: { 
-          email: authUsers.users.find(u => u.id === log.user_id)?.email || ''
+          email: (authUsersData.users as any[]).find((u: any) => u.id === log.user_id)?.email || ''
         }
       }));
 

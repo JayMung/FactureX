@@ -1,134 +1,194 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 import { 
-  Home, 
+  LayoutDashboard, 
   Users, 
-  CreditCard, 
+  Receipt, 
   Settings, 
-  BarChart3,
+  Package, 
+  FileText,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
   Menu,
   X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { showSuccess } from '@/utils/toast';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+const menuItems = [
+  { icon: LayoutDashboard, label: 'Tableau de bord', path: '/' },
+  { icon: Users, label: 'Clients', path: '/clients' },
+  { icon: Receipt, label: 'Transactions', path: '/transactions' },
+  { icon: Settings, label: 'Paramètres', path: '/settings' },
+  { icon: Package, label: 'Colis', path: '/packages', disabled: true },
+  { icon: FileText, label: 'Factures', path: '/invoices', disabled: true },
+];
 
 interface SidebarProps {
-  currentPath?: string;
-  onNavigate?: (path: string) => void;
-  isMobile?: boolean;
-  isOpen?: boolean;
-  onClose?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  isMobileOpen?: boolean;
+  onToggleMobile?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
-  currentPath = '/dashboard',
-  onNavigate,
-  isMobile = false,
-  isOpen = true,
-  onClose,
-  isCollapsed = false,
-  onToggleCollapse
+  isCollapsed = false, 
+  onToggleCollapse,
+  isMobileOpen = false,
+  onToggleMobile
 }) => {
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+  const isMobile = useIsMobile();
 
-  const handleNavigation = (path: string) => {
-    if (onNavigate) {
-      onNavigate(path);
-    } else {
-      navigate(path);
-    }
-    if (isMobile && onClose) {
-      onClose();
-    }
+  const handleLogout = async () => {
+    await signOut();
+    showSuccess('Déconnexion réussie');
+    navigate('/login');
   };
 
-  const menuItems = [
-    { icon: Home, label: 'Tableau de bord', path: '/dashboard' },
-    { icon: Users, label: 'Clients', path: '/clients' },
-    { icon: CreditCard, label: 'Transactions', path: '/transactions' },
-    { icon: BarChart3, label: 'Rapports', path: '/reports' },
-    { icon: Settings, label: 'Paramètres', path: '/settings' },
-  ];
-
-  const currentPathToUse = location.pathname || currentPath;
-
-  return (
+  const SidebarContent = () => (
     <>
-      {isMobile && isOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={onClose}
-        />
-      )}
-      
-      <div className={`
-        ${isMobile 
-          ? `fixed inset-y-0 left-0 z-50 bg-white shadow-xl transform transition-transform duration-300 ease-in-out ${
-              isOpen ? 'translate-x-0' : '-translate-x-full'
-            }`
-          : 'relative bg-white shadow-lg h-screen'
-        }
-        ${!isMobile && isCollapsed ? 'w-16' : 'w-64'}
-      `}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          {!isMobile && !isCollapsed && (
-            <h1 className="text-xl font-bold text-gray-900">CoxiPay</h1>
-          )}
-          {isMobile && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="lg:hidden"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          )}
-          {!isMobile && onToggleCollapse && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleCollapse}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
+      {/* Logo */}
+      <div className={cn(
+        "p-6 border-b border-emerald-700 transition-all duration-300",
+        isCollapsed && !isMobile && "px-3"
+      )}>
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-emerald-600 font-bold text-lg">C</span>
+          </div>
+          {(!isCollapsed || isMobile) && (
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl font-bold truncate">CoxiPay</h1>
+              <p className="text-xs text-emerald-100 truncate">Transferts simplifiés</p>
+            </div>
           )}
         </div>
-        
-        <nav className="p-4">
-          <ul className="space-y-2">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentPathToUse === item.path || 
-                             (currentPathToUse.startsWith(item.path) && item.path !== '/dashboard');
-              
-              return (
-                <li key={item.path}>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4">
+        <ul className="space-y-2">
+          {menuItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            const Icon = item.icon;
+            
+            return (
+              <li key={item.path}>
+                {item.disabled ? (
                   <Button
-                    variant={isActive ? 'default' : 'ghost'}
-                    className={`w-full justify-start ${
-                      isActive 
-                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                    onClick={() => handleNavigation(item.path)}
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-start text-emerald-200 cursor-not-allowed opacity-50",
+                      isCollapsed && !isMobile && "px-3 justify-center"
+                    )}
+                    disabled
                   >
-                    <Icon className="h-5 w-5" />
-                    {(!isMobile && !isCollapsed) && (
-                      <span className="ml-3">{item.label}</span>
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    {(!isCollapsed || isMobile) && (
+                      <span className="ml-3 truncate">{item.label}</span>
                     )}
                   </Button>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+                ) : (
+                  <Link to={item.path}>
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "w-full justify-start text-white hover:bg-emerald-700 hover:text-white transition-all duration-200",
+                        isActive && "bg-emerald-700 text-white",
+                        isCollapsed && !isMobile && "px-3 justify-center"
+                      )}
+                    >
+                      <Icon className="h-4 w-4 flex-shrink-0" />
+                      {(!isCollapsed || isMobile) && (
+                        <span className="ml-3 truncate">{item.label}</span>
+                      )}
+                    </Button>
+                  </Link>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      {/* Logout */}
+      <div className="p-4 border-t border-emerald-700">
+        <Button
+          variant="ghost"
+          className={cn(
+            "w-full justify-start text-white hover:bg-emerald-700 hover:text-white transition-all duration-200",
+            isCollapsed && !isMobile && "px-3 justify-center"
+          )}
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4 flex-shrink-0" />
+          {(!isCollapsed || isMobile) && (
+            <span className="ml-3 truncate">Déconnexion</span>
+          )}
+        </Button>
       </div>
     </>
+  );
+
+  // Mobile sidebar overlay
+  if (isMobile) {
+    return (
+      <>
+        {/* Mobile menu button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="fixed top-4 left-4 z-50 bg-white shadow-lg hover:bg-gray-50 md:hidden"
+          onClick={onToggleMobile}
+        >
+          {isMobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </Button>
+
+        {/* Mobile overlay */}
+        {isMobileOpen && (
+          <div className="fixed inset-0 z-40 md:hidden">
+            <div 
+              className="absolute inset-0 bg-black bg-opacity-50"
+              onClick={onToggleMobile}
+            />
+            <div className="absolute left-0 top-0 h-full w-64 bg-emerald-600 text-white flex flex-col shadow-2xl">
+              <SidebarContent />
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // Desktop sidebar
+  return (
+    <div className={cn(
+      "bg-emerald-600 text-white flex flex-col transition-all duration-300 ease-in-out",
+      isCollapsed ? "w-16" : "w-64"
+    )}>
+      <SidebarContent />
+      
+      {/* Collapse toggle button */}
+      <div className="p-4 border-t border-emerald-700">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="w-full text-white hover:bg-emerald-700 hover:text-white"
+          onClick={onToggleCollapse}
+        >
+          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </Button>
+      </div>
+    </div>
   );
 };
 

@@ -1,64 +1,33 @@
-import { useQuery } from '@tanstack/react-query';
+"use client";
+
+import { useState, useEffect } from 'react';
 import { supabaseService } from '@/services/supabase';
-import type { DashboardStats, ExchangeRates } from '@/types';
 
-export const useDashboardStats = () => {
-  const {
-    data,
-    isLoading,
-    error,
-    refetch
-  } = useQuery({
-    queryKey: ['dashboardStats'],
-    queryFn: () => supabaseService.getDashboardStats(),
-    staleTime: 1000 * 60 * 1, // 1 minute
-    refetchInterval: 1000 * 60 * 5, // Refetch every 5 minutes
-  });
+export const useDashboard = () => {
+  const [stats, setStats] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  return {
-    stats: data?.data,
-    isLoading,
-    error: error?.message || data?.error,
-    refetch
-  };
-};
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setIsLoading(true);
+        const response = await supabaseService.getDashboardStats();
+        
+        if (response.error) {
+          setError(response.error);
+        } else {
+          setStats(response.data);
+        }
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-export const useRecentTransactions = (limit: number = 5) => {
-  const {
-    data,
-    isLoading,
-    error,
-    refetch
-  } = useQuery({
-    queryKey: ['recentTransactions', limit],
-    queryFn: () => supabaseService.getRecentTransactions(limit),
-    staleTime: 1000 * 60 * 2, // 2 minutes
-  });
+    fetchStats();
+  }, []);
 
-  return {
-    transactions: data?.data || [],
-    isLoading,
-    error: error?.message || data?.error,
-    refetch
-  };
-};
-
-export const useExchangeRates = () => {
-  const {
-    data,
-    isLoading,
-    error,
-    refetch
-  } = useQuery({
-    queryKey: ['exchangeRates'],
-    queryFn: () => supabaseService.getExchangeRates(),
-    staleTime: 1000 * 60 * 30, // 30 minutes
-  });
-
-  return {
-    rates: data?.data,
-    isLoading,
-    error: error?.message || data?.error,
-    refetch
-  };
+  return { stats, isLoading, error };
 };

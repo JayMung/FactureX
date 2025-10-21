@@ -116,6 +116,12 @@ const Transactions = () => {
 
   const { totalUSD, totalCDF, totalBenefice } = calculateStats();
 
+  // Function to generate readable transaction ID
+  const generateReadableId = (index: number) => {
+    const paddedNumber = (index + 1).toString().padStart(3, '0');
+    return `TX${paddedNumber}`;
+  };
+
   if (error) {
     return (
       <Layout>
@@ -293,7 +299,6 @@ const Transactions = () => {
                         <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
                         <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
                         <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
-                        <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
                         <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
                       </tr>
                     ))
@@ -304,9 +309,11 @@ const Transactions = () => {
                       </td>
                     </tr>
                   ) : (
-                    transactions.map((transaction) => (
+                    transactions.map((transaction, index) => (
                       <tr key={transaction.id} className="border-b hover:bg-gray-50">
-                        <td className="py-3 px-4 font-medium">{transaction.id.slice(0, 8)}...</td>
+                        <td className="py-3 px-4 font-medium">
+                          {generateReadableId((currentPage - 1) * (pagination?.pageSize || 10) + index)}
+                        </td>
                         <td className="py-3 px-4">{transaction.client?.nom || 'Client inconnu'}</td>
                         <td className="py-3 px-4 text-sm text-gray-600">
                           {new Date(transaction.created_at).toLocaleDateString('fr-FR')}

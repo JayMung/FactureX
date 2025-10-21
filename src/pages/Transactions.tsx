@@ -110,10 +110,7 @@ const Transactions = () => {
       setDeleteDialogOpen(false);
       setTransactionToDelete(null);
       
-      // Forcer le rechargement des données
-      setTimeout(() => {
-        refetch();
-      }, 100);
+      // La mise à jour optimiste dans useTransactions gère déjà l'actualisation
     } catch (error: any) {
       console.error('Erreur lors de la suppression:', error);
       showError(error.message || 'Erreur lors de la suppression');
@@ -143,10 +140,7 @@ const Transactions = () => {
       setValidateDialogOpen(false);
       setTransactionToValidate(null);
       
-      // Forcer le rechargement des données
-      setTimeout(() => {
-        refetch();
-      }, 100);
+      // La mutation dans useTransactions gère déjà l'actualisation
     } catch (error: any) {
       console.error('Erreur lors de la validation:', error);
       showError(error.message || 'Erreur lors de la validation');
@@ -166,10 +160,8 @@ const Transactions = () => {
   };
 
   const handleFormSuccess = () => {
-    // Forcer le rechargement des données après fermeture du formulaire
-    setTimeout(() => {
-      refetch();
-    }, 100);
+    // Les mutations dans useTransactions gèrent déjà l'actualisation automatique
+    // Pas besoin de refetch manuel
   };
 
   const calculateStats = () => {

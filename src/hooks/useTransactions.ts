@@ -68,10 +68,12 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
         // Forcer le rechargement immédiat
         refetch();
       } else {
+        // Afficher l'erreur spécifique du service
         showError(response.error);
       }
     },
     onError: (error: any) => {
+      console.error('Erreur mutation suppression:', error);
       showError(error.message || 'Erreur lors de la suppression de la transaction');
     }
   });

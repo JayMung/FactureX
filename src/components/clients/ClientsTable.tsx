@@ -210,20 +210,26 @@ const ClientsTable: React.FC<ClientsTableProps> = ({
               </td>
               <td className="py-3 px-4">
                 <div className="flex items-center space-x-2">
-                  <Button variant="ghost" size="icon" onClick={() => onViewClient(client)}>
-                    <Eye className="h-4 w-4" />
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => onViewClient(client)}
+                    className="hover:bg-blue-50"
+                  >
+                    <Eye className="h-4 w-4 text-blue-600" />
                   </Button>
                   <Button 
                     variant="ghost" 
                     size="icon"
                     onClick={() => onEditClient(client)}
+                    className="hover:bg-green-50"
                   >
-                    <Edit className="h-4 w-4" />
+                    <Edit className="h-4 w-4 text-green-600" />
                   </Button>
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="text-red-600"
+                    className="text-red-600 hover:bg-red-50"
                     onClick={() => onDeleteClient(client)}
                   >
                     <Trash2 className="h-4 w-4" />

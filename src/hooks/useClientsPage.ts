@@ -34,6 +34,12 @@ export const useClientsPage = (options: UseClientsPageOptions = {}) => {
   const [showImportReport, setShowImportReport] = useState(false);
   const [allClientIds, setAllClientIds] = useState<string[]>([]);
   
+  // États pour les modals View/Edit
+  const [viewingClient, setViewingClient] = useState<Client | null>(null);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  
   // États des dialogues de confirmation
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
@@ -168,6 +174,33 @@ export const useClientsPage = (options: UseClientsPageOptions = {}) => {
     }
   };
 
+  // Gestionnaires pour View/Edit
+  const handleViewClient = (client: Client) => {
+    setViewingClient(client);
+    setIsViewModalOpen(true);
+  };
+
+  const handleEditClient = (client: Client) => {
+    setEditingClient(client);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseViewModal = () => {
+    setIsViewModalOpen(false);
+    setViewingClient(null);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingClient(null);
+  };
+
+  const handleSaveEdit = () => {
+    setTimeout(() => {
+      refetch();
+    }, 100);
+  };
+
   const handleFormSuccess = () => {
     setTimeout(() => {
       refetch();
@@ -183,19 +216,9 @@ export const useClientsPage = (options: UseClientsPageOptions = {}) => {
     }, 500);
   };
 
-  const handleEditClient = (client: Client) => {
-    setSelectedClient(client);
-    setIsFormOpen(true);
-  };
-
   const handleAddClient = () => {
     setSelectedClient(undefined);
     setIsFormOpen(true);
-  };
-
-  const handleViewClient = (client: Client) => {
-    // TODO: Implémenter la vue détaillée du client
-    console.log('View client:', client);
   };
 
   const handleExportClients = () => {
@@ -220,8 +243,8 @@ export const useClientsPage = (options: UseClientsPageOptions = {}) => {
 
   // Données dérivées
   const stats = selection.getSelectionStats();
-  const cities = Array.from(new Set(sortedData.map((c: Client) => c.ville)));
-  const totalPaid = sortedData.reduce((sum: number, client: Client) => sum + (client.total_paye || 0), 0);
+  const cities = Array.from(new Set(sortedData.map(c => c.ville)));
+  const totalPaid = sortedData.reduce((sum, client) => sum + (client.total_paye || 0), 0);
 
   return {
     // États
@@ -238,6 +261,12 @@ export const useClientsPage = (options: UseClientsPageOptions = {}) => {
     bulkDeleteDialogOpen,
     clientToDelete,
     isDeleting,
+    
+    // États pour View/Edit
+    viewingClient,
+    editingClient,
+    isViewModalOpen,
+    isEditModalOpen,
     
     // Données
     clients: sortedData,
@@ -266,11 +295,14 @@ export const useClientsPage = (options: UseClientsPageOptions = {}) => {
     handleBulkDelete,
     handleFormSuccess,
     handleImportSuccess,
+    handleViewClient,
     handleEditClient,
     handleAddClient,
-    handleViewClient,
     handleExportClients,
     handleSelectAllPages,
+    handleCloseViewModal,
+    handleCloseEditModal,
+    handleSaveEdit,
     
     // Gestionnaires de modales
     setIsFormOpen,

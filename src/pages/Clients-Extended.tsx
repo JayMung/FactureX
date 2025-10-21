@@ -15,6 +15,8 @@ import ConfirmDialog from '@/components/ui/confirm-dialog';
 import ClientsImporter from '../components/import/ClientsImporter';
 import DuplicateDetector from '../components/duplicates/duplicate-detector';
 import ImportReport from '../components/import/import-report';
+import ClientViewModal from '../components/clients/ClientViewModal';
+import ClientEditModal from '../components/clients/ClientEditModal';
 
 const ClientsExtended: React.FC = () => {
   const {
@@ -32,6 +34,12 @@ const ClientsExtended: React.FC = () => {
     bulkDeleteDialogOpen,
     clientToDelete,
     isDeleting,
+    
+    // États pour View/Edit
+    viewingClient,
+    editingClient,
+    isViewModalOpen,
+    isEditModalOpen,
     
     // Données
     clients,
@@ -59,11 +67,14 @@ const ClientsExtended: React.FC = () => {
     handleBulkDelete,
     handleFormSuccess,
     handleImportSuccess,
+    handleViewClient,
     handleEditClient,
     handleAddClient,
-    handleViewClient,
     handleExportClients,
     handleSelectAllPages,
+    handleCloseViewModal,
+    handleCloseEditModal,
+    handleSaveEdit,
     
     // Gestionnaires de modales
     setIsFormOpen,
@@ -132,7 +143,7 @@ const ClientsExtended: React.FC = () => {
         <ClientsFilters
           searchTerm={selection.selectedItemIds.size > 0 ? '' : ''}
           onSearchChange={handleSearchChange}
-          cityFilter={cities.length > 0 ? cityFilter : 'all'}
+          cityFilter={cityFilter}
           onCityFilterChange={handleCityFilterChange}
           cities={cities}
         />
@@ -204,6 +215,21 @@ const ClientsExtended: React.FC = () => {
           isOpen={showImportReport}
           onClose={() => setShowImportReport(false)}
           results={importReport}
+        />
+
+        {/* View Modal */}
+        <ClientViewModal
+          client={viewingClient}
+          isOpen={isViewModalOpen}
+          onClose={handleCloseViewModal}
+        />
+
+        {/* Edit Modal */}
+        <ClientEditModal
+          client={editingClient}
+          isOpen={isEditModalOpen}
+          onClose={handleCloseEditModal}
+          onSave={handleSaveEdit}
         />
 
         {/* Delete Confirmation Dialogs */}

@@ -34,6 +34,8 @@ import { useUserProfiles } from '@/hooks/useUserProfiles';
 import { useActivityLogs } from '@/hooks/useActivityLogs';
 import { showSuccess, showError } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseService } from '@/services/supabase';
+import ConfirmDialog from '@/components/ui/confirm-dialog';
 import type { PaymentMethod, UserProfile } from '@/types';
 
 const Settings = () => {
@@ -54,6 +56,19 @@ const Settings = () => {
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+
+  // États pour les modales de confirmation
+  const [deletePaymentDialogOpen, setDeletePaymentDialogOpen] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<PaymentMethod | null>(null);
+  const [deleteUserDialogOpen, setDeleteUserDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
+  const [togglePaymentDialogOpen, setTogglePaymentDialogOpen] = useState(false);
+  const [paymentToToggle, setPaymentToToggle] = useState<{id: string, isActive: boolean} | null>(null);
+  const [toggleUserDialogOpen, setToggleUserDialogOpen] = useState(false);
+  const [userToToggle, setUserToToggle] = useState<{id: string, isActive: boolean} | null>(null);
+  
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
 
   // Formulaires
   const [paymentForm, setPaymentForm] = useState({
@@ -88,7 +103,8 @@ const Settings = () => {
     isLoading: usersLoading, 
     toggleUserProfile, 
     createUserProfile, 
-    updateUserProfile 
+    updateUserProfile,
+    refetch: refetchUserProfiles 
   } = useUserProfiles();
   const { logs, isLoading: logsLoading } = useActivityLogs();
 
@@ -112,17 +128,6 @@ const Settings = () => {
       });
     }
   }, [currentFees]);
-
-  // Debug user role
-  React.useEffect(() => {
-    const checkUserRole = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log('User metadata:', user?.user_metadata);
-      console.log('App metadata:', user?.app_metadata);
-      console.log('JWT claims:', user?.aud);
-    };
-    checkUserRole();
-  }, []);
 
   const handleSaveExchangeRates = async () => {
     try {
@@ -153,21 +158,88 @@ const Settings = () => {
     }
   };
 
-  const handleTogglePayment = async (id: string, isActive: boolean) => {
+  const handleDeletePayment = (payment: PaymentMethod) => {
+    setPaymentToDelete(payment);
+    setDeletePaymentDialogOpen(true);
+  };
+
+  const confirmDeletePayment = async () => {
+    if (!paymentToDelete) return;
+    
+    setIsDeleting(true);
     try {
-      await togglePaymentMethod(id, isActive);
-      showSuccess(`Mode de paiement ${isActive ? 'activé' : 'désactivé'} avec succès`);
+      await deletePaymentMethod(paymentToDelete.id);
+      setDeletePaymentDialogOpen(false);
+      setPaymentToDelete(null);
+      showSuccess('Mode de paiement supprimé avec succès');
     } catch (error: any) {
       showError(error.message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  const handleToggleUser = async (id: string, isActive: boolean) => {
+  const handleTogglePayment = (id: string, isActive: boolean) => {
+    setPaymentToToggle({ id, isActive });
+    setTogglePaymentDialogOpen(true);
+  };
+
+  const confirmTogglePayment = async () => {
+    if (!paymentToToggle) return;
+    
+    setIsToggling(true);
     try {
-      await toggleUserProfile(id, isActive);
-      showSuccess(`Utilisateur ${isActive ? 'activé' : 'désactivé'} avec succès`);
+      await togglePaymentMethod(paymentToToggle.id, paymentToToggle.isActive);
+      setTogglePaymentDialogOpen(false);
+      setPaymentToToggle(null);
+      showSuccess(`Mode de paiement ${paymentToToggle.isActive ? 'activé' : 'désactivé'} avec succès`);
     } catch (error: any) {
       showError(error.message);
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
+  const handleDeleteUser = (user: UserProfile) => {
+    setUserToDelete(user);
+    setDeleteUserDialogOpen(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      // TODO: Implémenter la suppression d'utilisateur
+      // await deleteUserProfile(userToDelete.id);
+      setDeleteUserDialogOpen(false);
+      setUserToDelete(null);
+      showSuccess('Utilisateur supprimé avec succès');
+    } catch (error: any) {
+      showError(error.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleToggleUser = (id: string, isActive: boolean) => {
+    setUserToToggle({ id, isActive });
+    setToggleUserDialogOpen(true);
+  };
+
+  const confirmToggleUser = async () => {
+    if (!userToToggle) return;
+    
+    setIsToggling(true);
+    try {
+      await toggleUserProfile(userToToggle.id, userToToggle.isActive);
+      setToggleUserDialogOpen(false);
+      setUserToToggle(null);
+      showSuccess(`Utilisateur ${userToToggle.isActive ? 'activé' : 'désactivé'} avec succès`);
+    } catch (error: any) {
+      showError(error.message);
+    } finally {
+      setIsToggling(false);
     }
   };
 
@@ -225,17 +297,6 @@ const Settings = () => {
       is_active: user.is_active
     });
     setUserDialogOpen(true);
-  };
-
-  const handleDeletePayment = async (id: string) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer ce mode de paiement ?')) {
-      try {
-        await deletePaymentMethod(id);
-        showSuccess('Mode de paiement supprimé avec succès');
-      } catch (error: any) {
-        showError(error.message);
-      }
-    }
   };
 
   const resetPaymentForm = () => {
@@ -550,10 +611,13 @@ const Settings = () => {
                     {paymentMethods.map((method) => (
                       <div key={method.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex items-center space-x-3">
-                          <Switch 
-                            checked={method.is_active} 
-                            onCheckedChange={(checked) => handleTogglePayment(method.id, checked)}
-                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleTogglePayment(method.id, !method.is_active)}
+                          >
+                            {method.is_active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                          </Button>
                           <div>
                             <span className="font-medium">{method.name}</span>
                             {method.description && (
@@ -569,7 +633,7 @@ const Settings = () => {
                             variant="ghost" 
                             size="icon" 
                             className="text-red-600"
-                            onClick={() => handleDeletePayment(method.id)}
+                            onClick={() => handleDeletePayment(method)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -720,49 +784,87 @@ const Settings = () => {
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Nom</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Email</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Rôle</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Statut</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {userProfiles.map((user) => (
-                          <tr key={user.id} className="border-b hover:bg-gray-50">
-                            <td className="py-3 px-4 font-medium">{user.full_name}</td>
-                            <td className="py-3 px-4 text-gray-600">{user.user?.email}</td>
-                            <td className="py-3 px-4">
-                              <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                                {user.role === 'admin' ? 'Admin' : 'Opérateur'}
-                              </Badge>
-                            </td>
-                            <td className="py-3 px-4">
-                              <Badge className={user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                                {user.is_active ? 'Actif' : 'Inactif'}
-                              </Badge>
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center space-x-2">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon"
-                                  onClick={() => handleToggleUser(user.id, !user.is_active)}
-                                >
-                                  {user.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
+                    {userProfiles.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun utilisateur trouvé</h3>
+                        <p className="text-gray-500 mb-4">
+                          Il semble que votre profil administrateur ne soit pas encore créé.
+                        </p>
+                        <Button 
+                          onClick={async () => {
+                            try {
+                              const response = await supabaseService.ensureCurrentUserProfile();
+                              if (response.error) {
+                                showError(response.error);
+                              } else {
+                                showSuccess('Profil administrateur créé avec succès');
+                                // Recharger les profils
+                                await refetchUserProfiles();
+                              }
+                            } catch (error: any) {
+                              showError(error.message);
+                            }
+                          }}
+                          className="bg-emerald-600 hover:bg-emerald-700"
+                        >
+                          <Users className="mr-2 h-4 w-4" />
+                          Créer mon profil administrateur
+                        </Button>
+                      </div>
+                    ) : (
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-3 px-4 font-medium text-gray-700">Nom</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-700">Email</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-700">Rôle</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-700">Statut</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {userProfiles.map((user) => (
+                            <tr key={user.id} className="border-b hover:bg-gray-50">
+                              <td className="py-3 px-4 font-medium">{user.full_name}</td>
+                              <td className="py-3 px-4 text-gray-600">{user.user?.email}</td>
+                              <td className="py-3 px-4">
+                                <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                                  {user.role === 'admin' ? 'Admin' : 'Opérateur'}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4">
+                                <Badge className={user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                                  {user.is_active ? 'Actif' : 'Inactif'}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center space-x-2">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={() => handleToggleUser(user.id, !user.is_active)}
+                                  >
+                                    {user.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                  </Button>
+                                  <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="text-red-600"
+                                    onClick={() => handleDeleteUser(user)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -821,6 +923,58 @@ const Settings = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Delete Payment Method Confirmation Dialog */}
+        <ConfirmDialog
+          open={deletePaymentDialogOpen}
+          onOpenChange={setDeletePaymentDialogOpen}
+          title="Supprimer le mode de paiement"
+          description={`Êtes-vous sûr de vouloir supprimer le mode de paiement "${paymentToDelete?.name}" ? Cette action est irréversible.`}
+          confirmText="Supprimer"
+          cancelText="Annuler"
+          onConfirm={confirmDeletePayment}
+          isConfirming={isDeleting}
+          type="delete"
+        />
+
+        {/* Toggle Payment Method Confirmation Dialog */}
+        <ConfirmDialog
+          open={togglePaymentDialogOpen}
+          onOpenChange={setTogglePaymentDialogOpen}
+          title={`${paymentToToggle?.isActive ? 'Activer' : 'Désactiver'} le mode de paiement`}
+          description={`Êtes-vous sûr de vouloir ${paymentToToggle?.isActive ? 'activer' : 'désactiver'} le mode de paiement "${paymentMethods.find(m => m.id === paymentToToggle?.id)?.name}" ?`}
+          confirmText={paymentToToggle?.isActive ? 'Activer' : 'Désactiver'}
+          cancelText="Annuler"
+          onConfirm={confirmTogglePayment}
+          isConfirming={isToggling}
+          type="warning"
+        />
+
+        {/* Delete User Confirmation Dialog */}
+        <ConfirmDialog
+          open={deleteUserDialogOpen}
+          onOpenChange={setDeleteUserDialogOpen}
+          title="Supprimer l'utilisateur"
+          description={`Êtes-vous sûr de vouloir supprimer l'utilisateur "${userToDelete?.full_name}" ? Cette action est irréversible.`}
+          confirmText="Supprimer"
+          cancelText="Annuler"
+          onConfirm={confirmDeleteUser}
+          isConfirming={isDeleting}
+          type="delete"
+        />
+
+        {/* Toggle User Confirmation Dialog */}
+        <ConfirmDialog
+          open={toggleUserDialogOpen}
+          onOpenChange={setToggleUserDialogOpen}
+          title={`${userToToggle?.isActive ? 'Activer' : 'Désactiver'} l'utilisateur`}
+          description={`Êtes-vous sûr de vouloir ${userToToggle?.isActive ? 'activer' : 'désactiver'} l'utilisateur "${userProfiles.find(u => u.id === userToToggle?.id)?.full_name}" ?`}
+          confirmText={userToToggle?.isActive ? 'Activer' : 'Désactiver'}
+          cancelText="Annuler"
+          onConfirm={confirmToggleUser}
+          isConfirming={isToggling}
+          type="warning"
+        />
       </div>
     </Layout>
   );

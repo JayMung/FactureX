@@ -576,18 +576,116 @@ class SupabaseService {
   
   async getUserProfiles(): Promise<ApiResponse<UserProfile[]>> {
     try {
-      const { data, error } = await supabase
+      // D'abord récupérer les profils utilisateurs
+      const { data: profiles, error: profilesError } = await supabase
         .from('user_profiles')
-        .select(`
-          *,
-          user:auth.users(email, created_at)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (profilesError) throw profilesError;
 
-      return { data: (data as any) || [] };
+      // Enrichir avec les données d'authentification
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      const enrichedProfiles = (profiles || []).map((profile) => {
+        // Utiliser l'email du profil s'il existe, sinon l'email de l'utilisateur actuel si c'est lui
+        let email = profile.email || 'N/A';
+        
+        if (!profile.email && currentUser && profile.user_id === currentUser.id) {
+          email = currentUser.email || 'N/A';
+        }
+        
+        return {
+          ...profile,
+          user: { 
+            email: email,
+            created_at: profile.created_at
+          }
+        };
+      });
+
+      return { data: enrichedProfiles };
     } catch (error: any) {
+      console.error('Error in getUserProfiles:', error);
+      return { error: error.message };
+    }
+  }
+
+  async ensureCurrentUserProfile(): Promise<ApiResponse<UserProfile>> {
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      console.log('Current user:', user);
+      
+      if (authError || !user) {
+        console.error('Auth error:', authError);
+        return { error: 'Utilisateur non authentifié' };
+      }
+
+      // Vérifier si le profil existe déjà
+      const { data: existingProfile, error: checkError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      console.log('Existing profile check:', { existingProfile, checkError });
+
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('Profile check error:', checkError);
+        throw checkError;
+      }
+
+      if (existingProfile) {
+        console.log('Profile already exists:', existingProfile);
+        
+        // Mettre à jour l'email s'il manque
+        if (!existingProfile.email && user.email) {
+          const { data: updatedProfile, error: updateError } = await supabase
+            .from('user_profiles')
+            .update({ email: user.email })
+            .eq('id', existingProfile.id)
+            .select()
+            .single();
+            
+          if (!updateError && updatedProfile) {
+            console.log('Profile updated with email:', updatedProfile);
+            return { data: updatedProfile };
+          }
+        }
+        
+        return { data: existingProfile };
+      }
+
+      // Créer le profil s'il n'existe pas
+      const profileData = {
+        user_id: user.id,
+        full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Administrateur',
+        email: user.email || '',
+        role: 'admin' as const, // Premier utilisateur = admin
+        phone: user.user_metadata?.phone || '',
+        is_active: true
+      };
+
+      console.log('Creating profile with data:', profileData);
+
+      const { data: newProfile, error: createError } = await supabase
+        .from('user_profiles')
+        .insert(profileData)
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Profile creation error:', createError);
+        throw createError;
+      }
+
+      console.log('Profile created successfully:', newProfile);
+
+      await this.logActivity('Création profil administrateur automatique', 'UserProfile', newProfile.id);
+
+      return { data: newProfile, message: 'Profil administrateur créé avec succès' };
+    } catch (error: any) {
+      console.error('Error in ensureCurrentUserProfile:', error);
       return { error: error.message };
     }
   }

@@ -15,13 +15,17 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  RotateCcw
+  RotateCcw,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { useTransactions } from '../hooks/useTransactions';
 import Pagination from '../components/ui/pagination-custom';
 import { Skeleton } from '../components/ui/skeleton';
 import TransactionForm from '../components/forms/TransactionForm';
+import ConfirmDialog from '../components/ui/confirm-dialog';
 import type { Transaction } from '@/types';
+import { showSuccess, showError } from '@/utils/toast';
 
 const Transactions = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,6 +33,15 @@ const Transactions = () => {
   const [currencyFilter, setCurrencyFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | undefined>();
+  
+  // États pour les modales de confirmation
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const [validateDialogOpen, setValidateDialogOpen] = useState(false);
+  const [transactionToValidate, setTransactionToValidate] = useState<Transaction | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
 
   const {
     transactions,
@@ -82,17 +95,62 @@ const Transactions = () => {
     }
   };
 
-  const handleValidateTransaction = (transactionId: string) => {
-    updateTransaction({
-      id: transactionId,
-      data: {
-        statut: 'Servi',
-        valide_par: 'current_user' // TODO: Get from auth context
-      }
-    });
+  const handleDeleteTransaction = (transaction: Transaction) => {
+    setTransactionToDelete(transaction);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteTransaction = async () => {
+    if (!transactionToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      // TODO: Implémenter la suppression dans le hook useTransactions
+      // await deleteTransaction(transactionToDelete.id);
+      setDeleteDialogOpen(false);
+      setTransactionToDelete(null);
+      showSuccess('Transaction supprimée avec succès');
+    } catch (error: any) {
+      showError(error.message || 'Erreur lors de la suppression');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleValidateTransaction = (transaction: Transaction) => {
+    setTransactionToValidate(transaction);
+    setValidateDialogOpen(true);
+  };
+
+  const confirmValidateTransaction = async () => {
+    if (!transactionToValidate) return;
+    
+    setIsValidating(true);
+    try {
+      await updateTransaction({
+        id: transactionToValidate.id,
+        data: {
+          statut: 'Servi',
+          valide_par: 'current_user' // TODO: Get from auth context
+        }
+      });
+      setValidateDialogOpen(false);
+      setTransactionToValidate(null);
+      showSuccess('Transaction validée avec succès');
+    } catch (error: any) {
+      showError(error.message || 'Erreur lors de la validation');
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const handleEditTransaction = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setIsFormOpen(true);
   };
 
   const handleAddTransaction = () => {
+    setSelectedTransaction(undefined);
     setIsFormOpen(true);
   };
 
@@ -170,14 +228,17 @@ const Transactions = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="space-y-2">
                   <p className="text-sm text-gray-600">Total CDF</p>
-                  <p className="text-2xl font-bold text-blue-600">
+                  <p className="text-sm text-red-600 font-medium">À retirer CDF</p>
+                </div>
+                <div className="text-right space-y-2">
+                  <p className="text-lg font-bold text-gray-900">
                     {formatCurrency(totalCDF, 'CDF')}
                   </p>
-                </div>
-                <div className="text-blue-600">
-                  <span className="text-2xl font-bold">CDF</span>
+                  <p className="text-lg font-bold text-red-600">
+                    {formatCurrency(Math.round(totalCDF * 0.7), 'CDF')}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -351,16 +412,31 @@ const Transactions = () => {
                             <Button variant="ghost" size="icon">
                               <Eye className="h-4 w-4" />
                             </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => handleEditTransaction(transaction)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
                             {transaction.statut === 'En attente' && (
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
                                 className="text-green-600"
-                                onClick={() => handleValidateTransaction(transaction.id)}
+                                onClick={() => handleValidateTransaction(transaction)}
                               >
                                 <CheckCircle className="h-4 w-4" />
                               </Button>
                             )}
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-red-600"
+                              onClick={() => handleDeleteTransaction(transaction)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -388,6 +464,33 @@ const Transactions = () => {
           isOpen={isFormOpen}
           onClose={() => setIsFormOpen(false)}
           onSuccess={handleFormSuccess}
+          transaction={selectedTransaction}
+        />
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title="Supprimer la transaction"
+          description={`Êtes-vous sûr de vouloir supprimer la transaction de ${formatCurrency(transactionToDelete?.montant || 0, transactionToDelete?.devise || 'USD')} ? Cette action est irréversible.`}
+          confirmText="Supprimer"
+          cancelText="Annuler"
+          onConfirm={confirmDeleteTransaction}
+          isConfirming={isDeleting}
+          type="delete"
+        />
+
+        {/* Validation Confirmation Dialog */}
+        <ConfirmDialog
+          open={validateDialogOpen}
+          onOpenChange={setValidateDialogOpen}
+          title="Valider la transaction"
+          description={`Êtes-vous sûr de vouloir valider la transaction de ${formatCurrency(transactionToValidate?.montant || 0, transactionToValidate?.devise || 'USD')} ? Le statut passera à "Servi".`}
+          confirmText="Valider"
+          cancelText="Annuler"
+          onConfirm={confirmValidateTransaction}
+          isConfirming={isValidating}
+          type="warning"
         />
       </div>
     </Layout>

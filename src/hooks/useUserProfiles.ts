@@ -11,11 +11,22 @@ export const useUserProfiles = () => {
     try {
       setIsLoading(true);
       setError(null);
+      
+      // S'assurer que le profil de l'utilisateur actuel existe
+      const ensureProfileResponse = await supabaseService.ensureCurrentUserProfile();
+      if (ensureProfileResponse.error) {
+        console.warn('Erreur lors de la création du profil:', ensureProfileResponse.error);
+      }
+      
       const response = await supabaseService.getUserProfiles();
+      
+      console.log('UserProfiles response:', response);
       
       if (response.error) {
         setError(response.error);
+        console.error('Error fetching user profiles:', response.error);
       } else {
+        console.log('User profiles data:', response.data);
         setUserProfiles(response.data || []);
       }
     } catch (err: any) {

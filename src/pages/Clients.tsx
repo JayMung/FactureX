@@ -20,13 +20,20 @@ import { useClients } from '../hooks/useClients';
 import Pagination from '../components/ui/pagination-custom';
 import { Skeleton } from '../components/ui/skeleton';
 import ClientForm from '../components/forms/ClientForm';
+import ConfirmDialog from '../components/ui/confirm-dialog';
 import type { Client } from '@/types';
+import { showSuccess, showError } from '@/utils/toast';
 
 const Clients = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | undefined>();
+  
+  // États pour les modales de confirmation
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const {
     clients,
@@ -43,9 +50,24 @@ const Clients = () => {
     return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const handleDeleteClient = (clientId: string) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) {
-      deleteClient(clientId);
+  const handleDeleteClient = (client: Client) => {
+    setClientToDelete(client);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteClient = async () => {
+    if (!clientToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteClient(clientToDelete.id);
+      setDeleteDialogOpen(false);
+      setClientToDelete(null);
+      showSuccess('Client supprimé avec succès');
+    } catch (error: any) {
+      showError(error.message || 'Erreur lors de la suppression');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -248,7 +270,7 @@ const Clients = () => {
                               variant="ghost" 
                               size="icon" 
                               className="text-red-600 hover:text-red-700"
-                              onClick={() => handleDeleteClient(client.id)}
+                              onClick={() => handleDeleteClient(client)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -280,6 +302,19 @@ const Clients = () => {
           onClose={() => setIsFormOpen(false)}
           onSuccess={handleFormSuccess}
           client={selectedClient}
+        />
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title="Supprimer le client"
+          description={`Êtes-vous sûr de vouloir supprimer le client "${clientToDelete?.nom}" ? Cette action est irréversible et supprimera également toutes les transactions associées.`}
+          confirmText="Supprimer"
+          cancelText="Annuler"
+          onConfirm={confirmDeleteClient}
+          isConfirming={isDeleting}
+          type="delete"
         />
       </div>
     </Layout>

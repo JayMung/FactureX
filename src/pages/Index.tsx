@@ -13,30 +13,18 @@ import {
   TrendingUp,
   Eye,
   Plus,
-  Activity
+  Activity,
+  User,
+  Settings,
+  FileText
 } from 'lucide-react';
 import { useDashboard } from '../hooks/useDashboard';
-import { useTransactions } from '../hooks/useTransactions';
-import { useClients } from '../hooks/useClients';
+import { useActivityLogs } from '../hooks/useActivityLogs';
 import { formatCurrency } from '../utils/formatCurrency';
 
 const Index = () => {
   const { stats, isLoading: statsLoading } = useDashboard();
-  const { transactions, isLoading: transactionsLoading } = useTransactions(1);
-  const { clients, isLoading: clientsLoading } = useClients(1);
-
-  const [recentActivity, setRecentActivity] = useState([]);
-
-  useEffect(() => {
-    // Mock recent activity data
-    setRecentActivity([
-      { id: 1, action: 'Nouvelle transaction', user: 'Admin', time: '2 min ago', type: 'transaction' },
-      { id: 2, action: 'Client ajouté', user: 'Admin', time: '15 min ago', type: 'client' },
-      { id: 3, action: 'Transaction validée', user: 'Admin', time: '1h ago', type: 'validation' },
-      { id: 4, action: 'Paramètres mis à jour', user: 'Admin', time: '2h ago', type: 'settings' },
-      { id: 5, action: 'Rapport généré', user: 'Admin', time: '3h ago', type: 'report' },
-    ]);
-  }, []);
+  const { logs, isLoading: logsLoading } = useActivityLogs(1, 10);
 
   const formatCurrencyValue = (amount: number, currency: string = 'USD') => {
     if (currency === 'CDF') {
@@ -90,20 +78,36 @@ const Index = () => {
     }
   ];
 
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'transaction':
-        return <Receipt className="h-4 w-4 text-blue-600" />;
-      case 'client':
-        return <Users className="h-4 w-4 text-green-600" />;
-      case 'validation':
-        return <TrendingUp className="h-4 w-4 text-purple-600" />;
-      case 'settings':
-        return <Activity className="h-4 w-4 text-orange-600" />;
-      case 'report':
-        return <Eye className="h-4 w-4 text-indigo-600" />;
+  const getActivityIcon = (action: string) => {
+    const lowerAction = action.toLowerCase();
+    if (lowerAction.includes('client') || lowerAction.includes('création client')) {
+      return <Users className="h-4 w-4 text-green-600" />;
+    } else if (lowerAction.includes('transaction') || lowerAction.includes('création transaction')) {
+      return <Receipt className="h-4 w-4 text-blue-600" />;
+    } else if (lowerAction.includes('paramètre') || lowerAction.includes('modification paramètre')) {
+      return <Settings className="h-4 w-4 text-orange-600" />;
+    } else if (lowerAction.includes('suppression')) {
+      return <FileText className="h-4 w-4 text-red-600" />;
+    } else if (lowerAction.includes('modification') || lowerAction.includes('mise à jour')) {
+      return <TrendingUp className="h-4 w-4 text-purple-600" />;
+    }
+    return <Activity className="h-4 w-4 text-gray-600" />;
+  };
+
+  const getEntityTypeLabel = (entityType?: string) => {
+    switch (entityType) {
+      case 'Client':
+        return 'Client';
+      case 'Transaction':
+        return 'Transaction';
+      case 'Settings':
+        return 'Paramètres';
+      case 'PaymentMethod':
+        return 'Mode de paiement';
+      case 'UserProfile':
+        return 'Utilisateur';
       default:
-        return <Activity className="h-4 w-4 text-gray-600" />;
+        return entityType || 'Système';
     }
   };
 
@@ -130,123 +134,6 @@ const Index = () => {
           ))}
         </div>
 
-        {/* Recent Activity & Quick Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Transactions */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Transactions Récentes</CardTitle>
-              <Button variant="ghost" size="sm">
-                <Eye className="h-4 w-4 mr-2" />
-                Voir tout
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {transactionsLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="flex items-center space-x-3 p-3 rounded-lg bg-gray-50 animate-pulse">
-                      <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
-                      <div className="flex-1">
-                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                      </div>
-                      <div className="h-6 bg-gray-200 rounded w-16"></div>
-                    </div>
-                  ))}
-                </div>
-              ) : transactions.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Receipt className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p>Aucune transaction récente</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {transactions.slice(0, 5).map((transaction) => (
-                    <div key={transaction.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                          <Receipt className="h-5 w-5 text-emerald-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{transaction.client?.nom || 'Client inconnu'}</p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(transaction.created_at).toLocaleDateString('fr-FR')}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-sm">
-                          {formatCurrency(transaction.montant, transaction.devise)}
-                        </p>
-                        <Badge 
-                          variant={transaction.statut === 'Servi' ? 'default' : 'secondary'}
-                          className="text-xs"
-                        >
-                          {transaction.statut}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Recent Clients */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Clients Récents</CardTitle>
-              <Button variant="ghost" size="sm">
-                <Eye className="h-4 w-4 mr-2" />
-                Voir tout
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {clientsLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="flex items-center space-x-3 p-3 rounded-lg bg-gray-50 animate-pulse">
-                      <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
-                      <div className="flex-1">
-                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : clients.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p>Aucun client récent</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {clients.slice(0, 5).map((client) => (
-                    <div key={client.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Users className="h-5 w-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{client.nom}</p>
-                          <p className="text-xs text-gray-500">{client.ville}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">
-                          {formatCurrency(client.total_paye, 'USD')}
-                        </p>
-                        <p className="text-xs text-gray-500">Total payé</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Activity Feed */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -257,19 +144,45 @@ const Index = () => {
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentActivity.map((activity: any) => (
-                <div key={activity.id} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex-shrink-0">
-                    {getActivityIcon(activity.type)}
+            {logsLoading ? (
+              <div className="space-y-4">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={index} className="flex items-center space-x-3 p-3 rounded-lg bg-gray-50 animate-pulse">
+                    <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{activity.action}</p>
-                    <p className="text-xs text-gray-500">par {activity.user} • {activity.time}</p>
+                ))}
+              </div>
+            ) : logs.data.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Activity className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>Aucune activité récente</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {logs.data.map((log) => (
+                  <div key={log.id} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex-shrink-0">
+                      {getActivityIcon(log.action)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">{log.action}</p>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <Badge variant="outline" className="text-xs">
+                          {getEntityTypeLabel(log.entity_type)}
+                        </Badge>
+                        <span className="text-xs text-gray-500">
+                          par {log.user?.email || 'Utilisateur inconnu'} • {new Date(log.created_at).toLocaleString('fr-FR')}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

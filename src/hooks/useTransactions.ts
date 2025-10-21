@@ -15,6 +15,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     queryKey: ['transactions', page, filters],
     queryFn: () => supabaseService.getTransactions(page, 10, filters),
     staleTime: 1000 * 60 * 2, // 2 minutes
+    gcTime: 1000 * 60 * 5, // 5 minutes - remplace cacheTime
   });
 
   const createMutation = useMutation({
@@ -22,8 +23,11 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     onSuccess: (response: ApiResponse<Transaction>) => {
       if (response.data) {
         showSuccess(response.message || 'Transaction créée avec succès');
+        // Invalider toutes les requêtes de transactions
         queryClient.invalidateQueries({ queryKey: ['transactions'] });
         queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+        // Forcer le rechargement immédiat
+        refetch();
       } else if (response.error) {
         showError(response.error);
       }
@@ -39,8 +43,11 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     onSuccess: (response: ApiResponse<Transaction>) => {
       if (response.data) {
         showSuccess(response.message || 'Transaction mise à jour avec succès');
+        // Invalider toutes les requêtes de transactions
         queryClient.invalidateQueries({ queryKey: ['transactions'] });
         queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+        // Forcer le rechargement immédiat
+        refetch();
       } else if (response.error) {
         showError(response.error);
       }
@@ -55,8 +62,11 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     onSuccess: (response: ApiResponse<void>) => {
       if (!response.error) {
         showSuccess(response.message || 'Transaction supprimée avec succès');
+        // Invalider toutes les requêtes de transactions
         queryClient.invalidateQueries({ queryKey: ['transactions'] });
         queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+        // Forcer le rechargement immédiat
+        refetch();
       } else {
         showError(response.error);
       }
@@ -95,7 +105,9 @@ export const useTransaction = (id: string) => {
   } = useQuery({
     queryKey: ['transaction', id],
     queryFn: () => supabaseService.getTransactionById(id),
-    enabled: !!id
+    enabled: !!id,
+    staleTime: 1000 * 60 * 1, // 1 minute
+    gcTime: 1000 * 60 * 3, // 3 minutes
   });
 
   return {

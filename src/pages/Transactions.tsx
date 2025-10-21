@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Search, 
   Plus, 
@@ -109,7 +109,13 @@ const Transactions = () => {
       await deleteTransaction(transactionToDelete.id);
       setDeleteDialogOpen(false);
       setTransactionToDelete(null);
+      
+      // Forcer le rechargement des données
+      setTimeout(() => {
+        refetch();
+      }, 100);
     } catch (error: any) {
+      console.error('Erreur lors de la suppression:', error);
       showError(error.message || 'Erreur lors de la suppression');
     } finally {
       setIsDeleting(false);
@@ -136,7 +142,13 @@ const Transactions = () => {
       });
       setValidateDialogOpen(false);
       setTransactionToValidate(null);
+      
+      // Forcer le rechargement des données
+      setTimeout(() => {
+        refetch();
+      }, 100);
     } catch (error: any) {
+      console.error('Erreur lors de la validation:', error);
       showError(error.message || 'Erreur lors de la validation');
     } finally {
       setIsValidating(false);
@@ -154,7 +166,10 @@ const Transactions = () => {
   };
 
   const handleFormSuccess = () => {
-    refetch();
+    // Forcer le rechargement des données après fermeture du formulaire
+    setTimeout(() => {
+      refetch();
+    }, 100);
   };
 
   const calculateStats = () => {

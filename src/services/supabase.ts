@@ -282,6 +282,21 @@ export class SupabaseService {
 
   async deleteTransaction(id: string): Promise<ApiResponse<void>> {
     try {
+      // Vérifier d'abord si la transaction existe
+      const { data: existingTransaction, error: checkError } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('id', id)
+        .single();
+
+      if (checkError) {
+        if (checkError.code === 'PGRST116') {
+          return { error: 'Transaction non trouvée' };
+        }
+        throw checkError;
+      }
+
+      // Supprimer la transaction
       const { error } = await supabase
         .from('transactions')
         .delete()

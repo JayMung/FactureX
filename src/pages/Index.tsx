@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Layout from '../components/layout/Layout';
+import { usePageSetup } from '../hooks/use-page-setup';
 import StatCard from '../components/dashboard/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -23,6 +24,11 @@ import { useActivityLogs } from '../hooks/useActivityLogs';
 import { formatCurrency } from '../utils/formatCurrency';
 
 const Index = () => {
+  usePageSetup({
+    title: 'Tableau de bord',
+    subtitle: 'Vue d\'ensemble de votre activité'
+  });
+
   const { stats, isLoading: statsLoading } = useDashboard();
   const { logs, isLoading: logsLoading } = useActivityLogs(1, 10);
 

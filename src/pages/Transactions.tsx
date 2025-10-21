@@ -2,10 +2,11 @@
 
 import React, { useState } from 'react';
 import Layout from '../components/layout/Layout';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
+import { usePageSetup } from '../hooks/use-page-setup';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Search, 
@@ -18,26 +19,28 @@ import {
   RotateCcw,
   Edit,
   Trash2,
-  Upload,
   Download
 } from 'lucide-react';
 import { useTransactions } from '../hooks/useTransactions';
-import Pagination from '../components/ui/pagination-custom';
-import { Skeleton } from '../components/ui/skeleton';
+import Pagination from '@/components/ui/pagination-custom';
+import { Skeleton } from '@/components/ui/skeleton';
 import TransactionForm from '../components/forms/TransactionForm';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
-import TransactionsImporter from '../components/import/TransactionsImporter';
 import type { Transaction } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 
 const Transactions = () => {
+  usePageSetup({
+    title: 'Gestion des Transactions',
+    subtitle: 'Enregistrez, suivez et validez chaque transfert'
+  });
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currencyFilter, setCurrencyFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | undefined>();
-  const [isImporterOpen, setIsImporterOpen] = useState(false);
   
   // États pour les modales de confirmation
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -50,7 +53,9 @@ const Transactions = () => {
   const {
     transactions,
     pagination,
-    isLoading,
+    loading,
+    isCreating,
+    isUpdating,
     error,
     updateTransaction,
     deleteTransaction,
@@ -133,13 +138,9 @@ const Transactions = () => {
     
     setIsValidating(true);
     try {
-      await updateTransaction({
-        id: transactionToValidate.id,
-        data: {
-          statut: 'Servi',
-          valide_par: 'current_user', // TODO: Get from auth context
-          date_validation: new Date().toISOString()
-        }
+      await updateTransaction(transactionToValidate.id, {
+        statut: 'Servi',
+        date_validation: new Date().toISOString()
       });
       setValidateDialogOpen(false);
       setTransactionToValidate(null);
@@ -166,13 +167,6 @@ const Transactions = () => {
   const handleFormSuccess = () => {
     // Les mutations dans useTransactions gèrent déjà l'actualisation automatique
     // Pas besoin de refetch manuel
-  };
-
-  const handleImportSuccess = () => {
-    // Forcer le rechargement des données après importation
-    setTimeout(() => {
-      refetch();
-    }, 500);
   };
 
   const calculateStats = () => {
@@ -239,21 +233,9 @@ const Transactions = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Gestion des Transactions</h2>
-            <p className="text-gray-500">Enregistrez, suivez et validez chaque transfert</p>
-          </div>
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end">
           <div className="flex space-x-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setIsImporterOpen(true)}
-              className="border-blue-200 text-blue-700 hover:bg-blue-50"
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Importer
-            </Button>
             <Button 
               variant="outline" 
               onClick={exportTransactions}
@@ -408,7 +390,7 @@ const Transactions = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {isLoading ? (
+                  {loading ? (
                     Array.from({ length: 10 }).map((_, index) => (
                       <tr key={index} className="border-b">
                         <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
@@ -476,7 +458,7 @@ const Transactions = () => {
                             <Button 
                               variant="ghost" 
                               size="icon"
-                              onClick={() => handleEditTransaction(transaction)}
+                              onClick={() => handleEditTransaction(transaction as any)}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -485,7 +467,7 @@ const Transactions = () => {
                                 variant="ghost" 
                                 size="icon" 
                                 className="text-green-600"
-                                onClick={() => handleValidateTransaction(transaction)}
+                                onClick={() => handleValidateTransaction(transaction as any)}
                               >
                                 <CheckCircle className="h-4 w-4" />
                               </Button>
@@ -494,7 +476,7 @@ const Transactions = () => {
                               variant="ghost" 
                               size="icon" 
                               className="text-red-600"
-                              onClick={() => handleDeleteTransaction(transaction)}
+                              onClick={() => handleDeleteTransaction(transaction as any)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -526,13 +508,6 @@ const Transactions = () => {
           onClose={() => setIsFormOpen(false)}
           onSuccess={handleFormSuccess}
           transaction={selectedTransaction}
-        />
-
-        {/* Import Modal */}
-        <TransactionsImporter
-          isOpen={isImporterOpen}
-          onClose={() => setIsImporterOpen(false)}
-          onSuccess={handleImportSuccess}
         />
 
         {/* Delete Confirmation Dialog */}

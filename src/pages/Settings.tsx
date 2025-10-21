@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
+import { usePageSetup } from '@/hooks/use-page-setup';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,11 @@ import ConfirmDialog from '@/components/ui/confirm-dialog';
 import type { PaymentMethod, UserProfile } from '@/types';
 
 const Settings = () => {
+  usePageSetup({
+    title: 'Paramètres',
+    subtitle: 'Configurez les paramètres de l\'application CoxiPay'
+  });
+
   const [exchangeRates, setExchangeRates] = useState({
     usdToCny: '7.25',
     usdToCdf: '2850',
@@ -331,11 +337,6 @@ const Settings = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Paramètres</h2>
-          <p className="text-gray-500">Configurez les paramètres de l'application CoxiPay</p>
-        </div>
 
         <Tabs defaultValue="rates" className="space-y-6">
           <TabsList className="grid w-full grid-cols-6">

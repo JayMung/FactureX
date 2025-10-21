@@ -4,17 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, Save, X, DollarSign, Calculator } from 'lucide-react';
 import type { Transaction, Client, PaymentMethod } from '@/types';
 import { useClients } from '@/hooks/useClients';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useExchangeRates, useFees } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
-import { showSuccess, showError } from '@/utils/toast';
 
 interface TransactionFormProps {
   isOpen: boolean;
@@ -162,11 +160,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       };
 
       if (isEditing && transaction) {
-        await updateTransaction({ id: transaction.id, data: transactionData });
-        showSuccess('Transaction mise à jour avec succès');
+        await updateTransaction(transaction.id, transactionData);
       } else {
         await createTransaction(transactionData);
-        showSuccess('Transaction créée avec succès');
       }
       
       onSuccess?.();
@@ -182,7 +178,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       });
       setErrors({});
     } catch (error: any) {
-      showError(error.message || 'Une erreur est survenue');
+      // L'erreur est déjà gérée dans le hook, pas besoin d'afficher une notification ici
+      console.error('Erreur lors de la soumission:', error);
     }
   };
 
@@ -196,11 +193,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const formatCurrency = (amount: number, currency: string = 'USD') => {
     if (currency === 'USD') {
-      return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
     } else if (currency === 'CDF') {
-      return `${amount.toLocaleString('fr-FR')} CDF`;
+      return `${amount.toLocaleString('fr-FR')} F`;
     } else if (currency === 'CNY') {
-      return `¥${amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      return `¥${amount.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
     }
     return amount.toString();
   };

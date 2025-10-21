@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
+import { usePageSetup } from '../hooks/use-page-setup';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -17,10 +18,8 @@ import {
   Phone,
   MapPin,
   DollarSign,
-  Upload,
   Download,
-  Users,
-  AlertTriangle
+  Users
 } from 'lucide-react';
 import { useClients } from '../hooks/useClients';
 import { useSorting } from '../hooks/useSorting';
@@ -29,26 +28,24 @@ import Pagination from '../components/ui/pagination-custom';
 import { Skeleton } from '../components/ui/skeleton';
 import SortableHeader from '../components/ui/sortable-header';
 import BulkActions from '../components/ui/bulk-actions';
-import DuplicateDetector from '../components/duplicates/duplicate-detector';
-import ImportReport from '../components/import/import-report';
 import ClientForm from '../components/forms/ClientForm';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
-import ClientsImporter from '../components/import/ClientsImporter';
 import type { Client } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { cn } from '@/lib/utils';
 
 const Clients = () => {
+  usePageSetup({
+    title: 'Gestion des Clients',
+    subtitle: 'Gérez les informations de vos clients'
+  });
+
   const [searchTerm, setSearchTerm] = useState('');
   const [cityFilter, setCityFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | undefined>();
-  const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
-  const [isDuplicateDetectorOpen, setIsDuplicateDetectorOpen] = useState(false);
-  const [importReport, setImportReport] = useState<any>(null);
-  const [showImportReport, setShowImportReport] = useState(false);
   
   // États pour les modales de confirmation
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -76,36 +73,8 @@ const Clients = () => {
     deleteMultipleClients,
     exportSelectedClients,
     emailSelectedClients,
-    mergeDuplicateClients
   } = useBulkOperations();
 
-  // Détecter automatiquement les doublons
-  useEffect(() => {
-    if (clients.length > 0) {
-      // Scanner les doublons en arrière-plan
-      const duplicateCount = detectDuplicateCount(clients);
-      if (duplicateCount > 0) {
-        // On pourrait afficher une notification silencieuse
-        console.log(`${duplicateCount} doublons potentiels détectés`);
-      }
-    }
-  }, [clients]);
-
-  const detectDuplicateCount = (clientsList: Client[]): number => {
-    const phoneMap = new Map<string, number>();
-    const nameMap = new Map<string, number>();
-    
-    clientsList.forEach(client => {
-      const normalizedPhone = client.telephone.replace(/[^0-9+]/g, '');
-      const normalizedName = client.nom.toLowerCase().replace(/[^a-z]/g, '');
-      
-      phoneMap.set(normalizedPhone, (phoneMap.get(normalizedPhone) || 0) + 1);
-      nameMap.set(normalizedName, (nameMap.get(normalizedName) || 0) + 1);
-    });
-    
-    return Array.from(phoneMap.values()).filter(count => count > 1).length +
-           Array.from(nameMap.values()).filter(count => count > 1).length;
-  };
 
   const handleDeleteClient = (client: Client) => {
     setClientToDelete(client);
@@ -169,15 +138,6 @@ const Clients = () => {
     }, 100);
   };
 
-  const handleImportSuccess = (results: any) => {
-    // Afficher le rapport d'importation
-    setImportReport(results);
-    setShowImportReport(true);
-    
-    setTimeout(() => {
-      refetch();
-    }, 500);
-  };
 
   const handleEditClient = (client: Client) => {
     setSelectedClient(client);
@@ -189,12 +149,6 @@ const Clients = () => {
     setIsFormOpen(true);
   };
 
-  const handleMergeDuplicates = async (duplicateGroups: any[]) => {
-    await mergeDuplicateClients(duplicateGroups);
-    setTimeout(() => {
-      refetch();
-    }, 500);
-  };
 
   const formatCurrency = (amount: number) => {
     return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -251,29 +205,9 @@ const Clients = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Gestion des Clients</h2>
-            <p className="text-gray-500">Gérez les informations de vos clients</p>
-          </div>
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end">
           <div className="flex space-x-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setIsDuplicateDetectorOpen(true)}
-              className="border-orange-200 text-orange-700 hover:bg-orange-50"
-            >
-              <AlertTriangle className="mr-2 h-4 w-4" />
-              Doublons
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsImporterOpen(true)}
-              className="border-blue-200 text-blue-700 hover:bg-blue-50"
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Importer
-            </Button>
             <Button 
               variant="outline" 
               onClick={exportClients}
@@ -576,25 +510,6 @@ const Clients = () => {
           onSuccess={handleFormSuccess}
         />
 
-        <ClientsImporter
-          isOpen={isImporterOpen}
-          onClose={() => setIsImporterOpen(false)}
-          onSuccess={handleImportSuccess}
-        />
-
-        <DuplicateDetector
-          clients={sortedData}
-          onMergeDuplicates={handleMergeDuplicates}
-          onDeleteDuplicates={async () => {}}
-          isOpen={isDuplicateDetectorOpen}
-          onClose={() => setIsDuplicateDetectorOpen(false)}
-        />
-
-        <ImportReport
-          isOpen={showImportReport}
-          onClose={() => setShowImportReport(false)}
-          results={importReport}
-        />
 
         {/* Delete Confirmation Dialogs */}
         <ConfirmDialog

@@ -63,9 +63,9 @@ const Clients = () => {
       await deleteClient(clientToDelete.id);
       setDeleteDialogOpen(false);
       setClientToDelete(null);
-      showSuccess('Client supprimé avec succès');
+      // La notification est déjà gérée par le hook, pas besoin de la dupliquer ici
     } catch (error: any) {
-      showError(error.message || 'Erreur lors de la suppression');
+      // L'erreur est déjà gérée par le hook, pas besoin de la dupliquer ici
     } finally {
       setIsDeleting(false);
     }

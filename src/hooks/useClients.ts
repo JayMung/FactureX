@@ -49,6 +49,7 @@ export const useClients = (page: number = 1, filters: ClientFilters = {}) => {
     }
   });
 
+  // Correction de la fonction de suppression
   const deleteMutation = useMutation({
     mutationFn: (id: string) => supabaseService.deleteClient(id),
     onSuccess: (response: ApiResponse<void>) => {

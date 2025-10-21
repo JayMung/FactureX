@@ -25,10 +25,6 @@ const StatCard: React.FC<StatCardProps> = ({
 }) => {
   const formatValue = (val: string | number) => {
     if (typeof val === 'string') {
-      // Handle currency formatting
-      if (val.includes('F')) {
-        return val.replace('F', 'CDF');
-      }
       return val;
     }
     return val.toString();

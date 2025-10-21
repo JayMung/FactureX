@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -18,16 +18,25 @@ import {
   MapPin,
   DollarSign,
   Upload,
-  Download
+  Download,
+  Users,
+  AlertTriangle
 } from 'lucide-react';
 import { useClients } from '../hooks/useClients';
+import { useSorting } from '../hooks/useSorting';
+import { useBulkOperations } from '../hooks/useBulkOperations';
 import Pagination from '../components/ui/pagination-custom';
 import { Skeleton } from '../components/ui/skeleton';
+import SortableHeader from '../components/ui/sortable-header';
+import BulkActions from '../components/ui/bulk-actions';
+import DuplicateDetector from '../components/duplicates/duplicate-detector';
+import ImportReport from '../components/import/import-report';
 import ClientForm from '../components/forms/ClientForm';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
 import ClientsImporter from '../components/import/ClientsImporter';
 import type { Client } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
+import { cn } from '@/lib/utils';
 
 const Clients = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,9 +45,14 @@ const Clients = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | undefined>();
   const [isImporterOpen, setIsImporterOpen] = useState(false);
+  const [selectedClients, setSelectedClients] = useState<string[]>([]);
+  const [isDuplicateDetectorOpen, setIsDuplicateDetectorOpen] = useState(false);
+  const [importReport, setImportReport] = useState<any>(null);
+  const [showImportReport, setShowImportReport] = useState(false);
   
   // États pour les modales de confirmation
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -56,6 +70,43 @@ const Clients = () => {
     ville: cityFilter === 'all' ? undefined : cityFilter
   });
 
+  const { sortedData, sortConfig, handleSort } = useSorting(clients);
+  const { 
+    isProcessing,
+    deleteMultipleClients,
+    exportSelectedClients,
+    emailSelectedClients,
+    mergeDuplicateClients
+  } = useBulkOperations();
+
+  // Détecter automatiquement les doublons
+  useEffect(() => {
+    if (clients.length > 0) {
+      // Scanner les doublons en arrière-plan
+      const duplicateCount = detectDuplicateCount(clients);
+      if (duplicateCount > 0) {
+        // On pourrait afficher une notification silencieuse
+        console.log(`${duplicateCount} doublons potentiels détectés`);
+      }
+    }
+  }, [clients]);
+
+  const detectDuplicateCount = (clientsList: Client[]): number => {
+    const phoneMap = new Map<string, number>();
+    const nameMap = new Map<string, number>();
+    
+    clientsList.forEach(client => {
+      const normalizedPhone = client.telephone.replace(/[^0-9+]/g, '');
+      const normalizedName = client.nom.toLowerCase().replace(/[^a-z]/g, '');
+      
+      phoneMap.set(normalizedPhone, (phoneMap.get(normalizedPhone) || 0) + 1);
+      nameMap.set(normalizedName, (nameMap.get(normalizedName) || 0) + 1);
+    });
+    
+    return Array.from(phoneMap.values()).filter(count => count > 1).length +
+           Array.from(nameMap.values()).filter(count => count > 1).length;
+  };
+
   const handleDeleteClient = (client: Client) => {
     setClientToDelete(client);
     setDeleteDialogOpen(true);
@@ -70,7 +121,6 @@ const Clients = () => {
       setDeleteDialogOpen(false);
       setClientToDelete(null);
       
-      // Forcer le rechargement des données
       setTimeout(() => {
         refetch();
       }, 100);
@@ -82,15 +132,48 @@ const Clients = () => {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedClients.length === 0) return;
+    
+    setIsDeleting(true);
+    try {
+      const results = await deleteMultipleClients(selectedClients);
+      setBulkDeleteDialogOpen(false);
+      setSelectedClients([]);
+      
+      setTimeout(() => {
+        refetch();
+      }, 100);
+    } catch (error: any) {
+      showError(error.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleClientSelection = (clientId: string, checked: boolean) => {
+    setSelectedClients(prev => 
+      checked 
+        ? [...prev, clientId]
+        : prev.filter(id => id !== clientId)
+    );
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    setSelectedClients(checked ? sortedData.map(client => client.id) : []);
+  };
+
   const handleFormSuccess = () => {
-    // Forcer le rechargement des données après fermeture du formulaire
     setTimeout(() => {
       refetch();
     }, 100);
   };
 
-  const handleImportSuccess = () => {
-    // Forcer le rechargement des données après importation
+  const handleImportSuccess = (results: any) => {
+    // Afficher le rapport d'importation
+    setImportReport(results);
+    setShowImportReport(true);
+    
     setTimeout(() => {
       refetch();
     }, 500);
@@ -106,20 +189,30 @@ const Clients = () => {
     setIsFormOpen(true);
   };
 
+  const handleMergeDuplicates = async (duplicateGroups: any[]) => {
+    await mergeDuplicateClients(duplicateGroups);
+    setTimeout(() => {
+      refetch();
+    }, 500);
+  };
+
   const formatCurrency = (amount: number) => {
     return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  // Function to generate readable client ID
   const generateReadableId = (index: number) => {
     const paddedNumber = (index + 1).toString().padStart(3, '0');
     return `CL${paddedNumber}`;
   };
 
   const exportClients = () => {
+    const dataToExport = selectedClients.length > 0 
+      ? sortedData.filter(client => selectedClients.includes(client.id))
+      : sortedData;
+      
     const csv = [
       ['nom', 'telephone', 'ville', 'total_paye', 'created_at'],
-      ...clients.map(client => [
+      ...dataToExport.map(client => [
         client.nom,
         client.telephone,
         client.ville,
@@ -135,8 +228,12 @@ const Clients = () => {
     a.download = `clients-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    showSuccess('Clients exportés avec succès');
+    
+    showSuccess(`${dataToExport.length} client(s) exporté(s) avec succès`);
   };
+
+  const isAllSelected = sortedData.length > 0 && selectedClients.length === sortedData.length;
+  const isPartiallySelected = selectedClients.length > 0 && selectedClients.length < sortedData.length;
 
   if (error) {
     return (
@@ -163,6 +260,14 @@ const Clients = () => {
           <div className="flex space-x-2">
             <Button 
               variant="outline" 
+              onClick={() => setIsDuplicateDetectorOpen(true)}
+              className="border-orange-200 text-orange-700 hover:bg-orange-50"
+            >
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              Doublons
+            </Button>
+            <Button 
+              variant="outline" 
               onClick={() => setIsImporterOpen(true)}
               className="border-blue-200 text-blue-700 hover:bg-blue-50"
             >
@@ -172,7 +277,7 @@ const Clients = () => {
             <Button 
               variant="outline" 
               onClick={exportClients}
-              disabled={clients.length === 0}
+              disabled={sortedData.length === 0}
             >
               <Download className="mr-2 h-4 w-4" />
               Exporter
@@ -185,7 +290,7 @@ const Clients = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -196,7 +301,7 @@ const Clients = () => {
                   </p>
                 </div>
                 <div className="text-emerald-600">
-                  <span className="text-2xl font-bold">👥</span>
+                  <Users className="h-8 w-8" />
                 </div>
               </div>
             </CardContent>
@@ -208,7 +313,7 @@ const Clients = () => {
                   <p className="text-sm text-gray-600">Total Payé</p>
                   <p className="text-2xl font-bold text-blue-600">
                     {formatCurrency(
-                      clients.reduce((sum, client) => sum + (client.total_paye || 0), 0)
+                      sortedData.reduce((sum, client) => sum + (client.total_paye || 0), 0)
                     )}
                   </p>
                 </div>
@@ -224,7 +329,7 @@ const Clients = () => {
                 <div>
                   <p className="text-sm text-gray-600">Villes</p>
                   <p className="text-2xl font-bold text-purple-600">
-                    {new Set(clients.map(c => c.ville)).size}
+                    {new Set(sortedData.map(c => c.ville)).size}
                   </p>
                 </div>
                 <div className="text-purple-600">
@@ -233,7 +338,32 @@ const Clients = () => {
               </div>
             </CardContent>
           </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Sélectionnés</p>
+                  <p className="text-2xl font-bold text-orange-600">
+                    {selectedClients.length}
+                  </p>
+                </div>
+                <div className="text-orange-600">
+                  <span className="text-2xl font-bold">✓</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Bulk Actions */}
+        <BulkActions
+          selectedCount={selectedClients.length}
+          onClearSelection={() => setSelectedClients([])}
+          onDeleteSelected={() => setBulkDeleteDialogOpen(true)}
+          onExportSelected={() => exportSelectedClients(sortedData.filter(c => selectedClients.includes(c.id)))}
+          onEmailSelected={() => emailSelectedClients(sortedData.filter(c => selectedClients.includes(c.id)))}
+          isDeleting={isDeleting}
+        />
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
@@ -258,7 +388,7 @@ const Clients = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Toutes les villes</SelectItem>
-              {Array.from(new Set(clients.map(c => c.ville))).map((city: string) => (
+              {Array.from(new Set(sortedData.map(c => c.ville))).map((city: string) => (
                 <SelectItem key={city} value={city}>{city}</SelectItem>
               ))}
             </SelectContent>
@@ -272,18 +402,68 @@ const Clients = () => {
         {/* Clients Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Liste des Clients</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              <span>Liste des Clients</span>
+              {selectedClients.length > 0 && (
+                <span className="text-sm text-gray-500">
+                  {selectedClients.length} sur {sortedData.length} sélectionné(s)
+                </span>
+              )}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">ID</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Nom</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Téléphone</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Ville</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Total Payé</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700 w-12">
+                      <input
+                        type="checkbox"
+                        checked={isAllSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = isPartiallySelected;
+                        }}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                    </th>
+                    <SortableHeader
+                      title="ID"
+                      sortKey="id"
+                      currentSort={sortConfig}
+                      onSort={handleSort}
+                      className="w-20"
+                    />
+                    <SortableHeader
+                      title="Nom"
+                      sortKey="nom"
+                      currentSort={sortConfig}
+                      onSort={handleSort}
+                    />
+                    <SortableHeader
+                      title="Téléphone"
+                      sortKey="telephone"
+                      currentSort={sortConfig}
+                      onSort={handleSort}
+                    />
+                    <SortableHeader
+                      title="Ville"
+                      sortKey="ville"
+                      currentSort={sortConfig}
+                      onSort={handleSort}
+                    />
+                    <SortableHeader
+                      title="Total Payé"
+                      sortKey="total_paye"
+                      currentSort={sortConfig}
+                      onSort={handleSort}
+                    />
+                    <SortableHeader
+                      title="Date"
+                      sortKey="created_at"
+                      currentSort={sortConfig}
+                      onSort={handleSort}
+                    />
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                   </tr>
                 </thead>
@@ -291,25 +471,41 @@ const Clients = () => {
                   {isLoading ? (
                     Array.from({ length: 10 }).map((_, index) => (
                       <tr key={index} className="border-b">
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-4" /></td>
                         <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
                         <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
                         <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
                         <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
                         <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
                         <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
                       </tr>
                     ))
-                  ) : clients.length === 0 ? (
+                  ) : sortedData.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-gray-500">
+                      <td colSpan={8} className="py-8 text-center text-gray-500">
                         Aucun client trouvé
                       </td>
                     </tr>
                   ) : (
-                    clients.map((client, index) => (
-                      <tr key={client.id} className="border-b hover:bg-gray-50">
+                    sortedData.map((client, index) => (
+                      <tr 
+                        key={client.id} 
+                        className={cn(
+                          "border-b hover:bg-gray-50",
+                          selectedClients.includes(client.id) && "bg-blue-50"
+                        )}
+                      >
+                        <td className="py-3 px-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedClients.includes(client.id)}
+                            onChange={(e) => handleClientSelection(client.id, e.target.checked)}
+                            className="rounded border-gray-300"
+                          />
+                        </td>
                         <td className="py-3 px-4 font-medium">
-                          {generateReadableId((currentPage - 1) * (pagination?.pageSize || 10) + index)}
+                          {generateReadableId(index)}
                         </td>
                         <td className="py-3 px-4 font-medium">{client.nom}</td>
                         <td className="py-3 px-4">
@@ -326,6 +522,9 @@ const Clients = () => {
                         </td>
                         <td className="py-3 px-4 font-medium text-emerald-600">
                           {formatCurrency(client.total_paye || 0)}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          {new Date(client.created_at).toLocaleDateString('fr-FR')}
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center space-x-2">
@@ -369,7 +568,7 @@ const Clients = () => {
           </CardContent>
         </Card>
 
-        {/* Client Form Modal */}
+        {/* Modals */}
         <ClientForm
           client={selectedClient}
           isOpen={isFormOpen}
@@ -377,14 +576,27 @@ const Clients = () => {
           onSuccess={handleFormSuccess}
         />
 
-        {/* Import Modal */}
         <ClientsImporter
           isOpen={isImporterOpen}
           onClose={() => setIsImporterOpen(false)}
           onSuccess={handleImportSuccess}
         />
 
-        {/* Delete Confirmation Dialog */}
+        <DuplicateDetector
+          clients={sortedData}
+          onMergeDuplicates={handleMergeDuplicates}
+          onDeleteDuplicates={async () => {}}
+          isOpen={isDuplicateDetectorOpen}
+          onClose={() => setIsDuplicateDetectorOpen(false)}
+        />
+
+        <ImportReport
+          isOpen={showImportReport}
+          onClose={() => setShowImportReport(false)}
+          results={importReport}
+        />
+
+        {/* Delete Confirmation Dialogs */}
         <ConfirmDialog
           open={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
@@ -393,6 +605,18 @@ const Clients = () => {
           confirmText="Supprimer"
           cancelText="Annuler"
           onConfirm={confirmDeleteClient}
+          isConfirming={isDeleting}
+          type="delete"
+        />
+
+        <ConfirmDialog
+          open={bulkDeleteDialogOpen}
+          onOpenChange={setBulkDeleteDialogOpen}
+          title="Supprimer les clients sélectionnés"
+          description={`Êtes-vous sûr de vouloir supprimer les ${selectedClients.length} clients sélectionnés ? Cette action est irréversible et supprimera également toutes leurs transactions associées.`}
+          confirmText="Supprimer"
+          cancelText="Annuler"
+          onConfirm={handleBulkDelete}
           isConfirming={isDeleting}
           type="delete"
         />

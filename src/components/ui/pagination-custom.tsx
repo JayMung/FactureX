@@ -1,7 +1,8 @@
+"use client";
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface PaginationProps {
   currentPage: number;
@@ -14,7 +15,7 @@ const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
   onPageChange,
-  className
+  className = ''
 }) => {
   const getVisiblePages = () => {
     const delta = 2;
@@ -46,7 +47,7 @@ const Pagination: React.FC<PaginationProps> = ({
   if (totalPages <= 1) return null;
 
   return (
-    <div className={cn("flex items-center justify-between", className)}>
+    <div className={`flex items-center justify-between ${className}`}>
       <div className="text-sm text-gray-700">
         Page {currentPage} sur {totalPages}
       </div>
@@ -69,7 +70,7 @@ const Pagination: React.FC<PaginationProps> = ({
                 <span className="px-3 py-1 text-gray-500">...</span>
               ) : (
                 <Button
-                  variant={currentPage === page ? "default" : "outline"}
+                  variant={currentPage === page ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => onPageChange(page as number)}
                   className="min-w-[40px]"

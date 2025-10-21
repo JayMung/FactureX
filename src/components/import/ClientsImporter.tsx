@@ -8,7 +8,7 @@ import { showSuccess } from '@/utils/toast';
 interface ClientsImporterProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (results: any) => void;
 }
 
 const ClientsImporter: React.FC<ClientsImporterProps> = ({ isOpen, onClose, onSuccess }) => {
@@ -39,9 +39,34 @@ const ClientsImporter: React.FC<ClientsImporterProps> = ({ isOpen, onClose, onSu
   ];
 
   const handleImport = async (data: any[]) => {
-    const results = { success: 0, errors: [] as string[] };
+    const results = { 
+      total: data.length, 
+      success: 0, 
+      errors: [] as string[], 
+      warnings: [] as string[],
+      successfulItems: [] as any[]
+    };
 
-    for (const row of data) {
+    const existingPhones = new Set<string>();
+    const existingNames = new Set<string>();
+
+    // Pré-charger les clients existants pour détecter les doublons
+    try {
+      const existingClientsResponse = await supabaseService.getClients(1, 10000, {});
+      if (!existingClientsResponse.error && existingClientsResponse.data?.data) {
+        existingClientsResponse.data.data.forEach(client => {
+          existingPhones.add(client.telephone);
+          existingNames.add(client.nom.toLowerCase());
+        });
+      }
+    } catch (error) {
+      console.warn('Erreur lors du chargement des clients existants:', error);
+    }
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const rowNumber = i + 2; // +2 car ligne 1 = en-têtes
+
       try {
         const clientData = {
           nom: row.nom || row.name || '',
@@ -52,58 +77,63 @@ const ClientsImporter: React.FC<ClientsImporterProps> = ({ isOpen, onClose, onSu
 
         // Validation
         if (!clientData.nom.trim()) {
-          results.errors.push(`Nom du client manquant`);
+          results.errors.push(`Ligne ${rowNumber}: Nom du client manquant`);
           continue;
         }
 
         if (!clientData.telephone.trim()) {
-          results.errors.push(`Téléphone manquant pour ${clientData.nom}`);
+          results.errors.push(`Ligne ${rowNumber}: Téléphone manquant pour ${clientData.nom}`);
           continue;
         }
 
         if (!clientData.ville.trim()) {
-          results.errors.push(`Ville manquante pour ${clientData.nom}`);
+          results.errors.push(`Ligne ${rowNumber}: Ville manquante pour ${clientData.nom}`);
           continue;
         }
 
-        // Check if client already exists
-        const existingClients = await supabaseService.getClients(1, 1000, {
-          search: clientData.telephone
-        });
-
-        if (!existingClients.error && existingClients.data?.data.some(c => 
-          c.telephone === clientData.telephone || c.nom.toLowerCase() === clientData.nom.toLowerCase()
-        )) {
-          results.errors.push(`Le client "${clientData.nom}" existe déjà`);
-          continue;
+        // Détection des doublons
+        if (existingPhones.has(clientData.telephone)) {
+          results.warnings.push(`Ligne ${rowNumber}: Le téléphone ${clientData.telephone} existe déjà pour ${clientData.nom}`);
         }
 
-        // Create client
+        if (existingNames.has(clientData.nom.toLowerCase())) {
+          results.warnings.push(`Ligne ${rowNumber}: Le nom "${clientData.nom}" existe déjà`);
+        }
+
+        // Créer le client
         const response = await supabaseService.createClient(clientData);
         
         if (response.error) {
-          results.errors.push(`Erreur pour ${clientData.nom}: ${response.error}`);
+          results.errors.push(`Ligne ${rowNumber}: Erreur pour ${clientData.nom} - ${response.error}`);
         } else {
           results.success++;
+          results.successfulItems.push({
+            ...clientData,
+            id: response.data?.id,
+            row: rowNumber
+          });
+
+          // Ajouter aux ensembles pour détecter les doublons dans le même import
+          existingPhones.add(clientData.telephone);
+          existingNames.add(clientData.nom.toLowerCase());
         }
       } catch (error: any) {
-        results.errors.push(`Erreur inattendue: ${error.message}`);
+        results.errors.push(`Ligne ${rowNumber}: Erreur inattendue - ${error.message}`);
       }
     }
 
     return results;
   };
 
-  const handleSuccess = () => {
-    onSuccess?.();
+  const handleSuccess = (results: any) => {
+    onSuccess?.(results);
     onClose();
-    showSuccess('Importation des clients terminée');
   };
 
   return (
     <CSVImporter
       title="Importer des Clients"
-      description="Importez vos clients depuis un fichier CSV. Assurez-vous d'avoir les colonnes nom, téléphone et ville."
+      description="Importez vos clients depuis un fichier CSV. L'assistant détectera automatiquement les doublons et vous fournira un rapport détaillé."
       onImport={handleImport}
       isOpen={isOpen}
       onClose={handleSuccess}

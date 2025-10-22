@@ -1,983 +1,434 @@
 "use client";
 
-import React, { useState } from 'react';
-import Layout from '@/components/layout/Layout';
-import { usePageSetup } from '@/hooks/use-page-setup';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { useState, useEffect } from 'react';
 import { 
-  Settings as SettingsIcon,
-  TrendingUp,
-  Percent,
-  CreditCard,
-  Users,
-  Activity,
-  Plus,
-  Edit,
-  Trash2,
-  Save,
-  Loader2,
-  Eye,
-  EyeOff
+  User as UserIcon, 
+  CreditCard, 
+  Settings as SettingsIcon, 
+  Bell, 
+  Shield, 
+  Smartphone,
+  Globe,
+  HelpCircle,
+  ChevronLeft,
+  Menu,
+  X
 } from 'lucide-react';
-import { useSettings, useExchangeRates, useFees } from '@/hooks/useSettings';
-import { usePaymentMethods } from '@/hooks/usePaymentMethods';
-import { useUserProfiles } from '@/hooks/useUserProfiles';
-import { useActivityLogs } from '@/hooks/useActivityLogs';
-import { showSuccess, showError } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
-import { supabaseService } from '@/services/supabase';
-import ConfirmDialog from '@/components/ui/confirm-dialog';
-import type { PaymentMethod, UserProfile } from '@/types';
+import { User as SupabaseUser } from '@supabase/supabase-js';
+
+interface UserProfile {
+  id: string;
+  email: string;
+  user_metadata?: any;
+}
+
+interface Profile {
+  id: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  avatar_url?: string;
+}
+
+interface PaymentMethod {
+  id: string;
+  name: string;
+  code: string;
+  is_active: boolean;
+  icon?: string;
+  description?: string;
+}
+
+interface SettingsOption {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  description: string;
+}
 
 const Settings = () => {
-  usePageSetup({
-    title: 'Paramètres',
-    subtitle: 'Configurez les paramètres de l\'application CoxiPay'
-  });
+  const [activeTab, setActiveTab] = useState('profile');
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const [exchangeRates, setExchangeRates] = useState({
-    usdToCny: '7.25',
-    usdToCdf: '2850',
-    autoMode: false
-  });
-
-  const [fees, setFees] = useState({
-    transfert: '5',
-    commande: '10',
-    partenaire: '3'
-  });
-
-  // États pour les dialogues
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [userDialogOpen, setUserDialogOpen] = useState(false);
-  const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
-  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
-
-  // États pour les modales de confirmation
-  const [deletePaymentDialogOpen, setDeletePaymentDialogOpen] = useState(false);
-  const [paymentToDelete, setPaymentToDelete] = useState<PaymentMethod | null>(null);
-  const [deleteUserDialogOpen, setDeleteUserDialogOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
-  const [togglePaymentDialogOpen, setTogglePaymentDialogOpen] = useState(false);
-  const [paymentToToggle, setPaymentToToggle] = useState<{id: string, isActive: boolean} | null>(null);
-  const [toggleUserDialogOpen, setToggleUserDialogOpen] = useState(false);
-  const [userToToggle, setUserToToggle] = useState<{id: string, isActive: boolean} | null>(null);
-  
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isToggling, setIsToggling] = useState(false);
-
-  // Formulaires
-  const [paymentForm, setPaymentForm] = useState({
-    name: '',
-    code: '',
-    icon: '',
-    description: '',
-    is_active: true
-  });
-
-  const [userForm, setUserForm] = useState({
-    user_id: '',
-    full_name: '',
-    role: 'operateur' as 'admin' | 'operateur',
-    phone: '',
-    is_active: true
-  });
-
-  const { updateSettings, isUpdating } = useSettings();
-  const { rates, isLoading: ratesLoading } = useExchangeRates();
-  const { fees: currentFees, isLoading: feesLoading } = useFees();
-  const { 
-    paymentMethods, 
-    isLoading: paymentsLoading, 
-    togglePaymentMethod, 
-    createPaymentMethod, 
-    updatePaymentMethod, 
-    deletePaymentMethod 
-  } = usePaymentMethods();
-  const { 
-    userProfiles, 
-    isLoading: usersLoading, 
-    toggleUserProfile, 
-    createUserProfile, 
-    updateUserProfile,
-    refetch: refetchUserProfiles 
-  } = useUserProfiles();
-  const { logs, isLoading: logsLoading } = useActivityLogs();
-
-  // Charger les données actuelles
-  React.useEffect(() => {
-    if (rates) {
-      setExchangeRates({
-        usdToCny: rates.usdToCny.toString(),
-        usdToCdf: rates.usdToCdf.toString(),
-        autoMode: false
-      });
-    }
-  }, [rates]);
-
-  React.useEffect(() => {
-    if (currentFees) {
-      setFees({
-        transfert: currentFees.transfert.toString(),
-        commande: currentFees.commande.toString(),
-        partenaire: currentFees.partenaire.toString()
-      });
-    }
-  }, [currentFees]);
-
-  const handleSaveExchangeRates = async () => {
-    try {
-      await updateSettings({
-        categorie: 'taux_change',
-        settings: {
-          usdToCny: exchangeRates.usdToCny,
-          usdToCdf: exchangeRates.usdToCdf
+  useEffect(() => {
+    const fetchUserAndProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUser({
+            id: user.id,
+            email: user.email || '',
+            user_metadata: user.user_metadata
+          });
+          
+          // Fetch profile data
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          
+          setProfile(profileData);
         }
-      });
-    } catch (error: any) {
-      showError(error.message || 'Erreur lors de la sauvegarde des taux');
-    }
-  };
-
-  const handleSaveFees = async () => {
-    try {
-      await updateSettings({
-        categorie: 'frais',
-        settings: {
-          transfert: fees.transfert,
-          commande: fees.commande,
-          partenaire: fees.partenaire
-        }
-      });
-    } catch (error: any) {
-      showError(error.message || 'Erreur lors de la sauvegarde des frais');
-    }
-  };
-
-  const handleDeletePayment = (payment: PaymentMethod) => {
-    setPaymentToDelete(payment);
-    setDeletePaymentDialogOpen(true);
-  };
-
-  const confirmDeletePayment = async () => {
-    if (!paymentToDelete) return;
-    
-    setIsDeleting(true);
-    try {
-      await deletePaymentMethod(paymentToDelete.id);
-      setDeletePaymentDialogOpen(false);
-      setPaymentToDelete(null);
-      showSuccess('Mode de paiement supprimé avec succès');
-    } catch (error: any) {
-      showError(error.message);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleTogglePayment = (id: string, isActive: boolean) => {
-    setPaymentToToggle({ id, isActive });
-    setTogglePaymentDialogOpen(true);
-  };
-
-  const confirmTogglePayment = async () => {
-    if (!paymentToToggle) return;
-    
-    setIsToggling(true);
-    try {
-      await togglePaymentMethod(paymentToToggle.id, paymentToToggle.isActive);
-      setTogglePaymentDialogOpen(false);
-      setPaymentToToggle(null);
-      showSuccess(`Mode de paiement ${paymentToToggle.isActive ? 'activé' : 'désactivé'} avec succès`);
-    } catch (error: any) {
-      showError(error.message);
-    } finally {
-      setIsToggling(false);
-    }
-  };
-
-  const handleDeleteUser = (user: UserProfile) => {
-    setUserToDelete(user);
-    setDeleteUserDialogOpen(true);
-  };
-
-  const confirmDeleteUser = async () => {
-    if (!userToDelete) return;
-    
-    setIsDeleting(true);
-    try {
-      // TODO: Implémenter la suppression d'utilisateur
-      // await deleteUserProfile(userToDelete.id);
-      setDeleteUserDialogOpen(false);
-      setUserToDelete(null);
-      showSuccess('Utilisateur supprimé avec succès');
-    } catch (error: any) {
-      showError(error.message);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleToggleUser = (id: string, isActive: boolean) => {
-    setUserToToggle({ id, isActive });
-    setToggleUserDialogOpen(true);
-  };
-
-  const confirmToggleUser = async () => {
-    if (!userToToggle) return;
-    
-    setIsToggling(true);
-    try {
-      await toggleUserProfile(userToToggle.id, userToToggle.isActive);
-      setToggleUserDialogOpen(false);
-      setUserToToggle(null);
-      showSuccess(`Utilisateur ${userToToggle.isActive ? 'activé' : 'désactivé'} avec succès`);
-    } catch (error: any) {
-      showError(error.message);
-    } finally {
-      setIsToggling(false);
-    }
-  };
-
-  const handleSavePayment = async () => {
-    try {
-      if (editingPayment) {
-        await updatePaymentMethod(editingPayment.id, paymentForm);
-        showSuccess('Mode de paiement mis à jour avec succès');
-      } else {
-        await createPaymentMethod(paymentForm as any);
-        showSuccess('Mode de paiement créé avec succès');
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setLoading(false);
       }
-      setPaymentDialogOpen(false);
-      resetPaymentForm();
-    } catch (error: any) {
-      showError(error.message);
-    }
-  };
+    };
 
-  const handleSaveUser = async () => {
+    fetchUserAndProfile();
+    fetchPaymentMethods();
+  }, []);
+
+  const fetchPaymentMethods = async () => {
     try {
-      if (editingUser) {
-        await updateUserProfile(editingUser.id, userForm);
-        showSuccess('Profil utilisateur mis à jour avec succès');
-      } else {
-        await createUserProfile(userForm as any);
-        showSuccess('Profil utilisateur créé avec succès');
-      }
-      setUserDialogOpen(false);
-      resetUserForm();
-    } catch (error: any) {
-      showError(error.message);
+      const { data } = await supabase
+        .from('payment_methods')
+        .select('*')
+        .order('name');
+      
+      setPaymentMethods(data || []);
+    } catch (error) {
+      console.error('Error fetching payment methods:', error);
     }
   };
 
-  const handleEditPayment = (payment: PaymentMethod) => {
-    setEditingPayment(payment);
-    setPaymentForm({
-      name: payment.name,
-      code: payment.code,
-      icon: payment.icon || '',
-      description: payment.description || '',
-      is_active: payment.is_active
-    });
-    setPaymentDialogOpen(true);
-  };
-
-  const handleEditUser = (user: UserProfile) => {
-    setEditingUser(user);
-    setUserForm({
-      user_id: user.user_id,
-      full_name: user.full_name,
-      role: user.role,
-      phone: user.phone || '',
-      is_active: user.is_active
-    });
-    setUserDialogOpen(true);
-  };
-
-  const resetPaymentForm = () => {
-    setPaymentForm({
-      name: '',
-      code: '',
-      icon: '',
-      description: '',
-      is_active: true
-    });
-    setEditingPayment(null);
-  };
-
-  const resetUserForm = () => {
-    setUserForm({
-      user_id: '',
-      full_name: '',
-      role: 'operateur',
-      phone: '',
-      is_active: true
-    });
-    setEditingUser(null);
-  };
-
-  const transactionStatuses = [
-    { id: 1, name: 'En attente', color: 'yellow' },
-    { id: 2, name: 'Servi', color: 'green' },
-    { id: 3, name: 'Remboursé', color: 'blue' },
-    { id: 4, name: 'Annulé', color: 'red' }
+  const tabs: SettingsOption[] = [
+    {
+      id: 'profile',
+      label: 'Profil',
+      icon: <UserIcon className="w-5 h-5" />,
+      description: 'Informations personnelles et préférences'
+    },
+    {
+      id: 'payment-methods',
+      label: 'Moyens de paiement',
+      icon: <CreditCard className="w-5 h-5" />,
+      description: 'Gérer les modes de paiement disponibles'
+    },
+    {
+      id: 'general',
+      label: 'Général',
+      icon: <SettingsIcon className="w-5 h-5" />,
+      description: 'Configuration générale de l\'application'
+    },
+    {
+      id: 'notifications',
+      label: 'Notifications',
+      icon: <Bell className="w-5 h-5" />,
+      description: 'Préférences de notification et alertes'
+    },
+    {
+      id: 'security',
+      label: 'Sécurité',
+      icon: <Shield className="w-5 h-5" />,
+      description: 'Mot de passe et authentification'
+    },
+    {
+      id: 'devices',
+      label: 'Appareils',
+      icon: <Smartphone className="w-5 h-5" />,
+      description: 'Gérer les appareils connectés'
+    },
+    {
+      id: 'language',
+      label: 'Langue',
+      icon: <Globe className="w-5 h-5" />,
+      description: 'Préférences linguistiques et régionales'
+    },
+    {
+      id: 'help',
+      label: 'Aide',
+      icon: <HelpCircle className="w-5 h-5" />,
+      description: 'Centre d\'aide et support'
+    }
   ];
 
-  return (
-    <Layout>
-      <div className="space-y-6">
-
-        <Tabs defaultValue="rates" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="rates">Taux de change</TabsTrigger>
-            <TabsTrigger value="fees">Frais</TabsTrigger>
-            <TabsTrigger value="payment">Modes de paiement</TabsTrigger>
-            <TabsTrigger value="status">Statuts</TabsTrigger>
-            <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-            <TabsTrigger value="logs">Logs d'activité</TabsTrigger>
-          </TabsList>
-
-          {/* Exchange Rates */}
-          <TabsContent value="rates">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <TrendingUp className="h-5 w-5" />
-                  <span>Taux de change</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {ratesLoading ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-24" />
-                        <Skeleton className="h-10 w-full" />
-                      </div>
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-24" />
-                        <Skeleton className="h-10 w-full" />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="usd-cny">USD → CNY</Label>
-                        <Input
-                          id="usd-cny"
-                          type="number"
-                          step="0.01"
-                          value={exchangeRates.usdToCny}
-                          onChange={(e) => setExchangeRates({...exchangeRates, usdToCny: e.target.value})}
-                          placeholder="7.25"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="usd-cdf">USD → CDF</Label>
-                        <Input
-                          id="usd-cdf"
-                          type="number"
-                          step="1"
-                          value={exchangeRates.usdToCdf}
-                          onChange={(e) => setExchangeRates({...exchangeRates, usdToCdf: e.target.value})}
-                          placeholder="2850"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        checked={exchangeRates.autoMode}
-                        onCheckedChange={(checked) => setExchangeRates({...exchangeRates, autoMode: checked})}
-                      />
-                      <Label>Mode automatique via API</Label>
-                    </div>
-                    
-                    <Button 
-                      className="bg-emerald-600 hover:bg-emerald-700"
-                      onClick={handleSaveExchangeRates}
-                      disabled={isUpdating}
-                    >
-                      {isUpdating ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Sauvegarde...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="mr-2 h-4 w-4" />
-                          Enregistrer les taux
-                        </>
-                      )}
-                    </Button>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Fees */}
-          <TabsContent value="fees">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Percent className="h-5 w-5" />
-                  <span>Frais de transaction</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {feesLoading ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      {Array.from({ length: 3 }).map((_, index) => (
-                        <div key={index} className="space-y-2">
-                          <Skeleton className="h-4 w-24" />
-                          <Skeleton className="h-10 w-full" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="fee-transfert">Frais transfert (%)</Label>
-                        <Input
-                          id="fee-transfert"
-                          type="number"
-                          step="0.1"
-                          value={fees.transfert}
-                          onChange={(e) => setFees({...fees, transfert: e.target.value})}
-                          placeholder="5"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="fee-commande">Frais commande (%)</Label>
-                        <Input
-                          id="fee-commande"
-                          type="number"
-                          step="0.1"
-                          value={fees.commande}
-                          onChange={(e) => setFees({...fees, commande: e.target.value})}
-                          placeholder="10"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="fee-partenaire">Commission partenaire (%)</Label>
-                        <Input
-                          id="fee-partenaire"
-                          type="number"
-                          step="0.1"
-                          value={fees.partenaire}
-                          onChange={(e) => setFees({...fees, partenaire: e.target.value})}
-                          placeholder="3"
-                        />
-                      </div>
-                    </div>
-                    
-                    <Button 
-                      className="bg-emerald-600 hover:bg-emerald-700"
-                      onClick={handleSaveFees}
-                      disabled={isUpdating}
-                    >
-                      {isUpdating ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Sauvegarde...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="mr-2 h-4 w-4" />
-                          Enregistrer les frais
-                        </>
-                      )}
-                    </Button>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Payment Methods */}
-          <TabsContent value="payment">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <CreditCard className="h-5 w-5" />
-                    <span>Modes de paiement</span>
-                  </div>
-                  <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button size="sm" onClick={resetPaymentForm}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Ajouter
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>
-                          {editingPayment ? 'Modifier le mode de paiement' : 'Ajouter un mode de paiement'}
-                        </DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="payment-name">Nom</Label>
-                          <Input
-                            id="payment-name"
-                            value={paymentForm.name}
-                            onChange={(e) => setPaymentForm({...paymentForm, name: e.target.value})}
-                            placeholder="Ex: Airtel Money"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="payment-code">Code</Label>
-                          <Input
-                            id="payment-code"
-                            value={paymentForm.code}
-                            onChange={(e) => setPaymentForm({...paymentForm, code: e.target.value})}
-                            placeholder="Ex: airtel_money"
-                            disabled={!!editingPayment}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="payment-icon">Icône</Label>
-                          <Input
-                            id="payment-icon"
-                            value={paymentForm.icon}
-                            onChange={(e) => setPaymentForm({...paymentForm, icon: e.target.value})}
-                            placeholder="Ex: smartphone"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="payment-description">Description</Label>
-                          <Textarea
-                            id="payment-description"
-                            value={paymentForm.description}
-                            onChange={(e) => setPaymentForm({...paymentForm, description: e.target.value})}
-                            placeholder="Description du mode de paiement"
-                          />
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            checked={paymentForm.is_active}
-                            onCheckedChange={(checked) => setPaymentForm({...paymentForm, is_active: checked})}
-                          />
-                          <Label>Actif</Label>
-                        </div>
-                        <div className="flex justify-end space-x-2">
-                          <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
-                            Annuler
-                          </Button>
-                          <Button onClick={handleSavePayment}>
-                            {editingPayment ? 'Mettre à jour' : 'Créer'}
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {paymentsLoading ? (
-                  <div className="space-y-4">
-                    {Array.from({ length: 4 }).map((_, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <Skeleton className="h-6 w-6" />
-                          <Skeleton className="h-4 w-32" />
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Skeleton className="h-8 w-8" />
-                          <Skeleton className="h-8 w-8" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {paymentMethods.map((method) => (
-                      <div key={method.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleTogglePayment(method.id, !method.is_active)}
-                          >
-                            {method.is_active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                          </Button>
-                          <div>
-                            <span className="font-medium">{method.name}</span>
-                            {method.description && (
-                              <p className="text-sm text-gray-500">{method.description}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleEditPayment(method)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="text-red-600"
-                            onClick={() => handleDeletePayment(method)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Transaction Status */}
-          <TabsContent value="status">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Activity className="h-5 w-5" />
-                  <span>Statuts de transaction</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {transactionStatuses.map((status) => (
-                    <div key={status.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <Badge className={`bg-${status.color}-100 text-${status.color}-800`}>
-                          {status.name}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button variant="ghost" size="icon">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="text-red-600">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'profile':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Profil</h2>
+              <p className="text-gray-600">Gérez vos informations personnelles et vos préférences</p>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Informations personnelles</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    defaultValue={profile?.first_name || ''}
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nom</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    defaultValue={profile?.last_name || ''}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <input
+                    type="email"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                    value={user?.email || ''}
+                    disabled
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Rôle</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                    value={profile?.role || ''}
+                    disabled
+                  />
+                </div>
+              </div>
+              <div className="mt-6">
+                <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                  Enregistrer les modifications
+                </button>
+              </div>
+            </div>
+          </div>
+        );
 
-          {/* Users */}
-          <TabsContent value="users">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-5 w-5" />
-                    <span>Utilisateurs & Permissions</span>
-                  </div>
-                  <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button size="sm" onClick={resetUserForm}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Ajouter un utilisateur
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>
-                          {editingUser ? 'Modifier le profil utilisateur' : 'Ajouter un profil utilisateur'}
-                        </DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="user-id">ID Utilisateur</Label>
-                          <Input
-                            id="user-id"
-                            value={userForm.user_id}
-                            onChange={(e) => setUserForm({...userForm, user_id: e.target.value})}
-                            placeholder="UUID de l'utilisateur"
-                            disabled={!!editingUser}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="user-name">Nom complet</Label>
-                          <Input
-                            id="user-name"
-                            value={userForm.full_name}
-                            onChange={(e) => setUserForm({...userForm, full_name: e.target.value})}
-                            placeholder="Nom complet de l'utilisateur"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="user-role">Rôle</Label>
-                          <Select value={userForm.role} onValueChange={(value: 'admin' | 'operateur') => setUserForm({...userForm, role: value})}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="admin">Admin</SelectItem>
-                              <SelectItem value="operateur">Opérateur</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="user-phone">Téléphone</Label>
-                          <Input
-                            id="user-phone"
-                            value={userForm.phone}
-                            onChange={(e) => setUserForm({...userForm, phone: e.target.value})}
-                            placeholder="Numéro de téléphone"
-                          />
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            checked={userForm.is_active}
-                            onCheckedChange={(checked) => setUserForm({...userForm, is_active: checked})}
-                          />
-                          <Label>Actif</Label>
-                        </div>
-                        <div className="flex justify-end space-x-2">
-                          <Button variant="outline" onClick={() => setUserDialogOpen(false)}>
-                            Annuler
-                          </Button>
-                          <Button onClick={handleSaveUser}>
-                            {editingUser ? 'Mettre à jour' : 'Créer'}
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {usersLoading ? (
-                  <div className="space-y-4">
-                    {Array.from({ length: 3 }).map((_, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <Skeleton className="h-10 w-10 rounded-full" />
-                          <div>
-                            <Skeleton className="h-4 w-24 mb-1" />
-                            <Skeleton className="h-3 w-32" />
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Skeleton className="h-6 w-16" />
-                          <Skeleton className="h-8 w-8" />
-                          <Skeleton className="h-8 w-8" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    {userProfiles.length === 0 ? (
-                      <div className="text-center py-8">
-                        <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun utilisateur trouvé</h3>
-                        <p className="text-gray-500 mb-4">
-                          Il semble que votre profil administrateur ne soit pas encore créé.
-                        </p>
-                        <Button 
-                          onClick={async () => {
-                            try {
-                              const response = await supabaseService.ensureCurrentUserProfile();
-                              if (response.error) {
-                                showError(response.error);
-                              } else {
-                                showSuccess('Profil administrateur créé avec succès');
-                                // Recharger les profils
-                                await refetchUserProfiles();
-                              }
-                            } catch (error: any) {
-                              showError(error.message);
-                            }
-                          }}
-                          className="bg-emerald-600 hover:bg-emerald-700"
-                        >
-                          <Users className="mr-2 h-4 w-4" />
-                          Créer mon profil administrateur
-                        </Button>
-                      </div>
-                    ) : (
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-3 px-4 font-medium text-gray-700">Nom</th>
-                            <th className="text-left py-3 px-4 font-medium text-gray-700">Email</th>
-                            <th className="text-left py-3 px-4 font-medium text-gray-700">Rôle</th>
-                            <th className="text-left py-3 px-4 font-medium text-gray-700">Statut</th>
-                            <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {userProfiles.map((user) => (
-                            <tr key={user.id} className="border-b hover:bg-gray-50">
-                              <td className="py-3 px-4 font-medium">{user.full_name}</td>
-                              <td className="py-3 px-4 text-gray-600">{user.user?.email}</td>
-                              <td className="py-3 px-4">
-                                <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                                  {user.role === 'admin' ? 'Admin' : 'Opérateur'}
-                                </Badge>
-                              </td>
-                              <td className="py-3 px-4">
-                                <Badge className={user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                                  {user.is_active ? 'Actif' : 'Inactif'}
-                                </Badge>
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="flex items-center space-x-2">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon"
-                                    onClick={() => handleToggleUser(user.id, !user.is_active)}
-                                  >
-                                    {user.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                  </Button>
-                                  <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="text-red-600"
-                                    onClick={() => handleDeleteUser(user)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+      case 'payment-methods':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Moyens de paiement</h2>
+              <p className="text-gray-600">Configurez les modes de paiement acceptés dans votre système</p>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-medium text-gray-900">Liste des moyens de paiement</h3>
+                  <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                    Ajouter un moyen de paiement
+                  </button>
+                </div>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Nom
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Code
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Statut
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paymentMethods.map((method) => (
+                      <tr key={method.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            {method.icon && (
+                              <span className="mr-3 text-xl">{method.icon}</span>
+                            )}
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {method.name}
+                              </div>
+                              {method.description && (
+                                <div className="text-sm text-gray-500">
+                                  {method.description}
                                 </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-900">{method.code}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            method.is_active 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {method.is_active ? 'Actif' : 'Inactif'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button className="text-indigo-600 hover:text-indigo-900 mr-3">
+                            Modifier
+                          </button>
+                          <button className="text-red-600 hover:text-red-900">
+                            Supprimer
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                
+                {paymentMethods.length === 0 && (
+                  <div className="text-center py-12">
+                    <CreditCard className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">
+                      Aucun moyen de paiement
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Commencez par ajouter un moyen de paiement.
+                    </p>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </div>
+            </div>
+          </div>
+        );
 
-          {/* Activity Logs */}
-          <TabsContent value="logs">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Activity className="h-5 w-5" />
-                  <span>Logs d'activité</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {logsLoading ? (
-                  <div className="space-y-4">
-                    {Array.from({ length: 5 }).map((_, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2">
-                            <Skeleton className="h-4 w-24" />
-                            <Skeleton className="h-4 w-48" />
-                          </div>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Skeleton className="h-5 w-20" />
-                            <Skeleton className="h-3 w-24" />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {logs.data.map((log) => (
-                      <div key={log.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2">
-                            <span className="font-medium">{log.user?.email || 'Utilisateur inconnu'}</span>
-                            <span className="text-gray-400">•</span>
-                            <span className="text-gray-600">{log.action}</span>
-                          </div>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Badge variant="outline">{log.entity_type || 'Système'}</Badge>
-                            <span className="text-xs text-gray-500">
-                              {new Date(log.date || log.created_at).toLocaleString('fr-FR')}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+      default:
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                {tabs.find(tab => tab.id === activeTab)?.label}
+              </h2>
+              <p className="text-gray-600">
+                {tabs.find(tab => tab.id === activeTab)?.description}
+              </p>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="text-center py-12">
+                <SettingsIcon className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">
+                  Cette section est en cours de développement
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Les fonctionnalités pour cette section seront bientôt disponibles.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+    }
+  };
 
-        {/* Delete Payment Method Confirmation Dialog */}
-        <ConfirmDialog
-          open={deletePaymentDialogOpen}
-          onOpenChange={setDeletePaymentDialogOpen}
-          title="Supprimer le mode de paiement"
-          description={`Êtes-vous sûr de vouloir supprimer le mode de paiement "${paymentToDelete?.name}" ? Cette action est irréversible.`}
-          confirmText="Supprimer"
-          cancelText="Annuler"
-          onConfirm={confirmDeletePayment}
-          isConfirming={isDeleting}
-          type="delete"
-        />
-
-        {/* Toggle Payment Method Confirmation Dialog */}
-        <ConfirmDialog
-          open={togglePaymentDialogOpen}
-          onOpenChange={setTogglePaymentDialogOpen}
-          title={`${paymentToToggle?.isActive ? 'Activer' : 'Désactiver'} le mode de paiement`}
-          description={`Êtes-vous sûr de vouloir ${paymentToToggle?.isActive ? 'activer' : 'désactiver'} le mode de paiement "${paymentMethods.find(m => m.id === paymentToToggle?.id)?.name}" ?`}
-          confirmText={paymentToToggle?.isActive ? 'Activer' : 'Désactiver'}
-          cancelText="Annuler"
-          onConfirm={confirmTogglePayment}
-          isConfirming={isToggling}
-          type="warning"
-        />
-
-        {/* Delete User Confirmation Dialog */}
-        <ConfirmDialog
-          open={deleteUserDialogOpen}
-          onOpenChange={setDeleteUserDialogOpen}
-          title="Supprimer l'utilisateur"
-          description={`Êtes-vous sûr de vouloir supprimer l'utilisateur "${userToDelete?.full_name}" ? Cette action est irréversible.`}
-          confirmText="Supprimer"
-          cancelText="Annuler"
-          onConfirm={confirmDeleteUser}
-          isConfirming={isDeleting}
-          type="delete"
-        />
-
-        {/* Toggle User Confirmation Dialog */}
-        <ConfirmDialog
-          open={toggleUserDialogOpen}
-          onOpenChange={setToggleUserDialogOpen}
-          title={`${userToToggle?.isActive ? 'Activer' : 'Désactiver'} l'utilisateur`}
-          description={`Êtes-vous sûr de vouloir ${userToToggle?.isActive ? 'activer' : 'désactiver'} l'utilisateur "${userProfiles.find(u => u.id === userToToggle?.id)?.full_name}" ?`}
-          confirmText={userToToggle?.isActive ? 'Activer' : 'Désactiver'}
-          cancelText="Annuler"
-          onConfirm={confirmToggleUser}
-          isConfirming={isToggling}
-          type="warning"
-        />
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement...</p>
+        </div>
       </div>
-    </Layout>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center">
+              <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              >
+                {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+              <h1 className="ml-2 lg:ml-0 text-xl font-semibold text-gray-900">Paramètres</h1>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex">
+        {/* Sidebar Navigation */}
+        <aside className={`
+          fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:inset-0
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}>
+          <div className="h-full flex flex-col">
+            {/* Mobile Header */}
+            <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Navigation */}
+            <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setIsSidebarOpen(false);
+                  }}
+                  className={`
+                    w-full flex items-start space-x-3 px-4 py-3 rounded-lg text-left transition-all duration-200
+                    ${activeTab === tab.id
+                      ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700'
+                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                    }
+                  `}
+                >
+                  <div className="flex-shrink-0 mt-0.5">
+                    {tab.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium">{tab.label}</div>
+                    <div className="text-sm text-gray-500 mt-0.5">{tab.description}</div>
+                  </div>
+                </button>
+              ))}
+            </nav>
+          </div>
+        </aside>
+
+        {/* Overlay for mobile */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
+        {/* Main Content */}
+        <main className="flex-1 lg:ml-0">
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-4 lg:py-8">
+            {/* Content with proper spacing */}
+            <div className="space-y-6">
+              {renderContent()}
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
   );
 };
 

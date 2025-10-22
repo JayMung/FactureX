@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { PageProvider } from "@/contexts/PageContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import ClientsExtended from "./pages/Clients-Extended";
@@ -22,31 +23,33 @@ const AppExtended = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/admin-setup" element={<AdminSetup />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Index />
-              </ProtectedRoute>
-            } />
-            <Route path="/clients" element={
-              <ProtectedRoute>
-                <ClientsExtended />
-              </ProtectedRoute>
-            } />
-            <Route path="/transactions" element={
-              <ProtectedRoute>
-                <Transactions />
-              </ProtectedRoute>
-            } />
-            <Route path="/settings" element={
-              <ProtectedRoute adminOnly>
-                <Settings />
-              </ProtectedRoute>
-            } />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <PageProvider>
+            <Routes>
+              <Route path="/admin-setup" element={<AdminSetup />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Index />
+                </ProtectedRoute>
+              } />
+              <Route path="/clients" element={
+                <ProtectedRoute>
+                  <ClientsExtended />
+                </ProtectedRoute>
+              } />
+              <Route path="/transactions" element={
+                <ProtectedRoute>
+                  <Transactions />
+                </ProtectedRoute>
+              } />
+              <Route path="/settings" element={
+                <ProtectedRoute adminOnly>
+                  <Settings />
+                </ProtectedRoute>
+              } />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </PageProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

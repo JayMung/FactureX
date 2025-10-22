@@ -8,11 +8,6 @@ import {
   DollarSign,
   Users,
   FileText,
-  Download,
-  Database,
-  Smartphone,
-  Globe,
-  HelpCircle,
   Shield,
   Info,
   LogOut
@@ -163,18 +158,6 @@ const Settings = () => {
       icon: <FileText className="w-4 h-4" />,
       description: 'Consulter les logs des transactions et actions',
       adminOnly: true
-    },
-    {
-      id: 'data-export',
-      label: 'Export des données',
-      icon: <Download className="w-4 h-4" />,
-      description: 'Exporter clients et transactions en CSV'
-    },
-    {
-      id: 'backup',
-      label: 'Sauvegarde',
-      icon: <Database className="w-4 h-4" />,
-      description: 'Gérer les sauvegardes manuelles'
     },
     {
       id: 'about',
@@ -468,42 +451,6 @@ const Settings = () => {
                 <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
                   Mettre à jour les frais
                 </button>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'data-export':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Export des données</h2>
-              <p className="text-gray-600">Exportez vos clients et transactions en format CSV</p>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Options d'export</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Export des clients</h4>
-                    <p className="text-sm text-gray-500">Exporter tous les clients avec leurs informations</p>
-                  </div>
-                  <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
-                    <Download className="w-4 h-4 mr-2" />
-                    Exporter
-                  </button>
-                </div>
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Export des transactions</h4>
-                    <p className="text-sm text-gray-500">Exporter toutes les transactions avec détails</p>
-                  </div>
-                  <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
-                    <Download className="w-4 h-4 mr-2" />
-                    Exporter
-                  </button>
-                </div>
               </div>
             </div>
           </div>

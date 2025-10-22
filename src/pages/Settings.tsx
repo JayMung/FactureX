@@ -803,7 +803,7 @@ const Settings = () => {
                     </div>
                   </div>
 
-                  <Button onClick={handleSaveProfile} disabled={saving}>
+                  <Button onClick={handleSaveProfile} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
                     {saving ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -826,7 +826,7 @@ const Settings = () => {
                       <Users className="mr-2 h-5 w-5" />
                       Utilisateurs
                     </CardTitle>
-                    <Button onClick={handleAddUser}>
+                    <Button onClick={handleAddUser} className="bg-emerald-600 hover:bg-emerald-700">
                       <Plus className="mr-2 h-4 w-4" />
                       Ajouter un utilisateur
                     </Button>
@@ -835,7 +835,7 @@ const Settings = () => {
                 <CardContent>
                   {usersLoading ? (
                     <div className="flex items-center justify-center h-32">
-                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -849,7 +849,10 @@ const Settings = () => {
                               <p className="font-medium">{user.full_name}</p>
                               <p className="text-sm text-gray-500">{user.auth_user?.email}</p>
                               <div className="flex items-center space-x-2 mt-1">
-                                <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                                <Badge 
+                                  variant={user.role === 'admin' ? 'default' : 'secondary'}
+                                  className={user.role === 'admin' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                                >
                                   {user.role === 'admin' ? (
                                     <>
                                       <Crown className="mr-1 h-3 w-3" />
@@ -862,7 +865,10 @@ const Settings = () => {
                                     </>
                                   )}
                                 </Badge>
-                                <Badge variant={user.is_active ? 'default' : 'secondary'}>
+                                <Badge 
+                                  variant={user.is_active ? 'default' : 'secondary'}
+                                  className={user.is_active ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                                >
                                   {user.is_active ? 'Actif' : 'Inactif'}
                                 </Badge>
                               </div>
@@ -873,6 +879,7 @@ const Settings = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleToggleUserStatus(user)}
+                              className="hover:bg-emerald-50 hover:text-emerald-700"
                             >
                               {user.is_active ? (
                                 <UserX className="h-4 w-4" />
@@ -884,13 +891,14 @@ const Settings = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEditUser(user)}
+                              className="hover:bg-emerald-50 hover:text-emerald-700"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-red-600"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               onClick={() => handleDeleteUser(user)}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -913,10 +921,13 @@ const Settings = () => {
                       <CreditCard className="mr-2 h-5 w-5" />
                       Moyens de paiement
                     </CardTitle>
-                    <Button onClick={() => {
-                      setSelectedPaymentMethod(undefined);
-                      setIsPaymentMethodFormOpen(true);
-                    }}>
+                    <Button 
+                      onClick={() => {
+                        setSelectedPaymentMethod(undefined);
+                        setIsPaymentMethodFormOpen(true);
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                    >
                       <Plus className="mr-2 h-4 w-4" />
                       Ajouter un moyen
                     </Button>
@@ -927,13 +938,16 @@ const Settings = () => {
                     {paymentMethods.map((method) => (
                       <div key={method.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <CreditCard className="h-5 w-5 text-blue-600" />
+                          <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                            <CreditCard className="h-5 w-5 text-emerald-600" />
                           </div>
                           <div>
                             <p className="font-medium">{method.name}</p>
                             <p className="text-sm text-gray-500">{method.description}</p>
-                            <Badge variant={method.is_active ? 'default' : 'secondary'}>
+                            <Badge 
+                              variant={method.is_active ? 'default' : 'secondary'}
+                              className={method.is_active ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                            >
                               {method.is_active ? 'Actif' : 'Inactif'}
                             </Badge>
                           </div>
@@ -943,6 +957,7 @@ const Settings = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleTogglePaymentMethod(method)}
+                            className="hover:bg-emerald-50 hover:text-emerald-700"
                           >
                             {method.is_active ? 'Désactiver' : 'Activer'}
                           </Button>
@@ -953,13 +968,14 @@ const Settings = () => {
                               setSelectedPaymentMethod(method);
                               setIsPaymentMethodFormOpen(true);
                             }}
+                            className="hover:bg-emerald-50 hover:text-emerald-700"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-red-600"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             onClick={() => handleDeletePaymentMethod(method)}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -1007,6 +1023,7 @@ const Settings = () => {
                   <Button 
                     onClick={() => handleSaveSettings('taux_change', exchangeRates)}
                     disabled={saving}
+                    className="bg-emerald-600 hover:bg-emerald-700"
                   >
                     {saving ? (
                       <>
@@ -1066,6 +1083,7 @@ const Settings = () => {
                   <Button 
                     onClick={() => handleSaveSettings('frais', transactionFees)}
                     disabled={saving}
+                    className="bg-emerald-600 hover:bg-emerald-700"
                   >
                     {saving ? (
                       <>
@@ -1094,8 +1112,8 @@ const Settings = () => {
                     {activityLogs.map((log) => (
                       <div key={log.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                            <FileText className="h-5 w-5 text-purple-600" />
+                          <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                            <FileText className="h-5 w-5 text-emerald-600" />
                           </div>
                           <div>
                             <p className="font-medium">{log.action}</p>
@@ -1193,7 +1211,7 @@ const Settings = () => {
               >
                 Annuler
               </Button>
-              <Button onClick={handleSaveUser} disabled={saving}>
+              <Button onClick={handleSaveUser} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
                 {saving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

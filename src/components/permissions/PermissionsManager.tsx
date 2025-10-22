@@ -26,7 +26,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { UserProfile, UserPermissionsMap } from '@/types';
 import { useUserPermissions } from '@/hooks/usePermissions';
-import { MODULES_INFO, PREDEFINED_ROLES } from '@/types/permissions';
+import { MODULES_INFO, PREDEFINED_ROLES } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 
 interface PermissionsManagerProps {

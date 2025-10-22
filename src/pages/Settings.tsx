@@ -47,6 +47,17 @@ interface Profile {
   avatar_url?: string;
 }
 
+interface UserProfileData {
+  id: string;
+  user_id: string;
+  full_name: string;
+  role: string;
+  phone?: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 interface PaymentMethod {
   id: string;
   name: string;
@@ -72,6 +83,7 @@ const Settings = () => {
 
   const [activeTab, setActiveTab] = useState('profile');
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
@@ -111,18 +123,36 @@ const Settings = () => {
             user_metadata: user.user_metadata
           });
           
-          // Fetch profile data
+          // Fetch profile data from profiles table
           const { data: profileData } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', user.id)
             .single();
           
+          // Fetch user profile data from user_profiles table
+          const { data: userProfileData } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+          
           setProfile(profileData);
+          setUserProfile(userProfileData);
+          
+          // Pré-remplir le formulaire avec les données disponibles
           if (profileData) {
             setProfileForm({
               first_name: profileData.first_name || '',
               last_name: profileData.last_name || ''
+            });
+          } else if (userProfileData) {
+            // Extraire le nom complet depuis user_profiles
+            const fullName = userProfileData.full_name || '';
+            const nameParts = fullName.split(' ');
+            setProfileForm({
+              first_name: nameParts[0] || '',
+              last_name: nameParts.slice(1).join(' ') || ''
             });
           }
         }
@@ -217,28 +247,75 @@ const Settings = () => {
     }
   };
 
-  // Fonctions CRUD
+  // Fonctions CRUD améliorées
   const updateProfile = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
+      if (!user?.id) throw new Error('Utilisateur non trouvé');
+      
+      const fullName = `${profileForm.first_name} ${profileForm.last_name}`.trim();
+      
+      // 1. Mettre à jour la table profiles
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
           first_name: profileForm.first_name,
           last_name: profileForm.last_name
         })
-        .eq('id', user?.id);
+        .eq('id', user.id);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
       
-      // Mettre à jour le profil local
+      // 2. Mettre à jour la table user_profiles
+      if (userProfile) {
+        const { error: userProfileError } = await supabase
+          .from('user_profiles')
+          .update({
+            full_name: fullName
+          })
+          .eq('user_id', user.id);
+
+        if (userProfileError) throw userProfileError;
+      } else {
+        // Créer le profil user_profiles s'il n'existe pas
+        const { error: createProfileError } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: user.id,
+            full_name: fullName,
+            role: profile?.role || 'operateur',
+            is_active: true
+          });
+
+        if (createProfileError) throw createProfileError;
+      }
+      
+      // 3. Mettre à jour les métadonnées utilisateur pour le header
+      await supabase.auth.updateUser({
+        data: { 
+          first_name: profileForm.first_name, 
+          last_name: profileForm.last_name,
+          full_name: fullName
+        }
+      });
+
+      // 4. Mettre à jour l'état local
       const updatedProfile = { ...profile, ...profileForm };
       setProfile(updatedProfile);
       
-      // Mettre à jour les métadonnées utilisateur
-      await supabase.auth.updateUser({
-        data: { first_name: profileForm.first_name, last_name: profileForm.last_name }
-      });
+      const updatedUserProfile = { ...userProfile, full_name: fullName };
+      setUserProfile(updatedUserProfile);
+      
+      // 5. Mettre à jour l'état utilisateur pour synchroniser le header
+      setUser(prev => prev ? {
+        ...prev,
+        user_metadata: {
+          ...prev.user_metadata,
+          first_name: profileForm.first_name,
+          last_name: profileForm.last_name,
+          full_name: fullName
+        }
+      } : null);
 
       showSuccess('Profil mis à jour avec succès');
     } catch (error: any) {
@@ -483,7 +560,7 @@ const Settings = () => {
                     <div className="space-y-2">
                       <Label>Rôle</Label>
                       <Input
-                        value={profile?.role || ''}
+                        value={profile?.role || userProfile?.role || ''}
                         disabled
                         className="bg-gray-50"
                       />

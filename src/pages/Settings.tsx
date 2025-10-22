@@ -247,15 +247,52 @@ const Settings = () => {
         return;
       }
 
-      // Récupérer tous les utilisateurs auth pour avoir les emails
-      const { data: authUsers } = await supabase.auth.admin.listUsers();
+      // Récupérer les emails depuis la table profiles (qui contient les emails des utilisateurs auth)
+      const userIds = (userProfiles || []).map(up => up.user_id).filter(Boolean);
       
-      // Combiner les données
+      if (userIds.length === 0) {
+        console.log('No users found');
+        setUsers([]);
+        setUsersLoading(false);
+        return;
+      }
+
+      const { data: profiles, error: profilesEmailError } = await supabase
+        .from('profiles')
+        .select('id, email, first_name, last_name')
+        .in('id', userIds);
+
+      if (profilesEmailError) {
+        console.error('Error fetching profiles for emails:', profilesEmailError);
+      }
+
+      // Créer une map des emails par user_id
+      const emailMap = new Map();
+      (profiles || []).forEach(profile => {
+        if (profile.id && profile.email) {
+          emailMap.set(profile.id, profile.email);
+        }
+      });
+
+      // Combiner les données et formater pour l'affichage
       const combinedUsers = (userProfiles || []).map(profile => {
-        const authUser = (authUsers.users as any[])?.find(user => user.id === profile.user_id);
+        const email = emailMap.get(profile.user_id);
+        
+        // Si le nom complet est vide, essayer de le reconstruire depuis profiles
+        let fullName = profile.full_name || '';
+        if (!fullName && email) {
+          const correspondingProfile = profiles?.find(p => p.id === profile.user_id);
+          if (correspondingProfile) {
+            fullName = `${correspondingProfile.first_name || ''} ${correspondingProfile.last_name || ''}`.trim();
+          }
+        }
+
         return {
           ...profile,
-          auth_user: authUser ? { email: authUser.email } : null
+          full_name: fullName || 'Nom non spécifié',
+          auth_user: { 
+            email: email || 'Email non disponible'
+          }
         };
       });
 
@@ -395,71 +432,24 @@ const Settings = () => {
     }
   };
 
-  const handleToggleUserStatus = async (user: UserProfileData) => {
-    try {
-      // Vérifier si c'est le dernier admin actif
-      if (user.role === 'admin' && user.is_active) {
-        const adminCount = users.filter(u => u.role === 'admin' && u.is_active).length;
-        if (adminCount <= 1) {
-          showError('Impossible de désactiver le dernier administrateur actif');
-          return;
-        }
-      }
-
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({ is_active: !user.is_active })
-        .eq('id', user.id);
-
-      if (error) throw error;
-      
-      // Mettre à jour l'état local
-      setUsers(prev => 
-        prev.map(u => 
-          u.id === user.id ? { ...u, is_active: !user.is_active } : u
-        )
-      );
-      
-      showSuccess(`Utilisateur ${user.is_active ? 'désactivé' : 'activé'} avec succès`);
-    } catch (error: any) {
-      console.error('Error toggling user status:', error);
-      showError(error.message || 'Erreur lors de la mise à jour du statut');
-    }
-  };
-
   const handleSaveUser = async () => {
     setSaving(true);
     try {
-      if (!userForm.email || !userForm.first_name || !userForm.last_name) {
-        showError('Veuillez remplir tous les champs obligatoires');
-        setSaving(false);
-        return;
-      }
-
       if (selectedUser) {
-        // Modification
-        const fullName = `${userForm.first_name} ${userForm.last_name}`.trim();
+        // Mise à jour
         const { error } = await supabase
           .from('user_profiles')
           .update({
-            full_name: fullName,
+            full_name: `${userForm.first_name} ${userForm.last_name}`.trim(),
             role: userForm.role,
             phone: userForm.phone
           })
           .eq('id', selectedUser.id);
 
         if (error) throw error;
-        
         showSuccess('Utilisateur mis à jour avec succès');
       } else {
-        // Validation du mot de passe pour les nouveaux utilisateurs
-        if (!userForm.password || userForm.password.length < 6) {
-          showError('Le mot de passe doit contenir au moins 6 caractères');
-          setSaving(false);
-          return;
-        }
-
-        // Création - Utiliser signUp au lieu de admin.createUser
+        // Création
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: userForm.email,
           password: userForm.password,
@@ -472,39 +462,26 @@ const Settings = () => {
           }
         });
 
-        if (authError) {
-          if (authError.message.includes('User already registered')) {
-            showError('Un utilisateur avec cet email existe déjà');
-          } else {
-            showError(authError.message);
-          }
-          setSaving(false);
-          return;
-        }
+        if (authError) throw authError;
 
         if (authData.user) {
-          // Créer le profil utilisateur
-          const fullName = `${userForm.first_name} ${userForm.last_name}`.trim();
           const { error: profileError } = await supabase
             .from('user_profiles')
-            .insert({
+            .insert([{
               user_id: authData.user.id,
-              full_name: fullName,
+              full_name: `${userForm.first_name} ${userForm.last_name}`.trim(),
               role: userForm.role,
               phone: userForm.phone,
               is_active: true
-            });
+            }]);
 
-          if (profileError) {
-            console.warn('Profile creation failed:', profileError);
-          }
+          if (profileError) throw profileError;
         }
-        
-        showSuccess('Utilisateur créé avec succès. Un email de confirmation a été envoyé.');
+        showSuccess('Utilisateur créé avec succès');
       }
-      
+
       setIsUserFormOpen(false);
-      fetchUsers(); // Recharger la liste
+      fetchUsers();
     } catch (error: any) {
       console.error('Error saving user:', error);
       showError(error.message || 'Erreur lors de la sauvegarde de l\'utilisateur');
@@ -513,33 +490,84 @@ const Settings = () => {
     }
   };
 
-  // Fonctions pour les autres sections (conservées)
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleToggleUserStatus = async (user: UserProfileData) => {
     try {
-      const file = event.target.files?.[0];
-      if (!file) return;
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ is_active: !user.is_active })
+        .eq('id', user.id);
 
-      if (!file.type.startsWith('image/')) {
-        showError('Veuillez sélectionner une image valide');
-        return;
-      }
+      if (error) throw error;
 
-      if (file.size > 5 * 1024 * 1024) {
-        showError('La taille du fichier ne doit pas dépasser 5MB');
-        return;
-      }
+      setUsers(prev => prev.map(u => 
+        u.id === user.id ? { ...u, is_active: !u.is_active } : u
+      ));
 
-      setUploading(true);
+      showSuccess(`Utilisateur ${user.is_active ? 'désactivé' : 'activé'} avec succès`);
+    } catch (error: any) {
+      console.error('Error toggling user status:', error);
+      showError(error.message || 'Erreur lors de la mise à jour du statut');
+    }
+  };
 
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          first_name: profileForm.first_name,
+          last_name: profileForm.last_name
+        })
+        .eq('id', user?.id);
+
+      if (error) throw error;
+
+      setProfile(prev => prev ? { ...prev, first_name: profileForm.first_name, last_name: profileForm.last_name } : null);
+      showSuccess('Profil mis à jour avec succès');
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      showError(error.message || 'Erreur lors de la mise à jour du profil');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveSettings = async (category: string, settings: Record<string, string>) => {
+    setSaving(true);
+    try {
+      const updates = Object.entries(settings).map(([cle, valeur]) => ({
+        categorie: category,
+        cle,
+        valeur
+      }));
+
+      const { error } = await supabase
+        .from('settings')
+        .upsert(updates, { onConflict: 'categorie,cle' });
+
+      if (error) throw error;
+      showSuccess('Paramètres sauvegardés avec succès');
+    } catch (error: any) {
+      console.error('Error saving settings:', error);
+      showError(error.message || 'Erreur lors de la sauvegarde des paramètres');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
       const fileExt = file.name.split('.').pop();
       const fileName = `avatar_${user?.id}_${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
+        .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
@@ -554,49 +582,18 @@ const Settings = () => {
 
       if (updateError) throw updateError;
 
-      await supabase.auth.updateUser({
-        data: { avatar_url: publicUrl }
-      });
-
-      const urlWithTimestamp = `${publicUrl}?t=${Date.now()}`;
-      
-      setProfile(prev => prev ? { ...prev, avatar_url: urlWithTimestamp } : null);
-      setUser(prev => prev ? {
-        ...prev,
-        user_metadata: {
-          ...prev.user_metadata,
-          avatar_url: urlWithTimestamp
-        }
-      } : null);
-
+      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
       showSuccess('Photo de profil mise à jour avec succès');
-      
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
     } catch (error: any) {
       console.error('Error uploading avatar:', error);
       showError(error.message || 'Erreur lors du téléchargement de la photo');
     } finally {
       setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
     }
   };
 
-  const handleAddPaymentMethod = () => {
-    setSelectedPaymentMethod(undefined);
-    setIsPaymentMethodFormOpen(true);
-  };
-
-  const handleEditPaymentMethod = (method: PaymentMethod) => {
-    setSelectedPaymentMethod(method);
-    setIsPaymentMethodFormOpen(true);
-  };
-
-  const handleDeletePaymentMethod = (method: PaymentMethod) => {
-    setPaymentMethodToDelete(method);
+  const handleDeletePaymentMethod = async (paymentMethod: PaymentMethod) => {
+    setPaymentMethodToDelete(paymentMethod);
     setDeleteDialogOpen(true);
   };
 
@@ -612,8 +609,7 @@ const Settings = () => {
 
       if (error) throw error;
       
-      setPaymentMethods(prev => prev.filter(m => m.id !== paymentMethodToDelete.id));
-      
+      setPaymentMethods(prev => prev.filter(pm => pm.id !== paymentMethodToDelete.id));
       setDeleteDialogOpen(false);
       setPaymentMethodToDelete(null);
       showSuccess('Moyen de paiement supprimé avec succès');
@@ -625,922 +621,79 @@ const Settings = () => {
     }
   };
 
-  const handlePaymentMethodFormSuccess = () => {
-    fetchPaymentMethods();
-  };
-
-  const updateProfile = async () => {
-    setSaving(true);
-    try {
-      if (!user?.id) throw new Error('Utilisateur non trouvé');
-      
-      const fullName = `${profileForm.first_name} ${profileForm.last_name}`.trim();
-      
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          first_name: profileForm.first_name,
-          last_name: profileForm.last_name
-        })
-        .eq('id', user.id);
-
-      if (profileError) throw profileError;
-      
-      if (userProfile) {
-        const { error: userProfileError } = await supabase
-          .from('user_profiles')
-          .update({
-            full_name: fullName
-          })
-          .eq('user_id', user.id);
-
-        if (userProfileError) throw userProfileError;
-      } else {
-        const { error: createProfileError } = await supabase
-          .from('user_profiles')
-          .insert({
-            user_id: user.id,
-            full_name: fullName,
-            role: profile?.role || 'operateur',
-            is_active: true
-          });
-
-        if (createProfileError) throw createProfileError;
-      }
-      
-      await supabase.auth.updateUser({
-        data: { 
-          first_name: profileForm.first_name, 
-          last_name: profileForm.last_name,
-          full_name: fullName,
-          avatar_url: profile?.avatar_url
-        }
-      });
-
-      const updatedProfile = { ...profile, ...profileForm };
-      setProfile(updatedProfile);
-      
-      const updatedUserProfile = { ...userProfile, full_name: fullName };
-      setUserProfile(updatedUserProfile);
-      
-      setUser(prev => prev ? {
-        ...prev,
-        user_metadata: {
-          ...prev.user_metadata,
-          first_name: profileForm.first_name,
-          last_name: profileForm.last_name,
-          full_name: fullName,
-          avatar_url: profile?.avatar_url
-        }
-      } : null);
-
-      showSuccess('Profil mis à jour avec succès');
-    } catch (error: any) {
-      console.error('Error updating profile:', error);
-      showError(error.message || 'Erreur lors de la mise à jour du profil');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const updatePassword = async () => {
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      showError('Les mots de passe ne correspondent pas');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: passwordForm.newPassword
-      });
-
-      if (error) throw error;
-      
-      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      showSuccess('Mot de passe mis à jour avec succès');
-    } catch (error: any) {
-      console.error('Error updating password:', error);
-      showError(error.message || 'Erreur lors de la mise à jour du mot de passe');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const updateExchangeRates = async () => {
-    setSaving(true);
-    try {
-      const updates = [
-        { categorie: 'taux_change', cle: 'usdToCdf', valeur: exchangeRates.usdToCdf },
-        { categorie: 'taux_change', cle: 'usdToCny', valeur: exchangeRates.usdToCny }
-      ];
-
-      const { error } = await supabase
-        .from('settings')
-        .upsert(updates, { onConflict: 'categorie,cle' });
-
-      if (error) throw error;
-      showSuccess('Taux de change mis à jour avec succès');
-    } catch (error: any) {
-      console.error('Error updating exchange rates:', error);
-      showError(error.message || 'Erreur lors de la mise à jour des taux de change');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const updateTransactionFees = async () => {
-    setSaving(true);
-    try {
-      const updates = [
-        { categorie: 'frais', cle: 'transfert', valeur: transactionFees.transfert },
-        { categorie: 'frais', cle: 'commande', valeur: transactionFees.commande },
-        { categorie: 'frais', cle: 'partenaire', valeur: transactionFees.partenaire }
-      ];
-
-      const { error } = await supabase
-        .from('settings')
-        .upsert(updates, { onConflict: 'categorie,cle' });
-
-      if (error) throw error;
-      showSuccess('Frais de transaction mis à jour avec succès');
-    } catch (error: any) {
-      console.error('Error updating transaction fees:', error);
-      showError(error.message || 'Erreur lors de la mise à jour des frais de transaction');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const togglePaymentMethod = async (id: string, isActive: boolean) => {
+  const handleTogglePaymentMethod = async (paymentMethod: PaymentMethod) => {
     try {
       const { error } = await supabase
         .from('payment_methods')
-        .update({ is_active: isActive })
-        .eq('id', id);
+        .update({ is_active: !paymentMethod.is_active })
+        .eq('id', paymentMethod.id);
 
       if (error) throw error;
-      
-      setPaymentMethods(prev => 
-        prev.map(method => 
-          method.id === id ? { ...method, is_active: isActive } : method
-        )
-      );
-      
-      showSuccess(`Moyen de paiement ${isActive ? 'activé' : 'désactivé'} avec succès`);
+
+      setPaymentMethods(prev => prev.map(pm => 
+        pm.id === paymentMethod.id ? { ...pm, is_active: !pm.is_active } : pm
+      ));
+
+      showSuccess(`Moyen de paiement ${paymentMethod.is_active ? 'désactivé' : 'activé'} avec succès`);
     } catch (error: any) {
       console.error('Error toggling payment method:', error);
-      showError(error.message || 'Erreur lors de la mise à jour du moyen de paiement');
+      showError(error.message || 'Erreur lors de la mise à jour du statut');
     }
   };
 
-  const tabs: SettingsOption[] = [
+  const settingsOptions: SettingsOption[] = [
     {
       id: 'profile',
       label: 'Profil',
-      icon: <UserIcon className="w-4 h-4" />,
-      description: 'Informations personnelles et préférences'
-    },
-    {
-      id: 'security',
-      label: 'Sécurité',
-      icon: <Shield className="w-4 h-4" />,
-      description: 'Mot de passe et authentification'
-    },
-    {
-      id: 'payment-methods',
-      label: 'Moyens de paiement',
-      icon: <CreditCard className="w-4 h-4" />,
-      description: 'Gérer Airtel Money, Orange Money, Wave, etc.'
-    },
-    {
-      id: 'exchange-rates',
-      label: 'Taux de change',
-      icon: <DollarSign className="w-4 h-4" />,
-      description: 'Configurer USD/CDF et USD/CNY'
-    },
-    {
-      id: 'transaction-fees',
-      label: 'Frais de transaction',
-      icon: <SettingsIcon className="w-4 h-4" />,
-      description: 'Définir les frais par type (Transfert/Commande)'
+      icon: <UserIcon className="h-5 w-5" />,
+      description: 'Informations personnelles et photo de profil'
     },
     {
       id: 'users',
       label: 'Utilisateurs',
-      icon: <Users className="w-4 h-4" />,
-      description: 'Gérer les comptes opérateurs et administrateurs',
+      icon: <Users className="h-5 w-5" />,
+      description: 'Gestion des comptes utilisateurs',
+      adminOnly: true
+    },
+    {
+      id: 'payment-methods',
+      label: 'Moyens de paiement',
+      icon: <CreditCard className="h-5 w-5" />,
+      description: 'Configuration des modes de paiement',
+      adminOnly: true
+    },
+    {
+      id: 'exchange-rates',
+      label: 'Taux de change',
+      icon: <DollarSign className="h-5 w-5" />,
+      description: 'Configuration des taux USD/CDF et USD/CNY',
+      adminOnly: true
+    },
+    {
+      id: 'transaction-fees',
+      label: 'Frais de transaction',
+      icon: <SettingsIcon className="h-5 w-5" />,
+      description: 'Configuration des frais par type de transaction',
       adminOnly: true
     },
     {
       id: 'activity-logs',
-      label: 'Journal d\'activité',
-      icon: <FileText className="w-4 h-4" />,
-      description: 'Consulter les logs des transactions et actions',
+      label: 'Logs d\'activité',
+      icon: <FileText className="h-5 w-5" />,
+      description: 'Historique des actions dans l\'application',
       adminOnly: true
-    },
-    {
-      id: 'about',
-      label: 'À propos',
-      icon: <Info className="w-4 h-4" />,
-      description: 'Version et informations sur CoxiPay'
     }
   ];
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'users':
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Utilisateurs</h2>
-                <p className="text-gray-600">Gérer les comptes opérateurs et administrateurs</p>
-              </div>
-              <Button 
-                onClick={handleAddUser}
-                className="bg-emerald-600 hover:bg-emerald-700"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Ajouter un utilisateur
-              </Button>
-            </div>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Liste des utilisateurs ({users.length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {usersLoading ? (
-                  <div className="space-y-4">
-                    {Array.from({ length: 5 }).map((_, index) => (
-                      <div key={index} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg animate-pulse">
-                        <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
-                        <div className="flex-1">
-                          <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
-                          <div className="h-3 bg-gray-200 rounded w-1/3"></div>
-                        </div>
-                        <div className="h-8 bg-gray-200 rounded w-20"></div>
-                      </div>
-                    ))}
-                  </div>
-                ) : users.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Users className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      Aucun utilisateur trouvé
-                    </h3>
-                    <p className="text-gray-500 mb-6">
-                      Commencez par ajouter le premier utilisateur à votre système.
-                    </p>
-                    <Button onClick={handleAddUser}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Ajouter le premier utilisateur
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {users.map((userItem) => (
-                      <div key={userItem.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-                            {userItem.role === 'admin' ? (
-                              <Crown className="h-6 w-6 text-red-600" />
-                            ) : (
-                              <UserCheck className="h-6 w-6 text-blue-600" />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2">
-                              <h3 className="font-medium text-gray-900">{userItem.full_name}</h3>
-                              <Badge className={
-                                userItem.role === 'admin' 
-                                  ? "bg-red-100 text-red-800" 
-                                  : "bg-blue-100 text-blue-800"
-                              }>
-                                {userItem.role === 'admin' ? (
-                                  <><Crown className="w-3 h-3 mr-1" />Admin</>
-                                ) : (
-                                  <><UserCheck className="w-3 h-3 mr-1" />Opérateur</>
-                                )}
-                              </Badge>
-                              <Badge className={
-                                userItem.is_active 
-                                  ? "bg-green-100 text-green-800" 
-                                  : "bg-gray-100 text-gray-800"
-                              }>
-                                {userItem.is_active ? (
-                                  <><UserCheck className="w-3 h-3 mr-1" />Actif</>
-                                ) : (
-                                  <><UserX className="w-3 h-3 mr-1" />Inactif</>
-                                )}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
-                              <div className="flex items-center space-x-1">
-                                <Mail className="w-4 h-4" />
-                                <span>{userItem.auth_user?.email || 'Email non disponible'}</span>
-                              </div>
-                              {userItem.phone && (
-                                <div className="flex items-center space-x-1">
-                                  <Phone className="w-4 h-4" />
-                                  <span>{userItem.phone}</span>
-                                </div>
-                              )}
-                              <span>
-                                Créé le {new Date(userItem.created_at || '').toLocaleDateString('fr-FR')}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleToggleUserStatus(userItem)}
-                            disabled={userItem.role === 'admin' && userItem.is_active && users.filter(u => u.role === 'admin' && u.is_active).length <= 1}
-                          >
-                            {userItem.is_active ? 'Désactiver' : 'Activer'}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditUser(userItem)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => handleDeleteUser(userItem)}
-                            disabled={userItem.role === 'admin' && users.filter(u => u.role === 'admin').length <= 1}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case 'profile':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Profil</h2>
-              <p className="text-gray-600">Gérez vos informations personnelles et vos préférences</p>
-            </div>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Photo de profil</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-6">
-                  <div className="relative">
-                    {profile?.avatar_url || user?.user_metadata?.avatar_url ? (
-                      <img
-                        src={profile?.avatar_url || user?.user_metadata?.avatar_url}
-                        alt="Photo de profil"
-                        className="w-24 h-24 rounded-full object-cover border-4 border-emerald-100"
-                      />
-                    ) : (
-                      <div className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center">
-                        <UserIcon className="w-12 h-12 text-white" />
-                      </div>
-                    )}
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="absolute bottom-0 right-0 bg-emerald-600 text-white p-2 rounded-full hover:bg-emerald-700 transition-colors"
-                      disabled={uploading}
-                    >
-                      {uploading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Camera className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Photo de profil</h3>
-                    <p className="text-sm text-gray-500 mb-4">
-                      Cliquez sur l'icône pour télécharger une nouvelle photo. 
-                      Formats acceptés: JPG, PNG, GIF. Taille maximale: 5MB.
-                    </p>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarUpload}
-                      className="hidden"
-                    />
-                    <Button
-                      onClick={() => fileInputRef.current?.click()}
-                      variant="outline"
-                      disabled={uploading}
-                    >
-                      {uploading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Téléchargement...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="mr-2 h-4 w-4" />
-                          Changer la photo
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Informations personnelles</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName">Prénom</Label>
-                      <Input
-                        id="firstName"
-                        value={profileForm.first_name}
-                        onChange={(e) => setProfileForm(prev => ({ ...prev, first_name: e.target.value }))}
-                        placeholder="Jean"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">Nom</Label>
-                      <Input
-                        id="lastName"
-                        value={profileForm.last_name}
-                        onChange={(e) => setProfileForm(prev => ({ ...prev, last_name: e.target.value }))}
-                        placeholder="Mukendi"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input
-                        value={user?.email || ''}
-                        disabled
-                        className="bg-gray-50"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Rôle</Label>
-                      <Input
-                        value={profile?.role || userProfile?.role || ''}
-                        disabled
-                        className="bg-gray-50"
-                      />
-                    </div>
-                  </div>
-                  <Button 
-                    onClick={updateProfile}
-                    disabled={saving}
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Mise à jour...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Enregistrer les modifications
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case 'security':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Sécurité</h2>
-              <p className="text-gray-600">Gérez votre mot de passe et les options de sécurité</p>
-            </div>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Changer le mot de passe</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword">Nouveau mot de passe</Label>
-                    <Input
-                      id="newPassword"
-                      type="password"
-                      value={passwordForm.newPassword}
-                      onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                      placeholder="•••••••••••••"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      value={passwordForm.confirmPassword}
-                      onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                      placeholder="•••••••••••••"
-                    />
-                  </div>
-                  <Button 
-                    onClick={updatePassword}
-                    disabled={saving || !passwordForm.newPassword || !passwordForm.confirmPassword}
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Mise à jour...
-                      </>
-                    ) : (
-                      <>
-                        <Shield className="mr-2 h-4 w-4" />
-                        Mettre à jour le mot de passe
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case 'payment-methods':
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Moyens de paiement</h2>
-                <p className="text-gray-600">Configurez les modes de paiement acceptés dans votre système</p>
-              </div>
-              <Button 
-                onClick={handleAddPaymentMethod}
-                className="bg-emerald-600 hover:bg-emerald-700"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Ajouter un moyen
-              </Button>
-            </div>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Liste des moyens de paiement</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {paymentMethods.length === 0 ? (
-                    <div className="text-center py-8">
-                      <CreditCard className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                      <h3 className="text-sm font-medium text-gray-900 mb-2">
-                        Aucun moyen de paiement configuré
-                      </h3>
-                      <p className="text-sm text-gray-500 mb-4">
-                        Commencez par ajouter les moyens de paiement mobile money.
-                      </p>
-                      <Button onClick={handleAddPaymentMethod}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Ajouter le premier moyen
-                      </Button>
-                    </div>
-                  ) : (
-                    paymentMethods.map((method) => (
-                      <div key={method.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                            <CreditCard className="h-5 w-5 text-emerald-600" />
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-900">{method.name}</div>
-                            <div className="text-sm text-gray-500">{method.code}</div>
-                            {method.description && (
-                              <div className="text-xs text-gray-400 mt-1">{method.description}</div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge className={method.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                            {method.is_active ? 'Actif' : 'Inactif'}
-                          </Badge>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => togglePaymentMethod(method.id, !method.is_active)}
-                          >
-                            {method.is_active ? 'Désactiver' : 'Activer'}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditPaymentMethod(method)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => handleDeletePaymentMethod(method)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case 'exchange-rates':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Taux de change</h2>
-              <p className="text-gray-600">Configurez les taux de conversion USD/CDF et USD/CNY</p>
-            </div>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Configuration des taux</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="usdToCdf">1 USD = (CDF)</Label>
-                      <Input
-                        id="usdToCdf"
-                        type="number"
-                        step="0.01"
-                        value={exchangeRates.usdToCdf}
-                        onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCdf: e.target.value }))}
-                        placeholder="2850"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="usdToCny">1 USD = (CNY)</Label>
-                      <Input
-                        id="usdToCny"
-                        type="number"
-                        step="0.01"
-                        value={exchangeRates.usdToCny}
-                        onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCny: e.target.value }))}
-                        placeholder="7.25"
-                      />
-                    </div>
-                  </div>
-                  <Button 
-                    onClick={updateExchangeRates}
-                    disabled={saving}
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Mise à jour...
-                      </>
-                    ) : (
-                      <>
-                        <DollarSign className="mr-2 h-4 w-4" />
-                        Mettre à jour les taux
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case 'transaction-fees':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Frais de transaction</h2>
-              <p className="text-gray-600">Définissez les frais par type de transaction</p>
-            </div>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Configuration des frais</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="transfert">Frais de Transfert (%)</Label>
-                    <Input
-                      id="transfert"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      value={transactionFees.transfert}
-                      onChange={(e) => setTransactionFees(prev => ({ ...prev, transfert: e.target.value }))}
-                      placeholder="5.00"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="commande">Frais de Commande (%)</Label>
-                    <Input
-                      id="commande"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      value={transactionFees.commande}
-                      onChange={(e) => setTransactionFees(prev => ({ ...prev, commande: e.target.value }))}
-                      placeholder="10.00"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="partenaire">Frais Partenaire (%)</Label>
-                    <Input
-                      id="partenaire"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      value={transactionFees.partenaire}
-                      onChange={(e) => setTransactionFees(prev => ({ ...prev, partenaire: e.target.value }))}
-                      placeholder="3.00"
-                    />
-                  </div>
-                  <Button 
-                    onClick={updateTransactionFees}
-                    disabled={saving}
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Mise à jour...
-                      </>
-                    ) : (
-                      <>
-                        <SettingsIcon className="mr-2 h-4 w-4" />
-                        Mettre à jour les frais
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case 'activity-logs':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Journal d'activité</h2>
-              <p className="text-gray-600">Consulter les logs des transactions et actions</p>
-            </div>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Activité récente</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {activityLogs.length === 0 ? (
-                    <div className="text-center py-8">
-                      <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                      <h3 className="text-sm font-medium text-gray-900 mb-2">
-                        Aucune activité récente
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        Les activités apparaîtront ici au fur et à mesure.
-                      </p>
-                    </div>
-                  ) : (
-                    activityLogs.map((log) => (
-                      <div key={log.id} className="flex items-start space-x-3 p-4 border border-gray-200 rounded-lg">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                          <FileText className="h-4 w-4 text-blue-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900">{log.action}</div>
-                          <div className="text-sm text-gray-500">
-                            {new Date(log.created_at).toLocaleString('fr-FR')}
-                          </div>
-                          {log.details && (
-                            <div className="text-xs text-gray-400 mt-1">
-                              {JSON.stringify(log.details)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case 'about':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">À propos</h2>
-              <p className="text-gray-600">Informations sur CoxiPay</p>
-            </div>
-            
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <div className="w-20 h-20 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <span className="text-white text-3xl font-bold">C</span>
-                  </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">CoxiPay</h3>
-                  <p className="text-gray-600 mb-6">Plateforme de transfert USD/CDF/CNY simplifiée</p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Version</h4>
-                      <p className="text-gray-600">v1.0.0</p>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Dernière mise à jour</h4>
-                      <p className="text-gray-600">15 Décembre 2024</p>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Support</h4>
-                      <p className="text-gray-600">support@coxipay.com</p>
-                    </div>
-                  </div>
-                  
-                  <div className="border-t border-gray-200 pt-6">
-                    <p className="text-sm text-gray-500">
-                      © 2024 CoxiPay. Tous droits réservés.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      default:
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {tabs.find(tab => tab.id === activeTab)?.label}
-              </h2>
-              <p className="text-gray-600">
-                {tabs.find(tab => tab.id === activeTab)?.description}
-              </p>
-            </div>
-            
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center py-12">
-                  <SettingsIcon className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">
-                    Cette section est en cours de développement
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Les fonctionnalités pour cette section seront bientôt disponibles.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-    }
-  };
-
-  const isAdmin = user?.user_metadata?.role === 'admin' || profile?.role === 'admin';
+  const filteredOptions = settingsOptions.filter(option => 
+    !option.adminOnly || userProfile?.role === 'admin'
+  );
 
   if (loading) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Chargement...</p>
-          </div>
+          <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
         </div>
       </Layout>
     );
@@ -1548,58 +701,427 @@ const Settings = () => {
 
   return (
     <Layout>
-      <div className="flex justify-end mb-6">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="outline" 
-              className="bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
-            >
-              <SettingsIcon className="w-4 h-4 mr-2" />
-              Paramètres
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
-            {tabs.map((tab) => {
-              if (tab.adminOnly && !isAdmin) {
-                return null;
-              }
-              
-              return (
-                <DropdownMenuItem
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    cursor-pointer
-                    ${activeTab === tab.id 
-                      ? 'bg-emerald-50 text-emerald-700' 
-                      : 'text-gray-700 hover:bg-gray-50'
-                    }
-                  `}
-                >
-                  <div className="flex items-center space-x-3">
-                    {tab.icon}
-                    <div>
-                      <div className="font-medium">{tab.label}</div>
-                      <div className="text-xs text-gray-500">{tab.description}</div>
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <main className="flex-1">
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-4 lg:py-8">
-          <div className="space-y-6">
-            {renderContent()}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Paramètres</h1>
+            <p className="text-gray-500">Configurez les préférences de votre application</p>
           </div>
         </div>
-      </main>
 
-      {/* Modal pour ajouter/modifier un utilisateur */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Sidebar */}
+          <div className="lg:col-span-1">
+            <Card>
+              <CardContent className="p-4">
+                <nav className="space-y-2">
+                  {filteredOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => setActiveTab(option.id)}
+                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                        activeTab === option.id
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      {option.icon}
+                      <div>
+                        <p className="font-medium">{option.label}</p>
+                        <p className="text-xs text-gray-500">{option.description}</p>
+                      </div>
+                    </button>
+                  ))}
+                </nav>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Content */}
+          <div className="lg:col-span-3">
+            {/* Profile Tab */}
+            {activeTab === 'profile' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <UserIcon className="mr-2 h-5 w-5" />
+                    Profil
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Avatar */}
+                  <div className="flex items-center space-x-4">
+                    <div className="relative">
+                      <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center overflow-hidden">
+                        {profile?.avatar_url ? (
+                          <img
+                            src={profile.avatar_url}
+                            alt="Avatar"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <UserIcon className="h-10 w-10 text-emerald-600" />
+                        )}
+                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarUpload}
+                        className="hidden"
+                      />
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        className="absolute bottom-0 right-0 p-1 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        {uploading ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Camera className="h-3 w-3" />
+                        )}
+                      </button>
+                    </div>
+                    <div>
+                      <h3 className="font-medium">{user?.email}</h3>
+                      <p className="text-sm text-gray-500">
+                        {userProfile?.role === 'admin' ? 'Administrateur' : 'Opérateur'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Profile Form */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="first_name">Prénom</Label>
+                      <Input
+                        id="first_name"
+                        value={profileForm.first_name}
+                        onChange={(e) => setProfileForm(prev => ({ ...prev, first_name: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="last_name">Nom</Label>
+                      <Input
+                        id="last_name"
+                        value={profileForm.last_name}
+                        onChange={(e) => setProfileForm(prev => ({ ...prev, last_name: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <Button onClick={handleSaveProfile} disabled={saving}>
+                    {saving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sauvegarde...
+                      </>
+                    ) : (
+                      'Sauvegarder les modifications'
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Users Tab */}
+            {activeTab === 'users' && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center">
+                      <Users className="mr-2 h-5 w-5" />
+                      Utilisateurs
+                    </CardTitle>
+                    <Button onClick={handleAddUser}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Ajouter un utilisateur
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {usersLoading ? (
+                    <div className="flex items-center justify-center h-32">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {users.map((user) => (
+                        <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                              <UserIcon className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{user.full_name}</p>
+                              <p className="text-sm text-gray-500">{user.auth_user?.email}</p>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                                  {user.role === 'admin' ? (
+                                    <>
+                                      <Crown className="mr-1 h-3 w-3" />
+                                      Admin
+                                    </>
+                                  ) : (
+                                    <>
+                                      <UserCheck className="mr-1 h-3 w-3" />
+                                      Opérateur
+                                    </>
+                                  )}
+                                </Badge>
+                                <Badge variant={user.is_active ? 'default' : 'secondary'}>
+                                  {user.is_active ? 'Actif' : 'Inactif'}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleToggleUserStatus(user)}
+                            >
+                              {user.is_active ? (
+                                <UserX className="h-4 w-4" />
+                              ) : (
+                                <UserCheck className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditUser(user)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600"
+                              onClick={() => handleDeleteUser(user)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Payment Methods Tab */}
+            {activeTab === 'payment-methods' && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center">
+                      <CreditCard className="mr-2 h-5 w-5" />
+                      Moyens de paiement
+                    </CardTitle>
+                    <Button onClick={() => {
+                      setSelectedPaymentMethod(undefined);
+                      setIsPaymentMethodFormOpen(true);
+                    }}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Ajouter un moyen
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {paymentMethods.map((method) => (
+                      <div key={method.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <CreditCard className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{method.name}</p>
+                            <p className="text-sm text-gray-500">{method.description}</p>
+                            <Badge variant={method.is_active ? 'default' : 'secondary'}>
+                              {method.is_active ? 'Actif' : 'Inactif'}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleTogglePaymentMethod(method)}
+                          >
+                            {method.is_active ? 'Désactiver' : 'Activer'}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPaymentMethod(method);
+                              setIsPaymentMethodFormOpen(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600"
+                            onClick={() => handleDeletePaymentMethod(method)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Exchange Rates Tab */}
+            {activeTab === 'exchange-rates' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <DollarSign className="mr-2 h-5 w-5" />
+                    Taux de change
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="usdToCdf">USD vers CDF</Label>
+                      <Input
+                        id="usdToCdf"
+                        type="number"
+                        value={exchangeRates.usdToCdf}
+                        onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCdf: e.target.value }))}
+                        placeholder="2850"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="usdToCny">USD vers CNY</Label>
+                      <Input
+                        id="usdToCny"
+                        type="number"
+                        value={exchangeRates.usdToCny}
+                        onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCny: e.target.value }))}
+                        placeholder="7.25"
+                      />
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => handleSaveSettings('taux_change', exchangeRates)}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sauvegarde...
+                      </>
+                    ) : (
+                      'Sauvegarder les taux'
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Transaction Fees Tab */}
+            {activeTab === 'transaction-fees' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <SettingsIcon className="mr-2 h-5 w-5" />
+                    Frais de transaction
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="transfert">Transfert (%)</Label>
+                      <Input
+                        id="transfert"
+                        type="number"
+                        value={transactionFees.transfert}
+                        onChange={(e) => setTransactionFees(prev => ({ ...prev, transfert: e.target.value }))}
+                        placeholder="5"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="commande">Commande (%)</Label>
+                      <Input
+                        id="commande"
+                        type="number"
+                        value={transactionFees.commande}
+                        onChange={(e) => setTransactionFees(prev => ({ ...prev, commande: e.target.value }))}
+                        placeholder="10"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="partenaire">Partenaire (%)</Label>
+                      <Input
+                        id="partenaire"
+                        type="number"
+                        value={transactionFees.partenaire}
+                        onChange={(e) => setTransactionFees(prev => ({ ...prev, partenaire: e.target.value }))}
+                        placeholder="3"
+                      />
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => handleSaveSettings('frais', transactionFees)}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sauvegarde...
+                      </>
+                    ) : (
+                      'Sauvegarder les frais'
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Activity Logs Tab */}
+            {activeTab === 'activity-logs' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <FileText className="mr-2 h-5 w-5" />
+                    Logs d'activité
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {activityLogs.map((log) => (
+                      <div key={log.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                            <FileText className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{log.action}</p>
+                            <p className="text-sm text-gray-500">
+                              {log.cible} - {new Date(log.created_at).toLocaleString('fr-FR')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* User Form Modal */}
       <Dialog open={isUserFormOpen} onOpenChange={setIsUserFormOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -1608,39 +1130,36 @@ const Settings = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="userEmail">Email *</Label>
+            <div>
+              <Label htmlFor="email">Email</Label>
               <Input
-                id="userEmail"
+                id="email"
                 type="email"
                 value={userForm.email}
                 onChange={(e) => setUserForm(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="utilisateur@exemple.com"
                 disabled={!!selectedUser}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="userFirstName">Prénom *</Label>
+              <div>
+                <Label htmlFor="first_name">Prénom</Label>
                 <Input
-                  id="userFirstName"
+                  id="first_name"
                   value={userForm.first_name}
                   onChange={(e) => setUserForm(prev => ({ ...prev, first_name: e.target.value }))}
-                  placeholder="Jean"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="userLastName">Nom *</Label>
+              <div>
+                <Label htmlFor="last_name">Nom</Label>
                 <Input
-                  id="userLastName"
+                  id="last_name"
                   value={userForm.last_name}
                   onChange={(e) => setUserForm(prev => ({ ...prev, last_name: e.target.value }))}
-                  placeholder="Mukendi"
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="userRole">Rôle *</Label>
+            <div>
+              <Label htmlFor="role">Rôle</Label>
               <Select
                 value={userForm.role}
                 onValueChange={(value) => setUserForm(prev => ({ ...prev, role: value }))}
@@ -1654,48 +1173,26 @@ const Settings = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="userPhone">Téléphone</Label>
+            <div>
+              <Label htmlFor="phone">Téléphone</Label>
               <Input
-                id="userPhone"
+                id="phone"
                 value={userForm.phone}
                 onChange={(e) => setUserForm(prev => ({ ...prev, phone: e.target.value }))}
-                placeholder="+243 123 456 789"
               />
             </div>
             {!selectedUser && (
-              <div className="space-y-2">
-                <Label htmlFor="userPassword">Mot de passe *</Label>
+              <div>
+                <Label htmlFor="password">Mot de passe</Label>
                 <Input
-                  id="userPassword"
+                  id="password"
                   type="password"
                   value={userForm.password}
                   onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))}
-                  placeholder="•••••••••••••"
                 />
-                <p className="text-xs text-gray-500">
-                  Le mot de passe doit contenir au moins 6 caractères
-                </p>
               </div>
             )}
-            <div className="flex space-x-3 pt-4">
-              <Button
-                onClick={handleSaveUser}
-                disabled={saving}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {selectedUser ? 'Modification...' : 'Création...'}
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    {selectedUser ? 'Mettre à jour' : 'Créer'}
-                  </>
-                )}
-              </Button>
+            <div className="flex space-x-3">
               <Button
                 variant="outline"
                 onClick={() => setIsUserFormOpen(false)}
@@ -1703,40 +1200,51 @@ const Settings = () => {
               >
                 Annuler
               </Button>
+              <Button onClick={handleSaveUser} disabled={saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sauvegarde...
+                  </>
+                ) : (
+                  'Sauvegarder'
+                )}
+              </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Modal de confirmation de suppression */}
-      <ConfirmDialog
-        open={userDeleteDialogOpen}
-        onOpenChange={setUserDeleteDialogOpen}
-        title="Supprimer l'utilisateur"
-        description={`Êtes-vous sûr de vouloir supprimer "${userToDelete?.full_name}" ? Cette action est irréversible et supprimera également toutes les données associées à cet utilisateur.`}
-        confirmText="Supprimer"
-        cancelText="Annuler"
-        onConfirm={confirmDeleteUser}
-        isConfirming={isUserDeleting}
-        type="delete"
-      />
-
+      {/* Payment Method Form Modal */}
       <PaymentMethodForm
         paymentMethod={selectedPaymentMethod}
         isOpen={isPaymentMethodFormOpen}
         onClose={() => setIsPaymentMethodFormOpen(false)}
-        onSuccess={handlePaymentMethodFormSuccess}
+        onSuccess={fetchPaymentMethods}
       />
 
+      {/* Delete Confirmation Dialogs */}
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         title="Supprimer le moyen de paiement"
-        description={`Êtes-vous sûr de vouloir supprimer "${paymentMethodToDelete?.name}" ? Cette action est irréversible et affectera toutes les transactions utilisant ce moyen de paiement.`}
+        description={`Êtes-vous sûr de vouloir supprimer "${paymentMethodToDelete?.name}" ? Cette action est irréversible.`}
         confirmText="Supprimer"
         cancelText="Annuler"
         onConfirm={confirmDeletePaymentMethod}
         isConfirming={isDeleting}
+        type="delete"
+      />
+
+      <ConfirmDialog
+        open={userDeleteDialogOpen}
+        onOpenChange={setUserDeleteDialogOpen}
+        title="Supprimer l'utilisateur"
+        description={`Êtes-vous sûr de vouloir supprimer "${userToDelete?.full_name}" ? Cette action est irréversible.`}
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        onConfirm={confirmDeleteUser}
+        isConfirming={isUserDeleting}
         type="delete"
       />
     </Layout>

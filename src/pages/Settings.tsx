@@ -415,48 +415,46 @@ const Settings = () => {
 
         console.log('✅ Utilisateur créé dans Auth avec succès:', authData);
         
-        // Fermer le formulaire immédiatement
-        setIsUserFormOpen(false);
+        // Vérifier immédiatement si le profil a été créé par le trigger
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('email', userForm.email)
+          .single();
         
-        // Attendre un peu et vérifier si le profil a été mis à jour par le trigger
-        setTimeout(async () => {
-          try {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('email', userForm.email)
-              .single();
-            
-            if (profile) {
-              console.log('✅ Profil trouvé et mis à jour!');
-              showSuccess('Utilisateur créé avec succès');
-              await fetchUsers();
-            } else {
-              console.log('⚠️ Profil pas encore trouvé, nouvelle tentative...');
-              // Réessayer après un délai plus long
-              setTimeout(async () => {
-                const { data: retryProfile } = await supabase
-                  .from('profiles')
-                  .select('*')
-                  .eq('email', userForm.email)
-                  .single();
-                
-                if (retryProfile) {
-                  showSuccess('Utilisateur créé avec succès');
-                  await fetchUsers();
-                } else {
-                  showError('Utilisateur créé mais profil non trouvé. Veuillez rafraîchir.');
-                  await fetchUsers();
-                }
-              }, 2000);
-            }
-          } catch (error) {
-            console.error('❌ Erreur lors de la vérification du profil:', error);
-            showError('Utilisateur créé mais erreur lors de la vérification. Veuillez rafraîchir.');
+        if (profile) {
+          console.log('✅ Profil trouvé immédiatement!');
+          showSuccess('Utilisateur créé avec succès');
+          await fetchUsers();
+        } else {
+          console.log('⚠️ Profil pas trouvé, tentative de création manuelle...');
+          // Créer manuellement le profil si le trigger n'a pas fonctionné
+          const { data: manualProfile, error: manualError } = await supabase
+            .from('profiles')
+            .insert([{
+              id: authData.user?.id,
+              email: userForm.email,
+              first_name: userForm.first_name,
+              last_name: userForm.last_name,
+              role: userForm.role,
+              phone: userForm.phone,
+              is_active: true
+            }])
+            .select()
+            .single();
+          
+          if (manualError) {
+            console.error('❌ Erreur création manuelle:', manualError);
+            showError('Utilisateur créé mais erreur lors de la création du profil');
+          } else {
+            console.log('✅ Profil créé manuellement!');
+            showSuccess('Utilisateur créé avec succès');
             await fetchUsers();
           }
-        }, 1000);
+        }
         
+        // Fermer le formulaire
+        setIsUserFormOpen(false);
         return; // Sortir ici pour éviter le fetchUsers() en double
       }
 

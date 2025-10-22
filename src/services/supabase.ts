@@ -520,26 +520,19 @@ export class SupabaseService {
   async getUserProfiles(): Promise<ApiResponse<(UserProfile & { user: { email: string } })[]>> {
     try {
       const { data, error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       const profiles = data || [];
-      const userIds = profiles.map(p => p.user_id).filter(Boolean);
       
-      if (userIds.length === 0) {
-        return { data: profiles.map(p => ({ ...p, user: { email: '' } })) };
-      }
-
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-      if (authError) throw authError;
-
+      // Pour la table profiles, l'email est directement dans la table
       const profilesWithEmail = profiles.map(profile => ({
         ...profile,
         user: { 
-          email: (authUsers.users as any[]).find((u: any) => u.id === profile.user_id)?.email || ''
+          email: profile.email || ''
         }
       }));
 
@@ -558,9 +551,9 @@ export class SupabaseService {
       }
 
       const { data: existingProfile } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .single();
 
       if (existingProfile) {
@@ -568,15 +561,17 @@ export class SupabaseService {
       }
 
       const profileData = {
-        user_id: user.id,
-        full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Admin',
+        id: user.id,
+        email: user.email || '',
+        first_name: user.user_metadata?.first_name || '',
+        last_name: user.user_metadata?.last_name || '',
         role: user.user_metadata?.role || 'admin',
         phone: user.user_metadata?.phone || '',
         is_active: true
       };
 
       const { data, error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .insert([profileData])
         .select()
         .single();
@@ -592,7 +587,7 @@ export class SupabaseService {
   async createUserProfile(profileData: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<UserProfile>> {
     try {
       const { data, error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .insert([profileData])
         .select()
         .single();
@@ -610,7 +605,7 @@ export class SupabaseService {
   async updateUserProfile(id: string, profileData: Partial<UserProfile>): Promise<ApiResponse<UserProfile>> {
     try {
       const { data, error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .update(profileData)
         .eq('id', id)
         .select()
@@ -629,7 +624,7 @@ export class SupabaseService {
   async toggleUserProfile(id: string, isActive: boolean): Promise<ApiResponse<void>> {
     try {
       const { error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .update({ is_active: isActive })
         .eq('id', id);
 

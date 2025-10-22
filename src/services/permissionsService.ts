@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { UserPermission, UserPermissionsMap, ModuleType, PermissionRole } from '@/types/permissions';
-import { PREDEFINED_ROLES } from '@/types/permissions';
+import type { UserPermission, UserPermissionsMap, ModuleType, PermissionRole } from '@/types';
+import { PREDEFINED_ROLES } from '@/types';
 
 export class PermissionsService {
   // Récupérer toutes les permissions d'un utilisateur
@@ -42,6 +42,7 @@ export class PermissionsService {
     }
   ): Promise<void> {
     try {
+      // Utiliser upsert pour mettre à jour ou insérer (pas d'erreur de duplicate)
       const { error } = await supabase
         .from('user_permissions')
         .upsert({
@@ -49,6 +50,9 @@ export class PermissionsService {
           module,
           ...permissions,
           updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,module', // Spécifier les colonnes pour la contrainte unique
+          ignoreDuplicates: false // Mettre à jour les lignes existantes
         });
 
       if (error) throw error;
@@ -64,11 +68,13 @@ export class PermissionsService {
       const role = PREDEFINED_ROLES.find(r => r.name === roleName);
       if (!role) throw new Error(`Rôle ${roleName} non trouvé`);
 
-      // Supprimer d'abord toutes les permissions existantes
-      await supabase
+      // Supprimer d'abord toutes les permissions existantes pour cet utilisateur
+      const { error: deleteError } = await supabase
         .from('user_permissions')
         .delete()
         .eq('user_id', userId);
+
+      if (deleteError) throw deleteError;
 
       // Appliquer les nouvelles permissions
       const permissions = Object.entries(role.permissions).map(([module, perms]) => ({
@@ -77,11 +83,11 @@ export class PermissionsService {
         ...perms
       }));
 
-      const { error } = await supabase
+      const { error: insertError } = await supabase
         .from('user_permissions')
         .insert(permissions);
 
-      if (error) throw error;
+      if (insertError) throw insertError;
     } catch (error: any) {
       console.error('Error applying role:', error);
       throw error;

@@ -25,6 +25,10 @@ import ClientForm from '../components/forms/ClientForm';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
+import { useClients } from '../hooks/useClients';
+import { useSorting } from '../hooks/useSorting';
+import { useBulkOperations } from '../hooks/useBulkOperations';
+import Pagination from '../components/ui/pagination-custom';
 import type { Client } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { cn } from '@/lib/utils';
@@ -429,7 +433,7 @@ const ClientsProtected: React.FC = () => {
                             <Skeleton className="h-4 w-16" />
                           </td>
                           <td className="py-3 px-4">
-                            <Skeleton className="h-4 w-16" />
+                            <Skeleton className="h-4 w-20" />
                           </td>
                         </tr>
                       ))

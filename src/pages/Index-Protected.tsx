@@ -162,14 +162,14 @@ const IndexProtected: React.FC = () => {
                     </div>
                   ))}
                 </div>
-              ) : !logs || logs.length === 0 ? (
+              ) : !logs || logs.data.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <Activity className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                   <p>Aucune activité récente</p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {logs.slice(0, 5).map((log) => (
+                  {logs.data.slice(0, 5).map((log) => (
                     <div key={log.id} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
                       <div className="flex-shrink-0">
                         {log.action.includes('client') ? (

@@ -56,8 +56,10 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
         ...permissions[moduleId],
         [`can_${action}`]: value
       });
+      showSuccess('Permission mise à jour avec succès');
     } catch (error: any) {
-      showError(error.message);
+      console.error('Error updating permission:', error);
+      showError(error.message || 'Erreur lors de la mise à jour de la permission');
     }
   };
 
@@ -67,7 +69,8 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
       await applyRole(roleName);
       onSuccess?.();
     } catch (error: any) {
-      showError(error.message);
+      console.error('Error applying role:', error);
+      showError(error.message || 'Erreur lors de l\'application du rôle');
     } finally {
       setIsSaving(false);
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Bell, 
   Menu, 
@@ -24,6 +24,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface HeaderProps {
   title: string;
@@ -39,6 +41,7 @@ const Header: React.FC<HeaderProps> = ({
   user 
 }) => {
   const navigate = useNavigate();
+  const { checkPermission } = usePermissions();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -86,7 +89,7 @@ const Header: React.FC<HeaderProps> = ({
               className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
               aria-label="Ouvrir le menu"
             >
-              <Menu className="w-6 h-6" />
+              <Menu className="h-6 w-6" />
             </button>
             <div className="ml-4 lg:ml-0">
               <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
@@ -106,7 +109,7 @@ const Header: React.FC<HeaderProps> = ({
                   size="sm"
                   className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                 >
-                  <Bell className="w-5 h-5" />
+                  <Bell className="h-5 w-5" />
                   <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                 </Button>
               </DropdownMenuTrigger>
@@ -116,28 +119,34 @@ const Header: React.FC<HeaderProps> = ({
                   <p className="text-xs text-gray-500">3 nouvelles notifications</p>
                 </div>
                 <div className="max-h-96 overflow-y-auto">
-                  <DropdownMenuItem className="flex items-start space-x-3 p-4 cursor-pointer">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">Nouveau client enregistré</p>
-                      <p className="text-xs text-gray-500">Jean Mukendi vient de s'inscrire</p>
-                      <p className="text-xs text-gray-400 mt-1">Il y a 5 min</p>
+                  <DropdownMenuItem className="cursor-pointer">
+                    <div className="flex items-start space-x-3 p-4">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">Nouveau client enregistré</p>
+                        <p className="text-xs text-gray-500">Jean Mukendi vient de s'inscrire</p>
+                        <p className="text-xs text-gray-400">Il y a 5 min</p>
+                      </div>
                     </div>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="flex items-start space-x-3 p-4 cursor-pointer">
-                    <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">Transaction validée</p>
-                      <p className="text-xs text-gray-500">Transfert de $500 vers CDF</p>
-                      <p className="text-xs text-gray-400 mt-1">Il y a 15 min</p>
+                  <DropdownMenuItem className="cursor-pointer">
+                    <div className="flex items-start space-x-3 p-4">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">Transaction validée</p>
+                        <p className="text-xs text-gray-500">Transfert de $500 vers CDF</p>
+                        <p className="text-xs text-gray-400">Il y a 15 min</p>
+                      </div>
                     </div>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="flex items-start space-x-3 p-4 cursor-pointer">
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">Taux de change mis à jour</p>
-                      <p className="text-xs text-gray-500">USD/CDF: 2850, USD/CNY: 7.25</p>
-                      <p className="text-xs text-gray-400 mt-1">Il y a 1h</p>
+                  <DropdownMenuItem className="cursor-pointer">
+                    <div className="flex items-start space-x-3 p-4">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">Taux de change mis à jour</p>
+                        <p className="text-xs text-gray-500">USD/CDF: 2850, USD/CNY: 7.25</p>
+                        <p className="text-xs text-gray-400">Il y a 1h</p>
+                      </div>
                     </div>
                   </DropdownMenuItem>
                 </div>
@@ -164,14 +173,16 @@ const Header: React.FC<HeaderProps> = ({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <User className="w-4 h-4 text-white" />
+                      <User className="h-4 w-4 text-white" />
                     )}
                   </div>
                   <div className="hidden md:block text-right">
                     <p className="text-sm font-medium text-gray-900 truncate">
                       {displayName}
                     </p>
-                    <p className="text-xs text-gray-500 truncate">{user?.email || 'admin@coxipay.com'}</p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {user?.email || 'admin@coxipay.com'}
+                    </p>
                   </div>
                 </Button>
               </DropdownMenuTrigger>

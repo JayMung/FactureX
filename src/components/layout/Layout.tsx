@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -37,13 +38,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     getUser();
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) {
-        navigate('/login');
-      } else {
-        setUser(session.user);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (!session?.user) {
+          navigate('/login');
+        } else {
+          setUser(session.user);
+        }
+        setLoading(false);
       }
-    });
+    );
 
     return () => subscription.unsubscribe();
   }, [navigate]);
@@ -74,23 +78,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 border-t-emerald-400"></div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex bg-gray-100">
+    <div className="h-screen flex bg-gray-100 flex">
       <Sidebar 
-        isMobileOpen={sidebarOpen}
+        isMobileOpen={sidebarOpen} 
         currentPath={location.pathname}
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
+          title={getPageTitle()} 
+          subtitle={getPageTitle() === 'Tableau de bord' ? "Vue d'ensemble de votre activité" : undefined}
           user={user}
-          title={getPageTitle()}
           onMenuToggle={toggleMobileSidebar} 
         />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 md:p-6">

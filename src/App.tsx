@@ -9,7 +9,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Clients from "./pages/Clients";
 import Transactions from "./pages/Transactions";
-import Settings from "./pages/Settings";
+import SettingsWithPermissions from "./pages/Settings-Permissions";
 import Login from "./pages/Login";
 import AdminSetup from "./pages/AdminSetup";
 import NotFound from "./pages/NotFound";
@@ -44,7 +44,7 @@ const App = () => (
             } />
             <Route path="/settings" element={
               <ProtectedRoute adminOnly>
-                <Settings />
+                <SettingsWithPermissions />
               </ProtectedRoute>
             } />
             <Route path="*" element={<NotFound />} />

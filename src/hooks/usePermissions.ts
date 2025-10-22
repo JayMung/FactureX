@@ -28,7 +28,8 @@ export const usePermissions = () => {
         console.error('Error loading permissions:', err);
         setError(err.message);
       } finally {
-        setLoading(false);
+        // Petit délai pour éviter les flashs
+        setTimeout(() => setLoading(false), 50);
       }
     };
 
@@ -43,7 +44,7 @@ export const usePermissions = () => {
     // Les admins ont toutes les permissions
     if (user?.user_metadata?.role === 'admin') return true;
     
-    // Si les permissions ne sont pas encore chargées, assumer l'accès pour éviter les erreurs de timing
+    // Si les permissions ne sont pas encore chargées, assumer l'accès pour éviter les flashs
     if (loading) return true;
     
     const modulePermissions = permissions[module];
@@ -55,7 +56,7 @@ export const usePermissions = () => {
     // Les admins ont tous les accès
     if (user?.user_metadata?.role === 'admin') return true;
     
-    // Si les permissions ne sont pas encore chargées, assumer l'accès pour éviter les erreurs de timing
+    // Si les permissions ne sont pas encore chargées, assumer l'accès pour éviter les flashs
     if (loading) return true;
     
     return checkPermission(module, 'read');
@@ -109,7 +110,7 @@ export const usePermissions = () => {
     // Les admins ont tous les accès
     if (user?.user_metadata?.role === 'admin') return MODULES_INFO;
     
-    // Si les permissions ne sont pas encore chargées, retourner tous les modules pour éviter les erreurs de timing
+    // Si les permissions ne sont pas encore chargées, retourner tous les modules pour éviter les flashs
     if (loading) return MODULES_INFO;
     
     return MODULES_INFO.filter(module => {

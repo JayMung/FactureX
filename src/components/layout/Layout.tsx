@@ -78,7 +78,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return 'Tableau de bord';
   };
 
-  // Afficher l'état de chargement ou d'erreur
+  // Afficher l'état de chargement ou d'erreur avec transitions fluides
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">

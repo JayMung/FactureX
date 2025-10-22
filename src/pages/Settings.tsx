@@ -14,7 +14,10 @@ import {
   AlertCircle,
   Loader2,
   Camera,
-  Upload
+  Upload,
+  Plus,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -35,6 +38,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { showSuccess, showError } from '@/utils/toast';
+import PaymentMethodForm from '../components/forms/PaymentMethodForm';
+import ConfirmDialog from '@/components/ui/confirm-dialog';
 
 interface UserProfile {
   id: string;
@@ -116,6 +121,13 @@ const Settings = () => {
     commande: '',
     partenaire: ''
   });
+
+  // États pour les modales
+  const [isPaymentMethodFormOpen, setIsPaymentMethodFormOpen] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | undefined>();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [paymentMethodToDelete, setPaymentMethodToDelete] = useState<PaymentMethod | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchUserAndProfile = async () => {
@@ -303,17 +315,24 @@ const Settings = () => {
         data: { avatar_url: publicUrl }
       });
 
-      // Mettre à jour l'état local
-      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
+      // Mettre à jour l'état local avec timestamp pour forcer le rechargement
+      const urlWithTimestamp = `${publicUrl}?t=${Date.now()}`;
+      
+      setProfile(prev => prev ? { ...prev, avatar_url: urlWithTimestamp } : null);
       setUser(prev => prev ? {
         ...prev,
         user_metadata: {
           ...prev.user_metadata,
-          avatar_url: publicUrl
+          avatar_url: urlWithTimestamp
         }
       } : null);
 
       showSuccess('Photo de profil mise à jour avec succès');
+      
+      // Forcer le rechargement de la page pour afficher la nouvelle image
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (error: any) {
       console.error('Error uploading avatar:', error);
       showError(error.message || 'Erreur lors du téléchargement de la photo');
@@ -323,6 +342,52 @@ const Settings = () => {
         fileInputRef.current.value = '';
       }
     }
+  };
+
+  // Fonctions CRUD pour les moyens de paiement
+  const handleAddPaymentMethod = () => {
+    setSelectedPaymentMethod(undefined);
+    setIsPaymentMethodFormOpen(true);
+  };
+
+  const handleEditPaymentMethod = (method: PaymentMethod) => {
+    setSelectedPaymentMethod(method);
+    setIsPaymentMethodFormOpen(true);
+  };
+
+  const handleDeletePaymentMethod = (method: PaymentMethod) => {
+    setPaymentMethodToDelete(method);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeletePaymentMethod = async () => {
+    if (!paymentMethodToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('payment_methods')
+        .delete()
+        .eq('id', paymentMethodToDelete.id);
+
+      if (error) throw error;
+      
+      // Mettre à jour l'état local
+      setPaymentMethods(prev => prev.filter(m => m.id !== paymentMethodToDelete.id));
+      
+      setDeleteDialogOpen(false);
+      setPaymentMethodToDelete(null);
+      showSuccess('Moyen de paiement supprimé avec succès');
+    } catch (error: any) {
+      console.error('Error deleting payment method:', error);
+      showError(error.message || 'Erreur lors de la suppression du moyen de paiement');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handlePaymentMethodFormSuccess = () => {
+    fetchPaymentMethods(); // Recharger la liste
   };
 
   // Fonctions CRUD améliorées
@@ -794,9 +859,18 @@ const Settings = () => {
       case 'payment-methods':
         return (
           <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Moyens de paiement</h2>
-              <p className="text-gray-600">Configurez les modes de paiement acceptés dans votre système</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Moyens de paiement</h2>
+                <p className="text-gray-600">Configurez les modes de paiement acceptés dans votre système</p>
+              </div>
+              <Button 
+                onClick={handleAddPaymentMethod}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Ajouter un moyen
+              </Button>
             </div>
             
             <Card>
@@ -811,13 +885,17 @@ const Settings = () => {
                       <h3 className="text-sm font-medium text-gray-900 mb-2">
                         Aucun moyen de paiement configuré
                       </h3>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 mb-4">
                         Commencez par ajouter les moyens de paiement mobile money.
                       </p>
+                      <Button onClick={handleAddPaymentMethod}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Ajouter le premier moyen
+                      </Button>
                     </div>
                   ) : (
                     paymentMethods.map((method) => (
-                      <div key={method.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <div key={method.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
                             <CreditCard className="h-5 w-5 text-emerald-600" />
@@ -825,6 +903,9 @@ const Settings = () => {
                           <div>
                             <div className="font-medium text-gray-900">{method.name}</div>
                             <div className="text-sm text-gray-500">{method.code}</div>
+                            {method.description && (
+                              <div className="text-xs text-gray-400 mt-1">{method.description}</div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -837,6 +918,21 @@ const Settings = () => {
                             onClick={() => togglePaymentMethod(method.id, !method.is_active)}
                           >
                             {method.is_active ? 'Désactiver' : 'Activer'}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditPaymentMethod(method)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => handleDeletePaymentMethod(method)}
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
@@ -1239,6 +1335,26 @@ const Settings = () => {
           </div>
         </div>
       </main>
+
+      {/* Modales */}
+      <PaymentMethodForm
+        paymentMethod={selectedPaymentMethod}
+        isOpen={isPaymentMethodFormOpen}
+        onClose={() => setIsPaymentMethodFormOpen(false)}
+        onSuccess={handlePaymentMethodFormSuccess}
+      />
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Supprimer le moyen de paiement"
+        description={`Êtes-vous sûr de vouloir supprimer "${paymentMethodToDelete?.name}" ? Cette action est irréversible et affectera toutes les transactions utilisant ce moyen de paiement.`}
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        onConfirm={confirmDeletePaymentMethod}
+        isConfirming={isDeleting}
+        type="delete"
+      />
     </Layout>
   );
 };

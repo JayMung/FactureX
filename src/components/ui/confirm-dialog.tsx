@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import {
   Dialog,
@@ -6,9 +8,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { AlertTriangle, Trash2, Loader2 } from "lucide-react";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Loader2, AlertTriangle, Trash2, CheckCircle } from 'lucide-react';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -27,8 +29,8 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onOpenChange,
   title,
   description,
-  confirmText = "Confirmer",
-  cancelText = "Annuler",
+  confirmText = 'Confirmer',
+  cancelText = 'Annuler',
   onConfirm,
   isConfirming = false,
   type = 'delete'
@@ -39,19 +41,23 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         return <Trash2 className="h-5 w-5 text-red-600" />;
       case 'warning':
         return <AlertTriangle className="h-5 w-5 text-yellow-600" />;
+      case 'info':
+        return <CheckCircle className="h-5 w-5 text-blue-600" />;
       default:
-        return <AlertTriangle className="h-5 w-5 text-blue-600" />;
+        return <AlertTriangle className="h-5 w-5 text-gray-600" />;
     }
   };
 
-  const getConfirmButtonVariant = () => {
+  const getConfirmButtonClass = () => {
     switch (type) {
       case 'delete':
-        return "destructive";
+        return 'bg-red-600 hover:bg-red-700 text-white';
       case 'warning':
-        return "default";
+        return 'bg-yellow-600 hover:bg-yellow-700 text-white';
+      case 'info':
+        return 'bg-blue-600 hover:bg-blue-700 text-white';
       default:
-        return "default";
+        return 'bg-gray-600 hover:bg-gray-700 text-white';
     }
   };
 
@@ -61,15 +67,13 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         <DialogHeader>
           <div className="flex items-center space-x-2">
             {getIcon()}
-            <DialogTitle className="text-lg">{title}</DialogTitle>
+            <DialogTitle>{title}</DialogTitle>
           </div>
+          <DialogDescription>
+            {description}
+          </DialogDescription>
         </DialogHeader>
-        
-        <DialogDescription className="text-sm text-gray-600 mt-2">
-          {description}
-        </DialogDescription>
-
-        <DialogFooter className="mt-6">
+        <DialogFooter>
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
@@ -78,14 +82,14 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             {cancelText}
           </Button>
           <Button
-            variant={getConfirmButtonVariant()}
+            className={getConfirmButtonClass()}
             onClick={onConfirm}
             disabled={isConfirming}
           >
             {isConfirming ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Suppression...
+                Traitement...
               </>
             ) : (
               confirmText

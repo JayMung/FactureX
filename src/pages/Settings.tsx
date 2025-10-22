@@ -361,8 +361,14 @@ const Settings = () => {
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Left side - Main menu button and title */}
+            {/* Left side - Title only */}
             <div className="flex items-center">
+              <h1 className="text-xl font-semibold text-gray-900">Paramètres</h1>
+            </div>
+
+            {/* Right side - Settings menu button and navigation buttons */}
+            <div className="flex items-center space-x-2">
+              {/* Settings menu button */}
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
@@ -370,12 +376,8 @@ const Settings = () => {
               >
                 {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
-              <h1 className="ml-3 lg:ml-0 text-xl font-semibold text-gray-900">Paramètres</h1>
-            </div>
-
-            {/* Right side - Navigation buttons */}
-            <div className="flex items-center space-x-2">
-              {/* Back to dashboard button - visible on all screens */}
+              
+              {/* Back to dashboard button */}
               <button
                 onClick={handleBackToDashboard}
                 className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
@@ -407,10 +409,20 @@ const Settings = () => {
       </header>
 
       <div className="flex">
-        {/* Sidebar Navigation */}
+        {/* Main Content */}
+        <main className="flex-1">
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-4 lg:py-8">
+            {/* Content with proper spacing */}
+            <div className="space-y-6">
+              {renderContent()}
+            </div>
+          </div>
+        </main>
+
+        {/* Sidebar Navigation - NOW ON THE RIGHT */}
         <aside className={`
-          fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:inset-0
-          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          fixed inset-y-0 right-0 z-50 w-72 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:inset-0
+          ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
         `}>
           <div className="h-full flex flex-col">
             {/* Mobile Header */}
@@ -474,16 +486,6 @@ const Settings = () => {
             aria-label="Fermer le menu"
           />
         )}
-
-        {/* Main Content */}
-        <main className="flex-1 lg:ml-0">
-          <div className="w-full px-4 sm:px-6 lg:px-8 py-4 lg:py-8">
-            {/* Content with proper spacing */}
-            <div className="space-y-6">
-              {renderContent()}
-            </div>
-          </div>
-        </main>
       </div>
     </div>
   );

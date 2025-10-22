@@ -4,9 +4,9 @@ import React, { useEffect, useState } from 'react';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import StatCard from '../components/dashboard/StatCard';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
   DollarSign, 
   Users, 
@@ -26,7 +26,7 @@ import { formatCurrency } from '../utils/formatCurrency';
 const Index = () => {
   usePageSetup({
     title: 'Tableau de bord',
-    subtitle: 'Vue d\'ensemble de votre activité'
+    subtitle: "Vue d'ensemble de votre activité"
   });
 
   const { stats, isLoading: statsLoading } = useDashboard();
@@ -76,7 +76,7 @@ const Index = () => {
       color: 'text-indigo-600'
     },
     {
-      title: 'Aujourd\'hui',
+      title: "Aujourd'hui",
       value: statsLoading ? '...' : (stats?.todayTransactions || 0).toString(),
       change: stats?.todayTransactions ? { value: 25, isPositive: true } : undefined,
       icon: <Activity className="h-6 w-6" />,
@@ -178,7 +178,7 @@ const Index = () => {
                       <p className="text-sm font-medium text-gray-900">{log.action}</p>
                       <div className="flex items-center space-x-2 mt-1">
                         <Badge variant="outline" className="text-xs">
-                          {getEntityTypeLabel(log.entity_type)}
+                          {getEntityTypeLabel(log.cible)}
                         </Badge>
                         <span className="text-xs text-gray-500">
                           par {log.user?.email || 'Utilisateur inconnu'} • {new Date(log.date || log.created_at).toLocaleString('fr-FR')}

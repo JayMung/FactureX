@@ -435,8 +435,12 @@ const Settings = () => {
   const handleSaveUser = async () => {
     setSaving(true);
     try {
+      if (!userForm.email || !userForm.password) {
+        throw new Error('L\'email et le mot de passe sont requis');
+      }
+
       if (selectedUser) {
-        // Mise à jour
+        // Mise à jour - seulement mettre à jour le profil user_profiles
         const { error } = await supabase
           .from('user_profiles')
           .update({
@@ -449,7 +453,7 @@ const Settings = () => {
         if (error) throw error;
         showSuccess('Utilisateur mis à jour avec succès');
       } else {
-        // Création
+        // Création - utiliser Supabase Auth pour créer l'utilisateur
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: userForm.email,
           password: userForm.password,
@@ -457,26 +461,18 @@ const Settings = () => {
             data: {
               first_name: userForm.first_name,
               last_name: userForm.last_name,
-              role: userForm.role
+              role: userForm.role,
+              phone: userForm.phone
             }
           }
         });
 
-        if (authError) throw authError;
-
-        if (authData.user) {
-          const { error: profileError } = await supabase
-            .from('user_profiles')
-            .insert([{
-              user_id: authData.user.id,
-              full_name: `${userForm.first_name} ${userForm.last_name}`.trim(),
-              role: userForm.role,
-              phone: userForm.phone,
-              is_active: true
-            }]);
-
-          if (profileError) throw profileError;
+        if (authError) {
+          console.error('Auth error:', authError);
+          throw new Error(`Erreur lors de la création de l'utilisateur: ${authError.message}`);
         }
+
+        console.log('User created successfully:', authData);
         showSuccess('Utilisateur créé avec succès');
       }
 
@@ -631,7 +627,7 @@ const Settings = () => {
       if (error) throw error;
 
       setPaymentMethods(prev => prev.map(pm => 
-        pm.id === paymentMethod.id ? { ...pm, is_active: !pm.is_active } : pm
+        pm.id === paymentMethod.id ? { ...pm, is_active: !paymentMethod.is_active } : pm
       ));
 
       showSuccess(`Moyen de paiement ${paymentMethod.is_active ? 'désactivé' : 'activé'} avec succès`);

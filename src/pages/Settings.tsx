@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   User as UserIcon, 
   CreditCard, 
@@ -12,7 +12,9 @@ import {
   Info,
   CheckCircle,
   AlertCircle,
-  Loader2
+  Loader2,
+  Camera,
+  Upload
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -90,6 +92,8 @@ const Settings = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   // États pour les formulaires
@@ -247,6 +251,80 @@ const Settings = () => {
     }
   };
 
+  // Fonction d'upload de la photo de profil
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      // Vérifier la taille du fichier (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        showError('La taille du fichier ne doit pas dépasser 5MB');
+        return;
+      }
+
+      // Vérifier le type de fichier
+      if (!file.type.startsWith('image/')) {
+        showError('Veuillez sélectionner une image valide');
+        return;
+      }
+
+      setUploading(true);
+
+      // Générer un nom de fichier unique
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
+
+      // Upload vers Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Obtenir l'URL publique
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Mettre à jour la table profiles
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user?.id);
+
+      if (updateError) throw updateError;
+
+      // Mettre à jour les métadonnées utilisateur
+      await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl }
+      });
+
+      // Mettre à jour l'état local
+      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
+      setUser(prev => prev ? {
+        ...prev,
+        user_metadata: {
+          ...prev.user_metadata,
+          avatar_url: publicUrl
+        }
+      } : null);
+
+      showSuccess('Photo de profil mise à jour avec succès');
+    } catch (error: any) {
+      console.error('Error uploading avatar:', error);
+      showError(error.message || 'Erreur lors du téléchargement de la photo');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   // Fonctions CRUD améliorées
   const updateProfile = async () => {
     setSaving(true);
@@ -295,7 +373,8 @@ const Settings = () => {
         data: { 
           first_name: profileForm.first_name, 
           last_name: profileForm.last_name,
-          full_name: fullName
+          full_name: fullName,
+          avatar_url: profile?.avatar_url
         }
       });
 
@@ -313,7 +392,8 @@ const Settings = () => {
           ...prev.user_metadata,
           first_name: profileForm.first_name,
           last_name: profileForm.last_name,
-          full_name: fullName
+          full_name: fullName,
+          avatar_url: profile?.avatar_url
         }
       } : null);
 
@@ -523,6 +603,71 @@ const Settings = () => {
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Profil</h2>
               <p className="text-gray-600">Gérez vos informations personnelles et vos préférences</p>
             </div>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Photo de profil</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center space-x-6">
+                  <div className="relative">
+                    {profile?.avatar_url || user?.user_metadata?.avatar_url ? (
+                      <img
+                        src={profile?.avatar_url || user?.user_metadata?.avatar_url}
+                        alt="Photo de profil"
+                        className="w-24 h-24 rounded-full object-cover border-4 border-emerald-100"
+                      />
+                    ) : (
+                      <div className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center">
+                        <UserIcon className="w-12 h-12 text-white" />
+                      </div>
+                    )}
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute bottom-0 right-0 bg-emerald-600 text-white p-2 rounded-full hover:bg-emerald-700 transition-colors"
+                      disabled={uploading}
+                    >
+                      {uploading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Camera className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Photo de profil</h3>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Cliquez sur l'icône pour télécharger une nouvelle photo. 
+                      Formats acceptés: JPG, PNG, GIF. Taille maximale: 5MB.
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      className="hidden"
+                    />
+                    <Button
+                      onClick={() => fileInputRef.current?.click()}
+                      variant="outline"
+                      disabled={uploading}
+                    >
+                      {uploading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Téléchargement...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mr-2 h-4 w-4" />
+                          Changer la photo
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
             
             <Card>
               <CardHeader>

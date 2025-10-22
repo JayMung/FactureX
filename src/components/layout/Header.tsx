@@ -67,7 +67,13 @@ const Header: React.FC<HeaderProps> = ({
     return 'Utilisateur';
   };
 
+  // Fonction pour obtenir l'URL de l'avatar
+  const getAvatarUrl = () => {
+    return user?.user_metadata?.avatar_url || null;
+  };
+
   const displayName = getDisplayName();
+  const avatarUrl = getAvatarUrl();
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -150,8 +156,16 @@ const Header: React.FC<HeaderProps> = ({
                   variant="ghost" 
                   className="flex items-center space-x-3 text-gray-700 hover:text-gray-900 hover:bg-gray-50 px-3 py-2"
                 >
-                  <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
+                  <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center overflow-hidden">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt="Photo de profil"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-4 h-4 text-white" />
+                    )}
                   </div>
                   <div className="hidden md:block text-right">
                     <p className="text-sm font-medium text-gray-900 truncate">

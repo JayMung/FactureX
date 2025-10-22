@@ -439,7 +439,8 @@ const Settings = () => {
   const handleSaveUser = async () => {
     setSaving(true);
     try {
-      console.log('Saving user with data:', userForm);
+      console.log('💾 Début de la sauvegarde de l\'utilisateur...');
+      console.log('📝 Données du formulaire:', userForm);
       
       if (!userForm.email || !userForm.password) {
         throw new Error('L\'email et le mot de passe sont requis');
@@ -447,6 +448,7 @@ const Settings = () => {
 
       if (selectedUser) {
         // Mise à jour - seulement mettre à jour le profil user_profiles
+        console.log('🔄 Mise à jour de l\'utilisateur existant...');
         const { error } = await supabase
           .from('user_profiles')
           .update({
@@ -457,10 +459,14 @@ const Settings = () => {
           .eq('id', selectedUser.id);
 
         if (error) throw error;
+        console.log('✅ Utilisateur mis à jour avec succès');
         showSuccess('Utilisateur mis à jour avec succès');
+        
+        // Rafraîchir immédiatement la liste
+        await fetchUsers();
       } else {
         // Création - utiliser Supabase Auth pour créer l'utilisateur
-        console.log('Creating user in auth...');
+        console.log('👤 Création d\'un nouvel utilisateur dans Supabase Auth...');
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: userForm.email,
           password: userForm.password,
@@ -475,23 +481,70 @@ const Settings = () => {
         });
 
         if (authError) {
-          console.error('Auth error:', authError);
+          console.error('❌ Erreur Auth:', authError);
           throw new Error(`Erreur lors de la création de l'utilisateur: ${authError.message}`);
         }
 
-        console.log('User created successfully:', authData);
-        showSuccess('Utilisateur créé avec succès');
+        console.log('✅ Utilisateur créé dans Auth avec succès:', authData);
+        
+        // Attendre que le trigger se déclenche et créer le profil
+        console.log('⏳ Attente du déclenchement du trigger...');
+        
+        // Fermer le formulaire immédiatement
+        setIsUserFormOpen(false);
+        
+        // Attendre un peu plus longtemps et vérifier plusieurs fois
+        let attempts = 0;
+        const maxAttempts = 5;
+        const checkInterval = 1500; // 1.5 secondes
+        
+        const checkProfile = async () => {
+          attempts++;
+          console.log(`🔍 Vérification ${attempts}/${maxAttempts} du profil...`);
+          
+          try {
+            // Vérifier si le profil existe
+            const { data: checkProfile } = await supabase
+              .from('user_profiles')
+              .select('*')
+              .eq('full_name', `${userForm.first_name} ${userForm.last_name}`.trim())
+              .single();
+            
+            if (checkProfile) {
+              console.log('✅ Profil trouvé! Rafraîchissement de la liste...');
+              showSuccess('Utilisateur créé avec succès');
+              await fetchUsers();
+              return;
+            }
+            
+            if (attempts < maxAttempts) {
+              console.log('⏳ Profil pas encore trouvé, nouvelle tentative dans', checkInterval, 'ms');
+              setTimeout(checkProfile, checkInterval);
+            } else {
+              console.log('⚠️ Timeout: profil non trouvé après plusieurs tentatives');
+              showError('Utilisateur créé mais le profil n\'a pas pu être vérifié. Veuillez rafraîchir la page.');
+              await fetchUsers(); // Rafraîchir quand même
+            }
+          } catch (error) {
+            console.error('❌ Erreur lors de la vérification du profil:', error);
+            if (attempts < maxAttempts) {
+              setTimeout(checkProfile, checkInterval);
+            } else {
+              showError('Utilisateur créé mais erreur lors de la vérification. Veuillez rafraîchir la page.');
+              await fetchUsers();
+            }
+          }
+        };
+        
+        // Démarrer la vérification après un délai initial
+        setTimeout(checkProfile, 2000);
+        
+        return; // Sortir ici pour éviter le fetchUsers() en double
       }
 
       setIsUserFormOpen(false);
-      
-      // Attendre un peu pour que le trigger s'exécute, puis rafraîchir
-      setTimeout(() => {
-        fetchUsers();
-      }, 1000);
-      
     } catch (error: any) {
-      console.error('Error saving user:', error);
+      console.error('❌ Erreur lors de la sauvegarde de l\'utilisateur:', error);
       showError(error.message || 'Erreur lors de la sauvegarde de l\'utilisateur');
     } finally {
       setSaving(false);

@@ -1,0 +1,13 @@
+SELECT 
+    up.id,
+    up.user_id,
+    up.full_name,
+    up.role,
+    up.is_active,
+    au.email,
+    au.created_at as user_created_at,
+    up.created_at as profile_created_at,
+    EXTRACT(SECOND FROM (up.created_at - au.created_at)) as delay_seconds
+FROM user_profiles up
+JOIN auth.users au ON up.user_id = au.id
+WHERE au.email = 'trigger-test@example.com';

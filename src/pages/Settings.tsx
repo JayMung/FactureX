@@ -17,7 +17,12 @@ import {
   Upload,
   Plus,
   Edit,
-  Trash2
+  Trash2,
+  Crown,
+  UserCheck,
+  UserX,
+  Mail,
+  Phone
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -40,6 +45,19 @@ import { Badge } from '@/components/ui/badge';
 import { showSuccess, showError } from '@/utils/toast';
 import PaymentMethodForm from '../components/forms/PaymentMethodForm';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface UserProfile {
   id: string;
@@ -64,6 +82,9 @@ interface UserProfileData {
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
+  auth_user?: {
+    email: string;
+  };
 }
 
 interface PaymentMethod {
@@ -93,10 +114,11 @@ const Settings = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserProfileData[]>([]);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [usersLoading, setUsersLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -128,6 +150,20 @@ const Settings = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [paymentMethodToDelete, setPaymentMethodToDelete] = useState<PaymentMethod | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // États pour la gestion des utilisateurs
+  const [isUserFormOpen, setIsUserFormOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserProfileData | null>(null);
+  const [userForm, setUserForm] = useState({
+    email: '',
+    first_name: '',
+    last_name: '',
+    role: 'operateur',
+    phone: ''
+  });
+  const [userDeleteDialogOpen, setUserDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserProfileData | null>(null);
+  const [isUserDeleting, setIsUserDeleting] = useState(false);
 
   useEffect(() => {
     const fetchUserAndProfile = async () => {
@@ -181,6 +217,9 @@ const Settings = () => {
     };
 
     fetchUserAndProfile();
+  }, []);
+
+  useEffect(() => {
     if (activeTab === 'payment-methods') {
       fetchPaymentMethods();
     } else if (activeTab === 'users') {
@@ -191,6 +230,43 @@ const Settings = () => {
       fetchSettings();
     }
   }, [activeTab]);
+
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    try {
+      // Récupérer tous les user_profiles
+      const { data: userProfiles, error: profilesError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (profilesError) {
+        console.error('Error fetching user profiles:', profilesError);
+        showError('Erreur lors du chargement des profils utilisateurs');
+        return;
+      }
+
+      // Récupérer tous les utilisateurs auth pour avoir les emails
+      const { data: authUsers } = await supabase.auth.admin.listUsers();
+      
+      // Combiner les données
+      const combinedUsers = (userProfiles || []).map(profile => {
+        const authUser = (authUsers.users as any[])?.find(user => user.id === profile.user_id);
+        return {
+          ...profile,
+          auth_user: authUser ? { email: authUser.email } : null
+        };
+      });
+
+      console.log('Combined users:', combinedUsers);
+      setUsers(combinedUsers);
+    } catch (error: any) {
+      console.error('Error fetching users:', error);
+      showError(error.message || 'Erreur lors du chargement des utilisateurs');
+    } finally {
+      setUsersLoading(false);
+    }
+  };
 
   const fetchPaymentMethods = async () => {
     try {
@@ -203,23 +279,6 @@ const Settings = () => {
     } catch (error) {
       console.error('Error fetching payment methods:', error);
       showError('Erreur lors du chargement des moyens de paiement');
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const { data } = await supabase
-        .from('user_profiles')
-        .select(`
-          *,
-          auth_user:auth.users(email)
-        `)
-        .order('created_at', { ascending: false });
-      
-      setUsers(data || []);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      showError('Erreur lors du chargement des utilisateurs');
     }
   };
 
@@ -264,13 +323,179 @@ const Settings = () => {
     }
   };
 
-  // Fonction d'upload de la photo de profil
+  // Fonctions pour la gestion des utilisateurs
+  const handleAddUser = () => {
+    setSelectedUser(null);
+    setUserForm({
+      email: '',
+      first_name: '',
+      last_name: '',
+      role: 'operateur',
+      phone: ''
+    });
+    setIsUserFormOpen(true);
+  };
+
+  const handleEditUser = (user: UserProfileData) => {
+    setSelectedUser(user);
+    setUserForm({
+      email: user.auth_user?.email || '',
+      first_name: user.full_name?.split(' ')[0] || '',
+      last_name: user.full_name?.split(' ').slice(1).join(' ') || '',
+      role: user.role,
+      phone: user.phone || ''
+    });
+    setIsUserFormOpen(true);
+  };
+
+  const handleDeleteUser = (user: UserProfileData) => {
+    setUserToDelete(user);
+    setUserDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    setIsUserDeleting(true);
+    try {
+      // Vérifier si c'est le dernier admin
+      if (userToDelete.role === 'admin') {
+        const adminCount = users.filter(u => u.role === 'admin' && u.is_active).length;
+        if (adminCount <= 1) {
+          showError('Impossible de supprimer le dernier administrateur actif');
+          setUserDeleteDialogOpen(false);
+          setUserToDelete(null);
+          setIsUserDeleting(false);
+          return;
+        }
+      }
+
+      // Supprimer le profil utilisateur
+      const { error } = await supabase
+        .from('user_profiles')
+        .delete()
+        .eq('id', userToDelete.id);
+
+      if (error) throw error;
+      
+      // Mettre à jour l'état local
+      setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+      
+      setUserDeleteDialogOpen(false);
+      setUserToDelete(null);
+      showSuccess('Utilisateur supprimé avec succès');
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      showError(error.message || 'Erreur lors de la suppression de l\'utilisateur');
+    } finally {
+      setIsUserDeleting(false);
+    }
+  };
+
+  const handleToggleUserStatus = async (user: UserProfileData) => {
+    try {
+      // Vérifier si c'est le dernier admin actif
+      if (user.role === 'admin' && user.is_active) {
+        const adminCount = users.filter(u => u.role === 'admin' && u.is_active).length;
+        if (adminCount <= 1) {
+          showError('Impossible de désactiver le dernier administrateur actif');
+          return;
+        }
+      }
+
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ is_active: !user.is_active })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      
+      // Mettre à jour l'état local
+      setUsers(prev => 
+        prev.map(u => 
+          u.id === user.id ? { ...u, is_active: !u.is_active } : u
+        )
+      );
+      
+      showSuccess(`Utilisateur ${user.is_active ? 'désactivé' : 'activé'} avec succès`);
+    } catch (error: any) {
+      console.error('Error toggling user status:', error);
+      showError(error.message || 'Erreur lors de la mise à jour du statut');
+    }
+  };
+
+  const handleSaveUser = async () => {
+    setSaving(true);
+    try {
+      if (!userForm.email || !userForm.first_name || !userForm.last_name) {
+        showError('Veuillez remplir tous les champs obligatoires');
+        setSaving(false);
+        return;
+      }
+
+      if (selectedUser) {
+        // Modification
+        const fullName = `${userForm.first_name} ${userForm.last_name}`.trim();
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({
+            full_name: fullName,
+            role: userForm.role,
+            phone: userForm.phone
+          })
+          .eq('id', selectedUser.id);
+
+        if (error) throw error;
+        
+        showSuccess('Utilisateur mis à jour avec succès');
+      } else {
+        // Création - Créer d'abord l'utilisateur auth
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+          email: userForm.email,
+          password: 'TempPassword123!', // Mot de passe temporaire
+          email_confirm: true,
+          user_metadata: {
+            first_name: userForm.first_name,
+            last_name: userForm.last_name,
+            role: userForm.role
+          }
+        });
+
+        if (authError) throw authError;
+
+        // Créer le profil utilisateur
+        const fullName = `${userForm.first_name} ${userForm.last_name}`.trim();
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: authData.user.id,
+            full_name: fullName,
+            role: userForm.role,
+            phone: userForm.phone,
+            is_active: true
+          });
+
+        if (profileError) throw profileError;
+        
+        showSuccess('Utilisateur créé avec succès');
+      }
+      
+      setIsUserFormOpen(false);
+      fetchUsers(); // Recharger la liste
+    } catch (error: any) {
+      console.error('Error saving user:', error);
+      showError(error.message || 'Erreur lors de la sauvegarde de l\'utilisateur');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Fonctions pour les autres sections (conservées)
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const file = event.target.files?.[0];
       if (!file) return;
 
-      // Vérifier la taille du fichier (max 5MB)
       if (!file.type.startsWith('image/')) {
         showError('Veuillez sélectionner une image valide');
         return;
@@ -283,11 +508,9 @@ const Settings = () => {
 
       setUploading(true);
 
-      // Générer un nom de fichier unique
       const fileExt = file.name.split('.').pop();
       const fileName = `avatar_${user?.id}_${Date.now()}.${fileExt}`;
 
-      // Upload vers Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, {
@@ -297,12 +520,10 @@ const Settings = () => {
 
       if (uploadError) throw uploadError;
 
-      // Obtenir l'URL publique
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
 
-      // Mettre à jour la table profiles
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: publicUrl })
@@ -310,12 +531,10 @@ const Settings = () => {
 
       if (updateError) throw updateError;
 
-      // Mettre à jour les métadonnées utilisateur
       await supabase.auth.updateUser({
         data: { avatar_url: publicUrl }
       });
 
-      // Mettre à jour l'état local avec timestamp pour forcer le rechargement
       const urlWithTimestamp = `${publicUrl}?t=${Date.now()}`;
       
       setProfile(prev => prev ? { ...prev, avatar_url: urlWithTimestamp } : null);
@@ -329,7 +548,6 @@ const Settings = () => {
 
       showSuccess('Photo de profil mise à jour avec succès');
       
-      // Forcer le rechargement de la page pour afficher la nouvelle image
       setTimeout(() => {
         window.location.reload();
       }, 1000);
@@ -344,7 +562,6 @@ const Settings = () => {
     }
   };
 
-  // Fonctions CRUD pour les moyens de paiement
   const handleAddPaymentMethod = () => {
     setSelectedPaymentMethod(undefined);
     setIsPaymentMethodFormOpen(true);
@@ -372,7 +589,6 @@ const Settings = () => {
 
       if (error) throw error;
       
-      // Mettre à jour l'état local
       setPaymentMethods(prev => prev.filter(m => m.id !== paymentMethodToDelete.id));
       
       setDeleteDialogOpen(false);
@@ -387,10 +603,9 @@ const Settings = () => {
   };
 
   const handlePaymentMethodFormSuccess = () => {
-    fetchPaymentMethods(); // Recharger la liste
+    fetchPaymentMethods();
   };
 
-  // Fonctions CRUD améliorées
   const updateProfile = async () => {
     setSaving(true);
     try {
@@ -398,7 +613,6 @@ const Settings = () => {
       
       const fullName = `${profileForm.first_name} ${profileForm.last_name}`.trim();
       
-      // 1. Mettre à jour la table profiles
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -409,7 +623,6 @@ const Settings = () => {
 
       if (profileError) throw profileError;
       
-      // 2. Mettre à jour la table user_profiles
       if (userProfile) {
         const { error: userProfileError } = await supabase
           .from('user_profiles')
@@ -420,7 +633,6 @@ const Settings = () => {
 
         if (userProfileError) throw userProfileError;
       } else {
-        // Créer le profil user_profiles s'il n'existe pas
         const { error: createProfileError } = await supabase
           .from('user_profiles')
           .insert({
@@ -433,7 +645,6 @@ const Settings = () => {
         if (createProfileError) throw createProfileError;
       }
       
-      // 3. Mettre à jour les métadonnées utilisateur pour le header
       await supabase.auth.updateUser({
         data: { 
           first_name: profileForm.first_name, 
@@ -443,14 +654,12 @@ const Settings = () => {
         }
       });
 
-      // 4. Mettre à jour l'état local
       const updatedProfile = { ...profile, ...profileForm };
       setProfile(updatedProfile);
       
       const updatedUserProfile = { ...userProfile, full_name: fullName };
       setUserProfile(updatedUserProfile);
       
-      // 5. Mettre à jour l'état utilisateur pour synchroniser le header
       setUser(prev => prev ? {
         ...prev,
         user_metadata: {
@@ -549,7 +758,6 @@ const Settings = () => {
 
       if (error) throw error;
       
-      // Mettre à jour l'état local
       setPaymentMethods(prev => 
         prev.map(method => 
           method.id === id ? { ...method, is_active: isActive } : method
@@ -560,49 +768,6 @@ const Settings = () => {
     } catch (error: any) {
       console.error('Error toggling payment method:', error);
       showError(error.message || 'Erreur lors de la mise à jour du moyen de paiement');
-    }
-  };
-
-  const createUserProfile = async (userData: any) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .insert([userData])
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      await fetchUsers(); // Recharger la liste
-      showSuccess('Utilisateur créé avec succès');
-      return data;
-    } catch (error: any) {
-      console.error('Error creating user profile:', error);
-      showError(error.message || 'Erreur lors de la création de l\'utilisateur');
-      throw error;
-    }
-  };
-
-  const toggleUserProfile = async (id: string, isActive: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({ is_active: isActive })
-        .eq('id', id);
-
-      if (error) throw error;
-      
-      // Mettre à jour l'état local
-      setUsers(prev => 
-        prev.map(user => 
-          user.id === id ? { ...user, is_active: isActive } : user
-        )
-      );
-      
-      showSuccess(`Utilisateur ${isActive ? 'activé' : 'désactivé'} avec succès`);
-    } catch (error: any) {
-      console.error('Error toggling user profile:', error);
-      showError(error.message || 'Erreur lors de la mise à jour de l\'utilisateur');
     }
   };
 
@@ -661,6 +826,145 @@ const Settings = () => {
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'users':
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Utilisateurs</h2>
+                <p className="text-gray-600">Gérer les comptes opérateurs et administrateurs</p>
+              </div>
+              <Button 
+                onClick={handleAddUser}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Ajouter un utilisateur
+              </Button>
+            </div>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Liste des utilisateurs ({users.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {usersLoading ? (
+                  <div className="space-y-4">
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <div key={index} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg animate-pulse">
+                        <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+                        <div className="flex-1">
+                          <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+                          <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                        </div>
+                        <div className="h-8 bg-gray-200 rounded w-20"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : users.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Users className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Aucun utilisateur trouvé
+                    </h3>
+                    <p className="text-gray-500 mb-6">
+                      Commencez par ajouter le premier utilisateur à votre système.
+                    </p>
+                    <Button onClick={handleAddUser}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Ajouter le premier utilisateur
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {users.map((userItem) => (
+                      <div key={userItem.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
+                            {userItem.role === 'admin' ? (
+                              <Crown className="h-6 w-6 text-red-600" />
+                            ) : (
+                              <UserCheck className="h-6 w-6 text-blue-600" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2">
+                              <h3 className="font-medium text-gray-900">{userItem.full_name}</h3>
+                              <Badge className={
+                                userItem.role === 'admin' 
+                                  ? "bg-red-100 text-red-800" 
+                                  : "bg-blue-100 text-blue-800"
+                              }>
+                                {userItem.role === 'admin' ? (
+                                  <><Crown className="w-3 h-3 mr-1" />Admin</>
+                                ) : (
+                                  <><UserCheck className="w-3 h-3 mr-1" />Opérateur</>
+                                )}
+                              </Badge>
+                              <Badge className={
+                                userItem.is_active 
+                                  ? "bg-green-100 text-green-800" 
+                                  : "bg-gray-100 text-gray-800"
+                              }>
+                                {userItem.is_active ? (
+                                  <><UserCheck className="w-3 h-3 mr-1" />Actif</>
+                                ) : (
+                                  <><UserX className="w-3 h-3 mr-1" />Inactif</>
+                                )}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
+                              <div className="flex items-center space-x-1">
+                                <Mail className="w-4 h-4" />
+                                <span>{userItem.auth_user?.email || 'Email non disponible'}</span>
+                              </div>
+                              {userItem.phone && (
+                                <div className="flex items-center space-x-1">
+                                  <Phone className="w-4 h-4" />
+                                  <span>{userItem.phone}</span>
+                                </div>
+                              )}
+                              <span>
+                                Créé le {new Date(userItem.created_at || '').toLocaleDateString('fr-FR')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleToggleUserStatus(userItem)}
+                            disabled={userItem.role === 'admin' && userItem.is_active && users.filter(u => u.role === 'admin' && u.is_active).length <= 1}
+                          >
+                            {userItem.is_active ? 'Désactiver' : 'Activer'}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditUser(userItem)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => handleDeleteUser(userItem)}
+                            disabled={userItem.role === 'admin' && users.filter(u => u.role === 'admin').length <= 1}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        );
+
       case 'profile':
         return (
           <div className="space-y-6">
@@ -1081,66 +1385,6 @@ const Settings = () => {
           </div>
         );
 
-      case 'users':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Utilisateurs</h2>
-              <p className="text-gray-600">Gérer les comptes opérateurs et administrateurs</p>
-            </div>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Liste des utilisateurs</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {users.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                      <h3 className="text-sm font-medium text-gray-900 mb-2">
-                        Aucun utilisateur trouvé
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        Les utilisateurs apparaîtront ici après leur première connexion.
-                      </p>
-                    </div>
-                  ) : (
-                    users.map((user) => (
-                      <div key={user.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                            <Users className="h-5 w-5 text-emerald-600" />
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-900">{user.full_name}</div>
-                            <div className="text-sm text-gray-500">{user.auth_user?.email}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge className={user.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                            {user.is_active ? 'Actif' : 'Inactif'}
-                          </Badge>
-                          <Badge className="bg-blue-100 text-blue-800">
-                            {user.role}
-                          </Badge>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toggleUserProfile(user.id, !user.is_active)}
-                          >
-                            {user.is_active ? 'Désactiver' : 'Activer'}
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
       case 'activity-logs':
         return (
           <div className="space-y-6">
@@ -1264,7 +1508,6 @@ const Settings = () => {
     }
   };
 
-  // Vérifier si l'utilisateur est admin
   const isAdmin = user?.user_metadata?.role === 'admin' || profile?.role === 'admin';
 
   if (loading) {
@@ -1282,7 +1525,6 @@ const Settings = () => {
 
   return (
     <Layout>
-      {/* Settings Navigation in Header - Dropdown Menu */}
       <div className="flex justify-end mb-6">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -1296,7 +1538,6 @@ const Settings = () => {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
             {tabs.map((tab) => {
-              // Cacher les options admin si l'utilisateur n'est pas admin
               if (tab.adminOnly && !isAdmin) {
                 return null;
               }
@@ -1327,7 +1568,6 @@ const Settings = () => {
         </DropdownMenu>
       </div>
 
-      {/* Main Content */}
       <main className="flex-1">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-4 lg:py-8">
           <div className="space-y-6">
@@ -1336,7 +1576,113 @@ const Settings = () => {
         </div>
       </main>
 
-      {/* Modales */}
+      {/* Modal pour ajouter/modifier un utilisateur */}
+      <Dialog open={isUserFormOpen} onOpenChange={setIsUserFormOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedUser ? 'Modifier l\'utilisateur' : 'Ajouter un utilisateur'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="userEmail">Email *</Label>
+              <Input
+                id="userEmail"
+                type="email"
+                value={userForm.email}
+                onChange={(e) => setUserForm(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="utilisateur@exemple.com"
+                disabled={!!selectedUser}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="userFirstName">Prénom *</Label>
+                <Input
+                  id="userFirstName"
+                  value={userForm.first_name}
+                  onChange={(e) => setUserForm(prev => ({ ...prev, first_name: e.target.value }))}
+                  placeholder="Jean"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="userLastName">Nom *</Label>
+                <Input
+                  id="userLastName"
+                  value={userForm.last_name}
+                  onChange={(e) => setUserForm(prev => ({ ...prev, last_name: e.target.value }))}
+                  placeholder="Mukendi"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="userRole">Rôle *</Label>
+              <Select
+                value={userForm.role}
+                onValueChange={(value) => setUserForm(prev => ({ ...prev, role: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="operateur">Opérateur</SelectItem>
+                  <SelectItem value="admin">Administrateur</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="userPhone">Téléphone</Label>
+              <Input
+                id="userPhone"
+                value={userForm.phone}
+                onChange={(e) => setUserForm(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="+243 123 456 789"
+              />
+            </div>
+            <div className="flex space-x-3 pt-4">
+              <Button
+                onClick={handleSaveUser}
+                disabled={saving}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {selectedUser ? 'Modification...' : 'Création...'}
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    {selectedUser ? 'Mettre à jour' : 'Créer'}
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsUserFormOpen(false)}
+                disabled={saving}
+              >
+                Annuler
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de confirmation de suppression */}
+      <ConfirmDialog
+        open={userDeleteDialogOpen}
+        onOpenChange={setUserDeleteDialogOpen}
+        title="Supprimer l'utilisateur"
+        description={`Êtes-vous sûr de vouloir supprimer "${userToDelete?.full_name}" ? Cette action est irréversible et supprimera également toutes les données associées à cet utilisateur.`}
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        onConfirm={confirmDeleteUser}
+        isConfirming={isUserDeleting}
+        type="delete"
+      />
+
       <PaymentMethodForm
         paymentMethod={selectedPaymentMethod}
         isOpen={isPaymentMethodFormOpen}

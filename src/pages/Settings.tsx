@@ -9,7 +9,10 @@ import {
   Users,
   FileText,
   Shield,
-  Info
+  Info,
+  CheckCircle,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -23,6 +26,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { showSuccess, showError } from '@/utils/toast';
 
 interface UserProfile {
   id: string;
@@ -64,9 +73,32 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
+
+  // États pour les formulaires
+  const [profileForm, setProfileForm] = useState({
+    first_name: '',
+    last_name: ''
+  });
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [exchangeRates, setExchangeRates] = useState({
+    usdToCdf: '',
+    usdToCny: ''
+  });
+  const [transactionFees, setTransactionFees] = useState({
+    transfert: '',
+    commande: '',
+    partenaire: ''
+  });
 
   useEffect(() => {
     const fetchUserAndProfile = async () => {
@@ -87,6 +119,12 @@ const Settings = () => {
             .single();
           
           setProfile(profileData);
+          if (profileData) {
+            setProfileForm({
+              first_name: profileData.first_name || '',
+              last_name: profileData.last_name || ''
+            });
+          }
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
@@ -96,8 +134,16 @@ const Settings = () => {
     };
 
     fetchUserAndProfile();
-    fetchPaymentMethods();
-  }, []);
+    if (activeTab === 'payment-methods') {
+      fetchPaymentMethods();
+    } else if (activeTab === 'users') {
+      fetchUsers();
+    } else if (activeTab === 'activity-logs') {
+      fetchActivityLogs();
+    } else if (activeTab === 'exchange-rates' || activeTab === 'transaction-fees') {
+      fetchSettings();
+    }
+  }, [activeTab]);
 
   const fetchPaymentMethods = async () => {
     try {
@@ -109,6 +155,232 @@ const Settings = () => {
       setPaymentMethods(data || []);
     } catch (error) {
       console.error('Error fetching payment methods:', error);
+      showError('Erreur lors du chargement des moyens de paiement');
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select(`
+          *,
+          auth_user:auth.users(email)
+        `)
+        .order('created_at', { ascending: false });
+      
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      showError('Erreur lors du chargement des utilisateurs');
+    }
+  };
+
+  const fetchActivityLogs = async () => {
+    try {
+      const { data } = await supabase
+        .from('activity_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      setActivityLogs(data || []);
+    } catch (error) {
+      console.error('Error fetching activity logs:', error);
+      showError('Erreur lors du chargement des logs d\'activité');
+    }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const { data } = await supabase
+        .from('settings')
+        .select('*');
+      
+      if (data) {
+        // Extraire les taux de change
+        const rates = data.filter(s => s.categorie === 'taux_change');
+        const usdToCdf = rates.find(r => r.cle === 'usdToCdf')?.valeur || '';
+        const usdToCny = rates.find(r => r.cle === 'usdToCny')?.valeur || '';
+        setExchangeRates({ usdToCdf, usdToCny });
+
+        // Extraire les frais
+        const fees = data.filter(s => s.categorie === 'frais');
+        const transfert = fees.find(r => r.cle === 'transfert')?.valeur || '';
+        const commande = fees.find(r => r.cle === 'commande')?.valeur || '';
+        const partenaire = fees.find(r => r.cle === 'partenaire')?.valeur || '';
+        setTransactionFees({ transfert, commande, partenaire });
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+      showError('Erreur lors du chargement des paramètres');
+    }
+  };
+
+  // Fonctions CRUD
+  const updateProfile = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          first_name: profileForm.first_name,
+          last_name: profileForm.last_name
+        })
+        .eq('id', user?.id);
+
+      if (error) throw error;
+      
+      // Mettre à jour le profil local
+      const updatedProfile = { ...profile, ...profileForm };
+      setProfile(updatedProfile);
+      
+      // Mettre à jour les métadonnées utilisateur
+      await supabase.auth.updateUser({
+        data: { first_name: profileForm.first_name, last_name: profileForm.last_name }
+      });
+
+      showSuccess('Profil mis à jour avec succès');
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      showError(error.message || 'Erreur lors de la mise à jour du profil');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updatePassword = async () => {
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      showError('Les mots de passe ne correspondent pas');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: passwordForm.newPassword
+      });
+
+      if (error) throw error;
+      
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      showSuccess('Mot de passe mis à jour avec succès');
+    } catch (error: any) {
+      console.error('Error updating password:', error);
+      showError(error.message || 'Erreur lors de la mise à jour du mot de passe');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateExchangeRates = async () => {
+    setSaving(true);
+    try {
+      const updates = [
+        { categorie: 'taux_change', cle: 'usdToCdf', valeur: exchangeRates.usdToCdf },
+        { categorie: 'taux_change', cle: 'usdToCny', valeur: exchangeRates.usdToCny }
+      ];
+
+      const { error } = await supabase
+        .from('settings')
+        .upsert(updates, { onConflict: 'categorie,cle' });
+
+      if (error) throw error;
+      showSuccess('Taux de change mis à jour avec succès');
+    } catch (error: any) {
+      console.error('Error updating exchange rates:', error);
+      showError(error.message || 'Erreur lors de la mise à jour des taux de change');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateTransactionFees = async () => {
+    setSaving(true);
+    try {
+      const updates = [
+        { categorie: 'frais', cle: 'transfert', valeur: transactionFees.transfert },
+        { categorie: 'frais', cle: 'commande', valeur: transactionFees.commande },
+        { categorie: 'frais', cle: 'partenaire', valeur: transactionFees.partenaire }
+      ];
+
+      const { error } = await supabase
+        .from('settings')
+        .upsert(updates, { onConflict: 'categorie,cle' });
+
+      if (error) throw error;
+      showSuccess('Frais de transaction mis à jour avec succès');
+    } catch (error: any) {
+      console.error('Error updating transaction fees:', error);
+      showError(error.message || 'Erreur lors de la mise à jour des frais de transaction');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const togglePaymentMethod = async (id: string, isActive: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('payment_methods')
+        .update({ is_active: isActive })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      // Mettre à jour l'état local
+      setPaymentMethods(prev => 
+        prev.map(method => 
+          method.id === id ? { ...method, is_active: isActive } : method
+        )
+      );
+      
+      showSuccess(`Moyen de paiement ${isActive ? 'activé' : 'désactivé'} avec succès`);
+    } catch (error: any) {
+      console.error('Error toggling payment method:', error);
+      showError(error.message || 'Erreur lors de la mise à jour du moyen de paiement');
+    }
+  };
+
+  const createUserProfile = async (userData: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .insert([userData])
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      await fetchUsers(); // Recharger la liste
+      showSuccess('Utilisateur créé avec succès');
+      return data;
+    } catch (error: any) {
+      console.error('Error creating user profile:', error);
+      showError(error.message || 'Erreur lors de la création de l\'utilisateur');
+      throw error;
+    }
+  };
+
+  const toggleUserProfile = async (id: string, isActive: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ is_active: isActive })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      // Mettre à jour l'état local
+      setUsers(prev => 
+        prev.map(user => 
+          user.id === id ? { ...user, is_active: isActive } : user
+        )
+      );
+      
+      showSuccess(`Utilisateur ${isActive ? 'activé' : 'désactivé'} avec succès`);
+    } catch (error: any) {
+      console.error('Error toggling user profile:', error);
+      showError(error.message || 'Erreur lors de la mise à jour de l\'utilisateur');
     }
   };
 
@@ -175,50 +447,68 @@ const Settings = () => {
               <p className="text-gray-600">Gérez vos informations personnelles et vos préférences</p>
             </div>
             
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Informations personnelles</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    defaultValue={profile?.first_name || ''}
-                  />
+            <Card>
+              <CardHeader>
+                <CardTitle>Informations personnelles</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">Prénom</Label>
+                      <Input
+                        id="firstName"
+                        value={profileForm.first_name}
+                        onChange={(e) => setProfileForm(prev => ({ ...prev, first_name: e.target.value }))}
+                        placeholder="Jean"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Nom</Label>
+                      <Input
+                        id="lastName"
+                        value={profileForm.last_name}
+                        onChange={(e) => setProfileForm(prev => ({ ...prev, last_name: e.target.value }))}
+                        placeholder="Mukendi"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <Input
+                        value={user?.email || ''}
+                        disabled
+                        className="bg-gray-50"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Rôle</Label>
+                      <Input
+                        value={profile?.role || ''}
+                        disabled
+                        className="bg-gray-50"
+                      />
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={updateProfile}
+                    disabled={saving}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Mise à jour...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Enregistrer les modifications
+                      </>
+                    )}
+                  </Button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nom</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    defaultValue={profile?.last_name || ''}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                  <input
-                    type="email"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
-                    value={user?.email || ''}
-                    disabled
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Rôle</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
-                    value={profile?.role || ''}
-                    disabled
-                  />
-                </div>
-              </div>
-              <div className="mt-6">
-                <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
-                  Enregistrer les modifications
-                </button>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         );
 
@@ -230,37 +520,52 @@ const Settings = () => {
               <p className="text-gray-600">Gérez votre mot de passe et les options de sécurité</p>
             </div>
             
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Changer le mot de passe</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Mot de passe actuel</label>
-                  <input
-                    type="password"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
+            <Card>
+              <CardHeader>
+                <CardTitle>Changer le mot de passe</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword">Nouveau mot de passe</Label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      value={passwordForm.newPassword}
+                      onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                      placeholder="••••••••••"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={passwordForm.confirmPassword}
+                      onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                      placeholder="••••••••••"
+                    />
+                  </div>
+                  <Button 
+                    onClick={updatePassword}
+                    disabled={saving || !passwordForm.newPassword || !passwordForm.confirmPassword}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Mise à jour...
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="mr-2 h-4 w-4" />
+                        Mettre à jour le mot de passe
+                      </>
+                    )}
+                  </Button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nouveau mot de passe</label>
-                  <input
-                    type="password"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Confirmer le mot de passe</label>
-                  <input
-                    type="password"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-              <div className="mt-6">
-                <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
-                  Mettre à jour le mot de passe
-                </button>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         );
 
@@ -272,92 +577,52 @@ const Settings = () => {
               <p className="text-gray-600">Configurez les modes de paiement acceptés dans votre système</p>
             </div>
             
-            <div className="bg-white rounded-lg shadow">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-medium text-gray-900">Liste des moyens de paiement</h3>
-                  <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
-                    Ajouter un moyen de paiement
-                  </button>
-                </div>
-              </div>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Nom
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Code
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Statut
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {paymentMethods.map((method) => (
-                      <tr key={method.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            {method.icon && (
-                              <span className="mr-3 text-xl">{method.icon}</span>
-                            )}
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {method.name}
-                              </div>
-                              {method.description && (
-                                <div className="text-sm text-gray-500">
-                                  {method.description}
-                                </div>
-                              )}
-                            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Liste des moyens de paiement</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {paymentMethods.length === 0 ? (
+                    <div className="text-center py-8">
+                      <CreditCard className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                      <h3 className="text-sm font-medium text-gray-900 mb-2">
+                        Aucun moyen de paiement configuré
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        Commencez par ajouter les moyens de paiement mobile money.
+                      </p>
+                    </div>
+                  ) : (
+                    paymentMethods.map((method) => (
+                      <div key={method.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                            <CreditCard className="h-5 w-5 text-emerald-600" />
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-900">{method.code}</span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            method.is_active 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
+                          <div>
+                            <div className="font-medium text-gray-900">{method.name}</div>
+                            <div className="text-sm text-gray-500">{method.code}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge className={method.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
                             {method.is_active ? 'Actif' : 'Inactif'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button className="text-emerald-600 hover:text-emerald-900 mr-3">
-                            Modifier
-                          </button>
-                          <button className="text-red-600 hover:text-red-900">
-                            Supprimer
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                
-                {paymentMethods.length === 0 && (
-                  <div className="text-center py-12">
-                    <CreditCard className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">
-                      Aucun moyen de paiement configuré
-                    </h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Commencez par ajouter les moyens de paiement mobile money.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => togglePaymentMethod(method.id, !method.is_active)}
+                          >
+                            {method.is_active ? 'Désactiver' : 'Activer'}
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         );
 
@@ -369,34 +634,56 @@ const Settings = () => {
               <p className="text-gray-600">Configurez les taux de conversion USD/CDF et USD/CNY</p>
             </div>
             
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Configuration des taux</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">1 USD = (CDF)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    placeholder="2850"
-                  />
+            <Card>
+              <CardHeader>
+                <CardTitle>Configuration des taux</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="usdToCdf">1 USD = (CDF)</Label>
+                      <Input
+                        id="usdToCdf"
+                        type="number"
+                        step="0.01"
+                        value={exchangeRates.usdToCdf}
+                        onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCdf: e.target.value }))}
+                        placeholder="2850"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="usdToCny">1 USD = (CNY)</Label>
+                      <Input
+                        id="usdToCny"
+                        type="number"
+                        step="0.01"
+                        value={exchangeRates.usdToCny}
+                        onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCny: e.target.value }))}
+                        placeholder="7.25"
+                      />
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={updateExchangeRates}
+                    disabled={saving}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Mise à jour...
+                      </>
+                    ) : (
+                      <>
+                        <DollarSign className="mr-2 h-4 w-4" />
+                        Mettre à jour les taux
+                      </>
+                    )}
+                  </Button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">1 USD = (CNY)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    placeholder="7.25"
-                  />
-                </div>
-              </div>
-              <div className="mt-6">
-                <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
-                  Mettre à jour les taux
-                </button>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         );
 
@@ -408,49 +695,181 @@ const Settings = () => {
               <p className="text-gray-600">Définissez les frais par type de transaction</p>
             </div>
             
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Configuration des frais</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Frais de Transfert (%)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="100"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    placeholder="5.00"
-                  />
+            <Card>
+              <CardHeader>
+                <CardTitle>Configuration des frais</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="transfert">Frais de Transfert (%)</Label>
+                    <Input
+                      id="transfert"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={transactionFees.transfert}
+                      onChange={(e) => setTransactionFees(prev => ({ ...prev, transfert: e.target.value }))}
+                      placeholder="5.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="commande">Frais de Commande (%)</Label>
+                    <Input
+                      id="commande"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={transactionFees.commande}
+                      onChange={(e) => setTransactionFees(prev => ({ ...prev, commande: e.target.value }))}
+                      placeholder="10.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="partenaire">Frais Partenaire (%)</Label>
+                    <Input
+                      id="partenaire"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={transactionFees.partenaire}
+                      onChange={(e) => setTransactionFees(prev => ({ ...prev, partenaire: e.target.value }))}
+                      placeholder="3.00"
+                    />
+                  </div>
+                  <Button 
+                    onClick={updateTransactionFees}
+                    disabled={saving}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Mise à jour...
+                      </>
+                    ) : (
+                      <>
+                        <SettingsIcon className="mr-2 h-4 w-4" />
+                        Mettre à jour les frais
+                      </>
+                    )}
+                  </Button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Frais de Commande (%)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="100"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    placeholder="10.00"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Frais Partenaire (%)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="100"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    placeholder="3.00"
-                  />
-                </div>
-              </div>
-              <div className="mt-6">
-                <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
-                  Mettre à jour les frais
-                </button>
-              </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case 'users':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Utilisateurs</h2>
+              <p className="text-gray-600">Gérer les comptes opérateurs et administrateurs</p>
             </div>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Liste des utilisateurs</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {users.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                      <h3 className="text-sm font-medium text-gray-900 mb-2">
+                        Aucun utilisateur trouvé
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        Les utilisateurs apparaîtront ici après leur première connexion.
+                      </p>
+                    </div>
+                  ) : (
+                    users.map((user) => (
+                      <div key={user.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                            <Users className="h-5 w-5 text-emerald-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900">{user.full_name}</div>
+                            <div className="text-sm text-gray-500">{user.auth_user?.email}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge className={user.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                            {user.is_active ? 'Actif' : 'Inactif'}
+                          </Badge>
+                          <Badge className="bg-blue-100 text-blue-800">
+                            {user.role}
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toggleUserProfile(user.id, !user.is_active)}
+                          >
+                            {user.is_active ? 'Désactiver' : 'Activer'}
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case 'activity-logs':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Journal d'activité</h2>
+              <p className="text-gray-600">Consulter les logs des transactions et actions</p>
+            </div>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Activité récente</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {activityLogs.length === 0 ? (
+                    <div className="text-center py-8">
+                      <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                      <h3 className="text-sm font-medium text-gray-900 mb-2">
+                        Aucune activité récente
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        Les activités apparaîtront ici au fur et à mesure.
+                      </p>
+                    </div>
+                  ) : (
+                    activityLogs.map((log) => (
+                      <div key={log.id} className="flex items-start space-x-3 p-4 border border-gray-200 rounded-lg">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                          <FileText className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900">{log.action}</div>
+                          <div className="text-sm text-gray-500">
+                            {new Date(log.created_at).toLocaleString('fr-FR')}
+                          </div>
+                          {log.details && (
+                            <div className="text-xs text-gray-400 mt-1">
+                              {JSON.stringify(log.details)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         );
 
@@ -462,36 +881,38 @@ const Settings = () => {
               <p className="text-gray-600">Informations sur CoxiPay</p>
             </div>
             
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-center">
-                <div className="w-20 h-20 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <span className="text-white text-3xl font-bold">C</span>
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">CoxiPay</h3>
-                <p className="text-gray-600 mb-6">Plateforme de transfert USD/CDF/CNY simplifiée</p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Version</h4>
-                    <p className="text-gray-600">v1.0.0</p>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="w-20 h-20 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <span className="text-white text-3xl font-bold">C</span>
                   </div>
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Dernière mise à jour</h4>
-                    <p className="text-gray-600">15 Décembre 2024</p>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">CoxiPay</h3>
+                  <p className="text-gray-600 mb-6">Plateforme de transfert USD/CDF/CNY simplifiée</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-2">Version</h4>
+                      <p className="text-gray-600">v1.0.0</p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-2">Dernière mise à jour</h4>
+                      <p className="text-gray-600">15 Décembre 2024</p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-2">Support</h4>
+                      <p className="text-gray-600">support@coxipay.com</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Support</h4>
-                    <p className="text-gray-600">support@coxipay.com</p>
+                  
+                  <div className="border-t border-gray-200 pt-6">
+                    <p className="text-sm text-gray-500">
+                      © 2024 CoxiPay. Tous droits réservés.
+                    </p>
                   </div>
                 </div>
-                
-                <div className="border-t border-gray-200 pt-6">
-                  <p className="text-sm text-gray-500">
-                    © 2024 CoxiPay. Tous droits réservés.
-                  </p>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         );
 
@@ -507,17 +928,19 @@ const Settings = () => {
               </p>
             </div>
             
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-center py-12">
-                <SettingsIcon className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">
-                  Cette section est en cours de développement
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Les fonctionnalités pour cette section seront bientôt disponibles.
-                </p>
-              </div>
-            </div>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-12">
+                  <SettingsIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">
+                    Cette section est en cours de développement
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Les fonctionnalités pour cette section seront bientôt disponibles.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         );
     }
@@ -582,7 +1005,6 @@ const Settings = () => {
                 </DropdownMenuItem>
               );
             })}
-            {/* Pas de séparateur ni bouton de déconnexion */}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

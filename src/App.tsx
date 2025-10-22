@@ -48,10 +48,10 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="*" element={<NotFound />} />
-            </Routes>
-          </PageProvider>
-        </AuthProvider>
-      </BrowserRouter>
+          </Routes>
+        </PageProvider>
+      </AuthProvider>
+    </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

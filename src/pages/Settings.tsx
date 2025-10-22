@@ -26,6 +26,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -258,14 +259,13 @@ const Settings = () => {
       if (!file) return;
 
       // Vérifier la taille du fichier (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        showError('La taille du fichier ne doit pas dépasser 5MB');
+      if (!file.type.startsWith('image/')) {
+        showError('Veuillez sélectionner une image valide');
         return;
       }
 
-      // Vérifier le type de fichier
-      if (!file.type.startsWith('image/')) {
-        showError('Veuillez sélectionner une image valide');
+      if (file.size > 5 * 1024 * 1024) {
+        showError('La taille du fichier ne doit pas dépasser 5MB');
         return;
       }
 
@@ -273,7 +273,7 @@ const Settings = () => {
 
       // Générer un nom de fichier unique
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
+      const fileName = `avatar_${user?.id}_${Date.now()}.${fileExt}`;
 
       // Upload vers Supabase Storage
       const { error: uploadError } = await supabase.storage
@@ -755,7 +755,7 @@ const Settings = () => {
                       type="password"
                       value={passwordForm.newPassword}
                       onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                      placeholder="••••••••••"
+                      placeholder="••••••••••••"
                     />
                   </div>
                   <div className="space-y-2">
@@ -765,7 +765,7 @@ const Settings = () => {
                       type="password"
                       value={passwordForm.confirmPassword}
                       onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                      placeholder="••••••••••"
+                      placeholder="••••••••••••"
                     />
                   </div>
                   <Button 

@@ -20,6 +20,14 @@ import { User as SupabaseUser } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
+import { Button } from '@/components/ui/button';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 
 interface UserProfile {
   id: string;
@@ -62,7 +70,6 @@ const Settings = () => {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -113,49 +120,49 @@ const Settings = () => {
     {
       id: 'profile',
       label: 'Profil',
-      icon: <UserIcon className="w-5 h-5" />,
+      icon: <UserIcon className="w-4 h-4" />,
       description: 'Informations personnelles et préférences'
     },
     {
       id: 'payment-methods',
       label: 'Moyens de paiement',
-      icon: <CreditCard className="w-5 h-5" />,
+      icon: <CreditCard className="w-4 h-4" />,
       description: 'Gérer les modes de paiement disponibles'
     },
     {
       id: 'general',
       label: 'Général',
-      icon: <SettingsIcon className="w-5 h-5" />,
+      icon: <SettingsIcon className="w-4 h-4" />,
       description: 'Configuration générale de l\'application'
     },
     {
       id: 'notifications',
       label: 'Notifications',
-      icon: <Bell className="w-5 h-5" />,
+      icon: <Bell className="w-4 h-4" />,
       description: 'Préférences de notification et alertes'
     },
     {
       id: 'security',
       label: 'Sécurité',
-      icon: <Shield className="w-5 h-5" />,
+      icon: <Shield className="w-4 h-4" />,
       description: 'Mot de passe et authentification'
     },
     {
       id: 'devices',
       label: 'Appareils',
-      icon: <Smartphone className="w-5 h-5" />,
+      icon: <Smartphone className="w-4 h-4" />,
       description: 'Gérer les appareils connectés'
     },
     {
       id: 'language',
       label: 'Langue',
-      icon: <Globe className="w-5 h-5" />,
+      icon: <Globe className="w-4 h-4" />,
       description: 'Préférences linguistiques et régionales'
     },
     {
       id: 'help',
       label: 'Aide',
-      icon: <HelpCircle className="w-5 h-5" />,
+      icon: <HelpCircle className="w-4 h-4" />,
       description: 'Centre d\'aide et support'
     }
   ];
@@ -362,85 +369,60 @@ const Settings = () => {
 
   return (
     <Layout>
-      <div className="flex">
-        {/* Main Content */}
-        <main className="flex-1">
-          <div className="w-full px-4 sm:px-6 lg:px-8 py-4 lg:py-8">
-            {/* Content with proper spacing */}
-            <div className="space-y-6">
-              {renderContent()}
-            </div>
-          </div>
-        </main>
-
-        {/* Settings Sidebar Navigation - RIGHT SIDE */}
-        <aside className={`
-          fixed inset-y-0 right-0 z-50 w-72 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:inset-0
-          ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
-        `}>
-          <div className="h-full flex flex-col">
-            {/* Mobile Header */}
-            <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Menu Paramètres</h2>
-              <button
-                onClick={() => setIsSidebarOpen(false)}
-                className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-                aria-label="Fermer le menu"
+      {/* Settings Navigation in Header - Dropdown Menu */}
+      <div className="flex justify-end mb-6">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+            >
+              <SettingsIcon className="w-4 h-4 mr-2" />
+              Paramètres
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            {tabs.map((tab) => (
+              <DropdownMenuItem
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  cursor-pointer
+                  ${activeTab === tab.id 
+                    ? 'bg-emerald-50 text-emerald-700' 
+                    : 'text-gray-700 hover:bg-gray-50'
+                  }
+                `}
               >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Navigation */}
-            <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    setIsSidebarOpen(false); // Fermeture automatique
-                  }}
-                  className={`
-                    w-full flex items-start space-x-3 px-4 py-3 rounded-lg text-left transition-all duration-200
-                    ${activeTab === tab.id
-                      ? 'bg-emerald-50 text-emerald-700 border-l-4 border-emerald-700'
-                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                    }
-                  `}
-                >
-                  <div className="flex-shrink-0 mt-0.5">
-                    {tab.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-3">
+                  {tab.icon}
+                  <div>
                     <div className="font-medium">{tab.label}</div>
-                    <div className="text-sm text-gray-500 mt-0.5">{tab.description}</div>
+                    <div className="text-xs text-gray-500">{tab.description}</div>
                   </div>
-                </button>
-              ))}
-            </nav>
-
-            {/* Mobile footer actions */}
-            <div className="lg:hidden border-t border-gray-200 p-4">
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center justify-center px-4 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                <span className="font-medium">Déconnexion</span>
-              </button>
-            </div>
-          </div>
-        </aside>
-
-        {/* Overlay for mobile */}
-        {isSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-            onClick={() => setIsSidebarOpen(false)}
-            aria-label="Fermer le menu"
-          />
-        )}
+                </div>
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={handleLogout}
+              className="text-red-600 hover:bg-red-50 cursor-pointer"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              <span>Déconnexion</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+
+      {/* Main Content */}
+      <main className="flex-1">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-4 lg:py-8">
+          <div className="space-y-6">
+            {renderContent()}
+          </div>
+        </div>
+      </main>
     </Layout>
   );
 };

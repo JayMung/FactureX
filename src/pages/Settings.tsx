@@ -247,7 +247,7 @@ const Settings = () => {
         return;
       }
 
-      // Récupérer les emails depuis la table profiles (qui contient les emails des utilisateurs auth)
+      // Récupérer les emails depuis la table profiles
       const userIds = (userProfiles || []).map(up => up.user_id).filter(Boolean);
       
       if (userIds.length === 0) {
@@ -702,13 +702,6 @@ const Settings = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Paramètres</h1>
-            <p className="text-gray-500">Configurez les préférences de votre application</p>
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar */}
           <div className="lg:col-span-1">

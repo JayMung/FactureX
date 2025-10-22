@@ -83,8 +83,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="h-screen flex bg-gray-100">
       <Sidebar 
-        isMobileOpen={sidebarOpen} 
-        onClose={() => setSidebarOpen(false)} 
+        isMobileOpen={sidebarOpen}
         currentPath={location.pathname}
       />
       

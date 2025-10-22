@@ -235,6 +235,8 @@ const Settings = () => {
   const fetchUsers = async () => {
     setUsersLoading(true);
     try {
+      console.log('Fetching users...');
+      
       // Récupérer tous les user_profiles
       const { data: userProfiles, error: profilesError } = await supabase
         .from('user_profiles')
@@ -246,6 +248,8 @@ const Settings = () => {
         showError('Erreur lors du chargement des profils utilisateurs');
         return;
       }
+
+      console.log('User profiles fetched:', userProfiles);
 
       // Récupérer les emails depuis la table profiles
       const userIds = (userProfiles || []).map(up => up.user_id).filter(Boolean);
@@ -435,6 +439,8 @@ const Settings = () => {
   const handleSaveUser = async () => {
     setSaving(true);
     try {
+      console.log('Saving user with data:', userForm);
+      
       if (!userForm.email || !userForm.password) {
         throw new Error('L\'email et le mot de passe sont requis');
       }
@@ -454,6 +460,7 @@ const Settings = () => {
         showSuccess('Utilisateur mis à jour avec succès');
       } else {
         // Création - utiliser Supabase Auth pour créer l'utilisateur
+        console.log('Creating user in auth...');
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: userForm.email,
           password: userForm.password,
@@ -477,7 +484,12 @@ const Settings = () => {
       }
 
       setIsUserFormOpen(false);
-      fetchUsers();
+      
+      // Attendre un peu pour que le trigger s'exécute, puis rafraîchir
+      setTimeout(() => {
+        fetchUsers();
+      }, 1000);
+      
     } catch (error: any) {
       console.error('Error saving user:', error);
       showError(error.message || 'Erreur lors de la sauvegarde de l\'utilisateur');
@@ -496,7 +508,7 @@ const Settings = () => {
       if (error) throw error;
 
       setUsers(prev => prev.map(u => 
-        u.id === user.id ? { ...u, is_active: !u.is_active } : u
+        u.id === user.id ? { ...u, is_active: !user.is_active } : u
       ));
 
       showSuccess(`Utilisateur ${user.is_active ? 'désactivé' : 'activé'} avec succès`);
@@ -728,6 +740,106 @@ const Settings = () => {
 
           {/* Content */}
           <div className="lg:col-span-3">
+            {/* Users Tab */}
+            {activeTab === 'users' && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center">
+                      <Users className="mr-2 h-5 w-5" />
+                      Utilisateurs ({users.length})
+                    </CardTitle>
+                    <Button onClick={handleAddUser} className="bg-emerald-600 hover:bg-emerald-700">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Ajouter un utilisateur
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {usersLoading ? (
+                    <div className="flex items-center justify-center h-32">
+                      <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+                    </div>
+                  ) : users.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p>Aucun utilisateur trouvé</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {users.map((user) => (
+                        <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                              <UserIcon className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{user.full_name}</p>
+                              <p className="text-sm text-gray-500">{user.auth_user?.email}</p>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <Badge 
+                                  variant={user.role === 'admin' ? 'default' : 'secondary'}
+                                  className={user.role === 'admin' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                                >
+                                  {user.role === 'admin' ? (
+                                    <>
+                                      <Crown className="mr-1 h-3 w-3" />
+                                      Admin
+                                    </>
+                                  ) : (
+                                    <>
+                                      <UserCheck className="mr-1 h-3 w-3" />
+                                      Opérateur
+                                    </>
+                                  )}
+                                </Badge>
+                                <Badge 
+                                  variant={user.is_active ? 'default' : 'secondary'}
+                                  className={user.is_active ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                                >
+                                  {user.is_active ? 'Actif' : 'Inactif'}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleToggleUserStatus(user)}
+                              className="hover:bg-emerald-50 hover:text-emerald-700"
+                            >
+                              {user.is_active ? (
+                                <UserX className="h-4 w-4" />
+                              ) : (
+                                <UserCheck className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditUser(user)}
+                              className="hover:bg-emerald-50 hover:text-emerald-700"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleDeleteUser(user)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Profile Tab */}
             {activeTab === 'profile' && (
               <Card>
@@ -809,101 +921,6 @@ const Settings = () => {
                       'Sauvegarder les modifications'
                     )}
                   </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Users Tab */}
-            {activeTab === 'users' && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center">
-                      <Users className="mr-2 h-5 w-5" />
-                      Utilisateurs
-                    </CardTitle>
-                    <Button onClick={handleAddUser} className="bg-emerald-600 hover:bg-emerald-700">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Ajouter un utilisateur
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {usersLoading ? (
-                    <div className="flex items-center justify-center h-32">
-                      <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {users.map((user) => (
-                        <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center space-x-4">
-                            <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                              <UserIcon className="h-5 w-5 text-emerald-600" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{user.full_name}</p>
-                              <p className="text-sm text-gray-500">{user.auth_user?.email}</p>
-                              <div className="flex items-center space-x-2 mt-1">
-                                <Badge 
-                                  variant={user.role === 'admin' ? 'default' : 'secondary'}
-                                  className={user.role === 'admin' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
-                                >
-                                  {user.role === 'admin' ? (
-                                    <>
-                                      <Crown className="mr-1 h-3 w-3" />
-                                      Admin
-                                    </>
-                                  ) : (
-                                    <>
-                                      <UserCheck className="mr-1 h-3 w-3" />
-                                      Opérateur
-                                    </>
-                                  )}
-                                </Badge>
-                                <Badge 
-                                  variant={user.is_active ? 'default' : 'secondary'}
-                                  className={user.is_active ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
-                                >
-                                  {user.is_active ? 'Actif' : 'Inactif'}
-                                </Badge>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleToggleUserStatus(user)}
-                              className="hover:bg-emerald-50 hover:text-emerald-700"
-                            >
-                              {user.is_active ? (
-                                <UserX className="h-4 w-4" />
-                              ) : (
-                                <UserCheck className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditUser(user)}
-                              className="hover:bg-emerald-50 hover:text-emerald-700"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleDeleteUser(user)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             )}

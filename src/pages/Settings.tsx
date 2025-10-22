@@ -344,6 +344,12 @@ const Settings = () => {
     navigate('/login');
   };
 
+  // Fonction pour ouvrir le menu principal (sidebar de l'App)
+  const handleMainMenuToggle = () => {
+    // Émettre un événement personnalisé pour ouvrir le menu principal
+    window.dispatchEvent(new CustomEvent('toggle-main-menu'));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -361,9 +367,17 @@ const Settings = () => {
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Left side - Title only */}
+            {/* Left side - Main menu button and title */}
             <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">Paramètres</h1>
+              {/* Main menu hamburger button */}
+              <button
+                onClick={handleMainMenuToggle}
+                className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                aria-label="Ouvrir le menu principal"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+              <h1 className="ml-3 lg:ml-0 text-xl font-semibold text-gray-900">Paramètres</h1>
             </div>
 
             {/* Right side - Settings menu button and navigation buttons */}

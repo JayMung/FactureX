@@ -15,6 +15,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -29,6 +30,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         setUser(user);
       } catch (error) {
         console.error('Error getting user:', error);
+        setError('Erreur lors de la récupération de l\'utilisateur');
         navigate('/login');
       } finally {
         setLoading(false);
@@ -76,10 +78,34 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return 'Tableau de bord';
   };
 
+  // Afficher l'état de chargement ou d'erreur
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 border-t-emerald-400"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 border-t-emerald-400"></div>
+          <p className="text-gray-600 mt-4">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <span className="text-red-600 text-2xl">!</span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Erreur de chargement</h1>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+          >
+            Réessayer
+          </button>
+        </div>
       </div>
     );
   }

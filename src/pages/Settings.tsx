@@ -177,7 +177,7 @@ const Settings = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
                   <input
                     type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     defaultValue={profile?.first_name || ''}
                   />
                 </div>
@@ -185,7 +185,7 @@ const Settings = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Nom</label>
                   <input
                     type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     defaultValue={profile?.last_name || ''}
                   />
                 </div>
@@ -209,7 +209,7 @@ const Settings = () => {
                 </div>
               </div>
               <div className="mt-6">
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
                   Enregistrer les modifications
                 </button>
               </div>
@@ -229,7 +229,7 @@ const Settings = () => {
               <div className="p-6 border-b border-gray-200">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-medium text-gray-900">Liste des moyens de paiement</h3>
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                  <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
                     Ajouter un moyen de paiement
                   </button>
                 </div>
@@ -286,7 +286,7 @@ const Settings = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button className="text-indigo-600 hover:text-indigo-900 mr-3">
+                          <button className="text-emerald-600 hover:text-emerald-900 mr-3">
                             Modifier
                           </button>
                           <button className="text-red-600 hover:text-red-900">
@@ -352,7 +352,7 @@ const Settings = () => {
       <Layout>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">Chargement...</p>
           </div>
         </div>
@@ -403,7 +403,7 @@ const Settings = () => {
                   className={`
                     w-full flex items-start space-x-3 px-4 py-3 rounded-lg text-left transition-all duration-200
                     ${activeTab === tab.id
-                      ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700'
+                      ? 'bg-emerald-50 text-emerald-700 border-l-4 border-emerald-700'
                       : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                     }
                   `}

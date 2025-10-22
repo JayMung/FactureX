@@ -34,11 +34,6 @@ const menuItems = [
   { icon: FileText, label: 'Factures', path: '/invoices', disabled: true },
 ];
 
-interface SidebarProps {
-  isMobileOpen?: boolean;
-  currentPath?: string;
-}
-
 const Sidebar: React.FC<SidebarProps> = ({ 
   isMobileOpen = false, 
   currentPath 
@@ -109,9 +104,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   )}
                   disabled
                 >
-                  {React.cloneElement(item.icon, {
-                    className: cn("h-4 w-4 flex-shrink-0", isMobile && "h-5 w-5")
-                  })}
+                  <item.icon className={cn("h-4 w-4 flex-shrink-0", isMobile && "h-5 w-5")} />
                   {isMobile ? (
                     <span className="sr-only">{item.label}</span>
                   ) : (
@@ -130,9 +123,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       isMobile && "px-3 justify-center"
                     )}
                   >
-                    {React.cloneElement(item.icon, {
-                      className: cn("h-4 w-4 flex-shrink-0", isMobile && "h-5 w-5")
-                    })}
+                    <item.icon className={cn("h-4 w-4 flex-shrink-0", isMobile && "h-5 w-5")} />
                     {isMobile ? (
                       <span className="sr-only">{item.label}</span>
                     ) : (

@@ -5,14 +5,16 @@ import {
   User as UserIcon, 
   CreditCard, 
   Settings as SettingsIcon, 
-  Bell, 
-  Shield, 
+  DollarSign,
+  Users,
+  FileText,
+  Download,
+  Database,
   Smartphone,
   Globe,
   HelpCircle,
-  Menu,
-  X,
-  Home,
+  Shield,
+  Info,
   LogOut
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,6 +59,7 @@ interface SettingsOption {
   label: string;
   icon: React.ReactNode;
   description: string;
+  adminOnly?: boolean;
 }
 
 const Settings = () => {
@@ -124,46 +127,60 @@ const Settings = () => {
       description: 'Informations personnelles et préférences'
     },
     {
-      id: 'payment-methods',
-      label: 'Moyens de paiement',
-      icon: <CreditCard className="w-4 h-4" />,
-      description: 'Gérer les modes de paiement disponibles'
-    },
-    {
-      id: 'general',
-      label: 'Général',
-      icon: <SettingsIcon className="w-4 h-4" />,
-      description: 'Configuration générale de l\'application'
-    },
-    {
-      id: 'notifications',
-      label: 'Notifications',
-      icon: <Bell className="w-4 h-4" />,
-      description: 'Préférences de notification et alertes'
-    },
-    {
       id: 'security',
       label: 'Sécurité',
       icon: <Shield className="w-4 h-4" />,
       description: 'Mot de passe et authentification'
     },
     {
-      id: 'devices',
-      label: 'Appareils',
-      icon: <Smartphone className="w-4 h-4" />,
-      description: 'Gérer les appareils connectés'
+      id: 'payment-methods',
+      label: 'Moyens de paiement',
+      icon: <CreditCard className="w-4 h-4" />,
+      description: 'Gérer Airtel Money, Orange Money, Wave, etc.'
     },
     {
-      id: 'language',
-      label: 'Langue',
-      icon: <Globe className="w-4 h-4" />,
-      description: 'Préférences linguistiques et régionales'
+      id: 'exchange-rates',
+      label: 'Taux de change',
+      icon: <DollarSign className="w-4 h-4" />,
+      description: 'Configurer USD/CDF et USD/CNY'
     },
     {
-      id: 'help',
-      label: 'Aide',
-      icon: <HelpCircle className="w-4 h-4" />,
-      description: 'Centre d\'aide et support'
+      id: 'transaction-fees',
+      label: 'Frais de transaction',
+      icon: <SettingsIcon className="w-4 h-4" />,
+      description: 'Définir les frais par type (Transfert/Commande)'
+    },
+    {
+      id: 'users',
+      label: 'Utilisateurs',
+      icon: <Users className="w-4 h-4" />,
+      description: 'Gérer les comptes opérateurs et administrateurs',
+      adminOnly: true
+    },
+    {
+      id: 'activity-logs',
+      label: 'Journal d\'activité',
+      icon: <FileText className="w-4 h-4" />,
+      description: 'Consulter les logs des transactions et actions',
+      adminOnly: true
+    },
+    {
+      id: 'data-export',
+      label: 'Export des données',
+      icon: <Download className="w-4 h-4" />,
+      description: 'Exporter clients et transactions en CSV'
+    },
+    {
+      id: 'backup',
+      label: 'Sauvegarde',
+      icon: <Database className="w-4 h-4" />,
+      description: 'Gérer les sauvegardes manuelles'
+    },
+    {
+      id: 'about',
+      label: 'À propos',
+      icon: <Info className="w-4 h-4" />,
+      description: 'Version et informations sur CoxiPay'
     }
   ];
 
@@ -218,6 +235,48 @@ const Settings = () => {
               <div className="mt-6">
                 <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
                   Enregistrer les modifications
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'security':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Sécurité</h2>
+              <p className="text-gray-600">Gérez votre mot de passe et les options de sécurité</p>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Changer le mot de passe</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Mot de passe actuel</label>
+                  <input
+                    type="password"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nouveau mot de passe</label>
+                  <input
+                    type="password"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Confirmer le mot de passe</label>
+                  <input
+                    type="password"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+              <div className="mt-6">
+                <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
+                  Mettre à jour le mot de passe
                 </button>
               </div>
             </div>
@@ -309,13 +368,183 @@ const Settings = () => {
                   <div className="text-center py-12">
                     <CreditCard className="mx-auto h-12 w-12 text-gray-400" />
                     <h3 className="mt-2 text-sm font-medium text-gray-900">
-                      Aucun moyen de paiement
+                      Aucun moyen de paiement configuré
                     </h3>
                     <p className="mt-1 text-sm text-gray-500">
-                      Commencez par ajouter un moyen de paiement.
+                      Commencez par ajouter les moyens de paiement mobile money.
                     </p>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'exchange-rates':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Taux de change</h2>
+              <p className="text-gray-600">Configurez les taux de conversion USD/CDF et USD/CNY</p>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Configuration des taux</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">1 USD = (CDF)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="2850"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">1 USD = (CNY)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="7.25"
+                  />
+                </div>
+              </div>
+              <div className="mt-6">
+                <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
+                  Mettre à jour les taux
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'transaction-fees':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Frais de transaction</h2>
+              <p className="text-gray-600">Définissez les frais par type de transaction</p>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Configuration des frais</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Frais de Transfert (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="5.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Frais de Commande (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="10.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Frais Partenaire (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="3.00"
+                  />
+                </div>
+              </div>
+              <div className="mt-6">
+                <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
+                  Mettre à jour les frais
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'data-export':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Export des données</h2>
+              <p className="text-gray-600">Exportez vos clients et transactions en format CSV</p>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Options d'export</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                  <div>
+                    <h4 className="font-medium text-gray-900">Export des clients</h4>
+                    <p className="text-sm text-gray-500">Exporter tous les clients avec leurs informations</p>
+                  </div>
+                  <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
+                    <Download className="w-4 h-4 mr-2" />
+                    Exporter
+                  </button>
+                </div>
+                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                  <div>
+                    <h4 className="font-medium text-gray-900">Export des transactions</h4>
+                    <p className="text-sm text-gray-500">Exporter toutes les transactions avec détails</p>
+                  </div>
+                  <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors">
+                    <Download className="w-4 h-4 mr-2" />
+                    Exporter
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'about':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">À propos</h2>
+              <p className="text-gray-600">Informations sur CoxiPay</p>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="text-center">
+                <div className="w-20 h-20 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <span className="text-white text-3xl font-bold">C</span>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">CoxiPay</h3>
+                <p className="text-gray-600 mb-6">Plateforme de transfert USD/CDF/CNY simplifiée</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">Version</h4>
+                    <p className="text-gray-600">v1.0.0</p>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">Dernière mise à jour</h4>
+                    <p className="text-gray-600">15 Décembre 2024</p>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">Support</h4>
+                    <p className="text-gray-600">support@coxipay.com</p>
+                  </div>
+                </div>
+                
+                <div className="border-t border-gray-200 pt-6">
+                  <p className="text-sm text-gray-500">
+                    © 2024 CoxiPay. Tous droits réservés.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -354,6 +583,9 @@ const Settings = () => {
     navigate('/login');
   };
 
+  // Vérifier si l'utilisateur est admin
+  const isAdmin = user?.user_metadata?.role === 'admin' || profile?.role === 'admin';
+
   if (loading) {
     return (
       <Layout>
@@ -381,28 +613,35 @@ const Settings = () => {
               Paramètres
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            {tabs.map((tab) => (
-              <DropdownMenuItem
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`
-                  cursor-pointer
-                  ${activeTab === tab.id 
-                    ? 'bg-emerald-50 text-emerald-700' 
-                    : 'text-gray-700 hover:bg-gray-50'
-                  }
-                `}
-              >
-                <div className="flex items-center space-x-3">
-                  {tab.icon}
-                  <div>
-                    <div className="font-medium">{tab.label}</div>
-                    <div className="text-xs text-gray-500">{tab.description}</div>
+          <DropdownMenuContent align="end" className="w-64">
+            {tabs.map((tab) => {
+              // Cacher les options admin si l'utilisateur n'est pas admin
+              if (tab.adminOnly && !isAdmin) {
+                return null;
+              }
+              
+              return (
+                <DropdownMenuItem
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    cursor-pointer
+                    ${activeTab === tab.id 
+                      ? 'bg-emerald-50 text-emerald-700' 
+                      : 'text-gray-700 hover:bg-gray-50'
+                    }
+                  `}
+                >
+                  <div className="flex items-center space-x-3">
+                    {tab.icon}
+                    <div>
+                      <div className="font-medium">{tab.label}</div>
+                      <div className="text-xs text-gray-500">{tab.description}</div>
+                    </div>
                   </div>
-                </div>
-              </DropdownMenuItem>
-            ))}
+                </DropdownMenuItem>
+              );
+            })}
             <DropdownMenuSeparator />
             <DropdownMenuItem 
               onClick={handleLogout}

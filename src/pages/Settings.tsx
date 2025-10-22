@@ -10,12 +10,14 @@ import {
   Smartphone,
   Globe,
   HelpCircle,
-  ChevronLeft,
   Menu,
-  X
+  X,
+  Home,
+  LogOut
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
 
 interface UserProfile {
   id: string;
@@ -54,6 +56,7 @@ const Settings = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUserAndProfile = async () => {
@@ -332,6 +335,15 @@ const Settings = () => {
     }
   };
 
+  const handleBackToDashboard = () => {
+    navigate('/');
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -349,14 +361,46 @@ const Settings = () => {
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
+            {/* Left side - Main menu button and title */}
             <div className="flex items-center">
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                aria-label="Ouvrir le menu des paramètres"
               >
                 {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
-              <h1 className="ml-2 lg:ml-0 text-xl font-semibold text-gray-900">Paramètres</h1>
+              <h1 className="ml-3 lg:ml-0 text-xl font-semibold text-gray-900">Paramètres</h1>
+            </div>
+
+            {/* Right side - Navigation buttons */}
+            <div className="flex items-center space-x-2">
+              {/* Back to dashboard button - visible on all screens */}
+              <button
+                onClick={handleBackToDashboard}
+                className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                aria-label="Retour au tableau de bord"
+              >
+                <Home className="w-5 h-5" />
+              </button>
+              
+              {/* Logout button - visible on desktop */}
+              <button
+                onClick={handleLogout}
+                className="hidden md:flex items-center px-3 py-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                <span className="text-sm font-medium">Déconnexion</span>
+              </button>
+              
+              {/* Logout button mobile - icon only */}
+              <button
+                onClick={handleLogout}
+                className="md:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                aria-label="Déconnexion"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
@@ -371,10 +415,11 @@ const Settings = () => {
           <div className="h-full flex flex-col">
             {/* Mobile Header */}
             <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Menu Paramètres</h2>
               <button
                 onClick={() => setIsSidebarOpen(false)}
-                className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                aria-label="Fermer le menu"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -387,7 +432,7 @@ const Settings = () => {
                   key={tab.id}
                   onClick={() => {
                     setActiveTab(tab.id);
-                    setIsSidebarOpen(false);
+                    setIsSidebarOpen(false); // Fermeture automatique
                   }}
                   className={`
                     w-full flex items-start space-x-3 px-4 py-3 rounded-lg text-left transition-all duration-200
@@ -407,6 +452,17 @@ const Settings = () => {
                 </button>
               ))}
             </nav>
+
+            {/* Mobile footer actions */}
+            <div className="lg:hidden border-t border-gray-200 p-4">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center px-4 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                <span className="font-medium">Déconnexion</span>
+              </button>
+            </div>
           </div>
         </aside>
 
@@ -415,6 +471,7 @@ const Settings = () => {
           <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
             onClick={() => setIsSidebarOpen(false)}
+            aria-label="Fermer le menu"
           />
         )}
 

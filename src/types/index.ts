@@ -110,7 +110,6 @@ export interface ActivityLog {
   details?: any;
   date: string;
   created_at?: string;
-  entity_type?: string;
   user?: {
     email: string;
   };

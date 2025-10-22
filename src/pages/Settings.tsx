@@ -18,6 +18,8 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
+import Layout from '../components/layout/Layout';
+import { usePageSetup } from '../hooks/use-page-setup';
 
 interface UserProfile {
   id: string;
@@ -50,6 +52,11 @@ interface SettingsOption {
 }
 
 const Settings = () => {
+  usePageSetup({
+    title: 'Paramètres',
+    subtitle: 'Configurez les préférences de votre application'
+  });
+
   const [activeTab, setActiveTab] = useState('profile');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -335,93 +342,26 @@ const Settings = () => {
     }
   };
 
-  const handleBackToDashboard = () => {
-    navigate('/');
-  };
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/login');
   };
 
-  // Fonction pour ouvrir le menu principal (sidebar de l'App)
-  const handleMainMenuToggle = () => {
-    // Émettre un événement personnalisé pour ouvrir le menu principal
-    window.dispatchEvent(new CustomEvent('toggle-main-menu'));
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Chargement...</p>
+          </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Left side - Main menu button and title */}
-            <div className="flex items-center">
-              {/* Main menu hamburger button */}
-              <button
-                onClick={handleMainMenuToggle}
-                className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-                aria-label="Ouvrir le menu principal"
-              >
-                <Menu className="w-6 h-6" />
-              </button>
-              <h1 className="ml-3 lg:ml-0 text-xl font-semibold text-gray-900">Paramètres</h1>
-            </div>
-
-            {/* Right side - Settings menu button and navigation buttons */}
-            <div className="flex items-center space-x-2">
-              {/* Settings menu button */}
-              <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-                aria-label="Ouvrir le menu des paramètres"
-              >
-                {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-              </button>
-              
-              {/* Back to dashboard button */}
-              <button
-                onClick={handleBackToDashboard}
-                className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-                aria-label="Retour au tableau de bord"
-              >
-                <Home className="w-5 h-5" />
-              </button>
-              
-              {/* Logout button - visible on desktop */}
-              <button
-                onClick={handleLogout}
-                className="hidden md:flex items-center px-3 py-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                <span className="text-sm font-medium">Déconnexion</span>
-              </button>
-              
-              {/* Logout button mobile - icon only */}
-              <button
-                onClick={handleLogout}
-                className="md:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-                aria-label="Déconnexion"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
+    <Layout>
       <div className="flex">
         {/* Main Content */}
         <main className="flex-1">
@@ -433,7 +373,7 @@ const Settings = () => {
           </div>
         </main>
 
-        {/* Sidebar Navigation - NOW ON THE RIGHT */}
+        {/* Settings Sidebar Navigation - RIGHT SIDE */}
         <aside className={`
           fixed inset-y-0 right-0 z-50 w-72 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:inset-0
           ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
@@ -501,7 +441,7 @@ const Settings = () => {
           />
         )}
       </div>
-    </div>
+    </Layout>
   );
 };
 

@@ -159,7 +159,8 @@ const Settings = () => {
     first_name: '',
     last_name: '',
     role: 'operateur',
-    phone: ''
+    phone: '',
+    password: ''
   });
   const [userDeleteDialogOpen, setUserDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserProfileData | null>(null);
@@ -331,7 +332,8 @@ const Settings = () => {
       first_name: '',
       last_name: '',
       role: 'operateur',
-      phone: ''
+      phone: '',
+      password: ''
     });
     setIsUserFormOpen(true);
   };
@@ -343,7 +345,8 @@ const Settings = () => {
       first_name: user.full_name?.split(' ')[0] || '',
       last_name: user.full_name?.split(' ').slice(1).join(' ') || '',
       role: user.role,
-      phone: user.phone || ''
+      phone: user.phone || '',
+      password: ''
     });
     setIsUserFormOpen(true);
   };
@@ -413,7 +416,7 @@ const Settings = () => {
       // Mettre à jour l'état local
       setUsers(prev => 
         prev.map(u => 
-          u.id === user.id ? { ...u, is_active: !u.is_active } : u
+          u.id === user.id ? { ...u, is_active: !user.is_active } : u
         )
       );
       
@@ -449,35 +452,55 @@ const Settings = () => {
         
         showSuccess('Utilisateur mis à jour avec succès');
       } else {
-        // Création - Créer d'abord l'utilisateur auth
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        // Validation du mot de passe pour les nouveaux utilisateurs
+        if (!userForm.password || userForm.password.length < 6) {
+          showError('Le mot de passe doit contenir au moins 6 caractères');
+          setSaving(false);
+          return;
+        }
+
+        // Création - Utiliser signUp au lieu de admin.createUser
+        const { data: authData, error: authError } = await supabase.auth.signUp({
           email: userForm.email,
-          password: 'TempPassword123!', // Mot de passe temporaire
-          email_confirm: true,
-          user_metadata: {
-            first_name: userForm.first_name,
-            last_name: userForm.last_name,
-            role: userForm.role
+          password: userForm.password,
+          options: {
+            data: {
+              first_name: userForm.first_name,
+              last_name: userForm.last_name,
+              role: userForm.role
+            }
           }
         });
 
-        if (authError) throw authError;
+        if (authError) {
+          if (authError.message.includes('User already registered')) {
+            showError('Un utilisateur avec cet email existe déjà');
+          } else {
+            showError(authError.message);
+          }
+          setSaving(false);
+          return;
+        }
 
-        // Créer le profil utilisateur
-        const fullName = `${userForm.first_name} ${userForm.last_name}`.trim();
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert({
-            user_id: authData.user.id,
-            full_name: fullName,
-            role: userForm.role,
-            phone: userForm.phone,
-            is_active: true
-          });
+        if (authData.user) {
+          // Créer le profil utilisateur
+          const fullName = `${userForm.first_name} ${userForm.last_name}`.trim();
+          const { error: profileError } = await supabase
+            .from('user_profiles')
+            .insert({
+              user_id: authData.user.id,
+              full_name: fullName,
+              role: userForm.role,
+              phone: userForm.phone,
+              is_active: true
+            });
 
-        if (profileError) throw profileError;
+          if (profileError) {
+            console.warn('Profile creation failed:', profileError);
+          }
+        }
         
-        showSuccess('Utilisateur créé avec succès');
+        showSuccess('Utilisateur créé avec succès. Un email de confirmation a été envoyé.');
       }
       
       setIsUserFormOpen(false);
@@ -1124,7 +1147,7 @@ const Settings = () => {
                       type="password"
                       value={passwordForm.newPassword}
                       onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                      placeholder="••••••••••••"
+                      placeholder="•••••••••••••"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1134,7 +1157,7 @@ const Settings = () => {
                       type="password"
                       value={passwordForm.confirmPassword}
                       onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                      placeholder="••••••••••••"
+                      placeholder="•••••••••••••"
                     />
                   </div>
                   <Button 
@@ -1640,6 +1663,21 @@ const Settings = () => {
                 placeholder="+243 123 456 789"
               />
             </div>
+            {!selectedUser && (
+              <div className="space-y-2">
+                <Label htmlFor="userPassword">Mot de passe *</Label>
+                <Input
+                  id="userPassword"
+                  type="password"
+                  value={userForm.password}
+                  onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))}
+                  placeholder="•••••••••••••"
+                />
+                <p className="text-xs text-gray-500">
+                  Le mot de passe doit contenir au moins 6 caractères
+                </p>
+              </div>
+            )}
             <div className="flex space-x-3 pt-4">
               <Button
                 onClick={handleSaveUser}

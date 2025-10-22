@@ -9,8 +9,7 @@ import {
   Users,
   FileText,
   Shield,
-  Info,
-  LogOut
+  Info
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -23,7 +22,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 
 interface UserProfile {
@@ -525,11 +523,6 @@ const Settings = () => {
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
-  };
-
   // Vérifier si l'utilisateur est admin
   const isAdmin = user?.user_metadata?.role === 'admin' || profile?.role === 'admin';
 
@@ -589,14 +582,7 @@ const Settings = () => {
                 </DropdownMenuItem>
               );
             })}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={handleLogout}
-              className="text-red-600 hover:bg-red-50 cursor-pointer"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              <span>Déconnexion</span>
-            </DropdownMenuItem>
+            {/* Pas de séparateur ni bouton de déconnexion */}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

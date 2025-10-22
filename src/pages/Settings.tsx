@@ -62,29 +62,14 @@ import {
 interface UserProfile {
   id: string;
   email: string;
-  user_metadata?: any;
-}
-
-interface Profile {
-  id: string;
   first_name: string;
   last_name: string;
   role: string;
   avatar_url?: string;
-}
-
-interface UserProfileData {
-  id: string;
-  user_id: string;
-  full_name: string;
-  role: string;
   phone?: string;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
-  auth_user?: {
-    email: string;
-  };
 }
 
 interface PaymentMethod {
@@ -111,10 +96,9 @@ const Settings = () => {
   });
 
   const [activeTab, setActiveTab] = useState('profile');
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [users, setUsers] = useState<UserProfileData[]>([]);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -127,7 +111,10 @@ const Settings = () => {
   // États pour les formulaires
   const [profileForm, setProfileForm] = useState({
     first_name: '',
-    last_name: ''
+    last_name: '',
+    role: 'operateur',
+    phone: '',
+    avatar_url: ''
   });
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -153,7 +140,7 @@ const Settings = () => {
 
   // États pour la gestion des utilisateurs
   const [isUserFormOpen, setIsUserFormOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserProfileData | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [userForm, setUserForm] = useState({
     email: '',
     first_name: '',
@@ -163,7 +150,7 @@ const Settings = () => {
     password: ''
   });
   const [userDeleteDialogOpen, setUserDeleteDialogOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<UserProfileData | null>(null);
+  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
   const [isUserDeleting, setIsUserDeleting] = useState(false);
 
   useEffect(() => {
@@ -174,7 +161,12 @@ const Settings = () => {
           setUser({
             id: user.id,
             email: user.email || '',
-            user_metadata: user.user_metadata
+            first_name: user.user_metadata?.first_name || '',
+            last_name: user.user_metadata?.last_name || '',
+            role: user.user_metadata?.role || 'operateur',
+            phone: user.user_metadata?.phone || '',
+            avatar_url: user.user_metadata?.avatar_url || '',
+            is_active: true
           });
           
           // Fetch profile data from profiles table
@@ -184,29 +176,16 @@ const Settings = () => {
             .eq('id', user.id)
             .single();
           
-          // Fetch user profile data from user_profiles table
-          const { data: userProfileData } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('user_id', user.id)
-            .single();
-          
           setProfile(profileData);
-          setUserProfile(userProfileData);
           
           // Pré-remplir le formulaire avec les données disponibles
           if (profileData) {
             setProfileForm({
               first_name: profileData.first_name || '',
-              last_name: profileData.last_name || ''
-            });
-          } else if (userProfileData) {
-            // Extraire le nom complet depuis user_profiles
-            const fullName = userProfileData.full_name || '';
-            const nameParts = fullName.split(' ');
-            setProfileForm({
-              first_name: nameParts[0] || '',
-              last_name: nameParts.slice(1).join(' ') || ''
+              last_name: profileData.last_name || '',
+              role: profileData.role || 'operateur',
+              phone: profileData.phone || '',
+              avatar_url: profileData.avatar_url || ''
             });
           }
         }
@@ -235,73 +214,21 @@ const Settings = () => {
   const fetchUsers = async () => {
     setUsersLoading(true);
     try {
-      console.log('Fetching users...');
+      console.log('Fetching users from profiles table...');
       
-      // Récupérer tous les user_profiles
-      const { data: userProfiles, error: profilesError } = await supabase
-        .from('user_profiles')
+      const { data: users, error } = await supabase
+        .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (profilesError) {
-        console.error('Error fetching user profiles:', profilesError);
-        showError('Erreur lors du chargement des profils utilisateurs');
+      if (error) {
+        console.error('Error fetching users:', error);
+        showError('Erreur lors du chargement des utilisateurs');
         return;
       }
 
-      console.log('User profiles fetched:', userProfiles);
-
-      // Récupérer les emails depuis la table profiles
-      const userIds = (userProfiles || []).map(up => up.user_id).filter(Boolean);
-      
-      if (userIds.length === 0) {
-        console.log('No users found');
-        setUsers([]);
-        setUsersLoading(false);
-        return;
-      }
-
-      const { data: profiles, error: profilesEmailError } = await supabase
-        .from('profiles')
-        .select('id, email, first_name, last_name')
-        .in('id', userIds);
-
-      if (profilesEmailError) {
-        console.error('Error fetching profiles for emails:', profilesEmailError);
-      }
-
-      // Créer une map des emails par user_id
-      const emailMap = new Map();
-      (profiles || []).forEach(profile => {
-        if (profile.id && profile.email) {
-          emailMap.set(profile.id, profile.email);
-        }
-      });
-
-      // Combiner les données et formater pour l'affichage
-      const combinedUsers = (userProfiles || []).map(profile => {
-        const email = emailMap.get(profile.user_id);
-        
-        // Si le nom complet est vide, essayer de le reconstruire depuis profiles
-        let fullName = profile.full_name || '';
-        if (!fullName && email) {
-          const correspondingProfile = profiles?.find(p => p.id === profile.user_id);
-          if (correspondingProfile) {
-            fullName = `${correspondingProfile.first_name || ''} ${correspondingProfile.last_name || ''}`.trim();
-          }
-        }
-
-        return {
-          ...profile,
-          full_name: fullName || 'Nom non spécifié',
-          auth_user: { 
-            email: email || 'Email non disponible'
-          }
-        };
-      });
-
-      console.log('Combined users:', combinedUsers);
-      setUsers(combinedUsers);
+      console.log('Users fetched:', users);
+      setUsers(users || []);
     } catch (error: any) {
       console.error('Error fetching users:', error);
       showError(error.message || 'Erreur lors du chargement des utilisateurs');
@@ -379,12 +306,12 @@ const Settings = () => {
     setIsUserFormOpen(true);
   };
 
-  const handleEditUser = (user: UserProfileData) => {
+  const handleEditUser = (user: UserProfile) => {
     setSelectedUser(user);
     setUserForm({
-      email: user.auth_user?.email || '',
-      first_name: user.full_name?.split(' ')[0] || '',
-      last_name: user.full_name?.split(' ').slice(1).join(' ') || '',
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
       role: user.role,
       phone: user.phone || '',
       password: ''
@@ -392,7 +319,7 @@ const Settings = () => {
     setIsUserFormOpen(true);
   };
 
-  const handleDeleteUser = (user: UserProfileData) => {
+  const handleDeleteUser = (user: UserProfile) => {
     setUserToDelete(user);
     setUserDeleteDialogOpen(true);
   };
@@ -414,9 +341,9 @@ const Settings = () => {
         }
       }
 
-      // Supprimer le profil utilisateur
+      // Supprimer l'utilisateur de profiles
       const { error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .delete()
         .eq('id', userToDelete.id);
 
@@ -447,12 +374,13 @@ const Settings = () => {
       }
 
       if (selectedUser) {
-        // Mise à jour - seulement mettre à jour le profil user_profiles
+        // Mise à jour - mettre à jour le profil dans profiles
         console.log('🔄 Mise à jour de l\'utilisateur existant...');
         const { error } = await supabase
-          .from('user_profiles')
+          .from('profiles')
           .update({
-            full_name: `${userForm.first_name} ${userForm.last_name}`.trim(),
+            first_name: userForm.first_name,
+            last_name: userForm.last_name,
             role: userForm.role,
             phone: userForm.phone
           })
@@ -487,57 +415,47 @@ const Settings = () => {
 
         console.log('✅ Utilisateur créé dans Auth avec succès:', authData);
         
-        // Attendre que le trigger se déclenche et créer le profil
-        console.log('⏳ Attente du déclenchement du trigger...');
-        
         // Fermer le formulaire immédiatement
         setIsUserFormOpen(false);
         
-        // Attendre un peu plus longtemps et vérifier plusieurs fois
-        let attempts = 0;
-        const maxAttempts = 5;
-        const checkInterval = 1500; // 1.5 secondes
-        
-        const checkProfile = async () => {
-          attempts++;
-          console.log(`🔍 Vérification ${attempts}/${maxAttempts} du profil...`);
-          
+        // Attendre un peu et vérifier si le profil a été mis à jour par le trigger
+        setTimeout(async () => {
           try {
-            // Vérifier si le profil existe
-            const { data: checkProfile } = await supabase
-              .from('user_profiles')
+            const { data: profile } = await supabase
+              .from('profiles')
               .select('*')
-              .eq('full_name', `${userForm.first_name} ${userForm.last_name}`.trim())
+              .eq('email', userForm.email)
               .single();
             
-            if (checkProfile) {
-              console.log('✅ Profil trouvé! Rafraîchissement de la liste...');
+            if (profile) {
+              console.log('✅ Profil trouvé et mis à jour!');
               showSuccess('Utilisateur créé avec succès');
               await fetchUsers();
-              return;
-            }
-            
-            if (attempts < maxAttempts) {
-              console.log('⏳ Profil pas encore trouvé, nouvelle tentative dans', checkInterval, 'ms');
-              setTimeout(checkProfile, checkInterval);
             } else {
-              console.log('⚠️ Timeout: profil non trouvé après plusieurs tentatives');
-              showError('Utilisateur créé mais le profil n\'a pas pu être vérifié. Veuillez rafraîchir la page.');
-              await fetchUsers(); // Rafraîchir quand même
+              console.log('⚠️ Profil pas encore trouvé, nouvelle tentative...');
+              // Réessayer après un délai plus long
+              setTimeout(async () => {
+                const { data: retryProfile } = await supabase
+                  .from('profiles')
+                  .select('*')
+                  .eq('email', userForm.email)
+                  .single();
+                
+                if (retryProfile) {
+                  showSuccess('Utilisateur créé avec succès');
+                  await fetchUsers();
+                } else {
+                  showError('Utilisateur créé mais profil non trouvé. Veuillez rafraîchir.');
+                  await fetchUsers();
+                }
+              }, 2000);
             }
           } catch (error) {
             console.error('❌ Erreur lors de la vérification du profil:', error);
-            if (attempts < maxAttempts) {
-              setTimeout(checkProfile, checkInterval);
-            } else {
-              showError('Utilisateur créé mais erreur lors de la vérification. Veuillez rafraîchir la page.');
-              await fetchUsers();
-            }
+            showError('Utilisateur créé mais erreur lors de la vérification. Veuillez rafraîchir.');
+            await fetchUsers();
           }
-        };
-        
-        // Démarrer la vérification après un délai initial
-        setTimeout(checkProfile, 2000);
+        }, 1000);
         
         return; // Sortir ici pour éviter le fetchUsers() en double
       }
@@ -551,10 +469,10 @@ const Settings = () => {
     }
   };
 
-  const handleToggleUserStatus = async (user: UserProfileData) => {
+  const handleToggleUserStatus = async (user: UserProfile) => {
     try {
       const { error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .update({ is_active: !user.is_active })
         .eq('id', user.id);
 
@@ -578,13 +496,15 @@ const Settings = () => {
         .from('profiles')
         .update({
           first_name: profileForm.first_name,
-          last_name: profileForm.last_name
+          last_name: profileForm.last_name,
+          role: profileForm.role,
+          phone: profileForm.phone
         })
         .eq('id', user?.id);
 
       if (error) throw error;
 
-      setProfile(prev => prev ? { ...prev, first_name: profileForm.first_name, last_name: profileForm.last_name } : null);
+      setProfile(prev => prev ? { ...prev, ...profileForm } : null);
       showSuccess('Profil mis à jour avec succès');
     } catch (error: any) {
       console.error('Error updating profile:', error);
@@ -747,7 +667,7 @@ const Settings = () => {
   ];
 
   const filteredOptions = settingsOptions.filter(option => 
-    !option.adminOnly || userProfile?.role === 'admin'
+    !option.adminOnly || profile?.role === 'admin'
   );
 
   if (loading) {
@@ -827,8 +747,8 @@ const Settings = () => {
                               <UserIcon className="h-5 w-5 text-emerald-600" />
                             </div>
                             <div>
-                              <p className="font-medium">{user.full_name}</p>
-                              <p className="text-sm text-gray-500">{user.auth_user?.email}</p>
+                              <p className="font-medium">{user.first_name} {user.last_name}</p>
+                              <p className="text-sm text-gray-500">{user.email}</p>
                               <div className="flex items-center space-x-2 mt-1">
                                 <Badge 
                                   variant={user.role === 'admin' ? 'default' : 'secondary'}
@@ -939,7 +859,7 @@ const Settings = () => {
                     <div>
                       <h3 className="font-medium">{user?.email}</h3>
                       <p className="text-sm text-gray-500">
-                        {userProfile?.role === 'admin' ? 'Administrateur' : 'Opérateur'}
+                        {profile?.role === 'admin' ? 'Administrateur' : 'Opérateur'}
                       </p>
                     </div>
                   </div>
@@ -1317,7 +1237,7 @@ const Settings = () => {
         open={userDeleteDialogOpen}
         onOpenChange={setUserDeleteDialogOpen}
         title="Supprimer l'utilisateur"
-        description={`Êtes-vous sûr de vouloir supprimer "${userToDelete?.full_name}" ? Cette action est irréversible.`}
+        description={`Êtes-vous sûr de vouloir supprimer "${userToDelete?.first_name} ${userToDelete?.last_name}" ? Cette action est irréversible.`}
         confirmText="Supprimer"
         cancelText="Annuler"
         onConfirm={confirmDeleteUser}

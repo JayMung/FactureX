@@ -6,6 +6,8 @@ export const useRealTimeActivity = (limit: number = 10) => {
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastFetch, setLastFetch] = useState(0);
 
   // Mettre à jour le compteur de notifications non lues
   const markAsRead = useCallback(() => {
@@ -16,26 +18,39 @@ export const useRealTimeActivity = (limit: number = 10) => {
 
   // Charger les activités récentes au démarrage
   const fetchRecentActivities = useCallback(async () => {
+    // Débouncing - ne pas faire plus d'une requête par seconde
+    const now = Date.now();
+    if (isLoading || (now - lastFetch < 1000)) {
+      return;
+    }
+    
+    setIsLoading(true);
+    setLastFetch(now);
+    
     try {
-      const { data, error } = await supabase
+      // Récupérer les activity logs
+      const { data: activityData, error: activityError } = await supabase
         .from('activity_logs')
-        .select(`
-          *,
-          profiles!inner(
-            id,
-            first_name,
-            last_name,
-            email
-          )
-        `)
-        .order('created_at', { ascending: false })
+        .select('*')
+        .order('date', { ascending: false })
         .limit(limit);
 
-      if (error) throw error;
+      if (activityError) throw activityError;
 
-      const activitiesWithUsers = data?.map(log => ({
+      // Récupérer les infos des utilisateurs pour chaque activité
+      const userIds = [...new Set(activityData?.map(log => log.user_id) || [])];
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .in('id', userIds);
+
+      // Mapper les profils par ID
+      const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+
+      const activitiesWithUsers = activityData?.map(log => ({
         ...log,
-        user: log.profiles
+        created_at: log.created_at || log.date, // Support both column names
+        user: profilesMap.get(log.user_id)
       })) || [];
 
       setActivities(activitiesWithUsers);
@@ -52,8 +67,10 @@ export const useRealTimeActivity = (limit: number = 10) => {
       }
     } catch (error) {
       console.error('Error fetching recent activities:', error);
+    } finally {
+      setIsLoading(false);
     }
-  }, [limit]);
+  }, [limit, isLoading, lastFetch]);
 
   // Écouter les nouvelles activités en temps réel
   useEffect(() => {
@@ -75,6 +92,7 @@ export const useRealTimeActivity = (limit: number = 10) => {
 
           const activityWithUser = {
             ...newActivity,
+            created_at: newActivity.created_at || newActivity.date, // Support both
             user: userData
           };
 

@@ -77,7 +77,7 @@ const ActivityLogs: React.FC = () => {
         .from('activity_logs')
         .select(`
           *,
-          profiles!inner(
+          profiles(
             id,
             first_name,
             last_name,
@@ -125,13 +125,14 @@ const ActivityLogs: React.FC = () => {
 
       // Pagination
       const { data, error } = await query
-        .order('created_at', { ascending: false })
+        .order('date', { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
 
       if (error) throw error;
 
       const activitiesWithUsers = data?.map(log => ({
         ...log,
+        created_at: log.created_at || log.date, // Normalize date field
         user: log.profiles
       })) || [];
 
@@ -274,8 +275,11 @@ const ActivityLogs: React.FC = () => {
     return 'bg-blue-50 text-blue-700 border-blue-200';
   };
 
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('fr-FR', {
+  const formatDateTime = (dateString: string | undefined) => {
+    if (!dateString) return 'Date inconnue';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Date invalide';
+    return date.toLocaleString('fr-FR', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',

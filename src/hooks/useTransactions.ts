@@ -27,7 +27,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
         .select(`
           *,
           client:clients(*)
-        `)
+        `, { count: 'exact' })
         .range((page - 1) * pagination.pageSize, page * pagination.pageSize - 1)
         .order('created_at', { ascending: false });
 

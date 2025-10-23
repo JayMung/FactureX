@@ -256,7 +256,7 @@ const SettingsWithPermissions = () => {
       const { data } = await supabase
         .from('activity_logs')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('date', { ascending: false })
         .limit(50);
       
       setActivityLogs(data || []);

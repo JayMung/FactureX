@@ -643,14 +643,14 @@ export class SupabaseService {
     try {
       const { data, error, count } = await supabase
         .from('activity_logs')
-        .select('*')
+        .select('*', { count: 'exact' })
         .range((page - 1) * pageSize, page * pageSize - 1)
-        .order('created_at', { ascending: false });
+        .order('date', { ascending: false });
 
       if (error) throw error;
 
       const logs = data || [];
-      const userIds = logs.map(l => l.user_id).filter(Boolean);
+      const userIds = [...new Set(logs.map(l => l.user_id).filter(Boolean))];
       
       if (userIds.length === 0) {
         const result: PaginatedResponse<ActivityLog & { user: { email: string } }> = {
@@ -663,13 +663,22 @@ export class SupabaseService {
         return { data: result };
       }
 
-      const { data: authUsersData, error: authError } = await supabase.auth.admin.listUsers();
-      if (authError) throw authError;
+      // Fetch user data from profiles table instead of auth.admin
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email, first_name, last_name')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+      }
+
+      const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
 
       const logsWithEmail = logs.map(log => ({
         ...log,
         user: { 
-          email: (authUsersData.users as any[]).find((u: any) => u.id === log.user_id)?.email || ''
+          email: profilesMap.get(log.user_id)?.email || 'Utilisateur inconnu'
         }
       }));
 

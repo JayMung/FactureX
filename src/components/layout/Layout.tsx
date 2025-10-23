@@ -17,12 +17,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // Listen for menu toggle events
   useEffect(() => {
-    const handleMenuToggle = () => {
+    const handleMenuToggle = (e: Event) => {
+      e.stopPropagation();
       setSidebarOpen(prev => !prev);
     };
 
-    window.addEventListener('toggle-main-menu', handleMenuToggle);
-    return () => window.removeEventListener('toggle-main-menu', handleMenuToggle);
+    window.addEventListener('toggle-main-menu', handleMenuToggle, true);
+    return () => window.removeEventListener('toggle-main-menu', handleMenuToggle, true);
   }, []);
 
   const toggleMobileSidebar = () => {

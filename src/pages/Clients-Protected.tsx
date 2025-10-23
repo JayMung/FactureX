@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import SortableHeader from '../components/ui/sortable-header';
 import BulkActions from '../components/ui/bulk-actions';
 import ClientForm from '../components/forms/ClientForm';
+import ClientHistoryModal from '../components/clients/ClientHistoryModal';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
@@ -46,7 +47,9 @@ const ClientsProtected: React.FC = () => {
   const [selectedClient, setSelectedClient] = useState<Client | undefined>();
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
   
-  // États pour les modales de confirmation
+  // États pour les modales
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [clientForHistory, setClientForHistory] = useState<Client | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
@@ -144,6 +147,12 @@ const ClientsProtected: React.FC = () => {
   const handleAddClient = () => {
     setSelectedClient(undefined);
     setIsFormOpen(true);
+  };
+
+  const handleViewClientHistory = (client: Client) => {
+    console.log('👁️ Opening history for:', client.nom);
+    setClientForHistory(client);
+    setHistoryModalOpen(true);
   };
 
   const formatCurrency = (amount: number) => {
@@ -484,7 +493,12 @@ const ClientsProtected: React.FC = () => {
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center space-x-2">
-                              <Button variant="ghost" size="icon">
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleViewClientHistory(client)}
+                                title="Voir l'historique"
+                              >
                                 <Eye className="h-4 w-4" />
                               </Button>
                               
@@ -537,6 +551,12 @@ const ClientsProtected: React.FC = () => {
             isOpen={isFormOpen}
             onClose={() => setIsFormOpen(false)}
             onSuccess={handleFormSuccess}
+          />
+
+          <ClientHistoryModal
+            client={clientForHistory}
+            open={historyModalOpen}
+            onOpenChange={setHistoryModalOpen}
           />
 
           {/* Delete Confirmation Dialogs */}

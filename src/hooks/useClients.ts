@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabaseService } from '@/services/supabase';
+import { activityLogger } from '@/services/activityLogger';
 import type { Client, ClientFilters, CreateClientData, ApiResponse } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 
@@ -22,6 +23,16 @@ export const useClients = (page: number = 1, filters: ClientFilters = {}) => {
     onSuccess: (response: ApiResponse<Client>) => {
       if (response.data) {
         showSuccess(response.message || 'Client créé avec succès');
+        // Logger l'activité
+        activityLogger.logActivityWithChanges(
+          'Création Client',
+          'clients',
+          response.data.id,
+          {
+            before: null,
+            after: response.data
+          }
+        );
         queryClient.invalidateQueries({ queryKey: ['clients'] });
         queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
       } else if (response.error) {
@@ -34,11 +45,20 @@ export const useClients = (page: number = 1, filters: ClientFilters = {}) => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Client> }) => 
-      supabaseService.updateClient(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Partial<Client> }) => supabaseService.updateClient(id, data),
     onSuccess: (response: ApiResponse<Client>) => {
       if (response.data) {
         showSuccess(response.message || 'Client mis à jour avec succès');
+        // Logger l'activité
+        activityLogger.logActivityWithChanges(
+          'Modification Client',
+          'clients',
+          id,
+          {
+            before: data,
+            after: response.data
+          }
+        );
         queryClient.invalidateQueries({ queryKey: ['clients'] });
       } else if (response.error) {
         showError(response.error);
@@ -49,15 +69,20 @@ export const useClients = (page: number = 1, filters: ClientFilters = {}) => {
     }
   });
 
-  // Correction de la fonction de suppression
   const deleteMutation = useMutation({
     mutationFn: (id: string) => supabaseService.deleteClient(id),
     onSuccess: (response: ApiResponse<void>) => {
       if (!response.error) {
         showSuccess(response.message || 'Client supprimé avec succès');
+        // Logger l'activité
+        activityLogger.logActivity(
+          'Suppression Client',
+          'clients',
+          id
+        );
         queryClient.invalidateQueries({ queryKey: ['clients'] });
         queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
-      } else {
+      } else if (response.error) {
         showError(response.error);
       }
     },

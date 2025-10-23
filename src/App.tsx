@@ -10,6 +10,7 @@ import IndexProtected from "./pages/Index-Protected";
 import ClientsProtected from "./pages/Clients-Protected";
 import TransactionsProtected from "./pages/Transactions-Protected";
 import SettingsWithPermissions from "./pages/Settings-Permissions";
+import ActivityLogs from "./pages/ActivityLogs";
 import Login from "./pages/Login";
 import AdminSetup from "./pages/AdminSetup";
 import NotFound from "./pages/NotFound";
@@ -43,8 +44,13 @@ const App = () => (
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/settings" element={
-                <ProtectedRouteEnhanced requiredModule="settings" requiredPermission="read">
+                <ProtectedRouteEnhanced>
                   <SettingsWithPermissions />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/activity-logs" element={
+                <ProtectedRouteEnhanced>
+                  <ActivityLogs />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="*" element={<NotFound />} />

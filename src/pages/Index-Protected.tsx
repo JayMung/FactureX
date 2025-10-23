@@ -25,6 +25,8 @@ import { useActivityLogs } from '../hooks/useActivityLogs';
 import { formatCurrency } from '../utils/formatCurrency';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
+import ActivityFeed from '../components/activity/ActivityFeed';
+import NotificationCenter from '../components/activity/NotificationCenter';
 
 const IndexProtected: React.FC = () => {
   usePageSetup({
@@ -33,7 +35,7 @@ const IndexProtected: React.FC = () => {
   });
 
   const { stats, isLoading, error } = useDashboardWithPermissions();
-  const { logs, isLoading: logsLoading, refetch: refetchLogs } = useActivityLogs(1, 10);
+  const { logs, isLoading: logsLoading } = useActivityLogs(1, 5);
 
   const formatCurrencyValue = (amount: number, currency: string = 'USD') => {
     if (currency === 'USD') {
@@ -135,122 +137,70 @@ const IndexProtected: React.FC = () => {
             ))}
           </div>
 
-          {/* Activity Feed */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center">
-                  <Activity className="mr-2 h-5 w-5" />
-                  Activité Récente
-                </CardTitle>
-                <Button variant="ghost" size="sm">
-                  <Eye className="mr-2 h-4 w-4" />
-                  Voir tout
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {logsLoading ? (
-                <div className="space-y-4">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <div key={index} className="flex items-center space-x-3 p-3 rounded-lg bg-gray-50 animate-pulse">
-                      <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-                      <div className="flex-1 min-w-0">
-                        <div className="h-4 bg-gray-300 rounded w-full mb-2"></div>
-                        <div className="h-4 bg-gray-200 rounded w-full"></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : !logs || logs.data.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Activity className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p>Aucune activité récente</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {logs.data.slice(0, 5).map((log) => (
-                    <div key={log.id} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex-shrink-0">
-                        {log.action.includes('client') ? (
-                          <Users className="h-4 w-4 text-green-600" />
-                        ) : log.action.includes('transaction') ? (
-                          <Receipt className="h-4 w-4 text-blue-600" />
-                        ) : log.action.includes('paramètre') ? (
-                          <Settings className="h-4 w-4 text-orange-600" />
-                        ) : (
-                          <Activity className="h-4 w-4 text-gray-600" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900">{log.action}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
-                            {log.cible || 'Système'}
-                          </Badge>
-                          <span className="text-xs text-gray-500">
-                            par {log.user?.email || 'Utilisateur inconnu'} • {new Date(log.date || log.created_at).toLocaleString('fr-FR')}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Actions Rapides</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <PermissionGuard module="transactions" permission="create">
+          {/* Activity Feed + Notifications */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Activity Feed */}
+            <div className="lg:col-span-2">
+              <ActivityFeed />
+            </div>
+            
+            {/* Quick Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Actions Rapides</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <PermissionGuard module="transactions" permission="create">
+                    <Button 
+                      asChild
+                      className="h-20 flex flex-col items-center justify-center space-y-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
+                    >
+                      <a href="/transactions">
+                        <Plus className="h-6 w-6" />
+                        <span className="text-sm">Nouvelle Transaction</span>
+                      </a>
+                    </Button>
+                  </PermissionGuard>
+                  
+                  <PermissionGuard module="clients" permission="create">
+                    <Button 
+                      asChild
+                      className="h-20 flex flex-col items-center justify-center space-y-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
+                    >
+                      <a href="/clients">
+                        <Users className="h-6 w-6" />
+                        <span className="text-sm">Ajouter Client</span>
+                      </a>
+                    </Button>
+                  </PermissionGuard>
+                  
                   <Button 
                     asChild
-                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
+                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
                   >
                     <a href="/transactions">
-                      <Plus className="h-6 w-6" />
-                      <span className="text-sm">Nouvelle Transaction</span>
+                      <Receipt className="h-6 w-6" />
+                      <span className="text-sm">Voir Transactions</span>
                     </a>
                   </Button>
-                </PermissionGuard>
-                
-                <PermissionGuard module="clients" permission="create">
+                  
                   <Button 
-                    asChild
-                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
+                    disabled
+                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-purple-50 text-purple-400 border-purple-100 rounded-lg opacity-50 cursor-not-allowed"
                   >
-                    <a href="/clients">
-                      <Users className="h-6 w-6" />
-                      <span className="text-sm">Ajouter Client</span>
-                    </a>
+                    <TrendingUp className="h-6 w-6" />
+                    <span className="text-sm">Rapports (Bientôt)</span>
                   </Button>
-                </PermissionGuard>
-                
-                <Button 
-                  asChild
-                  className="h-20 flex flex-col items-center justify-center space-y-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
-                >
-                  <a href="/transactions">
-                    <Receipt className="h-6 w-6" />
-                    <span className="text-sm">Voir Transactions</span>
-                  </a>
-                </Button>
-                
-                <Button 
-                  disabled
-                  className="h-20 flex flex-col items-center justify-center space-y-2 bg-purple-50 text-purple-400 border-purple-100 rounded-lg opacity-50 cursor-not-allowed"
-                >
-                  <TrendingUp className="h-6 w-6" />
-                  <span className="text-sm">Rapports (Bientôt)</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* NotificationCenter */}
+          <div className="lg:col-span-1">
+            <NotificationCenter />
+          </div>
         </div>
       </Layout>
     </ProtectedRouteEnhanced>

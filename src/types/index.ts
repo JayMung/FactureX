@@ -302,6 +302,7 @@ export interface Facture {
   created_at: string;
   updated_at?: string;
   client?: Client;
+  clients?: Client;
   items?: FactureItem[];
 }
 

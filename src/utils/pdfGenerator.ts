@@ -114,22 +114,23 @@ export const generateFacturePDF = async ({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     yPosition += 5;
-    doc.text(facture.client?.nom || 'N/A', leftCol, yPosition);
+    const clientInfo = facture.clients || facture.client;
+    doc.text(clientInfo?.nom || 'N/A', leftCol, yPosition);
     yPosition += 4;
-    if (facture.client?.adresse) {
-      doc.text(facture.client.adresse, leftCol, yPosition);
+    if (clientInfo?.adresse) {
+      doc.text(clientInfo.adresse, leftCol, yPosition);
       yPosition += 4;
     }
-    if (facture.client?.ville) {
-      doc.text(facture.client.ville, leftCol, yPosition);
+    if (clientInfo?.ville) {
+      doc.text(clientInfo.ville, leftCol, yPosition);
       yPosition += 4;
     }
-    if (facture.client?.telephone) {
-      doc.text(`Tél: ${facture.client.telephone}`, leftCol, yPosition);
+    if (clientInfo?.telephone) {
+      doc.text(`Tél: ${clientInfo.telephone}`, leftCol, yPosition);
       yPosition += 4;
     }
-    if (facture.client?.email) {
-      doc.text(`Email: ${facture.client.email}`, leftCol, yPosition);
+    if (clientInfo?.email) {
+      doc.text(`Email: ${clientInfo.email}`, leftCol, yPosition);
     }
 
     // Colonne droite - Informations facture
@@ -317,7 +318,8 @@ export const generateFacturePDF = async ({
     );
 
     // Sauvegarder le PDF
-    const fileName = `${facture.type === 'devis' ? 'Devis' : 'Facture'}_${facture.facture_number}_${facture.client?.nom || 'Client'}.pdf`;
+    const clientInfo = facture.clients || facture.client;
+    const fileName = `${facture.type === 'devis' ? 'Devis' : 'Facture'}_${facture.facture_number}_${clientInfo?.nom || 'Client'}.pdf`;
     doc.save(fileName);
 
     return { success: true, fileName };

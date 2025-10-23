@@ -298,7 +298,7 @@ const FacturesProtected: React.FC = () => {
                             </Badge>
                           </td>
                           <td className="py-3 px-4 font-medium">{facture.facture_number}</td>
-                          <td className="py-3 px-4">{facture.client?.nom}</td>
+                          <td className="py-3 px-4">{(facture as any).clients?.nom || 'N/A'}</td>
                           <td className="py-3 px-4 text-sm">
                             {new Date(facture.date_emission).toLocaleDateString('fr-FR')}
                           </td>

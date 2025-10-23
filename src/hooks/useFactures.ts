@@ -26,7 +26,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
         .from('factures')
         .select(`
           *,
-          client:clients(id, nom, telephone, ville, email, adresse)
+          clients!inner(id, nom, telephone, ville, adresse)
         `, { count: 'exact' })
         .order('date_emission', { ascending: false })
         .range(from, to);

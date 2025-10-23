@@ -158,7 +158,7 @@ export interface UserPermission {
   updated_at: string;
 }
 
-export type ModuleType = 'clients' | 'transactions' | 'settings' | 'payment_methods' | 'activity_logs' | 'profile' | 'users' | 'exchange_rates' | 'transaction_fees';
+export type ModuleType = 'clients' | 'transactions' | 'settings' | 'payment_methods' | 'activity_logs' | 'profile' | 'users' | 'exchange_rates' | 'transaction_fees' | 'factures';
 
 export interface UserPermissionsMap {
   [module: string]: {
@@ -203,7 +203,8 @@ export const PREDEFINED_ROLES: PermissionRole[] = [
       profile: { can_read: true, can_create: false, can_update: true, can_delete: false },
       users: { can_read: true, can_create: true, can_update: true, can_delete: true },
       exchange_rates: { can_read: true, can_create: false, can_update: true, can_delete: false },
-      transaction_fees: { can_read: true, can_create: false, can_update: true, can_delete: false }
+      transaction_fees: { can_read: true, can_create: false, can_update: true, can_delete: false },
+      factures: { can_read: true, can_create: true, can_update: true, can_delete: true }
     }
   },
   {
@@ -218,7 +219,8 @@ export const PREDEFINED_ROLES: PermissionRole[] = [
       profile: { can_read: true, can_create: false, can_update: true, can_delete: false },
       users: { can_read: false, can_create: false, can_update: false, can_delete: false },
       exchange_rates: { can_read: false, can_create: false, can_update: false, can_delete: false },
-      transaction_fees: { can_read: false, can_create: false, can_update: false, can_delete: false }
+      transaction_fees: { can_read: false, can_create: false, can_update: false, can_delete: false },
+      factures: { can_read: true, can_create: true, can_update: true, can_delete: false }
     }
   },
   {
@@ -233,7 +235,8 @@ export const PREDEFINED_ROLES: PermissionRole[] = [
       profile: { can_read: true, can_create: false, can_update: true, can_delete: false },
       users: { can_read: false, can_create: false, can_update: false, can_delete: false },
       exchange_rates: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      transaction_fees: { can_read: true, can_create: false, can_update: false, can_delete: false }
+      transaction_fees: { can_read: true, can_create: false, can_update: false, can_delete: false },
+      factures: { can_read: true, can_create: false, can_update: false, can_delete: false }
     }
   }
 ];
@@ -241,6 +244,7 @@ export const PREDEFINED_ROLES: PermissionRole[] = [
 export const MODULES_INFO: ModuleInfo[] = [
   { id: 'clients', name: 'Clients', description: 'Gestion des clients', icon: 'Users', adminOnly: false },
   { id: 'transactions', name: 'Transactions', description: 'Gestion des transactions', icon: 'Receipt', adminOnly: false },
+  { id: 'factures', name: 'Factures', description: 'Gestion des factures et devis', icon: 'FileText', adminOnly: false },
   { id: 'settings', name: 'Paramètres', description: 'Accès aux paramètres', icon: 'Settings', adminOnly: false },
   { id: 'profile', name: 'Profil', description: 'Informations personnelles', icon: 'User', adminOnly: false },
   { id: 'users', name: 'Utilisateurs', description: 'Gestion des utilisateurs', icon: 'Users', adminOnly: true },
@@ -268,4 +272,99 @@ export interface ApiResponse<T> {
 export interface SortConfig {
   key: string;
   direction: 'asc' | 'desc';
+}
+
+// Facture types
+export interface Facture {
+  id: string;
+  facture_number: string;
+  type: 'devis' | 'facture';
+  statut: 'brouillon' | 'en_attente' | 'validee' | 'annulee';
+  client_id: string;
+  date_emission: string;
+  date_validation?: string;
+  valide_par?: string;
+  mode_livraison: 'aerien' | 'maritime';
+  devise: 'USD' | 'CDF';
+  shipping_fee: number;
+  subtotal: number;
+  total_poids: number;
+  frais_transport_douane: number;
+  total_general: number;
+  conditions_vente?: string;
+  notes?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at?: string;
+  client?: Client;
+  items?: FactureItem[];
+}
+
+export interface FactureItem {
+  id: string;
+  facture_id: string;
+  numero_ligne: number;
+  image_url?: string;
+  product_url?: string;
+  quantite: number;
+  description: string;
+  prix_unitaire: number;
+  poids: number;
+  montant_total: number;
+  created_at?: string;
+}
+
+export interface CreateFactureData {
+  client_id: string;
+  type: 'devis' | 'facture';
+  mode_livraison: 'aerien' | 'maritime';
+  devise: 'USD' | 'CDF';
+  conditions_vente?: string;
+  notes?: string;
+  items: Omit<FactureItem, 'id' | 'facture_id' | 'created_at'>[];
+}
+
+export interface UpdateFactureData {
+  client_id?: string;
+  mode_livraison?: 'aerien' | 'maritime';
+  devise?: 'USD' | 'CDF';
+  statut?: 'brouillon' | 'en_attente' | 'validee' | 'annulee';
+  conditions_vente?: string;
+  notes?: string;
+  items?: Omit<FactureItem, 'id' | 'facture_id' | 'created_at'>[];
+}
+
+export interface FactureFilters {
+  type?: 'devis' | 'facture';
+  statut?: string;
+  clientId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  modeLivraison?: 'aerien' | 'maritime';
+}
+
+// Company Settings types
+export interface CompanySettings {
+  nom_entreprise: string;
+  logo_url?: string;
+  rccm: string;
+  idnat: string;
+  nif: string;
+  email_entreprise: string;
+  telephone_entreprise: string;
+  adresse_entreprise?: string;
+}
+
+// Shipping Settings types
+export interface ShippingSettings {
+  frais_aerien_par_kg: number;
+  frais_maritime_par_cbm: number;
+}
+
+// Product Category types
+export interface ProductCategory {
+  id: string;
+  nom: string;
+  code: string;
+  created_at?: string;
 }

@@ -41,6 +41,8 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
   open, 
   onOpenChange 
 }) => {
+  console.log('ClientHistoryModal rendered with:', { client: client?.nom, open, clientId: client?.id });
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currencyFilter, setCurrencyFilter] = useState('all');
@@ -96,7 +98,10 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
     return currency === 'USD' ? '$' : 'CDF';
   };
 
-  if (!client) return null;
+  if (!client) {
+    console.log('ClientHistoryModal: No client, returning null');
+    return null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

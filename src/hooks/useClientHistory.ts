@@ -44,8 +44,12 @@ export const useClientHistory = (
   });
 
   const fetchClientHistory = useCallback(async () => {
-    if (!clientId) return;
+    if (!clientId) {
+      console.log('useClientHistory: No clientId provided');
+      return;
+    }
 
+    console.log('useClientHistory: Fetching for client', clientId);
     setLoading(true);
     try {
       let query = supabase
@@ -53,7 +57,7 @@ export const useClientHistory = (
         .select(`
           *,
           client:clients(*)
-        `)
+        `, { count: 'exact' })
         .eq('client_id', clientId)
         .order('created_at', { ascending: false })
         .range((page - 1) * pagination.pageSize, page * pagination.pageSize - 1);
@@ -85,8 +89,12 @@ export const useClientHistory = (
 
       const { data, error, count } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('useClientHistory: Query error', error);
+        throw error;
+      }
 
+      console.log('useClientHistory: Fetched', data?.length, 'transactions, total:', count);
       setHistory(data || []);
       setPagination(prev => ({
         ...prev,

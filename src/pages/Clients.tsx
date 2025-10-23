@@ -153,8 +153,10 @@ const Clients = () => {
   };
 
   const handleViewClientHistory = (client: Client) => {
+    console.log('handleViewClientHistory called with client:', client);
     setClientForHistory(client);
     setHistoryModalOpen(true);
+    console.log('Modal should open now, historyModalOpen set to true');
   };
 
 

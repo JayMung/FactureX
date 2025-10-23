@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,7 @@ import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import type { Transaction } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { formatCurrency } from '../utils/formatCurrency';
+import { supabase } from '@/integrations/supabase/client';
 
 const TransactionsProtected: React.FC = () => {
   usePageSetup({
@@ -56,6 +57,17 @@ const TransactionsProtected: React.FC = () => {
   const [transactionToValidate, setTransactionToValidate] = useState<Transaction | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    };
+    getCurrentUser();
+  }, []);
 
   const memoFilters = useMemo(() => ({
     status: statusFilter === 'all' ? undefined : statusFilter,
@@ -151,7 +163,7 @@ const TransactionsProtected: React.FC = () => {
     try {
       await updateTransaction(transactionToValidate.id, {
         statut: 'Servi',
-        valide_par: 'current_user',
+        valide_par: currentUserId || undefined,
         date_validation: new Date().toISOString()
       });
       setValidateDialogOpen(false);

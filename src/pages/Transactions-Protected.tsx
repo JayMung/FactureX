@@ -236,7 +236,7 @@ const TransactionsProtected: React.FC = () => {
   return (
     <ProtectedRouteEnhanced requiredModule="transactions" requiredPermission="read">
       <Layout>
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-300">
           {/* Action Buttons */}
           <div className="flex items-center justify-end">
             <div className="flex space-x-2">

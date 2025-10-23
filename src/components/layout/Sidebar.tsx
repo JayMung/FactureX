@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
   LayoutDashboard, 
@@ -9,14 +10,12 @@ import {
   Settings,
   Package, 
   FileText,
-  LogOut,
-  Loader2,
-  Shield
+  LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { usePermissions } from '@/hooks/usePermissions';
-import { supabase } from '@/integrations/supabase/client'; // <-- Ajout de l'import manquant
+import { supabase } from '@/integrations/supabase/client';
 import { showSuccess } from '@/utils/toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -96,15 +95,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     showSuccess('Déconnexion réussie');
   };
 
-  // Fonction pour naviguer vers un module
-  const handleNavigate = (path: string) => {
-    if (currentPath !== path) {
-      window.location.href = path;
-    }
-  };
-
-  // État de chargement synchronisé
-  const showLoadingState = loading || !user;
 
   return (
     <div className={cn(
@@ -151,39 +141,28 @@ const Sidebar: React.FC<SidebarProps> = ({
           "space-y-2",
           isMobile && "space-y-1"
         )}>
-          {showLoadingState ? (
-            // État de chargement synchronisé
-            <div className="flex items-center justify-center h-32">
-              <div className="text-center">
-                <Loader2 className="h-6 w-6 animate-spin text-emerald-200 mb-2" />
-                <p className="text-emerald-100 text-xs">Chargement...</p>
-              </div>
-            </div>
-          ) : (
-            // Menu normal
-            filteredMenuItems.map((item) => (
-              <li key={item.path}>
-                <a href={item.path}>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "w-full justify-start text-white hover:bg-emerald-700 hover:text-white transition-all duration-200",
-                      currentPath === item.path && "bg-emerald-700 text-white",
-                      isMobile && "px-3 justify-center"
-                    )}
-                    onClick={() => handleNavigate(item.path)}
-                  >
-                    <item.icon className={cn("h-4 w-4 flex-shrink-0", isMobile && "h-5 w-5")} />
-                    {isMobile ? (
-                      <span className="sr-only">{item.label}</span>
-                    ) : (
-                      <span className="ml-3 truncate">{item.label}</span>
-                    )}
-                  </Button>
-                </a>
-              </li>
-            ))
-          )}
+          {filteredMenuItems.map((item) => (
+            <li key={item.path}>
+              <Button
+                variant="ghost"
+                asChild
+                className={cn(
+                  "w-full justify-start text-white hover:bg-emerald-700 hover:text-white transition-all duration-200 active:scale-95",
+                  currentPath === item.path && "bg-emerald-700 text-white shadow-lg",
+                  isMobile && "px-3 justify-center"
+                )}
+              >
+                <Link to={item.path}>
+                  <item.icon className={cn("h-4 w-4 flex-shrink-0", isMobile && "h-5 w-5")} />
+                  {isMobile ? (
+                    <span className="sr-only">{item.label}</span>
+                  ) : (
+                    <span className="ml-3 truncate">{item.label}</span>
+                  )}
+                </Link>
+              </Button>
+            </li>
+          ))}
         </ul>
       </nav>
 

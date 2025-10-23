@@ -28,8 +28,7 @@ export const usePermissions = () => {
         console.error('Error loading permissions:', err);
         setError(err.message);
       } finally {
-        // Petit délai pour éviter les flashs
-        setTimeout(() => setLoading(false), 50);
+        setLoading(false);
       }
     };
 

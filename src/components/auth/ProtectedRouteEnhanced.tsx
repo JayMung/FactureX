@@ -21,13 +21,19 @@ const ProtectedRouteEnhanced: React.FC<ProtectedRouteEnhancedProps> = ({
   requiredPermission = 'read',
   fallbackPath = '/login'
 }) => {
-  const { user, loading, isAdmin } = useAuth();
-  const { checkPermission } = usePermissions();
+  const { user, loading: authLoading, isAdmin } = useAuth();
+  const { checkPermission, loading: permissionsLoading } = usePermissions();
 
-  if (loading) {
+  // Combiner les deux loading en un seul
+  const isLoading = authLoading || permissionsLoading;
+
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 border-t-emerald-400 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement...</p>
+        </div>
       </div>
     );
   }

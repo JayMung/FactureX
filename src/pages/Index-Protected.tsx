@@ -114,7 +114,7 @@ const IndexProtected: React.FC = () => {
   return (
     <ProtectedRouteEnhanced>
       <Layout>
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-300">
           {/* Welcome Section */}
           <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg p-6 text-white">
             <h1 className="text-2xl font-bold mb-2">Bienvenue sur CoxiPay</h1>
@@ -208,27 +208,45 @@ const IndexProtected: React.FC = () => {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <PermissionGuard module="transactions" permission="create">
-                  <Button className="h-20 flex flex-col items-center justify-center space-y-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 rounded-lg">
-                    <Plus className="h-6 w-6" />
-                    <span className="text-sm">Nouvelle Transaction</span>
+                  <Button 
+                    asChild
+                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
+                  >
+                    <a href="/transactions">
+                      <Plus className="h-6 w-6" />
+                      <span className="text-sm">Nouvelle Transaction</span>
+                    </a>
                   </Button>
                 </PermissionGuard>
                 
                 <PermissionGuard module="clients" permission="create">
-                  <Button className="h-20 flex flex-col items-center justify-center space-y-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 rounded-lg">
-                    <Users className="h-6 w-6" />
-                    <span className="text-sm">Ajouter Client</span>
+                  <Button 
+                    asChild
+                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
+                  >
+                    <a href="/clients">
+                      <Users className="h-6 w-6" />
+                      <span className="text-sm">Ajouter Client</span>
+                    </a>
                   </Button>
                 </PermissionGuard>
                 
-                <Button className="h-20 flex flex-col items-center justify-center space-y-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 rounded-lg">
-                  <Receipt className="h-6 w-6" />
-                  <span className="text-sm">Voir Transactions</span>
+                <Button 
+                  asChild
+                  className="h-20 flex flex-col items-center justify-center space-y-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
+                >
+                  <a href="/transactions">
+                    <Receipt className="h-6 w-6" />
+                    <span className="text-sm">Voir Transactions</span>
+                  </a>
                 </Button>
                 
-                <Button className="h-20 flex flex-col items-center justify-center space-y-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 rounded-lg">
+                <Button 
+                  disabled
+                  className="h-20 flex flex-col items-center justify-center space-y-2 bg-purple-50 text-purple-400 border-purple-100 rounded-lg opacity-50 cursor-not-allowed"
+                >
                   <TrendingUp className="h-6 w-6" />
-                  <span className="text-sm">Rapports</span>
+                  <span className="text-sm">Rapports (Bientôt)</span>
                 </Button>
               </div>
             </CardContent>

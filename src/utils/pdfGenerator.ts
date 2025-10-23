@@ -117,10 +117,6 @@ export const generateFacturePDF = async ({
     const clientInfo = facture.clients || facture.client;
     doc.text(clientInfo?.nom || 'N/A', leftCol, yPosition);
     yPosition += 4;
-    if (clientInfo?.adresse) {
-      doc.text(clientInfo.adresse, leftCol, yPosition);
-      yPosition += 4;
-    }
     if (clientInfo?.ville) {
       doc.text(clientInfo.ville, leftCol, yPosition);
       yPosition += 4;
@@ -128,9 +124,6 @@ export const generateFacturePDF = async ({
     if (clientInfo?.telephone) {
       doc.text(`Tél: ${clientInfo.telephone}`, leftCol, yPosition);
       yPosition += 4;
-    }
-    if (clientInfo?.email) {
-      doc.text(`Email: ${clientInfo.email}`, leftCol, yPosition);
     }
 
     // Colonne droite - Informations facture

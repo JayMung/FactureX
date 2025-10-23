@@ -21,17 +21,17 @@ export const useSettings = (categorie?: string) => {
   const updateMutation = useMutation({
     mutationFn: ({ categorie, settings }: { categorie: string; settings: Record<string, string> }) => 
       supabaseService.updateSetting(categorie, settings),
-    onSuccess: (response: ApiResponse<Setting[]>) => {
+    onSuccess: (response: ApiResponse<Setting[]>, variables: { categorie: string; settings: Record<string, string> }) => {
       if (response.data) {
         showSuccess(response.message || 'Paramètres mis à jour avec succès');
         
         // Logger l'activité de modification des paramètres
-        Object.entries(settings).forEach(([key, value]) => {
+        Object.entries(variables.settings).forEach(([key, value]) => {
           const oldValue = response.data?.find(s => s.cle === key)?.valeur;
           if (oldValue && oldValue !== value) {
             activityLogger.logSettingsActivity(
               `Modification ${key}`,
-              categorie,
+              variables.categorie,
               oldValue,
               value
             );

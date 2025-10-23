@@ -157,8 +157,9 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
               </Button>
             )}
           </div>
-        </CardHeader>
-        <CardContent>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
           <div className="space-y-4">
             {activities.map((activity) => (
               <div 
@@ -186,7 +187,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
                     )}
                     {activity.user && (
                       <span className="text-xs text-gray-500">
-                        par {activity.user.first_name} {activity.user.last_name}
+                        par {(activity.user as any).first_name} {(activity.user as any).last_name}
                       </span>
                     )}
                   </div>
@@ -215,7 +216,6 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
         </CardContent>
       </Card>
     );
-  }
 };
 
 export default ActivityFeed;

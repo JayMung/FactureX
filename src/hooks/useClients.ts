@@ -46,16 +46,16 @@ export const useClients = (page: number = 1, filters: ClientFilters = {}) => {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Client> }) => supabaseService.updateClient(id, data),
-    onSuccess: (response: ApiResponse<Client>) => {
+    onSuccess: (response: ApiResponse<Client>, variables: { id: string; data: Partial<Client> }) => {
       if (response.data) {
         showSuccess(response.message || 'Client mis à jour avec succès');
         // Logger l'activité
         activityLogger.logActivityWithChanges(
           'Modification Client',
           'clients',
-          id,
+          variables.id,
           {
-            before: data,
+            before: variables.data,
             after: response.data
           }
         );
@@ -71,7 +71,7 @@ export const useClients = (page: number = 1, filters: ClientFilters = {}) => {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => supabaseService.deleteClient(id),
-    onSuccess: (response: ApiResponse<void>) => {
+    onSuccess: (response: ApiResponse<void>, id: string) => {
       if (!response.error) {
         showSuccess(response.message || 'Client supprimé avec succès');
         // Logger l'activité

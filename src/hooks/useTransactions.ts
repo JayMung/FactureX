@@ -146,10 +146,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
         data.id,
         {
           before: null,
-          after: fullTransactionData,
-          amount: transactionData.montant,
-          currency: transactionData.devise,
-          client: fullTransactionData.client
+          after: fullTransactionData
         }
       );
 
@@ -191,8 +188,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
         id,
         {
           before: transactions.find(t => t.id === id),
-          after: data,
-          changes: transactionData
+          after: data
         }
       );
 

@@ -44,7 +44,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className }) =>
     const newNotifications = activities.slice(0, 10).map(activity => ({
       id: activity.id,
       title: activity.action,
-      message: `${activity.user?.first_name} ${activity.user?.last_name} - ${activity.cible || 'Système'}`,
+      message: `${(activity.user as any)?.first_name} ${(activity.user as any)?.last_name} - ${activity.cible || 'Système'}`,
       type: getActivityType(activity.action),
       timestamp: new Date(activity.created_at),
       read: false
@@ -225,7 +225,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className }) =>
               <Eye className="mr-2 h-4 w-4" />
               <span>Voir les logs</span>
             </DropdownMenuItem>
-          </DropdownMenuContent>
+          </div>
+        </DropdownMenuContent>
       </DropdownMenu>
     </div>
   );

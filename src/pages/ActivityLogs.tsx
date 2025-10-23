@@ -402,7 +402,7 @@ const ActivityLogs: React.FC = () => {
                         )}
                         {activity.user && (
                           <Badge variant="outline" className="text-xs">
-                            {activity.user.role}
+                            {(activity.user as any).role}
                           </Badge>
                         )}
                       </div>

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Search, 
   Filter, 
@@ -24,7 +25,9 @@ import {
   CheckCircle,
   Clock,
   Eye,
-  Calendar
+  Calendar,
+  TrendingUp,
+  Database
 } from 'lucide-react';
 import { useRealTimeActivity } from '../hooks/useRealTimeActivity';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,6 +35,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import Pagination from '../components/ui/pagination-custom';
 import ActivityStats from '../components/activity/ActivityStats';
 import ActivityChart from '../components/activity/ActivityChart';
+import ActivityDetailsModal from '../components/activity/ActivityDetailsModal';
 import { cn } from '@/lib/utils';
 
 interface ActivityLog {
@@ -66,6 +70,8 @@ const ActivityLogs: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [selectedActivity, setSelectedActivity] = useState<ActivityLog | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   const pageSize = 50;
 
@@ -197,7 +203,8 @@ const ActivityLogs: React.FC = () => {
         ['- Action:', actionFilter !== 'all' ? actionFilter : 'Toutes'],
         ['- Utilisateur:', userFilter !== 'all' ? users.find(u => u.id === userFilter)?.email || userFilter : 'Tous'],
         ['- Période:', dateFilter !== 'all' ? dateFilter : 'Toutes'],
-        ['- Total activités:', totalCount.toString()],
+        ['- Total activités exportées:', activities.length.toString()],
+        ['- Total activités (filtrées):', totalCount.toString()],
         [''],
         []
       ];
@@ -206,36 +213,38 @@ const ActivityLogs: React.FC = () => {
       const headers = [
         'Date',
         'Heure',
+        'Action (lisible)',
         'Prénom',
         'Nom',
         'Email',
         'Rôle',
-        'Action',
+        'Action brute',
         'Type d\'entité',
+        'Nom de l\'entité',
         'ID Entité',
         'Page',
-        'Navigateur',
-        'Changements (Avant)',
-        'Changements (Après)',
-        'Détails Supplémentaires'
+        'A des modifications',
+        'Changements (JSON)',
+        'Navigateur (court)'
       ];
 
       // Données
       const rows = activities.map(activity => [
-        new Date(activity.created_at).toLocaleDateString('fr-FR'),
-        new Date(activity.created_at).toLocaleTimeString('fr-FR'),
+        new Date(activity.created_at || activity.date).toLocaleDateString('fr-FR'),
+        new Date(activity.created_at || activity.date).toLocaleTimeString('fr-FR'),
+        formatActivityMessage(activity),
         activity.user?.first_name || '',
         activity.user?.last_name || '',
         activity.user?.email || '',
         (activity.user as any)?.role || '',
         activity.action,
         activity.cible || '',
-        activity.cible_id || '',
+        activity.details?.entityName || '',
+        activity.cible_id ? activity.cible_id.slice(0, 12) + '...' : '',
         activity.details?.page || '',
-        activity.details?.userAgent ? activity.details.userAgent.substring(0, 50) + '...' : '',
-        activity.details?.changes?.before ? JSON.stringify(activity.details.changes.before) : '',
-        activity.details?.changes?.after ? JSON.stringify(activity.details.changes.after) : '',
-        activity.details?.entityName || ''
+        activity.details?.changes ? 'Oui' : 'Non',
+        activity.details?.changes ? JSON.stringify(activity.details.changes) : '',
+        activity.details?.userAgent ? activity.details.userAgent.substring(0, 60) + '...' : ''
       ]);
 
       // Construire le CSV
@@ -250,15 +259,15 @@ const ActivityLogs: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const fileName = `activity-logs-${actionFilter !== 'all' ? actionFilter + '-' : ''}${new Date().toISOString().split('T')[0]}.csv`;
+      const fileName = `activites-${actionFilter !== 'all' ? actionFilter.toLowerCase() + '-' : ''}${new Date().toISOString().split('T')[0]}.csv`;
       a.download = fileName;
       a.click();
       URL.revokeObjectURL(url);
       
-      showSuccess(`${activities.length} logs exportés avec succès`);
+      showSuccess(`${activities.length} activités exportées avec succès`);
     } catch (error) {
       console.error('Erreur lors de l\'export:', error);
-      showError('Erreur lors de l\'export des logs');
+      showError('Erreur lors de l\'export des activités');
     }
   };
 
@@ -291,6 +300,49 @@ const ActivityLogs: React.FC = () => {
       minute: '2-digit'
     });
   };
+
+  const formatActivityMessage = (activity: ActivityLog) => {
+    const userName = `${activity.user?.first_name} ${activity.user?.last_name}`;
+    const entity = activity.details?.entityName || activity.cible || 'élément';
+    
+    if (activity.action.includes('Création')) {
+      return `${userName} a créé ${entity}`;
+    } else if (activity.action.includes('Modification')) {
+      return `${userName} a modifié ${entity}`;
+    } else if (activity.action.includes('Suppression')) {
+      return `${userName} a supprimé ${entity}`;
+    } else if (activity.action.includes('Auth')) {
+      return `${userName} s'est connecté`;
+    }
+    return activity.action;
+  };
+
+  const handleViewDetails = (activity: ActivityLog) => {
+    setSelectedActivity(activity);
+    setIsDetailsModalOpen(true);
+  };
+
+  const calculateActivityStats = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const todayActivities = activities.filter(a => {
+      const activityDate = new Date(a.created_at || a.date).toISOString().split('T')[0];
+      return activityDate === today;
+    });
+    
+    const creations = activities.filter(a => a.action.includes('Création')).length;
+    const modifications = activities.filter(a => a.action.includes('Modification')).length;
+    const suppressions = activities.filter(a => a.action.includes('Suppression')).length;
+    
+    return {
+      today: todayActivities.length,
+      total: totalCount,
+      creations,
+      modifications,
+      suppressions
+    };
+  };
+
+  const stats = calculateActivityStats();
 
   if (loading) {
     return (
@@ -349,6 +401,77 @@ const ActivityLogs: React.FC = () => {
               Exporter
             </Button>
           </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Aujourd'hui</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {stats.today}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">activités</p>
+                </div>
+                <div className="text-blue-600">
+                  <Calendar className="h-8 w-8" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Créations</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {stats.creations}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">total</p>
+                </div>
+                <div className="text-green-600">
+                  <Plus className="h-8 w-8" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Modifications</p>
+                  <p className="text-2xl font-bold text-yellow-600">
+                    {stats.modifications}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">total</p>
+                </div>
+                <div className="text-yellow-600">
+                  <Edit className="h-8 w-8" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Total</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stats.total}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">activités</p>
+                </div>
+                <div className="text-gray-900">
+                  <Database className="h-8 w-8" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Statistiques */}
@@ -414,7 +537,7 @@ const ActivityLogs: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Activités */}
+        {/* Activités - Tableau */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -425,102 +548,104 @@ const ActivityLogs: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {activities.length === 0 ? (
-              <div className="text-center py-12">
-                <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                <p className="text-gray-500 text-lg">Aucune activité trouvée</p>
-                <p className="text-gray-400 text-sm mt-2">
-                  Essayez d'ajuster les filtres ou effectuez des actions dans l'application
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {activities.map((activity) => (
-                  <div 
-                    key={activity.id} 
-                    className="flex items-start space-x-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <div className={cn("flex-shrink-0 mt-1 p-2 rounded-full", getActivityColor(activity.action))}>
-                      {getActivityIcon(activity.action)}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className={cn("font-medium text-gray-900", getActivityColor(activity.action))}>
-                          {activity.action}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Date & Heure</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Type</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Action</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Utilisateur</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Entité</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Statut</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    Array.from({ length: 10 }).map((_, index) => (
+                      <tr key={index} className="border-b">
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-32" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-48" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-32" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
+                        <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
+                      </tr>
+                    ))
+                  ) : activities.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center">
+                        <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                        <p className="text-gray-500 text-lg">Aucune activité trouvée</p>
+                        <p className="text-gray-400 text-sm mt-2">
+                          Essayez d'ajuster les filtres ou effectuez des actions dans l'application
                         </p>
-                        <span className="text-xs text-gray-500">
+                      </td>
+                    </tr>
+                  ) : (
+                    activities.map((activity) => (
+                      <tr key={activity.id} className="border-b hover:bg-gray-50 transition-colors">
+                        <td className="py-3 px-4 text-sm text-gray-600">
                           {formatDateTime(activity.created_at)}
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center space-x-3 mb-2">
-                        {activity.cible && (
-                          <Badge variant="outline" className="text-xs">
-                            {activity.cible}
-                          </Badge>
-                        )}
-                        {activity.cible_id && (
-                          <code className="text-xs bg-gray-100 px-2 py-1 rounded">
-                            {activity.cible_id.slice(0, 8)}...
-                          </code>
-                        )}
-                        {activity.user && (
-                          <Badge variant="outline" className="text-xs">
-                            {(activity.user as any).role}
-                          </Badge>
-                        )}
-                      </div>
-                      
-                      <p className="text-sm text-gray-600 mb-2">
-                        par <span className="font-medium">
-                          {activity.user?.first_name} {activity.user?.last_name}
-                        </span>
-                        {activity.user?.email && (
-                          <span className="text-gray-400">({activity.user.email})</span>
-                        )}
-                      </p>
-                      
-                      {activity.details?.changes && (
-                        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                          <p className="text-xs font-medium text-gray-700 mb-2">Détails des changements:</p>
-                          <div className="space-y-1 text-xs">
-                            {activity.details.changes.before && (
-                              <div>
-                                <span className="text-gray-600">Avant:</span>
-                                <pre className="text-gray-800 bg-white p-2 rounded mt-1">
-                                  {JSON.stringify(activity.details.changes.before, null, 2)}
-                                </pre>
-                              </div>
-                            )}
-                            {activity.details.changes.after && (
-                              <div>
-                                <span className="text-gray-600">Après:</span>
-                                <pre className="text-gray-800 bg-white p-2 rounded mt-1">
-                                  {JSON.stringify(activity.details.changes.after, null, 2)}
-                                </pre>
-                              </div>
-                            )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className={cn("inline-flex p-2 rounded-full", getActivityColor(activity.action))}>
+                            {getActivityIcon(activity.action)}
                           </div>
-                        </div>
-                      )}
-                      
-                      {activity.details?.page && (
-                        <p className="text-xs text-gray-500 mt-2">
-                          Page: {activity.details.page}
-                        </p>
-                      )}
-                      
-                      {activity.details?.userAgent && (
-                        <p className="text-xs text-gray-400 mt-1">
-                          {activity.details.userAgent}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <p className="font-medium text-gray-900">
+                            {formatActivityMessage(activity)}
+                          </p>
+                          {activity.details?.entityName && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              {activity.details.entityName}
+                            </p>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {activity.user?.first_name} {activity.user?.last_name}
+                            </p>
+                            <p className="text-xs text-gray-500">{activity.user?.email}</p>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          {activity.cible && (
+                            <Badge variant="outline" className="text-xs">
+                              {activity.cible}
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          {activity.details?.changes ? (
+                            <Badge className="bg-orange-100 text-orange-800 text-xs">
+                              Avec modifications
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">
+                              Simple
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleViewDetails(activity)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
 
@@ -534,6 +659,13 @@ const ActivityLogs: React.FC = () => {
             />
           </div>
         )}
+        
+        {/* Modal de détails */}
+        <ActivityDetailsModal
+          activity={selectedActivity}
+          open={isDetailsModalOpen}
+          onOpenChange={setIsDetailsModalOpen}
+        />
       </div>
     </Layout>
   );

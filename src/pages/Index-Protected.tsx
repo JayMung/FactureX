@@ -130,12 +130,18 @@ const IndexProtected: React.FC = () => {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="overview" className="flex items-center space-x-2">
+            <TabsList className="grid w-full grid-cols-2 bg-gray-100 p-1">
+              <TabsTrigger 
+                value="overview" 
+                className="flex items-center space-x-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+              >
                 <Activity className="h-4 w-4" />
                 <span>Vue d'ensemble</span>
               </TabsTrigger>
-              <TabsTrigger value="analytics" className="flex items-center space-x-2">
+              <TabsTrigger 
+                value="analytics" 
+                className="flex items-center space-x-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+              >
                 <BarChart3 className="h-4 w-4" />
                 <span>Analytics avancés</span>
               </TabsTrigger>
@@ -144,7 +150,7 @@ const IndexProtected: React.FC = () => {
             {/* Vue d'ensemble */}
             <TabsContent value="overview" className="space-y-6">
               {/* Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {dashboardStats.map((stat, index) => (
                   <StatCard
                     key={index}
@@ -161,24 +167,24 @@ const IndexProtected: React.FC = () => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Activity Feed */}
                 <div className="lg:col-span-2">
-                  <ActivityFeed />
+                  <ActivityFeed showViewAll={true} />
                 </div>
                 
                 {/* Quick Actions */}
-                <Card>
+                <Card className="h-fit">
                   <CardHeader>
                     <CardTitle>Actions Rapides</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="space-y-2">
                       <PermissionGuard module="transactions" permission="create">
                         <Button 
                           asChild
-                          className="h-20 flex flex-col items-center justify-center space-y-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
+                          className="w-full h-16 flex items-center justify-start space-x-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
                         >
                           <a href="/transactions">
-                            <Plus className="h-6 w-6" />
-                            <span className="text-sm">Nouvelle Transaction</span>
+                            <Plus className="h-5 w-5" />
+                            <span className="text-sm font-medium">Nouvelle Transaction</span>
                           </a>
                         </Button>
                       </PermissionGuard>
@@ -186,31 +192,23 @@ const IndexProtected: React.FC = () => {
                       <PermissionGuard module="clients" permission="create">
                         <Button 
                           asChild
-                          className="h-20 flex flex-col items-center justify-center space-y-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
+                          className="w-full h-16 flex items-center justify-start space-x-3 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
                         >
                           <a href="/clients">
-                            <Users className="h-6 w-6" />
-                            <span className="text-sm">Ajouter Client</span>
+                            <Users className="h-5 w-5" />
+                            <span className="text-sm font-medium">Ajouter Client</span>
                           </a>
                         </Button>
                       </PermissionGuard>
                       
                       <Button 
                         asChild
-                        className="h-20 flex flex-col items-center justify-center space-y-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
+                        className="w-full h-16 flex items-center justify-start space-x-3 bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
                       >
-                        <a href="/transactions">
-                          <Receipt className="h-6 w-6" />
-                          <span className="text-sm">Voir Transactions</span>
+                        <a href="/activity-logs">
+                          <Activity className="h-5 w-5" />
+                          <span className="text-sm font-medium">Voir Activités</span>
                         </a>
-                      </Button>
-                      
-                      <Button 
-                        disabled
-                        className="h-20 flex flex-col items-center justify-center space-y-2 bg-purple-50 text-purple-400 border-purple-100 rounded-lg opacity-50 cursor-not-allowed"
-                      >
-                        <TrendingUp className="h-6 w-6" />
-                        <span className="text-sm">Rapports (Bientôt)</span>
                       </Button>
                     </div>
                   </CardContent>

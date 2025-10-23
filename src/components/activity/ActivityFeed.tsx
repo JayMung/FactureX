@@ -101,6 +101,22 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
     });
   };
 
+  const formatActivityMessage = (activity: any) => {
+    const userName = activity.user ? `${(activity.user as any).first_name} ${(activity.user as any).last_name}` : 'Utilisateur';
+    const entity = activity.details?.entityName || activity.cible || 'élément';
+    
+    if (activity.action.includes('Création')) {
+      return `${userName} a créé ${entity}`;
+    } else if (activity.action.includes('Modification')) {
+      return `${userName} a modifié ${entity}`;
+    } else if (activity.action.includes('Suppression')) {
+      return `${userName} a supprimé ${entity}`;
+    } else if (activity.action.includes('Auth')) {
+      return `${userName} s'est connecté`;
+    }
+    return activity.action;
+  };
+
   if (activities.length === 0) {
     return (
       <Card className={cn("animate-in fade-in duration-300", className)}>
@@ -167,55 +183,42 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {activities.map((activity) => (
               <div 
                 key={activity.id} 
-                className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors animate-in slide-in-from-right duration-300"
+                className="flex items-start space-x-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 hover:shadow-sm transition-all duration-200 animate-in slide-in-from-right"
               >
-                <div className={cn("flex-shrink-0 mt-1", getActivityColor(activity.action))}>
+                <div className={cn("flex-shrink-0 p-2 rounded-full", 
+                  activity.action.includes('Création') ? 'bg-green-100' :
+                  activity.action.includes('Modification') ? 'bg-yellow-100' :
+                  activity.action.includes('Suppression') ? 'bg-red-100' :
+                  'bg-blue-100'
+                )}>
                   {getActivityIcon(activity.action, activity.cible || '')}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <p className={cn("text-sm font-medium text-gray-900", getActivityColor(activity.action))}>
-                      {activity.action}
+                    <p className="text-sm font-medium text-gray-900">
+                      {formatActivityMessage(activity)}
                     </p>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 whitespace-nowrap ml-2">
                       {formatRelativeTime(activity.created_at)}
                     </span>
                   </div>
                   
-                  <div className="flex items-center space-x-2 mb-1">
+                  <div className="flex items-center space-x-2">
                     {activity.cible && (
                       <Badge variant="outline" className="text-xs">
                         {activity.cible}
                       </Badge>
                     )}
-                    {activity.user && (
-                      <span className="text-xs text-gray-500">
-                        par {(activity.user as any).first_name} {(activity.user as any).last_name}
-                      </span>
+                    {activity.details?.changes && (
+                      <Badge className="bg-orange-100 text-orange-800 text-xs border-orange-200">
+                        Modifié
+                      </Badge>
                     )}
                   </div>
-                  
-                  {activity.details?.entityName && (
-                    <p className="text-xs text-gray-600">
-                      Entité: {activity.details.entityName}
-                    </p>
-                  )}
-                  
-                  {activity.details?.changes && (
-                    <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
-                      <p className="font-medium text-gray-700 mb-1">Changements:</p>
-                      {activity.details.changes.before && (
-                        <p className="text-gray-600">Avant: {JSON.stringify(activity.details.changes.before)}</p>
-                      )}
-                      {activity.details.changes.after && (
-                        <p className="text-gray-600">Après: {JSON.stringify(activity.details.changes.after)}</p>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             ))}

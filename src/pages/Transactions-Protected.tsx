@@ -74,6 +74,8 @@ const TransactionsProtected: React.FC = () => {
       return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     } else if (currency === 'CDF') {
       return `${amount.toLocaleString('fr-FR')} CDF`;
+    } else if (currency === 'CNY') {
+      return `¥${amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
     return amount.toString();
   };
@@ -398,7 +400,7 @@ const TransactionsProtected: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {loading ? (
+                    {loading && transactions.length === 0 ? (
                       Array.from({ length: 10 }).map((_, index) => (
                         <tr key={index} className="border-b">
                           <td className="py-3 px-4">
@@ -433,15 +435,6 @@ const TransactionsProtected: React.FC = () => {
                           </td>
                           <td className="py-3 px-4">
                             <Skeleton className="h-4 w-20" />
-                          </td>
-                          <td className="py-3 px-4">
-                            <Skeleton className="h-4 w-16" />
-                          </td>
-                          <td className="py-3 px-4">
-                            <Skeleton className="h-4 w-16" />
-                          </td>
-                          <td className="py-3 px-4">
-                            <Skeleton className="h-4 w-16" />
                           </td>
                         </tr>
                       ))
@@ -478,7 +471,7 @@ const TransactionsProtected: React.FC = () => {
                             {formatCurrencyValue(transaction.benefice, 'USD')}
                           </td>
                           <td className="py-3 px-4 text-sm font-medium text-blue-600">
-                            {formatCurrencyValue(transaction.montant_cny, 'CNY')}
+                            {transaction.montant_cny ? formatCurrencyValue(transaction.montant_cny, 'CNY') : '-'}
                           </td>
                           <td className="py-3 px-4 text-sm">{transaction.mode_paiement}</td>
                           <td className="py-3 px-4">

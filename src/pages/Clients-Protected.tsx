@@ -402,7 +402,7 @@ const ClientsProtected: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {isLoading ? (
+                    {isLoading && clients.length === 0 ? (
                       Array.from({ length: 10 }).map((_, index) => (
                         <tr key={index} className="border-b">
                           <td className="py-3 px-4">

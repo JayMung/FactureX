@@ -8,3 +8,11 @@ export const formatCurrency = (amount: number, currency: string): string => {
   }
   return amount.toString();
 };
+
+export const formatDate = (dateString: string): string => {
+  return new Date(dateString).toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+};

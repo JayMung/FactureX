@@ -29,6 +29,7 @@ import { Skeleton } from '../components/ui/skeleton';
 import SortableHeader from '../components/ui/sortable-header';
 import BulkActions from '../components/ui/bulk-actions';
 import ClientForm from '../components/forms/ClientForm';
+import ClientHistoryModal from '../components/clients/ClientHistoryModal';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
 import type { Client } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
@@ -46,6 +47,8 @@ const Clients = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | undefined>();
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [clientForHistory, setClientForHistory] = useState<Client | null>(null);
   
   // États pour les modales de confirmation
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -147,6 +150,11 @@ const Clients = () => {
   const handleAddClient = () => {
     setSelectedClient(undefined);
     setIsFormOpen(true);
+  };
+
+  const handleViewClientHistory = (client: Client) => {
+    setClientForHistory(client);
+    setHistoryModalOpen(true);
   };
 
 
@@ -441,7 +449,14 @@ const Clients = () => {
                         <td className="py-3 px-4 font-medium">
                           {generateReadableId(index)}
                         </td>
-                        <td className="py-3 px-4 font-medium">{client.nom}</td>
+                        <td className="py-3 px-4">
+                          <button
+                            onClick={() => handleViewClientHistory(client)}
+                            className="font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                          >
+                            {client.nom}
+                          </button>
+                        </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center space-x-1">
                             <Phone className="h-4 w-4 text-gray-400" />
@@ -462,13 +477,19 @@ const Clients = () => {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center space-x-2">
-                            <Button variant="ghost" size="icon">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => handleViewClientHistory(client)}
+                              title="Voir l'historique"
+                            >
                               <Eye className="h-4 w-4" />
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="icon"
                               onClick={() => handleEditClient(client)}
+                              title="Modifier"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -477,6 +498,7 @@ const Clients = () => {
                               size="icon" 
                               className="text-red-600"
                               onClick={() => handleDeleteClient(client)}
+                              title="Supprimer"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -508,6 +530,12 @@ const Clients = () => {
           isOpen={isFormOpen}
           onClose={() => setIsFormOpen(false)}
           onSuccess={handleFormSuccess}
+        />
+
+        <ClientHistoryModal
+          client={clientForHistory}
+          open={historyModalOpen}
+          onOpenChange={setHistoryModalOpen}
         />
 
 

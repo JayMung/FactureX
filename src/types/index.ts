@@ -4,6 +4,10 @@ export interface Client {
   nom: string;
   telephone: string;
   ville: string;
+  email?: string;
+  adresse?: string;
+  statut?: string;
+  transaction_count?: number;
   total_paye?: number;
   created_at: string;
   updated_at?: string;

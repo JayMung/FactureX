@@ -43,7 +43,7 @@ const App = () => (
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/settings" element={
-                <ProtectedRouteEnhanced adminOnly>
+                <ProtectedRouteEnhanced requiredModule="settings" requiredPermission="read">
                   <SettingsWithPermissions />
                 </ProtectedRouteEnhanced>
               } />

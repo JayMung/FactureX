@@ -558,9 +558,20 @@ const SettingsWithPermissions = () => {
     }
   ];
 
-  const filteredOptions = settingsOptions.filter(option => 
-    canAccessModule(option.id as any)
-  );
+  // Mapper les IDs des sections aux modules de permissions
+  const sectionToModuleMap: { [key: string]: string } = {
+    'profile': 'profile',
+    'users': 'users',
+    'payment-methods': 'payment_methods',
+    'exchange-rates': 'exchange_rates',
+    'transaction-fees': 'transaction_fees',
+    'activity-logs': 'activity_logs'
+  };
+
+  const filteredOptions = settingsOptions.filter(option => {
+    const moduleId = sectionToModuleMap[option.id];
+    return moduleId ? canAccessModule(moduleId as any) : false;
+  });
 
   return (
     <Layout>

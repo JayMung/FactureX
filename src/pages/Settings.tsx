@@ -668,7 +668,7 @@ const Settings = () => {
       label: 'Factures',
       icon: <FileText className="h-5 w-5" />,
       description: 'Paramètres entreprise et frais de livraison',
-      adminOnly: true
+      adminOnly: false
     }
   ];
 

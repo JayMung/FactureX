@@ -118,3 +118,13 @@ export class ActivityLogger {
 }
 
 export const activityLogger = new ActivityLogger();
+
+// Helper function pour un accès direct
+export const logActivity = (params: {
+  action: string;
+  cible?: string;
+  cible_id?: string;
+  details?: any;
+}) => {
+  return activityLogger.logActivity(params.action, params.cible, params.cible_id, params.details);
+};

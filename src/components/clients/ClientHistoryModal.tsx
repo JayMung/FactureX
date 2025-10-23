@@ -32,14 +32,14 @@ import type { Client } from '@/types';
 
 interface ClientHistoryModalProps {
   client: Client | null;
-  isOpen: boolean;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({ 
   client, 
-  isOpen, 
-  onClose 
+  open, 
+  onOpenChange 
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -99,7 +99,7 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
   if (!client) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">

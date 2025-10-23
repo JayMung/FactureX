@@ -224,10 +224,10 @@ const ClientTable: React.FC<ClientTableProps> = ({
       {/* Modal d'historique du client */}
       <ClientHistoryModal
         client={selectedClient}
-        isOpen={isHistoryModalOpen}
-        onClose={() => {
-          setIsHistoryModalOpen(false);
-          setSelectedClient(null);
+        open={isHistoryModalOpen}
+        onOpenChange={(open) => {
+          setIsHistoryModalOpen(open);
+          if (!open) setSelectedClient(null);
         }}
       />
     </>

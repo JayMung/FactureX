@@ -68,6 +68,11 @@ export interface UpdateTransactionData {
   statut?: string;
   valide_par?: string;
   date_validation?: string;
+  taux_usd_cny?: number;
+  taux_usd_cdf?: number;
+  frais?: number;
+  benefice?: number;
+  montant_cny?: number;
 }
 
 export interface TransactionFilters {

@@ -96,7 +96,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       const montantCNY = formData.devise === 'USD' 
         ? montant * rates.usdToCny 
         : (montant / tauxUSD) * rates.usdToCny;
-      const benefice = fraisUSD;
+      const commissionPartenaire = montant * (fees.partenaire / 100);
+      const benefice = fraisUSD - commissionPartenaire;
 
       setCalculations({
         frais: fraisUSD,

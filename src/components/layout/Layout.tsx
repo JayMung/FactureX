@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,50 +12,18 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  const { user } = useAuth(); // Utiliser le user depuis AuthProvider
   const location = useLocation();
-
-  useEffect(() => {
-    const getUser = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          navigate('/login');
-          return;
-        }
-        setUser(user);
-      } catch (error) {
-        console.error('Error getting user:', error);
-        navigate('/login');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    getUser();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) {
-        navigate('/login');
-      } else {
-        setUser(session.user);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
 
   // Listen for menu toggle events
   useEffect(() => {
-    const handleMenuToggle = () => {
+    const handleMenuToggle = (e: Event) => {
+      e.stopPropagation();
       setSidebarOpen(prev => !prev);
     };
 
-    window.addEventListener('toggle-main-menu', handleMenuToggle);
-    return () => window.removeEventListener('toggle-main-menu', handleMenuToggle);
+    window.addEventListener('toggle-main-menu', handleMenuToggle, true);
+    return () => window.removeEventListener('toggle-main-menu', handleMenuToggle, true);
   }, []);
 
   const toggleMobileSidebar = () => {
@@ -72,28 +40,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return 'Tableau de bord';
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="h-screen flex bg-gray-100">
+    <div className="h-screen flex bg-gray-100 flex">
       <Sidebar 
-        isMobileOpen={sidebarOpen}
+        isMobileOpen={sidebarOpen} 
         currentPath={location.pathname}
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
+          title={getPageTitle()} 
+          subtitle={getPageTitle() === 'Tableau de bord' ? "Vue d'ensemble de votre activité" : undefined}
           user={user}
-          title={getPageTitle()}
           onMenuToggle={toggleMobileSidebar} 
         />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 md:p-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 md:p-6 transition-opacity duration-200">
           {children}
         </main>
       </div>

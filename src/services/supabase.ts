@@ -39,8 +39,31 @@ export class SupabaseService {
 
       if (error) throw error;
 
+      const clients = data || [];
+
+      // Compute total_paye per client from transactions (USD only, exclude canceled)
+      if (clients.length > 0) {
+        const clientIds = clients.map(c => c.id);
+        const { data: txData, error: txError } = await supabase
+          .from('transactions')
+          .select('client_id, montant, devise, statut')
+          .in('client_id', clientIds);
+
+        if (!txError && txData) {
+          const totalsMap = new Map<string, number>();
+          txData.forEach(t => {
+            if (t.devise === 'USD' && t.statut !== 'Annulé') {
+              totalsMap.set(t.client_id, (totalsMap.get(t.client_id) || 0) + (t.montant || 0));
+            }
+          });
+          clients.forEach(c => {
+            (c as any).total_paye = totalsMap.get(c.id) || 0;
+          });
+        }
+      }
+
       const result: PaginatedResponse<Client> = {
-        data: data || [],
+        data: clients,
         count: count || 0,
         page,
         pageSize,
@@ -520,26 +543,19 @@ export class SupabaseService {
   async getUserProfiles(): Promise<ApiResponse<(UserProfile & { user: { email: string } })[]>> {
     try {
       const { data, error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       const profiles = data || [];
-      const userIds = profiles.map(p => p.user_id).filter(Boolean);
       
-      if (userIds.length === 0) {
-        return { data: profiles.map(p => ({ ...p, user: { email: '' } })) };
-      }
-
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-      if (authError) throw authError;
-
+      // Pour la table profiles, l'email est directement dans la table
       const profilesWithEmail = profiles.map(profile => ({
         ...profile,
         user: { 
-          email: (authUsers.users as any[]).find((u: any) => u.id === profile.user_id)?.email || ''
+          email: profile.email || ''
         }
       }));
 
@@ -558,9 +574,9 @@ export class SupabaseService {
       }
 
       const { data: existingProfile } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .single();
 
       if (existingProfile) {
@@ -568,15 +584,17 @@ export class SupabaseService {
       }
 
       const profileData = {
-        user_id: user.id,
-        full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Admin',
+        id: user.id,
+        email: user.email || '',
+        first_name: user.user_metadata?.first_name || '',
+        last_name: user.user_metadata?.last_name || '',
         role: user.user_metadata?.role || 'admin',
         phone: user.user_metadata?.phone || '',
         is_active: true
       };
 
       const { data, error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .insert([profileData])
         .select()
         .single();
@@ -592,7 +610,7 @@ export class SupabaseService {
   async createUserProfile(profileData: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<UserProfile>> {
     try {
       const { data, error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .insert([profileData])
         .select()
         .single();
@@ -610,7 +628,7 @@ export class SupabaseService {
   async updateUserProfile(id: string, profileData: Partial<UserProfile>): Promise<ApiResponse<UserProfile>> {
     try {
       const { data, error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .update(profileData)
         .eq('id', id)
         .select()
@@ -629,7 +647,7 @@ export class SupabaseService {
   async toggleUserProfile(id: string, isActive: boolean): Promise<ApiResponse<void>> {
     try {
       const { error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .update({ is_active: isActive })
         .eq('id', id);
 
@@ -648,14 +666,14 @@ export class SupabaseService {
     try {
       const { data, error, count } = await supabase
         .from('activity_logs')
-        .select('*')
+        .select('*', { count: 'exact' })
         .range((page - 1) * pageSize, page * pageSize - 1)
-        .order('created_at', { ascending: false });
+        .order('date', { ascending: false });
 
       if (error) throw error;
 
       const logs = data || [];
-      const userIds = logs.map(l => l.user_id).filter(Boolean);
+      const userIds = [...new Set(logs.map(l => l.user_id).filter(Boolean))];
       
       if (userIds.length === 0) {
         const result: PaginatedResponse<ActivityLog & { user: { email: string } }> = {
@@ -668,13 +686,22 @@ export class SupabaseService {
         return { data: result };
       }
 
-      const { data: authUsersData, error: authError } = await supabase.auth.admin.listUsers();
-      if (authError) throw authError;
+      // Fetch user data from profiles table instead of auth.admin
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email, first_name, last_name')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+      }
+
+      const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
 
       const logsWithEmail = logs.map(log => ({
         ...log,
         user: { 
-          email: (authUsersData.users as any[]).find((u: any) => u.id === log.user_id)?.email || ''
+          email: profilesMap.get(log.user_id)?.email || 'Utilisateur inconnu'
         }
       }));
 

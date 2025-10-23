@@ -5,11 +5,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { PageProvider } from "@/contexts/PageContext";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import Index from "./pages/Index";
-import Clients from "./pages/Clients";
-import Transactions from "./pages/Transactions";
-import Settings from "./pages/Settings";
+import ProtectedRouteEnhanced from "@/components/auth/ProtectedRouteEnhanced";
+import IndexProtected from "./pages/Index-Protected";
+import ClientsProtected from "./pages/Clients-Protected";
+import TransactionsProtected from "./pages/Transactions-Protected";
+import FacturesProtected from "./pages/Factures-Protected";
+import SettingsWithPermissions from "./pages/Settings-Permissions";
+import ActivityLogs from "./pages/ActivityLogs";
 import Login from "./pages/Login";
 import AdminSetup from "./pages/AdminSetup";
 import NotFound from "./pages/NotFound";
@@ -25,33 +27,43 @@ const App = () => (
         <AuthProvider>
           <PageProvider>
             <Routes>
-            <Route path="/admin-setup" element={<AdminSetup />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Index />
-              </ProtectedRoute>
-            } />
-            <Route path="/clients" element={
-              <ProtectedRoute>
-                <Clients />
-              </ProtectedRoute>
-            } />
-            <Route path="/transactions" element={
-              <ProtectedRoute>
-                <Transactions />
-              </ProtectedRoute>
-            } />
-            <Route path="/settings" element={
-              <ProtectedRoute adminOnly>
-                <Settings />
-              </ProtectedRoute>
-            } />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </PageProvider>
-      </AuthProvider>
-    </BrowserRouter>
+              <Route path="/admin-setup" element={<AdminSetup />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={
+                <ProtectedRouteEnhanced>
+                  <IndexProtected />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/clients" element={
+                <ProtectedRouteEnhanced>
+                  <ClientsProtected />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/transactions" element={
+                <ProtectedRouteEnhanced>
+                  <TransactionsProtected />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/factures" element={
+                <ProtectedRouteEnhanced>
+                  <FacturesProtected />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/settings" element={
+                <ProtectedRouteEnhanced>
+                  <SettingsWithPermissions />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/activity-logs" element={
+                <ProtectedRouteEnhanced>
+                  <ActivityLogs />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </PageProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
   LayoutDashboard, 
@@ -9,14 +10,12 @@ import {
   Settings,
   Package, 
   FileText,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  Menu,
-  X
+  LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { usePermissions } from '@/hooks/usePermissions';
+import { supabase } from '@/integrations/supabase/client';
 import { showSuccess } from '@/utils/toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -25,26 +24,76 @@ interface SidebarProps {
   currentPath?: string;
 }
 
-const menuItems = [
-  { icon: LayoutDashboard, label: 'Tableau de bord', path: '/' },
-  { icon: Users, label: 'Clients', path: '/clients' },
-  { icon: Receipt, label: 'Transactions', path: '/transactions' },
-  { icon: Settings, label: 'Paramètres', path: '/settings' },
-  { icon: Package, label: 'Colis', path: '/packages', disabled: true },
-  { icon: FileText, label: 'Factures', path: '/invoices', disabled: true },
-];
-
 const Sidebar: React.FC<SidebarProps> = ({ 
   isMobileOpen = false, 
   currentPath 
 }) => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
+  const { getAccessibleModules, loading, checkPermission } = usePermissions();
   const isMobile = useIsMobile();
 
+  // Obtenir les modules accessibles selon les permissions
+  const accessibleModules = getAccessibleModules();
+
+  // Menu items avec vérification des permissions
+  const menuItems = [
+    { 
+      icon: LayoutDashboard, 
+      label: 'Tableau de bord', 
+      path: '/',
+      module: null // Toujours accessible
+    },
+    { 
+      icon: Users, 
+      label: 'Clients', 
+      path: '/clients',
+      module: 'clients'
+    },
+    { 
+      icon: Receipt, 
+      label: 'Transactions', 
+      path: '/transactions',
+      module: 'transactions'
+    },
+    { 
+      icon: Settings, 
+      label: 'Paramètres', 
+      path: '/settings',
+      module: 'settings'
+    },
+    { 
+      icon: Package, 
+      label: 'Colis', 
+      path: '/packages', 
+      module: null,
+      disabled: true
+    },
+    { 
+      icon: FileText, 
+      label: 'Factures', 
+      path: '/factures',
+      module: 'factures'
+    },
+  ];
+
+  // Filtrer les items du menu selon les permissions
+  const filteredMenuItems = menuItems.filter(item => {
+    // Si l'item est désactivé, le masquer
+    if (item.disabled) return false;
+    
+    // Si pas de module requis, toujours afficher
+    if (!item.module) return true;
+    
+    // Vérifier si le module est accessible ou si l'utilisateur est admin
+    return accessibleModules.some(module => module.id === item.module) || 
+           (user?.user_metadata?.role === 'admin');
+  });
+
   const handleLogout = async () => {
-    await signOut();
+    await supabase.auth.signOut(); // <-- Maintenant correct avec l'import
     showSuccess('Déconnexion réussie');
   };
+
 
   return (
     <div className={cn(
@@ -91,51 +140,58 @@ const Sidebar: React.FC<SidebarProps> = ({
           "space-y-2",
           isMobile && "space-y-1"
         )}>
-          {menuItems.map((item) => {
-            const isActive = currentPath === item.path;
-            
-            return item.disabled ? (
-              <li key={item.path}>
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    "w-full justify-start text-emerald-200 cursor-not-allowed opacity-50 transition-all duration-200",
-                    isMobile && "px-3 justify-center"
-                  )}
-                  disabled
-                >
+          {filteredMenuItems.map((item) => (
+            <li key={item.path}>
+              <Button
+                variant="ghost"
+                asChild
+                className={cn(
+                  "w-full justify-start text-white hover:bg-emerald-700 hover:text-white transition-all duration-200 active:scale-95",
+                  currentPath === item.path && "bg-emerald-700 text-white shadow-lg",
+                  isMobile && "px-3 justify-center"
+                )}
+              >
+                <Link to={item.path}>
                   <item.icon className={cn("h-4 w-4 flex-shrink-0", isMobile && "h-5 w-5")} />
                   {isMobile ? (
                     <span className="sr-only">{item.label}</span>
                   ) : (
                     <span className="ml-3 truncate">{item.label}</span>
                   )}
-                </Button>
-              </li>
-            ) : (
-              <li key={item.path}>
-                <a href={item.path}>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "w-full justify-start text-white hover:bg-emerald-700 hover:text-white transition-all duration-200",
-                      isActive && "bg-emerald-700 text-white",
-                      isMobile && "px-3 justify-center"
-                    )}
-                  >
-                    <item.icon className={cn("h-4 w-4 flex-shrink-0", isMobile && "h-5 w-5")} />
-                    {isMobile ? (
-                      <span className="sr-only">{item.label}</span>
-                    ) : (
-                      <span className="ml-3 truncate">{item.label}</span>
-                    )}
-                  </Button>
-                </a>
-              </li>
-            );
-          })}
+                </Link>
+              </Button>
+            </li>
+          ))}
         </ul>
       </nav>
+
+      {/* User Info */}
+      <div className={cn(
+        "p-4 border-t border-emerald-700 transition-all duration-300",
+        isMobile && "p-2"
+      )}>
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
+            <span className="text-emerald-600 font-bold text-xs">
+              {user?.email?.charAt(0).toUpperCase() || 'U'}
+            </span>
+          </div>
+          <div className={cn(
+            "ml-3 text-right",
+            isMobile && "hidden"
+          )}>
+            <p className="text-emerald-100 text-xs">
+              {user?.user_metadata?.first_name ? 
+                `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}` : 
+                user?.email || 'Utilisateur'
+              }
+            </p>
+            <p className="text-xs text-emerald-200">
+              {user?.user_metadata?.role === 'admin' ? 'Admin' : 'Opérateur'}
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Logout */}
       <div className={cn(

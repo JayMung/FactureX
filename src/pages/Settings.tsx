@@ -45,6 +45,7 @@ import { Badge } from '@/components/ui/badge';
 import { showSuccess, showError } from '@/utils/toast';
 import PaymentMethodForm from '../components/forms/PaymentMethodForm';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
+import { SettingsFacture } from './Settings-Facture';
 import {
   Dialog,
   DialogContent,
@@ -661,6 +662,13 @@ const Settings = () => {
       icon: <FileText className="h-5 w-5" />,
       description: 'Historique des actions dans l\'application',
       adminOnly: true
+    },
+    {
+      id: 'factures',
+      label: 'Factures',
+      icon: <FileText className="h-5 w-5" />,
+      description: 'Paramètres entreprise et frais de livraison',
+      adminOnly: true
     }
   ];
 
@@ -1102,6 +1110,9 @@ const Settings = () => {
                 </CardContent>
               </Card>
             )}
+
+            {/* Factures Settings Tab */}
+            {activeTab === 'factures' && <SettingsFacture />}
           </div>
         </div>
       </div>

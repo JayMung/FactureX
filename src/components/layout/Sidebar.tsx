@@ -71,9 +71,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     { 
       icon: FileText, 
       label: 'Factures', 
-      path: '/invoices', 
-      module: null,
-      disabled: true
+      path: '/factures',
+      module: 'factures'
     },
   ];
 

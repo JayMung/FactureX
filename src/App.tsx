@@ -9,6 +9,7 @@ import ProtectedRouteEnhanced from "@/components/auth/ProtectedRouteEnhanced";
 import IndexProtected from "./pages/Index-Protected";
 import ClientsProtected from "./pages/Clients-Protected";
 import TransactionsProtected from "./pages/Transactions-Protected";
+import FacturesProtected from "./pages/Factures-Protected";
 import SettingsWithPermissions from "./pages/Settings-Permissions";
 import ActivityLogs from "./pages/ActivityLogs";
 import Login from "./pages/Login";
@@ -41,6 +42,11 @@ const App = () => (
               <Route path="/transactions" element={
                 <ProtectedRouteEnhanced>
                   <TransactionsProtected />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/factures" element={
+                <ProtectedRouteEnhanced>
+                  <FacturesProtected />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/settings" element={

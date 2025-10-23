@@ -154,7 +154,7 @@ export interface UserPermission {
   updated_at: string;
 }
 
-export type ModuleType = 'clients' | 'transactions' | 'settings' | 'payment_methods' | 'activity_logs';
+export type ModuleType = 'clients' | 'transactions' | 'settings' | 'payment_methods' | 'activity_logs' | 'profile' | 'users' | 'exchange_rates' | 'transaction_fees';
 
 export interface UserPermissionsMap {
   [module: string]: {
@@ -195,7 +195,11 @@ export const PREDEFINED_ROLES: PermissionRole[] = [
       transactions: { can_read: true, can_create: true, can_update: true, can_delete: true },
       settings: { can_read: true, can_create: true, can_update: true, can_delete: true },
       payment_methods: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      activity_logs: { can_read: true, can_create: false, can_update: false, can_delete: false }
+      activity_logs: { can_read: true, can_create: false, can_update: false, can_delete: false },
+      profile: { can_read: true, can_create: false, can_update: true, can_delete: false },
+      users: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      exchange_rates: { can_read: true, can_create: false, can_update: true, can_delete: false },
+      transaction_fees: { can_read: true, can_create: false, can_update: true, can_delete: false }
     }
   },
   {
@@ -204,9 +208,13 @@ export const PREDEFINED_ROLES: PermissionRole[] = [
     permissions: {
       clients: { can_read: true, can_create: true, can_update: true, can_delete: false },
       transactions: { can_read: true, can_create: true, can_update: true, can_delete: false },
-      settings: { can_read: false, can_create: false, can_update: false, can_delete: false },
+      settings: { can_read: true, can_create: false, can_update: false, can_delete: false },
       payment_methods: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      activity_logs: { can_read: false, can_create: false, can_update: false, can_delete: false }
+      activity_logs: { can_read: false, can_create: false, can_update: false, can_delete: false },
+      profile: { can_read: true, can_create: false, can_update: true, can_delete: false },
+      users: { can_read: false, can_create: false, can_update: false, can_delete: false },
+      exchange_rates: { can_read: false, can_create: false, can_update: false, can_delete: false },
+      transaction_fees: { can_read: false, can_create: false, can_update: false, can_delete: false }
     }
   },
   {
@@ -215,9 +223,13 @@ export const PREDEFINED_ROLES: PermissionRole[] = [
     permissions: {
       clients: { can_read: true, can_create: false, can_update: false, can_delete: false },
       transactions: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      settings: { can_read: false, can_create: false, can_update: false, can_delete: false },
+      settings: { can_read: true, can_create: false, can_update: false, can_delete: false },
       payment_methods: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      activity_logs: { can_read: true, can_create: false, can_update: false, can_delete: false }
+      activity_logs: { can_read: true, can_create: false, can_update: false, can_delete: false },
+      profile: { can_read: true, can_create: false, can_update: true, can_delete: false },
+      users: { can_read: false, can_create: false, can_update: false, can_delete: false },
+      exchange_rates: { can_read: true, can_create: false, can_update: false, can_delete: false },
+      transaction_fees: { can_read: true, can_create: false, can_update: false, can_delete: false }
     }
   }
 ];
@@ -225,8 +237,12 @@ export const PREDEFINED_ROLES: PermissionRole[] = [
 export const MODULES_INFO: ModuleInfo[] = [
   { id: 'clients', name: 'Clients', description: 'Gestion des clients', icon: 'Users', adminOnly: false },
   { id: 'transactions', name: 'Transactions', description: 'Gestion des transactions', icon: 'Receipt', adminOnly: false },
-  { id: 'settings', name: 'Paramètres', description: 'Configuration système', icon: 'Settings', adminOnly: true },
+  { id: 'settings', name: 'Paramètres', description: 'Accès aux paramètres', icon: 'Settings', adminOnly: false },
+  { id: 'profile', name: 'Profil', description: 'Informations personnelles', icon: 'User', adminOnly: false },
+  { id: 'users', name: 'Utilisateurs', description: 'Gestion des utilisateurs', icon: 'Users', adminOnly: true },
   { id: 'payment_methods', name: 'Moyens de paiement', description: 'Modes de paiement', icon: 'CreditCard', adminOnly: true },
+  { id: 'exchange_rates', name: 'Taux de change', description: 'Configuration des taux', icon: 'DollarSign', adminOnly: true },
+  { id: 'transaction_fees', name: 'Frais de transaction', description: 'Configuration des frais', icon: 'Settings', adminOnly: true },
   { id: 'activity_logs', name: 'Logs d\'activité', description: 'Historique des actions', icon: 'FileText', adminOnly: true }
 ];
 

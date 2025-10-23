@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import StatCard from '../components/dashboard/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   DollarSign, 
   Users, 
@@ -18,7 +19,8 @@ import {
   FileText,
   Eye,
   Plus,
-  Shield
+  Shield,
+  BarChart3
 } from 'lucide-react';
 import { useDashboardWithPermissions } from '../hooks/useDashboardWithPermissions';
 import { useActivityLogs } from '../hooks/useActivityLogs';
@@ -27,8 +29,11 @@ import PermissionGuard from '../components/auth/PermissionGuard';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import ActivityFeed from '../components/activity/ActivityFeed';
 import NotificationCenter from '../components/activity/NotificationCenter';
+import AdvancedDashboard from '../components/dashboard/AdvancedDashboard';
 
 const IndexProtected: React.FC = () => {
+  const [activeTab, setActiveTab] = useState('overview');
+  
   usePageSetup({
     title: 'Tableau de bord',
     subtitle: "Vue d'ensemble de votre activité"
@@ -123,79 +128,101 @@ const IndexProtected: React.FC = () => {
             <p className="text-emerald-100">Gérez vos transferts USD/CDF en toute simplicité</p>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {dashboardStats.map((stat, index) => (
-              <StatCard
-                key={index}
-                title={stat.title}
-                value={stat.value}
-                change={stat.change}
-                icon={stat.icon}
-                className="hover:shadow-lg transition-shadow"
-              />
-            ))}
-          </div>
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="overview" className="flex items-center space-x-2">
+                <Activity className="h-4 w-4" />
+                <span>Vue d'ensemble</span>
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="flex items-center space-x-2">
+                <BarChart3 className="h-4 w-4" />
+                <span>Analytics avancés</span>
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Activity Feed + Notifications */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Activity Feed */}
-            <div className="lg:col-span-2">
-              <ActivityFeed />
-            </div>
-            
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Actions Rapides</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <PermissionGuard module="transactions" permission="create">
-                    <Button 
-                      asChild
-                      className="h-20 flex flex-col items-center justify-center space-y-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
-                    >
-                      <a href="/transactions">
-                        <Plus className="h-6 w-6" />
-                        <span className="text-sm">Nouvelle Transaction</span>
-                      </a>
-                    </Button>
-                  </PermissionGuard>
-                  
-                  <PermissionGuard module="clients" permission="create">
-                    <Button 
-                      asChild
-                      className="h-20 flex flex-col items-center justify-center space-y-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
-                    >
-                      <a href="/clients">
-                        <Users className="h-6 w-6" />
-                        <span className="text-sm">Ajouter Client</span>
-                      </a>
-                    </Button>
-                  </PermissionGuard>
-                  
-                  <Button 
-                    asChild
-                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
-                  >
-                    <a href="/transactions">
-                      <Receipt className="h-6 w-6" />
-                      <span className="text-sm">Voir Transactions</span>
-                    </a>
-                  </Button>
-                  
-                  <Button 
-                    disabled
-                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-purple-50 text-purple-400 border-purple-100 rounded-lg opacity-50 cursor-not-allowed"
-                  >
-                    <TrendingUp className="h-6 w-6" />
-                    <span className="text-sm">Rapports (Bientôt)</span>
-                  </Button>
+            {/* Vue d'ensemble */}
+            <TabsContent value="overview" className="space-y-6">
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {dashboardStats.map((stat, index) => (
+                  <StatCard
+                    key={index}
+                    title={stat.title}
+                    value={stat.value}
+                    change={stat.change}
+                    icon={stat.icon}
+                    className="hover:shadow-lg transition-shadow"
+                  />
+                ))}
+              </div>
+
+              {/* Activity Feed + Quick Actions */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Activity Feed */}
+                <div className="lg:col-span-2">
+                  <ActivityFeed />
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                
+                {/* Quick Actions */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Actions Rapides</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <PermissionGuard module="transactions" permission="create">
+                        <Button 
+                          asChild
+                          className="h-20 flex flex-col items-center justify-center space-y-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
+                        >
+                          <a href="/transactions">
+                            <Plus className="h-6 w-6" />
+                            <span className="text-sm">Nouvelle Transaction</span>
+                          </a>
+                        </Button>
+                      </PermissionGuard>
+                      
+                      <PermissionGuard module="clients" permission="create">
+                        <Button 
+                          asChild
+                          className="h-20 flex flex-col items-center justify-center space-y-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
+                        >
+                          <a href="/clients">
+                            <Users className="h-6 w-6" />
+                            <span className="text-sm">Ajouter Client</span>
+                          </a>
+                        </Button>
+                      </PermissionGuard>
+                      
+                      <Button 
+                        asChild
+                        className="h-20 flex flex-col items-center justify-center space-y-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
+                      >
+                        <a href="/transactions">
+                          <Receipt className="h-6 w-6" />
+                          <span className="text-sm">Voir Transactions</span>
+                        </a>
+                      </Button>
+                      
+                      <Button 
+                        disabled
+                        className="h-20 flex flex-col items-center justify-center space-y-2 bg-purple-50 text-purple-400 border-purple-100 rounded-lg opacity-50 cursor-not-allowed"
+                      >
+                        <TrendingUp className="h-6 w-6" />
+                        <span className="text-sm">Rapports (Bientôt)</span>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* Analytics avancés */}
+            <TabsContent value="analytics">
+              <AdvancedDashboard />
+            </TabsContent>
+          </Tabs>
 
           {/* NotificationCenter */}
           <div className="lg:col-span-1">

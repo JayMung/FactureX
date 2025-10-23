@@ -30,6 +30,7 @@ import { useTransactions } from '../hooks/useTransactions';
 import Pagination from '../components/ui/pagination-custom';
 import TransactionForm from '../components/forms/TransactionForm';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
+import TransactionDetailsModal from '../components/modals/TransactionDetailsModal';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import type { Transaction } from '@/types';
@@ -58,6 +59,8 @@ const TransactionsProtected: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [transactionToView, setTransactionToView] = useState<Transaction | null>(null);
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -185,6 +188,26 @@ const TransactionsProtected: React.FC = () => {
 
   const handleAddTransaction = () => {
     setSelectedTransaction(undefined);
+    setIsFormOpen(true);
+  };
+
+  const handleViewTransaction = (transaction: Transaction) => {
+    setTransactionToView(transaction);
+    setDetailsModalOpen(true);
+  };
+
+  const handleDuplicateTransaction = (transaction: Transaction) => {
+    // Open form with transaction data but without ID (for duplication)
+    const duplicateData = {
+      ...transaction,
+      id: undefined,
+      created_at: undefined,
+      updated_at: undefined,
+      date_validation: undefined,
+      valide_par: undefined,
+      statut: 'En attente'
+    } as Transaction;
+    setSelectedTransaction(duplicateData);
     setIsFormOpen(true);
   };
 
@@ -495,7 +518,12 @@ const TransactionsProtected: React.FC = () => {
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center space-x-2">
-                              <Button variant="ghost" size="icon">
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleViewTransaction(transaction)}
+                                className="hover:bg-blue-50"
+                              >
                                 <Eye className="h-4 w-4" />
                               </Button>
                               
@@ -586,6 +614,18 @@ const TransactionsProtected: React.FC = () => {
             onConfirm={confirmValidateTransaction}
             isConfirming={isValidating}
             type="warning"
+          />
+
+          {/* Transaction Details Modal */}
+          <TransactionDetailsModal
+            transaction={transactionToView}
+            isOpen={detailsModalOpen}
+            onClose={() => {
+              setDetailsModalOpen(false);
+              setTransactionToView(null);
+            }}
+            onUpdate={updateTransaction}
+            onDuplicate={handleDuplicateTransaction}
           />
         </div>
       </Layout>

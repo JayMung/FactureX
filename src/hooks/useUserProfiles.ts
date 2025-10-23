@@ -51,6 +51,9 @@ export const useUserProfiles = () => {
         )
       );
       
+      // Auto-refresh pour synchroniser les données
+      await fetchUserProfiles();
+      
       return response;
     } catch (err: any) {
       throw new Error(err.message);
@@ -69,6 +72,9 @@ export const useUserProfiles = () => {
       if (response.data) {
         setUserProfiles(prev => [...prev, response.data!]);
       }
+      
+      // Auto-refresh pour synchroniser les données
+      await fetchUserProfiles();
       
       return response;
     } catch (err: any) {
@@ -92,6 +98,9 @@ export const useUserProfiles = () => {
           )
         );
       }
+      
+      // Auto-refresh pour synchroniser les données
+      await fetchUserProfiles();
       
       return response;
     } catch (err: any) {

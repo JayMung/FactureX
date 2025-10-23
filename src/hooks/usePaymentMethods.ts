@@ -40,6 +40,9 @@ export const usePaymentMethods = () => {
         )
       );
       
+      // Auto-refresh pour synchroniser les données
+      await fetchPaymentMethods();
+      
       return response;
     } catch (err: any) {
       throw new Error(err.message);
@@ -58,6 +61,9 @@ export const usePaymentMethods = () => {
       if (response.data) {
         setPaymentMethods(prev => [...prev, response.data!]);
       }
+      
+      // Auto-refresh pour synchroniser les données
+      await fetchPaymentMethods();
       
       return response;
     } catch (err: any) {
@@ -82,6 +88,9 @@ export const usePaymentMethods = () => {
         );
       }
       
+      // Auto-refresh pour synchroniser les données
+      await fetchPaymentMethods();
+      
       return response;
     } catch (err: any) {
       throw new Error(err.message);
@@ -98,6 +107,9 @@ export const usePaymentMethods = () => {
       
       // Mettre à jour l'état local
       setPaymentMethods(prev => prev.filter(method => method.id !== id));
+      
+      // Auto-refresh pour synchroniser les données
+      await fetchPaymentMethods();
       
       return response;
     } catch (err: any) {

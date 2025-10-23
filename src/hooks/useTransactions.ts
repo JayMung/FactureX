@@ -115,7 +115,8 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       const montantCNY = transactionData.devise === 'USD' 
         ? transactionData.montant * rates.usdToCny 
         : (transactionData.montant / tauxUSD) * rates.usdToCny;
-      const benefice = fraisUSD;
+      const commissionPartenaire = transactionData.montant * (fees.partenaire / 100);
+      const benefice = fraisUSD - commissionPartenaire;
 
       const fullTransactionData = {
         ...transactionData,
@@ -154,6 +155,10 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       setTransactions(prev => [data!, ...prev]);
       
       showSuccess('Transaction créée avec succès');
+      
+      // Auto-refresh pour synchroniser les données
+      await fetchTransactions();
+      
       return data;
     } catch (err: any) {
       setError(err.message || 'Erreur lors de la création de la transaction');
@@ -169,9 +174,72 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     setError(null);
 
     try {
+      // Si montant, devise ou motif changent, recalculer les frais et bénéfices
+      let updatedData = { ...transactionData };
+      
+      if (transactionData.montant || transactionData.devise || transactionData.motif) {
+        // Récupérer la transaction actuelle pour avoir toutes les valeurs
+        const { data: currentTransaction } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (currentTransaction) {
+          // Récupérer les paramètres
+          const { data: settings } = await supabase
+            .from('settings')
+            .select('cle, valeur, categorie')
+            .in('categorie', ['taux_change', 'frais'])
+            .in('cle', ['usdToCny', 'usdToCdf', 'transfert', 'commande', 'partenaire']);
+
+          const rates: Record<string, number> = {
+            usdToCny: 7.25,
+            usdToCdf: 2850
+          };
+
+          const fees: Record<string, number> = {
+            transfert: 5,
+            commande: 10,
+            partenaire: 3
+          };
+
+          settings?.forEach((setting: any) => {
+            if (setting.categorie === 'taux_change') {
+              rates[setting.cle] = parseFloat(setting.valeur);
+            } else if (setting.categorie === 'frais') {
+              fees[setting.cle] = parseFloat(setting.valeur);
+            }
+          });
+
+          // Utiliser les nouvelles valeurs ou les valeurs actuelles
+          const montant = transactionData.montant ?? currentTransaction.montant;
+          const devise = transactionData.devise ?? currentTransaction.devise;
+          const motif = transactionData.motif ?? currentTransaction.motif;
+
+          const tauxUSD = devise === 'USD' ? 1 : rates.usdToCdf;
+          const fraisUSD = montant * (fees[motif.toLowerCase() as keyof typeof fees] / 100);
+          const montantCNY = devise === 'USD' 
+            ? montant * rates.usdToCny 
+            : (montant / tauxUSD) * rates.usdToCny;
+          const commissionPartenaire = montant * (fees.partenaire / 100);
+          const benefice = fraisUSD - commissionPartenaire;
+
+          // Ajouter les champs calculés
+          updatedData = {
+            ...updatedData,
+            taux_usd_cny: rates.usdToCny,
+            taux_usd_cdf: rates.usdToCdf,
+            montant_cny: montantCNY,
+            frais: fraisUSD,
+            benefice: benefice
+          };
+        }
+      }
+
       const { data, error } = await supabase
         .from('transactions')
-        .update(transactionData)
+        .update(updatedData)
         .eq('id', id)
         .select(`
           *,
@@ -198,6 +266,10 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       );
       
       showSuccess('Transaction mise à jour avec succès');
+      
+      // Auto-refresh pour synchroniser les données
+      await fetchTransactions();
+      
       return data;
     } catch (err: any) {
       setError(err.message || 'Erreur lors de la mise à jour de la transaction');
@@ -267,6 +339,10 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       setTransactions(prev => prev.filter(t => t.id !== id));
       
       showSuccess('Transaction supprimée avec succès');
+      
+      // Auto-refresh pour synchroniser les données
+      await fetchTransactions();
+      
       return { message: 'Transaction supprimée avec succès' };
     } catch (error: any) {
       console.error('Erreur complète lors de la suppression:', error);

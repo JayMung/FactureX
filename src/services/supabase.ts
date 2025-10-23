@@ -39,8 +39,31 @@ export class SupabaseService {
 
       if (error) throw error;
 
+      const clients = data || [];
+
+      // Compute total_paye per client from transactions (USD only, exclude canceled)
+      if (clients.length > 0) {
+        const clientIds = clients.map(c => c.id);
+        const { data: txData, error: txError } = await supabase
+          .from('transactions')
+          .select('client_id, montant, devise, statut')
+          .in('client_id', clientIds);
+
+        if (!txError && txData) {
+          const totalsMap = new Map<string, number>();
+          txData.forEach(t => {
+            if (t.devise === 'USD' && t.statut !== 'Annulé') {
+              totalsMap.set(t.client_id, (totalsMap.get(t.client_id) || 0) + (t.montant || 0));
+            }
+          });
+          clients.forEach(c => {
+            (c as any).total_paye = totalsMap.get(c.id) || 0;
+          });
+        }
+      }
+
       const result: PaginatedResponse<Client> = {
-        data: data || [],
+        data: clients,
         count: count || 0,
         page,
         pageSize,

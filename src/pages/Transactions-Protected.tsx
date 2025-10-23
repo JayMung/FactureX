@@ -57,6 +57,12 @@ const TransactionsProtected: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
 
+  const memoFilters = useMemo(() => ({
+    status: statusFilter === 'all' ? undefined : statusFilter,
+    currency: currencyFilter === 'all' ? undefined : currencyFilter,
+    modePaiement: searchTerm || undefined
+  }), [statusFilter, currencyFilter, searchTerm]);
+
   const {
     transactions,
     pagination,
@@ -67,11 +73,7 @@ const TransactionsProtected: React.FC = () => {
     updateTransaction,
     deleteTransaction,
     refetch
-  } = useTransactions(currentPage, {
-    status: statusFilter === 'all' ? undefined : statusFilter,
-    currency: currencyFilter === 'all' ? undefined : currencyFilter,
-    modePaiement: searchTerm || undefined
-  });
+  } = useTransactions(currentPage, memoFilters);
 
   const formatCurrencyValue = (amount: number, currency: string) => {
     if (currency === 'USD') {
@@ -389,7 +391,7 @@ const TransactionsProtected: React.FC = () => {
               <CardTitle>Liste des Transactions</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto overflow-y-hidden">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
@@ -407,7 +409,7 @@ const TransactionsProtected: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {loading && transactions.length === 0 ? (
+                    {loading ? (
                       Array.from({ length: 5 }).map((_, index) => (
                         <tr key={index} className="border-b">
                           <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>

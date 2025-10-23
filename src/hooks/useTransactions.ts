@@ -73,7 +73,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     } finally {
       setLoading(false);
     }
-  }, [page, filters, pagination.pageSize]);
+  }, [page, filters.status, filters.currency, filters.modePaiement, pagination.pageSize]);
 
   useEffect(() => {
     fetchTransactions();

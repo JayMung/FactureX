@@ -130,7 +130,7 @@ export const useClientHistory = (
     } finally {
       setLoading(false);
     }
-  }, [clientId, page, filters, pagination.pageSize]);
+  }, [clientId, page, filters.search, filters.status, filters.currency, pagination.pageSize]);
 
   useEffect(() => {
     fetchClientHistory();

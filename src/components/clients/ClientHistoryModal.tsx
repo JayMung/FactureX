@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -48,17 +48,19 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
   const [currencyFilter, setCurrencyFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
 
+  const memoFilters = useMemo(() => ({
+    search: searchTerm,
+    status: statusFilter,
+    currency: currencyFilter
+  }), [searchTerm, statusFilter, currencyFilter]);
+
   const { 
     history, 
     stats, 
     loading, 
     pagination,
     refetch 
-  } = useClientHistory(client?.id || '', currentPage, {
-    search: searchTerm,
-    status: statusFilter,
-    currency: currencyFilter
-  });
+  } = useClientHistory(client?.id || '', currentPage, memoFilters);
 
   const handleExport = () => {
     if (!history.length) return;
@@ -128,40 +130,40 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="flex items-center space-x-2">
-                  <User className="h-4 w-4 text-gray-500" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="flex items-center space-x-3">
+                  <User className="h-5 w-5 text-gray-500" />
                   <div>
-                    <p className="text-sm font-medium">{client.nom}</p>
-                    <p className="text-xs text-gray-500">Nom complet</p>
+                    <p className="text-base font-semibold">{client.nom}</p>
+                    <p className="text-sm text-gray-500">Nom complet</p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Phone className="h-4 w-4 text-gray-500" />
+                <div className="flex items-center space-x-3">
+                  <Phone className="h-5 w-5 text-gray-500" />
                   <div>
-                    <p className="text-sm font-medium">{client.telephone}</p>
-                    <p className="text-xs text-gray-500">Téléphone</p>
+                    <p className="text-base font-semibold">{client.telephone}</p>
+                    <p className="text-sm text-gray-500">Téléphone</p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Mail className="h-4 w-4 text-gray-500" />
+                <div className="flex items-center space-x-3">
+                  <Mail className="h-5 w-5 text-gray-500" />
                   <div>
-                    <p className="text-sm font-medium">{client.email || 'Non renseigné'}</p>
-                    <p className="text-xs text-gray-500">Email</p>
+                    <p className="text-base font-semibold">{client.email || 'Non renseigné'}</p>
+                    <p className="text-sm text-gray-500">Email</p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
+                <div className="flex items-center space-x-3">
+                  <Calendar className="h-5 w-5 text-gray-500" />
                   <div>
-                    <p className="text-sm font-medium">{formatDate(client.created_at)}</p>
-                    <p className="text-xs text-gray-500">Date d'inscription</p>
+                    <p className="text-base font-semibold">{formatDate(client.created_at)}</p>
+                    <p className="text-sm text-gray-500">Date d'inscription</p>
                   </div>
                 </div>
               </div>
               {client.adresse && (
-                <div className="mt-4 flex items-center space-x-2">
-                  <MapPin className="h-4 w-4 text-gray-500" />
-                  <p className="text-sm text-gray-600">{client.adresse}</p>
+                <div className="mt-6 flex items-center space-x-3">
+                  <MapPin className="h-5 w-5 text-gray-500" />
+                  <p className="text-base text-gray-700">{client.adresse}</p>
                 </div>
               )}
             </CardContent>
@@ -277,7 +279,7 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {loading ? (
+              {(loading && history.length === 0) ? (
                 <div className="space-y-4">
                   {Array.from({ length: 5 }).map((_, index) => (
                     <div key={index} className="animate-pulse">

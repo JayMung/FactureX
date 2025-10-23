@@ -262,7 +262,7 @@ const ClientsProtected: React.FC = () => {
                     <p className="text-sm font-medium text-gray-600">Total Payé</p>
                     <p className="text-3xl font-bold text-blue-600">
                       {formatCurrency(
-                        sortedData.reduce((sum, client) => sum + (client.total_paye || 0), 0)
+                        clients.reduce((sum, client) => sum + (client.total_paye || 0), 0)
                       )}
                     </p>
                   </div>

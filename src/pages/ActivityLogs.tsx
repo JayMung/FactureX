@@ -30,6 +30,8 @@ import { useRealTimeActivity } from '../hooks/useRealTimeActivity';
 import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
 import Pagination from '../components/ui/pagination-custom';
+import ActivityStats from '../components/activity/ActivityStats';
+import ActivityChart from '../components/activity/ActivityChart';
 import { cn } from '@/lib/utils';
 
 interface ActivityLog {
@@ -180,30 +182,79 @@ const ActivityLogs: React.FC = () => {
     });
   };
 
-  const handleExport = () => {
-    const csv = [
-      ['Date', 'Heure', 'Utilisateur', 'Email', 'Action', 'Entité', 'ID Entité', 'Détails'],
-      ...activities.map(activity => [
+  const handleExport = async () => {
+    try {
+      // Informations d'en-tête avec filtres appliqués
+      const filterInfo = [
+        ['Exporté le:', new Date().toLocaleString('fr-FR')],
+        ['Filtres appliqués:'],
+        ['- Recherche:', searchTerm || 'Aucune'],
+        ['- Action:', actionFilter !== 'all' ? actionFilter : 'Toutes'],
+        ['- Utilisateur:', userFilter !== 'all' ? users.find(u => u.id === userFilter)?.email || userFilter : 'Tous'],
+        ['- Période:', dateFilter !== 'all' ? dateFilter : 'Toutes'],
+        ['- Total activités:', totalCount.toString()],
+        [''],
+        []
+      ];
+
+      // En-têtes de colonnes
+      const headers = [
+        'Date',
+        'Heure',
+        'Prénom',
+        'Nom',
+        'Email',
+        'Rôle',
+        'Action',
+        'Type d\'entité',
+        'ID Entité',
+        'Page',
+        'Navigateur',
+        'Changements (Avant)',
+        'Changements (Après)',
+        'Détails Supplémentaires'
+      ];
+
+      // Données
+      const rows = activities.map(activity => [
         new Date(activity.created_at).toLocaleDateString('fr-FR'),
         new Date(activity.created_at).toLocaleTimeString('fr-FR'),
-        `${activity.user?.first_name} ${activity.user?.last_name}`,
+        activity.user?.first_name || '',
+        activity.user?.last_name || '',
         activity.user?.email || '',
+        (activity.user as any)?.role || '',
         activity.action,
         activity.cible || '',
         activity.cible_id || '',
-        JSON.stringify(activity.details || {})
-      ])
-    ].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+        activity.details?.page || '',
+        activity.details?.userAgent ? activity.details.userAgent.substring(0, 50) + '...' : '',
+        activity.details?.changes?.before ? JSON.stringify(activity.details.changes.before) : '',
+        activity.details?.changes?.after ? JSON.stringify(activity.details.changes.after) : '',
+        activity.details?.entityName || ''
+      ]);
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `activity-logs-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    showSuccess('Logs d\'activité exportés avec succès');
+      // Construire le CSV
+      const csvContent = [
+        ...filterInfo.map(row => row.join(',')),
+        headers.map(h => `\"${h}\"`).join(','),
+        ...rows.map(row => row.map(cell => `\"${String(cell).replace(/\"/g, '\"\"')}\"`).join(','))
+      ].join('\n');
+
+      // Télécharger le fichier
+      const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const fileName = `activity-logs-${actionFilter !== 'all' ? actionFilter + '-' : ''}${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      showSuccess(`${activities.length} logs exportés avec succès`);
+    } catch (error) {
+      console.error('Erreur lors de l\'export:', error);
+      showError('Erreur lors de l\'export des logs');
+    }
   };
 
   const getActivityIcon = (action: string) => {
@@ -291,6 +342,12 @@ const ActivityLogs: React.FC = () => {
             </Button>
           </div>
         </div>
+
+        {/* Statistiques */}
+        <ActivityStats activities={activities} className="mb-6" />
+
+        {/* Graphiques */}
+        <ActivityChart activities={activities} className="mb-6" />
 
         {/* Filtres */}
         <Card>

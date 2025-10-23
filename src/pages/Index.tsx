@@ -21,7 +21,11 @@ import {
 } from 'lucide-react';
 import { useDashboard } from '../hooks/useDashboard';
 import { useActivityLogs } from '../hooks/useActivityLogs';
+import { useRealTimeActivity } from '../hooks/useRealTimeActivity';
 import { formatCurrency } from '../utils/formatCurrency';
+import ActivityFeed from '../components/activity/ActivityFeed';
+import TopActiveUsers from '../components/dashboard/TopActiveUsers';
+import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
   usePageSetup({
@@ -29,8 +33,10 @@ const Index = () => {
     subtitle: "Vue d'ensemble de votre activité"
   });
 
+  const navigate = useNavigate();
   const { stats, isLoading: statsLoading } = useDashboard();
-  const { logs, isLoading: logsLoading } = useActivityLogs(1, 10);
+  const { logs, isLoading: logsLoading } = useActivityLogs(1, 50);
+  const { activities } = useRealTimeActivity(50);
 
   const formatCurrencyValue = (amount: number, currency: string = 'USD') => {
     if (currency === 'CDF') {
@@ -140,57 +146,81 @@ const Index = () => {
           ))}
         </div>
 
-        {/* Activity Feed */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Activité Récente</CardTitle>
-            <Button variant="ghost" size="sm">
-              <Eye className="h-4 w-4 mr-2" />
-              Voir tout
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {logsLoading ? (
-              <div className="space-y-4">
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <div key={index} className="flex items-center space-x-3 p-3 rounded-lg bg-gray-50 animate-pulse">
-                    <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-                    <div className="flex-1">
-                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                    </div>
-                  </div>
-                ))}
+        {/* Activity Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Activités Aujourd'hui</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-gray-900">
+                  {activities.filter(a => {
+                    const today = new Date().toDateString();
+                    return new Date(a.created_at).toDateString() === today;
+                  }).length}
+                </span>
+                <Activity className="h-5 w-5 text-blue-600" />
               </div>
-            ) : logs.data.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Activity className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p>Aucune activité récente</p>
+              <p className="text-xs text-gray-500 mt-1">Dernières 24h</p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Créations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-green-600">
+                  {activities.filter(a => a.action.includes('Création')).length}
+                </span>
+                <Plus className="h-5 w-5 text-green-600" />
               </div>
-            ) : (
-              <div className="space-y-4">
-                {logs.data.map((log) => (
-                  <div key={log.id} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="flex-shrink-0">
-                      {getActivityIcon(log.action)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{log.action}</p>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <Badge variant="outline" className="text-xs">
-                          {getEntityTypeLabel(log.cible)}
-                        </Badge>
-                        <span className="text-xs text-gray-500">
-                          par {log.user?.email || 'Utilisateur inconnu'} • {new Date(log.date || log.created_at).toLocaleString('fr-FR')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <p className="text-xs text-gray-500 mt-1">Nouveaux éléments</p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Modifications</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-yellow-600">
+                  {activities.filter(a => a.action.includes('Modification')).length}
+                </span>
+                <TrendingUp className="h-5 w-5 text-yellow-600" />
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <p className="text-xs text-gray-500 mt-1">Éléments modifiés</p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Utilisateurs Actifs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-purple-600">
+                  {new Set(activities.map(a => a.user_id)).size}
+                </span>
+                <User className="h-5 w-5 text-purple-600" />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Dernière période</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Activity Feed et Top Users en grille */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <ActivityFeed showViewAll={true} />
+          </div>
+          <div className="lg:col-span-1">
+            <TopActiveUsers limit={5} />
+          </div>
+        </div>
 
         {/* Quick Actions */}
         <Card>
@@ -207,13 +237,21 @@ const Index = () => {
                 <Users className="h-6 w-6" />
                 <span className="text-sm">Ajouter Client</span>
               </Button>
-              <Button variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2">
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col items-center justify-center space-y-2"
+                onClick={() => navigate('/transactions')}
+              >
                 <Receipt className="h-6 w-6" />
                 <span className="text-sm">Voir Transactions</span>
               </Button>
-              <Button variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2">
-                <TrendingUp className="h-6 w-6" />
-                <span className="text-sm">Rapports</span>
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col items-center justify-center space-y-2"
+                onClick={() => navigate('/activity-logs')}
+              >
+                <Activity className="h-6 w-6" />
+                <span className="text-sm">Logs d'Activité</span>
               </Button>
             </div>
           </CardContent>

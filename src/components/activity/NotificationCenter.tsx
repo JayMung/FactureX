@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useRealTimeActivity } from '@/hooks/useRealTimeActivity';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 interface NotificationItem {
@@ -36,6 +37,7 @@ interface NotificationCenterProps {
 
 const NotificationCenter: React.FC<NotificationCenterProps> = ({ className }) => {
   const { activities, unreadCount, markAsRead } = useRealTimeActivity(10);
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
@@ -221,9 +223,15 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className }) =>
             
             <DropdownMenuSeparator />
             
-            <DropdownMenuItem className="cursor-pointer">
+            <DropdownMenuItem 
+              className="cursor-pointer"
+              onClick={() => {
+                navigate('/activity-logs');
+                setIsOpen(false);
+              }}
+            >
               <Eye className="mr-2 h-4 w-4" />
-              <span>Voir les logs</span>
+              <span>Voir tous les logs d'activité</span>
             </DropdownMenuItem>
           </div>
         </DropdownMenuContent>

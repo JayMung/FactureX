@@ -26,6 +26,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { usePermissions } from '@/hooks/usePermissions';
+import NotificationCenter from '@/components/activity/NotificationCenter';
 
 interface HeaderProps {
   title: string;
@@ -101,62 +102,8 @@ const Header: React.FC<HeaderProps> = ({
 
           {/* Right side - Notifications and user menu */}
           <div className="flex items-center space-x-4">
-            {/* Notifications */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                >
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80">
-                <div className="p-4 border-b border-gray-100">
-                  <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
-                  <p className="text-xs text-gray-500">3 nouvelles notifications</p>
-                </div>
-                <div className="max-h-96 overflow-y-auto">
-                  <DropdownMenuItem className="cursor-pointer">
-                    <div className="flex items-start space-x-3 p-4">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">Nouveau client enregistré</p>
-                        <p className="text-xs text-gray-500">Jean Mukendi vient de s'inscrire</p>
-                        <p className="text-xs text-gray-400">Il y a 5 min</p>
-                      </div>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer">
-                    <div className="flex items-start space-x-3 p-4">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">Transaction validée</p>
-                        <p className="text-xs text-gray-500">Transfert de $500 vers CDF</p>
-                        <p className="text-xs text-gray-400">Il y a 15 min</p>
-                      </div>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer">
-                    <div className="flex items-start space-x-3 p-4">
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">Taux de change mis à jour</p>
-                        <p className="text-xs text-gray-500">USD/CDF: 2850, USD/CNY: 7.25</p>
-                        <p className="text-xs text-gray-400">Il y a 1h</p>
-                      </div>
-                    </div>
-                  </DropdownMenuItem>
-                </div>
-                <div className="p-4 border-t border-gray-100">
-                  <Button variant="outline" size="sm" className="w-full">
-                    Voir toutes les notifications
-                  </Button>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Notifications temps réel */}
+            <NotificationCenter />
 
             {/* User menu */}
             <DropdownMenu>

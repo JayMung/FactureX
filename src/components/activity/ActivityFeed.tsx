@@ -20,6 +20,7 @@ import {
   Eye
 } from 'lucide-react';
 import { useRealTimeActivity } from '@/hooks/useRealTimeActivity';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 interface ActivityFeedProps {
@@ -31,6 +32,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
   className,
   showViewAll = true 
 }) => {
+  const navigate = useNavigate();
   const { activities, unreadCount, markAsRead } = useRealTimeActivity(5);
 
   const getActivityIcon = (action: string, entity: string) => {
@@ -151,7 +153,12 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
               </Button>
             )}
             {showViewAll && (
-              <Button variant="ghost" size="sm" className="text-xs">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs"
+                onClick={() => navigate('/activity-logs')}
+              >
                 <Eye className="mr-1 h-3 w-3" />
                 Voir tout
               </Button>

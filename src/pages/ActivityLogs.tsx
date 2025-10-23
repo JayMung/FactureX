@@ -73,30 +73,12 @@ const ActivityLogs: React.FC = () => {
   const fetchActivities = async (page: number = 1, filters: any = {}) => {
     setLoading(true);
     try {
+      // Build query for activity_logs only
       let query = supabase
         .from('activity_logs')
-        .select(`
-          *,
-          profiles(
-            id,
-            first_name,
-            last_name,
-            email,
-            role
-          )
-        `);
+        .select('*', { count: 'exact' });
 
-      // Appliquer les filtres
-      if (filters.search) {
-        query = query.or(`
-          action.ilike.%${filters.search}%
-          ,cible.ilike.%${filters.search}%
-          ,profiles.first_name.ilike.%${filters.search}%
-          ,profiles.last_name.ilike.%${filters.search}%
-          ,profiles.email.ilike.%${filters.search}%
-        `);
-      }
-
+      // Apply basic filters (action, user, date)
       if (filters.action && filters.action !== 'all') {
         query = query.ilike('action', `%${filters.action}%`);
       }
@@ -120,21 +102,43 @@ const ActivityLogs: React.FC = () => {
         }
       }
 
-      // Compter le total
-      const { count } = await query;
-
-      // Pagination
-      const { data, error } = await query
+      // Fetch activities with pagination
+      const { data: activityData, error, count } = await query
         .order('date', { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
 
       if (error) throw error;
 
-      const activitiesWithUsers = data?.map(log => ({
+      // Get unique user IDs
+      const userIds = [...new Set(activityData?.map(log => log.user_id) || [])];
+      
+      // Fetch profiles separately
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email, role')
+        .in('id', userIds);
+
+      // Create a map for quick lookup
+      const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+
+      // Combine data
+      let activitiesWithUsers = activityData?.map(log => ({
         ...log,
-        created_at: log.created_at || log.date, // Normalize date field
-        user: log.profiles
+        created_at: log.created_at || log.date,
+        user: profilesMap.get(log.user_id) || null
       })) || [];
+
+      // Apply search filter on combined data if needed
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        activitiesWithUsers = activitiesWithUsers.filter(activity => 
+          activity.action?.toLowerCase().includes(searchLower) ||
+          activity.cible?.toLowerCase().includes(searchLower) ||
+          activity.user?.first_name?.toLowerCase().includes(searchLower) ||
+          activity.user?.last_name?.toLowerCase().includes(searchLower) ||
+          activity.user?.email?.toLowerCase().includes(searchLower)
+        );
+      }
 
       setActivities(activitiesWithUsers);
       setTotalCount(count || 0);

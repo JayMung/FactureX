@@ -8,15 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { 
-  Building2,
   Plane,
   Ship,
   Tag,
-  Upload,
   Loader2,
   Plus,
-  Edit,
-  Trash2
+  Trash2,
+  FileText
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 
@@ -29,28 +27,21 @@ interface ProductCategory {
 export const SettingsFacture = () => {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const signatureInputRef = useRef<HTMLInputElement>(null);
-
-  // États pour les paramètres entreprise
-  const [companySettings, setCompanySettings] = useState({
-    nom_entreprise: '',
-    logo_url: '',
-    rccm: '',
-    idnat: '',
-    nif: '',
-    email_entreprise: '',
-    telephone_entreprise: '',
-    adresse_entreprise: '',
-    signature_url: ''
-  });
 
   // États pour les frais de livraison
   const [shippingSettings, setShippingSettings] = useState({
     frais_aerien_par_kg: '',
     frais_maritime_par_cbm: ''
   });
+
+  // État pour les conditions de vente
+  const [conditionsVente, setConditionsVente] = useState({
+    aerien: '',
+    maritime: ''
+  });
+
+  // État pour les informations bancaires
+  const [informationsBancaires, setInformationsBancaires] = useState('');
 
   // États pour les catégories
   const [categories, setCategories] = useState<ProductCategory[]>([]);
@@ -69,17 +60,9 @@ export const SettingsFacture = () => {
       const { data } = await supabase
         .from('settings')
         .select('*')
-        .in('categorie', ['company', 'shipping']);
+        .in('categorie', ['shipping', 'facture']);
 
       if (data) {
-        // Charger paramètres entreprise
-        const companyData = data.filter(s => s.categorie === 'company');
-        const company: any = {};
-        companyData.forEach(item => {
-          company[item.cle] = item.valeur;
-        });
-        setCompanySettings(prev => ({ ...prev, ...company }));
-
         // Charger frais livraison
         const shippingData = data.filter(s => s.categorie === 'shipping');
         const shipping: any = {};
@@ -87,6 +70,20 @@ export const SettingsFacture = () => {
           shipping[item.cle] = item.valeur;
         });
         setShippingSettings(prev => ({ ...prev, ...shipping }));
+
+        // Charger conditions de vente et informations bancaires
+        const factureData = data.filter(s => s.categorie === 'facture');
+        const conditions: any = {};
+        factureData.forEach(item => {
+          if (item.cle === 'conditions_vente_aerien') {
+            conditions.aerien = item.valeur;
+          } else if (item.cle === 'conditions_vente_maritime') {
+            conditions.maritime = item.valeur;
+          } else if (item.cle === 'informations_bancaires') {
+            setInformationsBancaires(item.valeur);
+          }
+        });
+        setConditionsVente(prev => ({ ...prev, ...conditions }));
       }
     } catch (error: any) {
       console.error('Error fetching settings:', error);
@@ -106,28 +103,6 @@ export const SettingsFacture = () => {
       setCategories(data || []);
     } catch (error: any) {
       console.error('Error fetching categories:', error);
-    }
-  };
-
-  const handleSaveCompanySettings = async () => {
-    setSaving(true);
-    try {
-      const updates = Object.entries(companySettings).map(([cle, valeur]) => ({
-        categorie: 'company',
-        cle,
-        valeur: valeur || ''
-      }));
-
-      const { error } = await supabase
-        .from('settings')
-        .upsert(updates, { onConflict: 'categorie,cle' });
-
-      if (error) throw error;
-      showSuccess('Informations entreprise sauvegardées');
-    } catch (error: any) {
-      showError(error.message || 'Erreur lors de la sauvegarde');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -153,48 +128,52 @@ export const SettingsFacture = () => {
     }
   };
 
-  const handleImageUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-    type: 'logo' | 'signature'
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
+  const handleSaveConditionsVente = async () => {
+    setSaving(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${type}_${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('company')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('company')
-        .getPublicUrl(fileName);
-
-      const settingKey = type === 'logo' ? 'logo_url' : 'signature_url';
-      
-      setCompanySettings(prev => ({ ...prev, [settingKey]: publicUrl }));
+      const updates = [
+        {
+          categorie: 'facture',
+          cle: 'conditions_vente_aerien',
+          valeur: conditionsVente.aerien || ''
+        },
+        {
+          categorie: 'facture',
+          cle: 'conditions_vente_maritime',
+          valeur: conditionsVente.maritime || ''
+        }
+      ];
 
       const { error } = await supabase
         .from('settings')
+        .upsert(updates, { onConflict: 'categorie,cle' });
+
+      if (error) throw error;
+      showSuccess('Conditions de vente sauvegardées');
+    } catch (error: any) {
+      showError(error.message || 'Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveInformationsBancaires = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('settings')
         .upsert([{
-          categorie: 'company',
-          cle: settingKey,
-          valeur: publicUrl
+          categorie: 'facture',
+          cle: 'informations_bancaires',
+          valeur: informationsBancaires || ''
         }], { onConflict: 'categorie,cle' });
 
       if (error) throw error;
-
-      showSuccess(`${type === 'logo' ? 'Logo' : 'Signature'} uploadé avec succès`);
+      showSuccess('Informations bancaires sauvegardées');
     } catch (error: any) {
-      console.error(`Error uploading ${type}:`, error);
-      showError(error.message || 'Erreur lors du téléchargement');
+      showError(error.message || 'Erreur lors de la sauvegarde');
     } finally {
-      setUploading(false);
+      setSaving(false);
     }
   };
 
@@ -251,133 +230,6 @@ export const SettingsFacture = () => {
 
   return (
     <div className="space-y-6">
-      {/* Informations Entreprise */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Building2 className="mr-2 h-5 w-5" />
-            Informations Entreprise
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Nom de l'entreprise</Label>
-              <Input
-                value={companySettings.nom_entreprise}
-                onChange={(e) => setCompanySettings(prev => ({ ...prev, nom_entreprise: e.target.value }))}
-                placeholder="CoxiPay"
-              />
-            </div>
-            <div>
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={companySettings.email_entreprise}
-                onChange={(e) => setCompanySettings(prev => ({ ...prev, email_entreprise: e.target.value }))}
-                placeholder="contact@coxipay.com"
-              />
-            </div>
-            <div>
-              <Label>Téléphone</Label>
-              <Input
-                value={companySettings.telephone_entreprise}
-                onChange={(e) => setCompanySettings(prev => ({ ...prev, telephone_entreprise: e.target.value }))}
-                placeholder="+243 XXX XXX XXX"
-              />
-            </div>
-            <div>
-              <Label>RCCM</Label>
-              <Input
-                value={companySettings.rccm}
-                onChange={(e) => setCompanySettings(prev => ({ ...prev, rccm: e.target.value }))}
-                placeholder="CD/XXX/RCCM/XX-X-XXXXX"
-              />
-            </div>
-            <div>
-              <Label>IDNAT</Label>
-              <Input
-                value={companySettings.idnat}
-                onChange={(e) => setCompanySettings(prev => ({ ...prev, idnat: e.target.value }))}
-                placeholder="01-XXX-XXXXXXX"
-              />
-            </div>
-            <div>
-              <Label>NIF</Label>
-              <Input
-                value={companySettings.nif}
-                onChange={(e) => setCompanySettings(prev => ({ ...prev, nif: e.target.value }))}
-                placeholder="A XXXXXXXXX X"
-              />
-            </div>
-          </div>
-          <div>
-            <Label>Adresse</Label>
-            <Textarea
-              value={companySettings.adresse_entreprise}
-              onChange={(e) => setCompanySettings(prev => ({ ...prev, adresse_entreprise: e.target.value }))}
-              placeholder="Adresse complète de l'entreprise"
-              rows={2}
-            />
-          </div>
-
-          {/* Logo */}
-          <div>
-            <Label>Logo de l'entreprise</Label>
-            <div className="flex items-center space-x-4 mt-2">
-              {companySettings.logo_url && (
-                <img src={companySettings.logo_url} alt="Logo" className="h-16 w-16 object-contain border rounded" />
-              )}
-              <input
-                ref={logoInputRef}
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleImageUpload(e, 'logo')}
-                className="hidden"
-              />
-              <Button
-                variant="outline"
-                onClick={() => logoInputRef.current?.click()}
-                disabled={uploading}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                {uploading ? 'Upload...' : 'Choisir logo'}
-              </Button>
-            </div>
-          </div>
-
-          {/* Signature */}
-          <div>
-            <Label>Signature/Stamp (PNG sans fond)</Label>
-            <div className="flex items-center space-x-4 mt-2">
-              {companySettings.signature_url && (
-                <img src={companySettings.signature_url} alt="Signature" className="h-16 w-32 object-contain border rounded" />
-              )}
-              <input
-                ref={signatureInputRef}
-                type="file"
-                accept="image/png"
-                onChange={(e) => handleImageUpload(e, 'signature')}
-                className="hidden"
-              />
-              <Button
-                variant="outline"
-                onClick={() => signatureInputRef.current?.click()}
-                disabled={uploading}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                {uploading ? 'Upload...' : 'Choisir signature'}
-              </Button>
-            </div>
-          </div>
-
-          <Button onClick={handleSaveCompanySettings} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Sauvegarder les informations
-          </Button>
-        </CardContent>
-      </Card>
-
       {/* Frais de Livraison */}
       <Card>
         <CardHeader>
@@ -415,6 +267,82 @@ export const SettingsFacture = () => {
           <Button onClick={handleSaveShippingSettings} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Sauvegarder les frais
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Informations bancaires */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <FileText className="mr-2 h-5 w-5" />
+            Informations bancaires (pied de page)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label>Informations bancaires</Label>
+            <Textarea
+              value={informationsBancaires}
+              onChange={(e) => setInformationsBancaires(e.target.value)}
+              placeholder="Ex: EQUITY BCDC | 0001105023-32000099001-60 | COCCINELLE&#10;RAWBANK | 65101-00941018001-91 | COCCINELLE SARL"
+              rows={4}
+              className="mt-1 font-mono text-sm"
+            />
+            <p className="text-sm text-gray-500 mt-2">
+              Ces informations seront affichées en bas de page de la facture PDF.
+              Utilisez des retours à la ligne pour séparer les différentes banques.
+            </p>
+          </div>
+          <Button onClick={handleSaveInformationsBancaires} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Sauvegarder les informations
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Conditions de vente */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <FileText className="mr-2 h-5 w-5" />
+            Conditions de vente par défaut
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label className="flex items-center">
+              <Plane className="mr-2 h-4 w-4" />
+              Conditions de vente - Voie Aérienne
+            </Label>
+            <Textarea
+              value={conditionsVente.aerien}
+              onChange={(e) => setConditionsVente(prev => ({ ...prev, aerien: e.target.value }))}
+              placeholder="Ex: Paiement à la livraison, Délai 7-10 jours, Garantie 30 jours..."
+              rows={5}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label className="flex items-center">
+              <Ship className="mr-2 h-4 w-4" />
+              Conditions de vente - Voie Maritime
+            </Label>
+            <Textarea
+              value={conditionsVente.maritime}
+              onChange={(e) => setConditionsVente(prev => ({ ...prev, maritime: e.target.value }))}
+              placeholder="Ex: Paiement 50% à la commande, Délai 45-60 jours, Garantie 30 jours..."
+              rows={5}
+              className="mt-1"
+            />
+          </div>
+          <p className="text-sm text-gray-500">
+            Ces conditions seront automatiquement pré-remplies selon le mode de livraison choisi lors de la création d'une nouvelle facture.
+            Vous pourrez les modifier individuellement pour chaque facture.
+          </p>
+          <Button onClick={handleSaveConditionsVente} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Sauvegarder les conditions
           </Button>
         </CardContent>
       </Card>

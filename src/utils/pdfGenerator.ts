@@ -1,322 +1,686 @@
 import jsPDF from 'jspdf';
-import type { Facture, CompanySettings } from '@/types';
+import autoTable from 'jspdf-autotable';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
+import type { Facture } from '@/types';
 
-interface PDFGeneratorOptions {
-  facture: Facture;
-  companySettings: CompanySettings;
-  signatureUrl?: string;
-  logoUrl?: string;
-}
+// --- CONFIGURATION DU DESIGN MODERNE ---
 
-export const generateFacturePDF = async ({
-  facture,
-  companySettings,
-  signatureUrl,
-  logoUrl
-}: PDFGeneratorOptions) => {
-  const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  let yPosition = 20;
+type ColorTuple = [number, number, number];
 
-  // Couleurs
-  const primaryColor = { r: 16, g: 185, b: 129 }; // emerald-600
-  const textColor = { r: 31, g: 41, b: 55 }; // gray-800
-  const lightGray = { r: 243, g: 244, b: 246 }; // gray-100
+// Palette de couleurs inspirée de Tailwind CSS (moderne et professionnelle)
+const COLORS: { [key: string]: ColorTuple } = {
+    primary: [16, 185, 129],      // emerald-600 - couleur principale
+    primaryDark: [5, 150, 105],   // emerald-700 - pour les accents
+    primaryLight: [167, 243, 208], // emerald-300 - pour les highlights
+    primaryLighter: [209, 250, 229], // emerald-100 - backgrounds
+    primaryLightest: [240, 253, 244], // emerald-50 - backgrounds légers
+    textDark: [17, 24, 39],       // gray-900 - titres
+    textBody: [55, 65, 81],       // gray-700 - texte principal
+    textMedium: [75, 85, 99],     // gray-600 - texte secondaire
+    textLight: [107, 114, 128],   // gray-500 - labels
+    border: [229, 231, 235],      // gray-200 - bordures fines
+    borderLight: [243, 244, 246], // gray-100 - bordures très fines
+    background: [249, 250, 251],  // gray-50 - fond de section
+    backgroundLight: [250, 251, 252], // presque blanc
+    white: [255, 255, 255],
+    success: [34, 197, 94],       // green-500 - pour les totaux
+    warning: [234, 179, 8],       // yellow-500 - pour les alertes
+};
 
-  // Helper pour ajouter du texte centré
-  const addCenteredText = (text: string, y: number, fontSize: number = 12, isBold: boolean = false) => {
-    doc.setFontSize(fontSize);
-    doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-    const textWidth = doc.getTextWidth(text);
-    doc.text(text, (pageWidth - textWidth) / 2, y);
-  };
+const MARGIN = 15;
+const PAGE_WIDTH = 210;
+const CONTENT_WIDTH = PAGE_WIDTH - (MARGIN * 2);
 
-  // Helper pour formater la devise
-  const formatCurrency = (amount: number, devise: string) => {
-    const formatted = amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    return devise === 'USD' ? `$${formatted}` : `${formatted} FC`;
-  };
+// Configuration par défaut (fallback) - sera remplacée par les données de la DB
+const DEFAULT_COMPANY_INFO = {
+    name: '@COCCINELLE',
+    addresses: [
+        '44, Kokolo, Q/Mbinza Pigeon, C/Ngaliema - Kinshasa',
+        '45, Avenue Nyangwe - Elie Mbayo, Q/Lido, C/Lubumbashi'
+    ],
+    phone: '(+243) 970 746 213 / (+243) 851 958 937',
+    email: 'sales@coccinelledrc.com',
+    website: 'www.coccinelledrc.com',
+    rccm: 'CD/KNG/RCCM/21-B-02464',
+    idnat: '01-F4300-N89171B',
+    impot: 'A2173499P',
+    banks: [
+        { name: 'EQUITY BCDC', details: '| 0001105023-32000099001-60 | COCCINELLE' },
+        { name: 'RAWBANK', details: '| 65101-00941018001-91 | COCCINELLE SARL' }
+    ],
+    paymentMethods: '097 074 6213 / 085 195 8937 / 082 835 8721 / 083 186 3288',
+    deliveryTime: '65-75 Jours selon les types de marchandises',
+    feesDescription: 'Les frais de 15% inclus dans le coût global contiennent les frais de services & frais de transfert.',
+    feesPercentage: 0.15 // 15% par défaut
+};
 
-  try {
-    const clientInfo = facture.clients || facture.client;
-    // ============ EN-TÊTE ============
-    // Logo de l'entreprise (si disponible)
-    if (logoUrl) {
-      try {
-        // Note: Pour les images externes, il faut les convertir en base64
-        // Pour l'instant, on skip si l'URL n'est pas disponible
-        // doc.addImage(logoUrl, 'PNG', 15, 10, 30, 30);
-      } catch (error) {
-        console.warn('Logo non chargé:', error);
-      }
-    }
-
-    // Informations de l'entreprise (à droite ou centré)
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
-    addCenteredText(companySettings.nom_entreprise || 'ENTREPRISE', yPosition);
-    yPosition += 8;
-
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    
-    if (companySettings.adresse_entreprise) {
-      addCenteredText(companySettings.adresse_entreprise, yPosition);
-      yPosition += 5;
-    }
-    
-    if (companySettings.telephone_entreprise) {
-      addCenteredText(`Tél: ${companySettings.telephone_entreprise}`, yPosition);
-      yPosition += 5;
-    }
-    
-    if (companySettings.email_entreprise) {
-      addCenteredText(`Email: ${companySettings.email_entreprise}`, yPosition);
-      yPosition += 5;
-    }
-
-    // RCCM, IDNAT, NIF sur une ligne
-    const registrationInfo = [];
-    if (companySettings.rccm) registrationInfo.push(`RCCM: ${companySettings.rccm}`);
-    if (companySettings.idnat) registrationInfo.push(`IDNAT: ${companySettings.idnat}`);
-    if (companySettings.nif) registrationInfo.push(`NIF: ${companySettings.nif}`);
-    
-    if (registrationInfo.length > 0) {
-      addCenteredText(registrationInfo.join(' | '), yPosition);
-      yPosition += 10;
-    }
-
-    // Ligne de séparation
-    doc.setDrawColor(primaryColor.r, primaryColor.g, primaryColor.b);
-    doc.setLineWidth(0.5);
-    doc.line(15, yPosition, pageWidth - 15, yPosition);
-    yPosition += 10;
-
-    // ============ TITRE DU DOCUMENT ============
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
-    addCenteredText(facture.type === 'devis' ? 'DEVIS' : 'FACTURE', yPosition);
-    yPosition += 10;
-
-    // ============ INFORMATIONS FACTURE & CLIENT ============
-    const leftCol = 15;
-    const rightCol = pageWidth / 2 + 5;
-
-    // Colonne gauche - Informations client
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    doc.text('CLIENT:', leftCol, yPosition);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    yPosition += 5;
-    doc.text(clientInfo?.nom || 'N/A', leftCol, yPosition);
-    yPosition += 4;
-    if (clientInfo?.ville) {
-      doc.text(clientInfo.ville, leftCol, yPosition);
-      yPosition += 4;
-    }
-    if (clientInfo?.telephone) {
-      doc.text(`Tél: ${clientInfo.telephone}`, leftCol, yPosition);
-      yPosition += 4;
-    }
-
-    // Colonne droite - Informations facture
-    let rightYPosition = yPosition - 21; // Remonter au même niveau que "CLIENT:"
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`N° ${facture.type === 'devis' ? 'Devis' : 'Facture'}:`, rightCol, rightYPosition);
-    doc.setFont('helvetica', 'normal');
-    doc.text(facture.facture_number, rightCol + 40, rightYPosition);
-    
-    rightYPosition += 5;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Date d\'émission:', rightCol, rightYPosition);
-    doc.setFont('helvetica', 'normal');
-    doc.text(new Date(facture.date_emission).toLocaleDateString('fr-FR'), rightCol + 40, rightYPosition);
-    
-    rightYPosition += 5;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Statut:', rightCol, rightYPosition);
-    doc.setFont('helvetica', 'normal');
-    const statutColors: any = {
-      brouillon: { r: 156, g: 163, b: 175 },
-      en_attente: { r: 251, g: 191, b: 36 },
-      validee: { r: 16, g: 185, b: 129 },
-      annulee: { r: 239, g: 68, b: 68 }
-    };
-    const statutColor = statutColors[facture.statut] || textColor;
-    doc.setTextColor(statutColor.r, statutColor.g, statutColor.b);
-    doc.text(facture.statut.toUpperCase(), rightCol + 40, rightYPosition);
-    doc.setTextColor(textColor.r, textColor.g, textColor.b);
-
-    rightYPosition += 5;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Mode de livraison:', rightCol, rightYPosition);
-    doc.setFont('helvetica', 'normal');
-    doc.text(facture.mode_livraison === 'aerien' ? '✈️ Aérien' : '🚢 Maritime', rightCol + 40, rightYPosition);
-
-    yPosition = Math.max(yPosition, rightYPosition) + 10;
-
-    // ============ TABLEAU DES ARTICLES ============
-    // En-tête du tableau
-    doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
-    doc.rect(15, yPosition, pageWidth - 30, 8, 'F');
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('#', 18, yPosition + 5.5);
-    doc.text('Description', 30, yPosition + 5.5);
-    doc.text('Qté', 105, yPosition + 5.5);
-    doc.text('P.U', 120, yPosition + 5.5);
-    doc.text(`Poids (${facture.mode_livraison === 'aerien' ? 'kg' : 'cbm'})`, 140, yPosition + 5.5);
-    doc.text('Total', 175, yPosition + 5.5);
-    
-    yPosition += 10;
-    doc.setTextColor(textColor.r, textColor.g, textColor.b);
-    doc.setFont('helvetica', 'normal');
-
-    // Lignes du tableau
-    facture.items?.forEach((item, index) => {
-      // Vérifier si on a assez d'espace, sinon nouvelle page
-      if (yPosition > pageHeight - 60) {
-        doc.addPage();
-        yPosition = 20;
-      }
-
-      // Ligne alternée
-      if (index % 2 === 0) {
-        doc.setFillColor(lightGray.r, lightGray.g, lightGray.b);
-        doc.rect(15, yPosition - 4, pageWidth - 30, 7, 'F');
-      }
-
-      doc.text(item.numero_ligne.toString(), 18, yPosition);
-      
-      // Description (tronquée si trop longue)
-      const maxDescWidth = 70;
-      let description = item.description;
-      if (doc.getTextWidth(description) > maxDescWidth) {
-        while (doc.getTextWidth(description + '...') > maxDescWidth && description.length > 0) {
-          description = description.slice(0, -1);
-        }
-        description += '...';
-      }
-      doc.text(description, 30, yPosition);
-      
-      doc.text(item.quantite.toString(), 105, yPosition);
-      doc.text(formatCurrency(item.prix_unitaire, facture.devise), 120, yPosition);
-      doc.text(item.poids.toFixed(2), 140, yPosition);
-      doc.text(formatCurrency(item.montant_total, facture.devise), 175, yPosition);
-      
-      yPosition += 7;
+// --- FONCTION POUR CHARGER IMAGE DEPUIS URL (avec gestion CORS) ---
+const loadImageFromUrl = async (url: string): Promise<string | null> => {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        // Utiliser un proxy CORS pour contourner les restrictions
+        const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=400&h=400&fit=contain&default=1`;
+        
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0);
+                    resolve(canvas.toDataURL('image/jpeg', 0.8));
+                } else {
+                    resolve(null);
+                }
+            } catch (e) {
+                console.error('Erreur conversion image:', e);
+                resolve(null);
+            }
+        };
+        
+        img.onerror = () => {
+            console.error('Erreur chargement image:', url);
+            // Essayer l'URL originale en fallback
+            if (img.src === proxyUrl) {
+                img.src = url;
+            } else {
+                resolve(null);
+            }
+        };
+        
+        // Essayer d'abord avec le proxy
+        img.src = proxyUrl;
+        
+        // Timeout après 8 secondes (plus long car proxy)
+        setTimeout(() => resolve(null), 8000);
     });
+};
 
-    yPosition += 5;
-
-    // ============ TOTAUX ============
-    const totalsX = pageWidth - 80;
+// --- FONCTION HELPER POUR DESSINER PLACEHOLDER IMAGE ---
+const drawImagePlaceholder = (doc: jsPDF, x: number, y: number, size: number) => {
+    // Fond gris clair simple
+    doc.setFillColor(COLORS.background[0], COLORS.background[1], COLORS.background[2]);
+    doc.rect(x, y, size, size, 'F');
     
-    // Sous-total
-    doc.setFont('helvetica', 'normal');
-    doc.text('Sous-total:', totalsX, yPosition);
-    doc.text(formatCurrency(facture.subtotal, facture.devise), totalsX + 35, yPosition, { align: 'right' });
-    yPosition += 6;
+    // Texte "IMG" centré
+    doc.setFontSize(5);
+    doc.setTextColor(COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]);
+    doc.text('IMG', x + size / 2, y + size / 2 + 0.8, { align: 'center' });
+};
 
-    // Frais transport et douane
-    doc.text(`Frais transport & douane (${facture.mode_livraison === 'aerien' ? 'aérien' : 'maritime'}):`, totalsX, yPosition);
-    doc.text(formatCurrency(facture.frais_transport_douane, facture.devise), totalsX + 35, yPosition, { align: 'right' });
-    yPosition += 6;
+// --- FONCTION POUR CHARGER LES SETTINGS DEPUIS SUPABASE ---
+const loadCompanySettings = async () => {
+    try {
+        const { data: settings, error } = await supabase
+            .from('settings')
+            .select('categorie, cle, valeur')
+            .in('categorie', ['company', 'invoice', 'shipping']);
 
-    // Poids total
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`(${facture.total_poids.toFixed(2)} ${facture.mode_livraison === 'aerien' ? 'kg' : 'cbm'})`, totalsX, yPosition);
-    yPosition += 6;
-    doc.setFontSize(9);
-    doc.setTextColor(textColor.r, textColor.g, textColor.b);
+        if (error) throw error;
 
-    // Ligne de séparation
-    doc.setDrawColor(primaryColor.r, primaryColor.g, primaryColor.b);
-    doc.setLineWidth(0.5);
-    doc.line(totalsX - 5, yPosition - 1, pageWidth - 15, yPosition - 1);
-    yPosition += 5;
+        if (!settings || settings.length === 0) {
+            return DEFAULT_COMPANY_INFO;
+        }
 
-    // Total général
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
-    doc.text('TOTAL GÉNÉRAL:', totalsX, yPosition);
-    doc.text(formatCurrency(facture.total_general, facture.devise), totalsX + 35, yPosition, { align: 'right' });
-    yPosition += 10;
+        // Organiser les settings par clé
+        const settingsMap: Record<string, string> = {};
+        settings.forEach(s => {
+            settingsMap[s.cle] = s.valeur || '';
+        });
 
-    // ============ CONDITIONS DE VENTE ============
-    if (facture.conditions_vente) {
-      yPosition += 5;
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(textColor.r, textColor.g, textColor.b);
-      doc.text('Conditions de vente:', 15, yPosition);
-      yPosition += 5;
-      
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      const conditions = doc.splitTextToSize(facture.conditions_vente, pageWidth - 30);
-      doc.text(conditions, 15, yPosition);
-      yPosition += conditions.length * 4;
+        // Construire l'objet avec les données de la DB
+        return {
+            name: settingsMap['nom_entreprise'] || DEFAULT_COMPANY_INFO.name,
+            addresses: [
+                DEFAULT_COMPANY_INFO.addresses[0], // Adresse 1 (peut être ajoutée dans settings)
+                settingsMap['adresse_entreprise'] || DEFAULT_COMPANY_INFO.addresses[1]
+            ],
+            phone: settingsMap['telephone_entreprise'] || DEFAULT_COMPANY_INFO.phone,
+            email: settingsMap['email_entreprise'] || DEFAULT_COMPANY_INFO.email,
+            website: DEFAULT_COMPANY_INFO.website, // Peut être ajouté dans settings
+            rccm: settingsMap['rccm'] || DEFAULT_COMPANY_INFO.rccm,
+            idnat: settingsMap['idnat'] || DEFAULT_COMPANY_INFO.idnat,
+            nif: settingsMap['nif'] || DEFAULT_COMPANY_INFO.impot,
+            impot: settingsMap['nif'] || DEFAULT_COMPANY_INFO.impot,
+            banks: [
+                { 
+                    name: 'EQUITY BCDC', 
+                    details: settingsMap['equity_bcdc'] || DEFAULT_COMPANY_INFO.banks[0].details 
+                },
+                { 
+                    name: 'RAWBANK', 
+                    details: settingsMap['rawbank'] || DEFAULT_COMPANY_INFO.banks[1].details 
+                }
+            ],
+            paymentMethods: DEFAULT_COMPANY_INFO.paymentMethods, // Peut être chargé depuis payment_methods table
+            deliveryTime: settingsMap['delais_livraison'] || DEFAULT_COMPANY_INFO.deliveryTime,
+            feesDescription: settingsMap['conditions_vente_defaut'] || DEFAULT_COMPANY_INFO.feesDescription,
+            feesPercentage: parseFloat(settingsMap['frais_service_pourcentage'] || '0.15'),
+            informationsBancaires: settingsMap['informations_bancaires'] || ''
+        };
+    } catch (error) {
+        console.error('Erreur lors du chargement des settings:', error);
+        return DEFAULT_COMPANY_INFO;
     }
+};
 
-    // ============ NOTES ============
-    if (facture.notes) {
-      yPosition += 5;
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Notes:', 15, yPosition);
-      yPosition += 5;
-      
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      const notes = doc.splitTextToSize(facture.notes, pageWidth - 30);
-      doc.text(notes, 15, yPosition);
-      yPosition += notes.length * 4;
-    }
+// --- FONCTION PRINCIPALE DE GÉNÉRATION PDF ---
 
-    // ============ SIGNATURE ============
-    if (signatureUrl && facture.statut === 'validee') {
-      try {
-        yPosition = pageHeight - 40;
+export const generateFacturePDF = async (facture: Facture) => {
+    try {
+        // Charger les informations depuis la DB
+        const COMPANY_INFO = await loadCompanySettings();
+        
+        // Pré-charger toutes les images des items
+        const imageCache = new Map<number, string | null>();
+        if (facture.items && facture.items.length > 0) {
+            const imagePromises = facture.items.map(async (item, index) => {
+                if (item.image_url && item.image_url.startsWith('http')) {
+                    const imageData = await loadImageFromUrl(item.image_url);
+                    imageCache.set(index, imageData);
+                }
+            });
+            await Promise.all(imagePromises);
+        }
+        
+        const doc = new jsPDF('p', 'mm', 'a4');
+        let y = MARGIN;
+
+        // Utiliser Times New Roman pour un look plus professionnel
+        const setFont = (style: 'normal' | 'bold' = 'normal') => doc.setFont('times', style);
+        const formatCurrency = (amount: number, currency: string) => {
+            const options: Intl.NumberFormatOptions = { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 };
+            const formatted = new Intl.NumberFormat('en-US', options).format(amount);
+            return currency === 'USD' ? `$${formatted}` : `${formatted} FC`;
+        };
+
+        // ========================================
+        // 1. EN-TÊTE MODERNE
+        // ========================================
+        
+        // Barre de couleur en haut (accent moderne)
+        doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+        doc.rect(0, 0, PAGE_WIDTH, 4, 'F');
+        
+        y += 2;
+        
+        // Nom de l'entreprise avec style moderne
+        setFont('bold');
+        doc.setFontSize(20);
+        doc.setTextColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+        doc.text(COMPANY_INFO.name, MARGIN, y);
+        
+        // Petite ligne sous le nom
+        doc.setDrawColor(COLORS.primaryLight[0], COLORS.primaryLight[1], COLORS.primaryLight[2]);
+        doc.setLineWidth(0.8);
+        const nameWidth = doc.getTextWidth(COMPANY_INFO.name);
+        doc.line(MARGIN, y + 1.5, MARGIN + nameWidth, y + 1.5);
+        doc.setLineWidth(0.2);
+        
+        setFont('normal');
         doc.setFontSize(8);
-        doc.text('Signature:', pageWidth - 70, yPosition);
-        // Note: Pour ajouter l'image de signature, il faut la convertir en base64
-        // doc.addImage(signatureUrl, 'PNG', pageWidth - 70, yPosition + 2, 40, 20);
-        doc.text('________________________', pageWidth - 70, yPosition + 25);
-      } catch (error) {
-        console.warn('Signature non chargée:', error);
-      }
+        doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+        
+        y += 7;
+        setFont('bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+        doc.text("Sièges:", MARGIN, y);
+        setFont('normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+        y += 3.5;
+        doc.text(COMPANY_INFO.addresses[0], MARGIN, y);
+        y += 3;
+        doc.text(COMPANY_INFO.addresses[1], MARGIN, y);
+        
+        y += 4.5;
+        doc.text(`Tél: ${COMPANY_INFO.phone}`, MARGIN, y);
+        y += 3;
+        doc.text(`Email: ${COMPANY_INFO.email}`, MARGIN, y);
+        y += 3;
+        doc.text(`Site: ${COMPANY_INFO.website}`, MARGIN, y);
+
+        // Encadré facture côté droit - Design simple
+        const headerRightX = 118;
+        const headerRightY = MARGIN + 2;
+        const boxWidth = PAGE_WIDTH - headerRightX - MARGIN;
+        const boxHeight = 32;
+        
+        // Fond simple
+        doc.setFillColor(COLORS.backgroundLight[0], COLORS.backgroundLight[1], COLORS.backgroundLight[2]);
+        doc.rect(headerRightX, headerRightY, boxWidth, boxHeight, 'F');
+
+        // Titre FACTURE avec style
+        setFont('bold');
+        doc.setFontSize(18);
+        doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);
+        doc.text("FACTURE", headerRightX + boxWidth / 2, headerRightY + 12, { align: 'center' });
+        
+        // Ligne de séparation élégante
+        doc.setDrawColor(COLORS.primaryLight[0], COLORS.primaryLight[1], COLORS.primaryLight[2]);
+        doc.setLineWidth(0.5);
+        doc.line(headerRightX + 8, headerRightY + 16, headerRightX + boxWidth - 8, headerRightY + 16);
+        doc.setLineWidth(0.2);
+
+        // Informations facture dans un layout propre
+        setFont('normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]);
+        doc.text("Facture No.:", headerRightX + 8, headerRightY + 21);
+        setFont('bold');
+        doc.setFontSize(9);
+        doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);
+        doc.text(facture.facture_number, headerRightX + boxWidth - 8, headerRightY + 21, { align: 'right' });
+
+        setFont('normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]);
+        doc.text("Date Facture:", headerRightX + 8, headerRightY + 27);
+        setFont('bold');
+        doc.setFontSize(9);
+        doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);
+        doc.text(format(new Date(facture.date_emission), 'dd/MM/yyyy', { locale: fr }), headerRightX + boxWidth - 8, headerRightY + 27, { align: 'right' });
+
+        y = Math.max(y, headerRightY + boxHeight) + 8;
+        
+        // Ligne de séparation moderne (dégradé simulé avec épaisseur)
+        doc.setDrawColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+        doc.setLineWidth(2);
+        doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
+        doc.setDrawColor(COLORS.primaryLight[0], COLORS.primaryLight[1], COLORS.primaryLight[2]);
+        doc.setLineWidth(0.5);
+        doc.line(MARGIN, y + 0.5, PAGE_WIDTH - MARGIN, y + 0.5);
+        doc.setLineWidth(0.2);
+
+        y += 10;
+
+        // ========================================
+        // 2. INFORMATIONS CLIENT & LIVRAISON (DESIGN MODERNE)
+        // ========================================
+        const client = facture.client || facture.clients;
+        if (client) {
+            const cardHeight = 28;
+            
+            // Fond simple
+            doc.setFillColor(COLORS.primaryLightest[0], COLORS.primaryLightest[1], COLORS.primaryLightest[2]);
+            doc.rect(MARGIN, y, CONTENT_WIDTH, cardHeight, 'F');
+            
+            y += 7;
+
+            // Section Client (gauche)
+            setFont('bold');
+            doc.setFontSize(9);
+            doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+            doc.text("CLIENT(E)", MARGIN + 5, y);
+
+            setFont('normal');
+            doc.setFontSize(8);
+            doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+            y += 4.5;
+            
+            // Icônes simulées avec des puces
+            doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+            doc.circle(MARGIN + 6, y - 1, 0.8, 'F');
+            setFont('bold');
+            doc.setFontSize(8);
+            doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+            doc.text("Nom:", MARGIN + 8.5, y);
+            setFont('normal');
+            doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+            doc.text(client.nom, MARGIN + 17, y);
+            
+            y += 4.5;
+            doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+            doc.circle(MARGIN + 6, y - 1, 0.8, 'F');
+            setFont('bold');
+            doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+            doc.text("Lieu:", MARGIN + 8.5, y);
+            setFont('normal');
+            doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+            doc.text(client.ville, MARGIN + 17, y);
+            
+            y += 4.5;
+            doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+            doc.circle(MARGIN + 6, y - 1, 0.8, 'F');
+            setFont('bold');
+            doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+            doc.text("Téléphone:", MARGIN + 8.5, y);
+            setFont('normal');
+            doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+            doc.text(client.telephone, MARGIN + 22, y);
+
+            // Ligne de séparation verticale entre client et livraison
+            const middleX = MARGIN + (CONTENT_WIDTH / 2);
+            y -= 14; // Revenir en haut pour la section livraison
+            doc.setDrawColor(COLORS.primaryLighter[0], COLORS.primaryLighter[1], COLORS.primaryLighter[2]);
+            doc.setLineWidth(0.5);
+            doc.line(middleX, y - 1, middleX, y + 18);
+            doc.setLineWidth(0.2);
+
+            // Section Livraison (droite)
+            const deliveryX = middleX + 5;
+            setFont('bold');
+            doc.setFontSize(9);
+            doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+            doc.text("LIVRAISON", deliveryX, y);
+
+            setFont('normal');
+            doc.setFontSize(8);
+            y += 4.5;
+            
+            doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+            doc.circle(deliveryX + 1, y - 1, 0.8, 'F');
+            setFont('bold');
+            doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+            doc.text("Destination:", deliveryX + 3.5, y);
+            setFont('normal');
+            doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+            doc.text(client.ville, deliveryX + 23, y);
+            
+            y += 4.5;
+            doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+            doc.circle(deliveryX + 1, y - 1, 0.8, 'F');
+            setFont('bold');
+            doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+            doc.text("Méthode:", deliveryX + 3.5, y);
+            setFont('normal');
+            doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+            const deliveryMethod = facture.mode_livraison === 'aerien' ? 'Aérien' : 'BATEAU';
+            doc.text(deliveryMethod, deliveryX + 19, y);
+        }
+        
+        y += 18; // Ajustement pour descendre après la carte
+
+        // ========================================
+        // 3. TABLEAU DES ARTICLES
+        // ========================================
+        if (facture.items && facture.items.length > 0) {
+            const tableHeaders = ['N°', 'IMAGE', 'QTÉ', 'DESCRIPTION', 'PRIX UNIT', 'POIDS', 'MONTANT'];
+            const tableData = facture.items.map(item => [
+                item.numero_ligne,
+                '', // Colonne vide pour l'image (on dessine l'image avec didDrawCell)
+                item.quantite,
+                item.description,
+                formatCurrency(item.prix_unitaire, facture.devise),
+                `${item.poids.toFixed(2)}`,
+                formatCurrency(item.montant_total, facture.devise)
+            ]);
+
+            autoTable(doc, {
+                startY: y,
+                head: [tableHeaders],
+                body: tableData,
+                theme: 'grid',
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 3,
+                    lineColor: [COLORS.border[0], COLORS.border[1], COLORS.border[2]],
+                    lineWidth: 0.1,
+                },
+                headStyles: {
+                    fillColor: COLORS.primary,
+                    textColor: COLORS.white,
+                    fontStyle: 'bold',
+                    fontSize: 8,
+                    halign: 'center',
+                    valign: 'middle',
+                    cellPadding: 3,
+                    lineWidth: 0,
+                },
+                bodyStyles: {
+                    textColor: [COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]],
+                    valign: 'middle', // Centrage vertical
+                    minCellHeight: 18, // Hauteur minimale pour un bon centrage
+                },
+                alternateRowStyles: {
+                    fillColor: [COLORS.backgroundLight[0], COLORS.backgroundLight[1], COLORS.backgroundLight[2]],
+                },
+                columnStyles: {
+                    0: { halign: 'center', cellWidth: 11, fontStyle: 'bold', textColor: [COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]], valign: 'middle' },
+                    1: { halign: 'center', cellWidth: 20, valign: 'middle' },
+                    2: { halign: 'center', cellWidth: 13, fontStyle: 'bold', valign: 'middle' },
+                    3: { halign: 'center', cellWidth: 63, textColor: [COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]], valign: 'middle' },
+                    4: { halign: 'center', cellWidth: 28, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]], valign: 'middle' },
+                    5: { halign: 'center', cellWidth: 18, textColor: [COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]], valign: 'middle' },
+                    6: { halign: 'center', cellWidth: 27, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]], valign: 'middle' },
+                },
+                didDrawCell: (data: any) => {
+                    if (data.section === 'body' && data.column.index === 1) {
+                        // Récupérer l'image pré-chargée depuis le cache
+                        const rowIndex = data.row.index;
+                        const imageData = imageCache.get(rowIndex);
+                        
+                        // Placeholder image 40x40 pixels comme demandé
+                        const imgSize = 14; // ~40 pixels à 72 DPI (14mm ≈ 40px)
+                        const imgX = data.cell.x + (data.cell.width - imgSize) / 2;
+                        const imgY = data.cell.y + (data.cell.height - imgSize) / 2;
+                        
+                        if (imageData) {
+                            try {
+                                // Utiliser l'image pré-chargée (base64)
+                                doc.addImage(imageData, 'JPEG', imgX, imgY, imgSize, imgSize);
+                            } catch (e) {
+                                console.error('Erreur ajout image au PDF:', e);
+                                // Si erreur, afficher placeholder
+                                drawImagePlaceholder(doc, imgX, imgY, imgSize);
+                            }
+                        } else {
+                            // Pas d'image chargée, afficher placeholder
+                            drawImagePlaceholder(doc, imgX, imgY, imgSize);
+                        }
+                    }
+                },
+                margin: { left: MARGIN, right: MARGIN },
+            });
+            y = (doc as any).lastAutoTable.finalY + 10;
+        }
+
+        // ========================================
+        // 4. SECTION TOTAUX (DESIGN MODERNE AVEC CARTE)
+        // ========================================
+        const totalsStartX = 105;
+        const totalsWidth = PAGE_WIDTH - totalsStartX - MARGIN;
+        const valueX = PAGE_WIDTH - MARGIN - 3;
+        
+        // Calcul des frais en utilisant le pourcentage depuis les settings (ou facture si disponible)
+        const feesPercentage = (COMPANY_INFO as any).feesPercentage || 0.15;
+        const fees = facture.subtotal * feesPercentage;
+        const grandTotal = facture.subtotal + fees + facture.shipping_fee;
+        
+        // Carte des totaux - Design simple
+        const totalsCardY = y;
+        const totalsCardHeight = 38;
+        
+        // Fond simple
+        doc.setFillColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
+        doc.rect(totalsStartX, totalsCardY, totalsWidth, totalsCardHeight, 'F');
+        
+        y = totalsCardY + 7;
+
+        // Ligne 1: Sous-total
+        setFont('normal');
+        doc.setFontSize(9);
+        doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+        doc.text("SOUS-TOTAL", totalsStartX + 4, y);
+        setFont('bold');
+        doc.setFontSize(10);
+        doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);
+        doc.text(formatCurrency(facture.subtotal, facture.devise), valueX, y, { align: 'right' });
+        y += 6;
+        
+        // Ligne séparatrice fine
+        doc.setDrawColor(COLORS.borderLight[0], COLORS.borderLight[1], COLORS.borderLight[2]);
+        doc.setLineWidth(0.2);
+        doc.line(totalsStartX + 4, y - 2, valueX, y - 2);
+
+        // Ligne 2: Frais (avec pourcentage dynamique)
+        setFont('normal');
+        doc.setFontSize(9);
+        doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+        const feesPercentageText = `Frais (${Math.round(feesPercentage * 100)}% de services & transfert)`;
+        doc.text(feesPercentageText, totalsStartX + 4, y);
+        setFont('bold');
+        doc.setFontSize(10);
+        doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);
+        doc.text(formatCurrency(fees, facture.devise), valueX, y, { align: 'right' });
+        y += 6;
+        doc.line(totalsStartX + 4, y - 2, valueX, y - 2);
+
+        // Ligne 3: Transport & Douane
+        setFont('normal');
+        doc.setFontSize(9);
+        doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+        doc.text("TRANSPORT & DOUANE", totalsStartX + 4, y);
+        setFont('bold');
+        doc.setFontSize(10);
+        doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);
+        doc.text(formatCurrency(facture.shipping_fee, facture.devise), valueX, y, { align: 'right' });
+        y += 8;
+
+        // Total général avec fond vert
+        const totalBoxHeight = 12;
+        
+        // Fond simple (vert clair)
+        doc.setFillColor(COLORS.primaryLighter[0], COLORS.primaryLighter[1], COLORS.primaryLighter[2]);
+        doc.rect(totalsStartX + 2, y - 3, totalsWidth - 4, totalBoxHeight, 'F');
+        
+        // Ligne supérieure avec couleur primaire
+        doc.setDrawColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+        doc.setLineWidth(1.5);
+        doc.line(totalsStartX + 2, y - 3, totalsStartX + totalsWidth - 2, y - 3);
+        doc.setLineWidth(0.2);
+        
+        setFont('bold');
+        doc.setFontSize(10);
+        doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);
+        doc.text("TOTAL GÉNÉRAL", totalsStartX + 6, y + 4);
+        
+        doc.setFontSize(12);
+        doc.setTextColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+        doc.text(formatCurrency(grandTotal, facture.devise), valueX - 2, y + 4, { align: 'right' });
+
+        y = totalsCardY + totalsCardHeight + 12;
+
+        // ========================================
+        // 5. PIED DE PAGE (DESIGN MODERNE)
+        // ========================================
+        
+        // Ligne de séparation élégante
+        doc.setDrawColor(COLORS.border[0], COLORS.border[1], COLORS.border[2]);
+        doc.setLineWidth(0.3);
+        doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
+        doc.setLineWidth(0.2);
+        y += 7;
+
+        // Section conditions avec icônes simulées
+        setFont('bold');
+        doc.setFontSize(8);
+        doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+        
+        // Puce pour Conditions
+        doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+        doc.circle(MARGIN + 1, y - 1, 0.7, 'F');
+        doc.text("Conditions:", MARGIN + 3, y);
+        
+        setFont('normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+        const conditionsText = doc.splitTextToSize(COMPANY_INFO.feesDescription, CONTENT_WIDTH - 23);
+        doc.text(conditionsText, MARGIN + 20, y);
+        y += 5;
+
+        // Puce pour Délais
+        doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+        doc.circle(MARGIN + 1, y - 1, 0.7, 'F');
+        setFont('bold');
+        doc.setFontSize(8);
+        doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+        doc.text("Délais de livraison:", MARGIN + 3, y);
+        
+        setFont('normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+        doc.text(COMPANY_INFO.deliveryTime, MARGIN + 32, y);
+        y += 5;
+
+        // Puce pour Paiement
+        doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+        doc.circle(MARGIN + 1, y - 1, 0.7, 'F');
+        setFont('bold');
+        doc.setFontSize(8);
+        doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+        doc.text("Paiement par Mobile Money:", MARGIN + 3, y);
+        
+        setFont('normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+        doc.text(COMPANY_INFO.paymentMethods, MARGIN + 42, y);
+        y += 8;
+
+        // Ligne de séparation avec accent de couleur
+        doc.setDrawColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+        doc.setLineWidth(1.2);
+        doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
+        doc.setDrawColor(COLORS.primaryLight[0], COLORS.primaryLight[1], COLORS.primaryLight[2]);
+        doc.setLineWidth(0.5);
+        doc.line(MARGIN, y + 0.5, PAGE_WIDTH - MARGIN, y + 0.5);
+        doc.setLineWidth(0.2);
+        y += 6;
+
+        // ========================================
+        // FOOTER EN BAS DE PAGE (position fixe)
+        // ========================================
+        const footerStartY = 258; // Position fixe pour footer
+        
+        // Section informations bancaires avec encadré
+        setFont('bold');
+        doc.setFontSize(9);
+        doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+        doc.text("INFORMATIONS BANCAIRES ET LÉGALES:", PAGE_WIDTH / 2, footerStartY, { align: 'center' });
+
+        // Informations bancaires avec style moderne
+        let footerY = footerStartY + 5;
+        setFont('normal');
+        doc.setFontSize(8);
+        COMPANY_INFO.banks.forEach(bank => {
+            const fullText = `${bank.name} ${bank.details}`;
+            const totalWidth = doc.getTextWidth(fullText);
+            const startX = (PAGE_WIDTH - totalWidth) / 2;
+            
+            setFont('bold');
+            doc.setTextColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+            doc.text(bank.name, startX, footerY);
+            
+            setFont('normal');
+            doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+            const nameWidth = doc.getTextWidth(bank.name);
+            doc.text(bank.details, startX + nameWidth, footerY);
+            footerY += 4;
+        });
+        footerY += 2;
+
+        // Informations légales en bas (plus visibles)
+        doc.setFontSize(7.5);
+        doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+        const legalInfo = `RCCM: ${COMPANY_INFO.rccm} | ID.NAT: ${COMPANY_INFO.idnat} | IMPOT: ${COMPANY_INFO.impot}`;
+        doc.text(legalInfo, PAGE_WIDTH / 2, footerY, { align: 'center' });
+        
+        // Barre de couleur en bas de page (miroir du haut)
+        doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+        doc.rect(0, 293, PAGE_WIDTH, 4, 'F');
+
+        // --- SAUVEGARDE DU FICHIER ---
+        const fileName = `${facture.type}_${facture.facture_number}.pdf`;
+        doc.save(fileName);
+
+    } catch (error) {
+        console.error('Erreur lors de la génération du PDF:', error);
+        throw new Error('Impossible de générer le PDF.');
     }
-
-    // ============ PIED DE PAGE ============
-    doc.setFontSize(7);
-    doc.setTextColor(150, 150, 150);
-    doc.text(
-      `Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`,
-      pageWidth / 2,
-      pageHeight - 10,
-      { align: 'center' }
-    );
-
-    // Sauvegarder le PDF
-    const fileName = `${facture.type === 'devis' ? 'Devis' : 'Facture'}_${facture.facture_number}_${clientInfo?.nom || 'Client'}.pdf`;
-    doc.save(fileName);
-
-    return { success: true, fileName };
-  } catch (error) {
-    console.error('Erreur lors de la génération du PDF:', error);
-    throw error;
-  }
 };

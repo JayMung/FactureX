@@ -298,6 +298,7 @@ export interface Facture {
   total_general: number;
   conditions_vente?: string;
   notes?: string;
+  informations_bancaires?: string;
   created_by?: string;
   created_at: string;
   updated_at?: string;
@@ -325,8 +326,11 @@ export interface CreateFactureData {
   type: 'devis' | 'facture';
   mode_livraison: 'aerien' | 'maritime';
   devise: 'USD' | 'CDF';
+  date_emission: string;
+  statut?: 'brouillon' | 'en_attente' | 'validee' | 'annulee';
   conditions_vente?: string;
   notes?: string;
+  informations_bancaires?: string;
   items: Omit<FactureItem, 'id' | 'facture_id' | 'created_at'>[];
 }
 
@@ -334,9 +338,11 @@ export interface UpdateFactureData {
   client_id?: string;
   mode_livraison?: 'aerien' | 'maritime';
   devise?: 'USD' | 'CDF';
+  date_emission?: string;
   statut?: 'brouillon' | 'en_attente' | 'validee' | 'annulee';
   conditions_vente?: string;
   notes?: string;
+  informations_bancaires?: string;
   items?: Omit<FactureItem, 'id' | 'facture_id' | 'created_at'>[];
 }
 
@@ -359,6 +365,8 @@ export interface CompanySettings {
   email_entreprise: string;
   telephone_entreprise: string;
   adresse_entreprise?: string;
+  informations_bancaires?: string;
+  signature_url?: string;
 }
 
 // Shipping Settings types

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import { useFactures } from '../hooks/useFactures';
+import FactureDetailsModal from '../components/modals/FactureDetailsModal';
 import type { Facture } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { cn } from '@/lib/utils';
@@ -40,6 +42,9 @@ const FacturesProtected: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [statutFilter, setStatutFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [factureToView, setFactureToView] = useState<Facture | null>(null);
+  const navigate = useNavigate();
 
   const {
     factures,
@@ -48,6 +53,7 @@ const FacturesProtected: React.FC = () => {
     error,
     deleteFacture,
     convertToFacture,
+    getFactureWithItems,
     refetch
   } = useFactures(currentPage, {
     type: typeFilter === 'all' ? undefined : typeFilter as 'devis' | 'facture',
@@ -97,6 +103,25 @@ const FacturesProtected: React.FC = () => {
     }
   };
 
+  const handleViewDetails = async (facture: Facture) => {
+    try {
+      const factureWithItems = await getFactureWithItems(facture.id);
+      setFactureToView(factureWithItems);
+      setDetailsModalOpen(true);
+    } catch (error) {
+      console.error('Error fetching facture details:', error);
+      showError('Erreur lors du chargement des détails');
+    }
+  };
+
+  const handleEdit = (facture: Facture) => {
+    navigate(`/factures/edit/${facture.id}`);
+  };
+
+  const handleAddNew = () => {
+    navigate('/factures/new');
+  };
+
   if (error) {
     return (
       <Layout>
@@ -118,7 +143,7 @@ const FacturesProtected: React.FC = () => {
           {/* Action Buttons */}
           <div className="flex items-center justify-end">
             <PermissionGuard module="factures" permission="create">
-              <Button className="bg-emerald-600 hover:bg-emerald-700">
+              <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleAddNew}>
                 <Plus className="mr-2 h-4 w-4" />
                 Nouvelle Facture/Devis
               </Button>
@@ -150,7 +175,7 @@ const FacturesProtected: React.FC = () => {
                     <p className="text-sm font-medium text-gray-600">Montant Total</p>
                     <p className="text-3xl font-bold text-blue-600">
                       {formatCurrency(
-                        factures.reduce((sum, f) => sum + f.total_general, 0),
+                        factures.filter(f => f.statut !== 'brouillon').reduce((sum, f) => sum + f.total_general, 0),
                         'USD'
                       )}
                     </p>
@@ -281,7 +306,7 @@ const FacturesProtected: React.FC = () => {
                             <p className="text-lg font-medium text-gray-900 mb-2">Aucune facture</p>
                             <p className="text-sm text-gray-500 mb-4">Commencez par créer votre première facture</p>
                             <PermissionGuard module="factures" permission="create">
-                              <Button className="bg-emerald-600 hover:bg-emerald-700">
+                              <Button onClick={handleAddNew} className="bg-emerald-600 hover:bg-emerald-700">
                                 <Plus className="mr-2 h-4 w-4" />
                                 Nouvelle Facture
                               </Button>
@@ -310,6 +335,15 @@ const FacturesProtected: React.FC = () => {
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleViewDetails(facture)}
+                                title="Voir les détails"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              
                               {facture.type === 'devis' && facture.statut === 'brouillon' && (
                                 <PermissionGuard module="factures" permission="update">
                                   <Button
@@ -323,13 +357,19 @@ const FacturesProtected: React.FC = () => {
                                   </Button>
                                 </PermissionGuard>
                               )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                title="Voir"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
+                              
+                              <PermissionGuard module="factures" permission="update">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEdit(facture)}
+                                  title="Modifier"
+                                  className="hover:bg-green-50"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </PermissionGuard>
+                              
                               <PermissionGuard module="factures" permission="delete">
                                 <Button
                                   variant="ghost"
@@ -351,6 +391,18 @@ const FacturesProtected: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Modal de détails */}
+          {factureToView && (
+            <FactureDetailsModal
+              facture={factureToView}
+              isOpen={detailsModalOpen}
+              onClose={() => {
+                setDetailsModalOpen(false);
+                setFactureToView(null);
+              }}
+            />
+          )}
         </div>
       </Layout>
     </ProtectedRouteEnhanced>

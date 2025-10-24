@@ -1,0 +1,16 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:8080",
+  "executionArgs": {
+    "projectName": "CoxiPay",
+    "projectPath": "C:\\Users\\jkmun\\dyad-apps\\CoxiPay",
+    "testIds": [],
+    "additionalInstruction": "",
+    "envs": {
+      "API_KEY": "sk-user-Y6e1a21npYH45HoQ4vSBCsBjhdlPdt-1SVyo4rhQpM0ReL8jStQwrCIrnPaGXVlz9dwCwoRykk31EVuouZN7JYcjyK4CsApNr5yBAmIq0wHeOzhAuMYIGItIWG6AltnOCyI"
+    }
+  },
+  "proxy": "http://a8240350-d20c-4509-9e7d-08f5f5678319:K7BHAckbe9nDRW1WdluplFtxTAvJuGXc@tun.testsprite.com:8080"
+}

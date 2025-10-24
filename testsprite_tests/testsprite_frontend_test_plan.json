@@ -1,0 +1,545 @@
+[
+  {
+    "id": "TC001",
+    "title": "User Login Success",
+    "description": "Verify that a user can login successfully with correct credentials and is redirected to the dashboard with appropriate permissions.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page"
+      },
+      {
+        "type": "action",
+        "description": "Input valid username/email and password"
+      },
+      {
+        "type": "action",
+        "description": "Click login button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user is authenticated and redirected to dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user permissions are correctly applied for role-based access"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "User Login Failure with Invalid Credentials",
+    "description": "Verify login is denied with invalid username/email or password and proper error message is shown.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page"
+      },
+      {
+        "type": "action",
+        "description": "Input invalid username/email or password"
+      },
+      {
+        "type": "action",
+        "description": "Click login button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify login is rejected"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify error message is displayed explaining invalid credentials"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Admin Setup Initial Configuration",
+    "description": "Verify initial admin setup process allows superuser creation and configuration of application settings.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Launch application for first time with empty database"
+      },
+      {
+        "type": "action",
+        "description": "Complete admin setup form with required information and password"
+      },
+      {
+        "type": "action",
+        "description": "Submit admin setup form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify superuser account is created"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify application redirects to main dashboard"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Dashboard Real-Time Statistics Display",
+    "description": "Verify that the dashboard loads and displays real-time statistics, charts, and activity feeds with up-to-date data.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as a user with dashboard access"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to main dashboard page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify statistics cards display accurate data according to recent data"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify charts render correctly reflecting transactions over time"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify activity feed shows recent user activities"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Client CRUD Operations with History Tracking",
+    "description": "Verify full Create, Read, Update, Delete operations on clients with history logs recorded for each action.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login with permissions for client management"
+      },
+      {
+        "type": "action",
+        "description": "Create a new client with valid data"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify new client is saved and visible in client list"
+      },
+      {
+        "type": "action",
+        "description": "Update client details"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify client details are updated accordingly"
+      },
+      {
+        "type": "action",
+        "description": "View client history modal"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify history log shows creation and update events with correct timestamps"
+      },
+      {
+        "type": "action",
+        "description": "Delete the client"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify client is removed from client list and deletion is recorded in history"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "CSV Import for Clients with Validation and Duplicate Detection",
+    "description": "Verify CSV import functionality for clients correctly validates data, prevents duplicates, and reports errors.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to client import page"
+      },
+      {
+        "type": "action",
+        "description": "Upload a well-formed CSV file with valid client data"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify clients are imported successfully"
+      },
+      {
+        "type": "action",
+        "description": "Upload CSV with client entries that already exist"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify duplicates are detected and import process alerts user without importing duplicates"
+      },
+      {
+        "type": "action",
+        "description": "Upload CSV with invalid data entries"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation errors are reported with detailed messages"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Transaction Management with Multi-Currency Support and Filtering",
+    "description": "Verify creation, update, deletion, and filtering of transactions in USD, CDF and CNY currencies with validation and locking of 'Servi' status transactions.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Create a transaction with valid data in USD"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the transaction is saved and displayed correctly"
+      },
+      {
+        "type": "action",
+        "description": "Create transactions in CDF and CNY"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify transactions reflect correct currency values"
+      },
+      {
+        "type": "action",
+        "description": "Set a transaction status to 'Servi'"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to modify or delete the 'Servi' transaction"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify modification and deletion are blocked with appropriate message"
+      },
+      {
+        "type": "action",
+        "description": "Apply filters on transaction list by currency, status, date"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify transaction list reflects filtering criteria accurately"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Invoice and Quotation Creation with Auto-Numbering and PDF Export",
+    "description": "Verify creating invoices and quotations with multiple line items, automatic transport fee calculation, strict unique auto-incrementing daily numbering, and exporting generated PDF correctly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to create new invoice/quotation page"
+      },
+      {
+        "type": "action",
+        "description": "Add multiple line items with quantities and prices"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify transport fees are auto-calculated correctly"
+      },
+      {
+        "type": "action",
+        "description": "Save invoice/quotation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify invoice/quotation number follows unique auto-incrementing daily format"
+      },
+      {
+        "type": "action",
+        "description": "Export invoice/quotation as PDF"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify PDF contains correct details matching the invoice"
+      },
+      {
+        "type": "action",
+        "description": "Convert quotation to invoice"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify quotation status updates and invoice is created with correct numbering"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Role-Based Access Control Enforcement and Row-Level Security",
+    "description": "Verify that all CRUD operations and data views are restricted according to user roles and permissions with row-level security properly applied.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as a user with limited role permissions"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access client, transaction, invoice management screens"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is denied or restricted per role permissions"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to perform CRUD operations beyond permitted scope"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify operations are blocked or fail with authorization error"
+      },
+      {
+        "type": "action",
+        "description": "Verify data listings show only permitted data rows (row-level security)"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Activity Logging with Detailed Audit Trail and Notification Center",
+    "description": "Verify that all critical user actions across the application are logged with timestamp, user details, and affected entities; verify filtering and notification center functionality.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Perform client, transaction, and invoice operations by various users"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to activity logging page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all user actions are recorded with accurate timestamps and details"
+      },
+      {
+        "type": "action",
+        "description": "Apply filters by user, action type, and date"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify filtered results are accurate"
+      },
+      {
+        "type": "action",
+        "description": "Check notification center for recent activity alerts"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify notifications correspond to recorded activities and display correctly"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Settings Management for Company Info, Exchange Rates, and User Permissions",
+    "description": "Verify that administrators can update company information, manage exchange rates accurately, and configure user roles and permissions with immediate effect.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as an administrator"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to settings page"
+      },
+      {
+        "type": "action",
+        "description": "Update company info fields and save"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify updated company info is persisted"
+      },
+      {
+        "type": "action",
+        "description": "Add or edit exchange rates with valid values"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify exchange rates update is saved and reflected in transactions"
+      },
+      {
+        "type": "action",
+        "description": "Modify user permissions by adding/removing roles"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify changes apply immediately and access is updated accordingly"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Bulk Operations for Clients and Transactions",
+    "description": "Verify bulk actions including export, deletion, and status updates function properly with confirmation prompts and permission checks.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Select multiple clients for bulk export"
+      },
+      {
+        "type": "action",
+        "description": "Trigger bulk export"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify export file is generated and contains correct data"
+      },
+      {
+        "type": "action",
+        "description": "Select multiple transactions for bulk status update"
+      },
+      {
+        "type": "action",
+        "description": "Change status of selected transactions"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify statuses update correctly and 'Servi' transaction restrictions are enforced"
+      },
+      {
+        "type": "action",
+        "description": "Select multiple clients for bulk deletion"
+      },
+      {
+        "type": "action",
+        "description": "Confirm bulk deletion"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify selected clients are deleted and logged"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Form Validation for Client and Transaction Inputs",
+    "description": "Verify client and transaction forms enforce react-hook-form and Zod schema validations both client-side and server-side for all required fields, formats and constraints.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Open client creation form"
+      },
+      {
+        "type": "action",
+        "description": "Submit form with missing required fields"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation errors appear on required fields"
+      },
+      {
+        "type": "action",
+        "description": "Submit form with invalid input formats (e.g. incorrect email, phone)"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation error messages appear for format violations"
+      },
+      {
+        "type": "action",
+        "description": "Submit valid form data"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify data is accepted and saved"
+      },
+      {
+        "type": "action",
+        "description": "Repeat tests for transaction creation/edit forms"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Responsive UI and Reusable Components Verification",
+    "description": "Verify UI displays correctly on multiple screen sizes using Shadcn UI and Radix UI components and that reusable components behave consistently across features.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate through different pages on desktop viewport"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI elements align correctly and are fully functional"
+      },
+      {
+        "type": "action",
+        "description": "Resize viewport to tablet and mobile resolutions"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify responsive layout adjustments and usability of UI components"
+      },
+      {
+        "type": "action",
+        "description": "Verify dialogs, buttons, tables and form inputs behave consistently"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Real-Time Data Refresh and Caching on Dashboard",
+    "description": "Verify dashboard data updates reflect in real-time with TanStack Query caching and efficient pagination when new client or transaction data changes.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Load dashboard data and note current statistics"
+      },
+      {
+        "type": "action",
+        "description": "Create new client or transaction in a separate session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify dashboard reflects updated data without full page refresh"
+      },
+      {
+        "type": "action",
+        "description": "Scroll through paginated lists for transactions or activities"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify pagination loads data efficiently without delays or errors"
+      }
+    ]
+  }
+]

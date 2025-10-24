@@ -8,21 +8,24 @@ const FONT_SIZE_NORMAL = 10;
 const FONT_SIZE_SMALL = 8;
 const FONT_SIZE_TITLE = 16;
 const FONT_SIZE_SUBTITLE = 12;
+const FONT_SIZE_LARGE = 20;
 const LINE_HEIGHT = 5;
 
-// Couleurs professionnelles
+// Couleurs professionnelles (basées sur le modèle HTML)
 const COLORS = {
-  primary: [16, 185, 129], // emerald-500
+  primary: [16, 185, 129], // emerald-600
   primaryDark: [6, 95, 70], // emerald-700
   secondary: [107, 114, 128], // gray-500
   light: [249, 250, 251], // gray-50
+  lightBg: [236, 254, 255], // emerald-50/50
   border: [229, 231, 235], // gray-200
+  borderPrimary: [16, 185, 129], // emerald-600
   text: [31, 41, 55], // gray-800
   textLight: [107, 114, 128], // gray-500
-  success: [34, 197, 94], // green-500
-  warning: [251, 146, 60], // orange-400
-  header: [59, 130, 246], // blue-500
-  total: [30, 58, 138], // blue-800
+  textGray: [55, 65, 81], // gray-700
+  header: [59, 130, 246], // blue-600
+  total: [16, 185, 129], // emerald-600
+  white: [255, 255, 255],
 };
 
 // Marges
@@ -36,16 +39,24 @@ const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
 
 // Informations de l'entreprise (à remplacer par les vraies données)
 const COMPANY_INFO = {
-  name: 'COCCINELLE SARL',
-  address: 'Avenue des Nations, N°123',
-  city: 'Kinshasa, RDC',
-  email: 'contact@coccinelle-rdc.com',
-  phone: '+243 123 456 789',
-  website: 'www.coccinelle-rdc.com',
-  rccm: 'RCCM: 12-KIN-3456',
-  idnat: 'ID.NAT: 01-2345678901-12',
-  nif: 'NIF: A123456789',
-  bankAccount: 'EQUITY BCDC | 0001105023-32000099001-60 | COCCINELLE'
+  name: 'COCCINELLE',
+  addresses: [
+    '44, Kokolo, Q/Mbinza Pigeon, C/Ngaliema - Kinshasa',
+    '45, Avenue Nyangwe - Elie Mbayo, Q/Lido, C/Lubumbashi'
+  ],
+  phone: '(+243) 970 746 213 / (+243) 851 958 937',
+  email: 'sales@coccinelledrc.com',
+  website: 'www.coccinelledrc.com',
+  rccm: 'CD/KNG/RCCM/21-B-02464',
+  idnat: '01-F4300-N89171B',
+  impot: 'A2173499P',
+  banks: [
+    'EQUITY BCDC | 0001105023-32000099001-60 | COCCINELLE',
+    'RAWBANK | 65101-00941018001-91 | COCCINELLE SARL'
+  ],
+  paymentMethods: '097 074 6213 / 085 195 8937 / 082 835 8721 / 083 186 3288',
+  deliveryTime: '65-75 Jours selon les types de marchandises',
+  feesDescription: 'Les frais de 10% inclus dans le coût global contiennent les frais de services & frais de transfert.'
 };
 
 export const generateFacturePDF = async (facture: Facture) => {
@@ -92,110 +103,105 @@ export const generateFacturePDF = async (facture: Facture) => {
 
     // ============= EN-TÊTE =============
     
-    // Logo (placeholder - à remplacer par le vrai logo)
-    drawRect(MARGIN_LEFT, yPosition, 30, 20, COLORS.light, COLORS.primary);
-    setTextColor([255, 255, 255]);
-    doc.setFontSize(12);
-    doc.text('LOGO', MARGIN_LEFT + 15, yPosition + 10, { align: 'center' });
+    // Logo et nom de l'entreprise
+    drawRect(MARGIN_LEFT, yPosition, 25, 15, COLORS.primary);
+    setTextColor(COLORS.white);
+    doc.setFontSize(10);
+    doc.text('LOGO', MARGIN_LEFT + 12.5, yPosition + 7, { align: 'center' });
     
-    // Informations de l'entreprise
-    let companyX = MARGIN_LEFT + 40;
-    addText(COMPANY_INFO.name, companyX, yPosition, FONT_SIZE_TITLE);
-    yPosition += 6;
-    addText(COMPANY_INFO.address, companyX, yPosition, FONT_SIZE_SMALL);
+    let companyX = MARGIN_LEFT + 30;
+    addText(COMPANY_INFO.name, companyX, yPosition, FONT_SIZE_LARGE);
+    yPosition += 7;
+    addText('Sièges:', companyX, yPosition, FONT_SIZE_SMALL, undefined, COLORS.textGray);
     yPosition += 4;
-    addText(COMPANY_INFO.city, companyX, yPosition, FONT_SIZE_SMALL);
-    yPosition += 4;
-    addText(`📧 ${COMPANY_INFO.email}`, companyX, yPosition, FONT_SIZE_SMALL);
-    yPosition += 4;
-    addText(`📞 ${COMPANY_INFO.phone}`, companyX, yPosition, FONT_SIZE_SMALL);
-    yPosition += 4;
-    addText(`🌐 ${COMPANY_INFO.website}`, companyX, yPosition, FONT_SIZE_SMALL);
+    
+    // Adresses sur plusieurs lignes
+    COMPANY_INFO.addresses.forEach(address => {
+      addText(address, companyX, yPosition, FONT_SIZE_SMALL);
+      yPosition += 3;
+    });
+    
+    yPosition += 2;
+    addText(`Tél: ${COMPANY_INFO.phone}`, companyX, yPosition, FONT_SIZE_SMALL);
+    yPosition += 3;
+    addText(`Email: ${COMPANY_INFO.email}`, companyX, yPosition, FONT_SIZE_SMALL);
+    yPosition += 3;
+    addText(`Site: ${COMPANY_INFO.website}`, companyX, yPosition, FONT_SIZE_SMALL);
 
-    // Informations facture alignées à droite avec fond coloré
-    const infoBoxX = PAGE_WIDTH - MARGIN_RIGHT - 80;
-    const infoBoxWidth = 80;
-    drawRect(infoBoxX, yPosition - 5, infoBoxWidth, 35, COLORS.header);
+    // Informations facture à droite avec fond coloré
+    const infoBoxX = PAGE_WIDTH - MARGIN_RIGHT - 70;
+    const infoBoxWidth = 70;
+    drawRect(infoBoxX, yPosition - 5, infoBoxWidth, 30, COLORS.lightBg, COLORS.primary);
     
-    setTextColor([255, 255, 255]);
-    addText('FACTURE', infoBoxX + infoBoxWidth / 2, yPosition, FONT_SIZE_SUBTITLE, undefined, [255, 255, 255]);
+    setTextColor(COLORS.text);
+    addText('FACTURE', infoBoxX + infoBoxWidth / 2, yPosition, FONT_SIZE_TITLE, undefined, COLORS.text);
     yPosition += 8;
-    addText(`N°: ${facture.facture_number}`, infoBoxX + 5, yPosition, FONT_SIZE_SMALL, undefined, [255, 255, 255]);
+    addText(`Facture No.`, infoBoxX + 5, yPosition, FONT_SIZE_SMALL);
+    addText(facture.facture_number, infoBoxX + 35, yPosition, FONT_SIZE_SMALL);
     yPosition += 6;
-    addText(`Date: ${format(new Date(facture.date_emission), 'dd/MM/yyyy', { locale: fr })}`, infoBoxX + 5, yPosition, FONT_SIZE_SMALL, undefined, [255, 255, 255]);
-    yPosition += 6;
-    
-    // Badge de statut
-    const statusColors: Record<string, number[]> = {
-      'brouillon': COLORS.textLight,
-      'en_attente': COLORS.warning,
-      'validee': COLORS.success,
-      'annulee': [239, 68, 68]
-    };
-    const statusText: Record<string, string> = {
-      'brouillon': 'BROUILLON',
-      'en_attente': 'EN ATTENTE',
-      'validee': 'VALIDÉE',
-      'annulee': 'ANNULÉE'
-    };
-    
-    const statusColor = statusColors[facture.statut] || COLORS.textLight;
-    drawRect(infoBoxX + 5, yPosition, infoBoxWidth - 10, 8, statusColor);
-    setTextColor([255, 255, 255]);
-    doc.setFontSize(FONT_SIZE_SMALL - 1);
-    doc.text(statusText[facture.statut] || '', infoBoxX + infoBoxWidth / 2, yPosition + 4, { align: 'center' });
+    addText(`Date Facture:`, infoBoxX + 5, yPosition, FONT_SIZE_SMALL);
+    addText(format(new Date(facture.date_emission), 'dd/MM/yyyy', { locale: fr }), infoBoxX + 35, yPosition, FONT_SIZE_SMALL);
 
     yPosition += 20;
 
     // ============= SECTION CLIENT ET LIVRAISON =============
     
-    drawLine(MARGIN_LEFT, yPosition, PAGE_WIDTH - MARGIN_RIGHT, yPosition, COLORS.border);
+    drawLine(MARGIN_LEFT, yPosition, PAGE_WIDTH - MARGIN_RIGHT, yPosition, COLORS.borderPrimary);
     yPosition += 8;
 
-    // Ligne d'informations client/livraison
+    // Cadre pour les informations client/livraison
+    drawRect(MARGIN_LEFT, yPosition - 3, CONTENT_WIDTH, 25, COLORS.lightBg);
+    yPosition += 3;
+
     const client = facture.client || facture.clients;
     if (client) {
-      addText('CLIENT(E):', MARGIN_LEFT, yPosition, FONT_SIZE_NORMAL, undefined, COLORS.text);
-      addText(client?.nom || '', MARGIN_LEFT + 45, yPosition);
+      // Client(e)
+      addText('Client(e):', MARGIN_LEFT, yPosition, FONT_SIZE_NORMAL, undefined, COLORS.textGray);
+      addText(client?.nom || '', MARGIN_LEFT + 35, yPosition);
       
-      addText('LIEU:', MARGIN_LEFT + 120, yPosition, FONT_SIZE_NORMAL, undefined, COLORS.text);
-      addText(client?.ville || '', MARGIN_LEFT + 155, yPosition);
+      // Lieu
+      addText('Lieu:', MARGIN_LEFT + 100, yPosition, FONT_SIZE_NORMAL, undefined, COLORS.textGray);
+      addText(client?.ville || '', MARGIN_LEFT + 130, yPosition);
       
-      addText('PHONE:', MARGIN_LEFT + 200, yPosition, FONT_SIZE_NORMAL, undefined, COLORS.text);
-      addText(client?.telephone || '', MARGIN_LEFT + 245, yPosition);
+      // Téléphone
+      addText('Téléphone:', MARGIN_LEFT + 170, yPosition, FONT_SIZE_NORMAL, undefined, COLORS.textGray);
+      addText(client?.telephone || '', MARGIN_LEFT + 210, yPosition);
       
       yPosition += 6;
       
-      addText('LIVRAISON:', MARGIN_LEFT, yPosition, FONT_SIZE_NORMAL, undefined, COLORS.text);
-      addText(client?.ville || '', MARGIN_LEFT + 55, yPosition);
+      // Livraison
+      addText('Livraison:', MARGIN_LEFT, yPosition, FONT_SIZE_NORMAL, undefined, COLORS.textGray);
+      addText(client?.ville || '', MARGIN_LEFT + 40, yPosition);
       
-      addText('MÉTHODE:', MARGIN_LEFT + 120, yPosition, FONT_SIZE_NORMAL, undefined, COLORS.text);
+      // Méthode
+      addText('Méthode:', MARGIN_LEFT + 100, yPosition, FONT_SIZE_NORMAL, undefined, COLORS.textGray);
       const methodText = facture.mode_livraison === 'aerien' ? 'Aérien' : 'Maritime';
-      addText(methodText, MARGIN_LEFT + 175, yPosition);
+      addText(methodText, MARGIN_LEFT + 140, yPosition);
     }
 
-    yPosition += 15;
+    yPosition += 20;
 
-    // ============= TABLEAU DES PRODUITS =============
+    // ============= TABLEAU DES ARTICLES =============
     
     if (facture.items && facture.items.length > 0) {
       // En-tête du tableau
-      const tableStart = yPosition;
-      const colWidths = [15, 10, 60, 25, 20, 25, 25]; // Image, QTY, Description, Prix Unit, Poids/CBM, Montant
-      const headers = ['IMAGE', 'QTY', 'DESCRIPTION', 'PRIX UNIT', 'POIDS/CBM', 'MONTANT'];
+      const colWidths = [10, 15, 10, 45, 20, 20, 20]; // NUM, IMAGE, QTY, DESCRIPTION, PRIX UNIT, POIDS/CBM, MONTANT
+      const headers = ['NUM', 'IMAGE', 'QTY', 'DESCRIPTION', 'PRIX UNIT', 'POIDS/CBM', 'MONTANT'];
       
       // Fond d'en-tête
-      drawRect(MARGIN_LEFT, yPosition - 3, CONTENT_WIDTH, 10, COLORS.light, COLORS.border);
+      drawRect(MARGIN_LEFT, yPosition - 3, CONTENT_WIDTH, 10, COLORS.primary);
       yPosition += 2;
       
       let xPos = MARGIN_LEFT + 5;
       headers.forEach((header, index) => {
-        addText(header, xPos, yPosition, FONT_SIZE_SMALL, undefined, COLORS.text);
+        setTextColor(COLORS.white);
+        doc.setFontSize(FONT_SIZE_SMALL);
+        doc.text(header, xPos, yPosition);
         xPos += colWidths[index];
       });
       
       yPosition += 8;
-      drawLine(MARGIN_LEFT, yPosition, PAGE_WIDTH - MARGIN_RIGHT, yPosition, COLORS.border);
+      drawLine(MARGIN_LEFT, yPosition, PAGE_WIDTH - MARGIN_RIGHT, yPosition, COLORS.primary);
       yPosition += 5;
 
       // Lignes du tableau
@@ -213,49 +219,55 @@ export const generateFacturePDF = async (facture: Facture) => {
 
         xPos = MARGIN_LEFT + 5;
         
-        // Image
-        if (item.image_url) {
-          try {
-            doc.addImage(item.image_url, 'JPEG', xPos, yPosition - 5, 10, 10);
-          } catch {
-            drawRect(xPos, yPosition - 5, 10, 10, COLORS.light, COLORS.border);
-            setTextColor(COLORS.textLight);
-            doc.setFontSize(8);
-            doc.text('📷', xPos + 5, yPosition, { align: 'center' });
-          }
-        } else {
-          drawRect(xPos, yPosition - 5, 10, 10, COLORS.light, COLORS.border);
-          setTextColor(COLORS.textLight);
-          doc.setFontSize(8);
-          doc.text('📷', xPos + 5, yPosition, { align: 'center' });
-        }
+        // NUM
+        setTextColor(COLORS.textLight);
+        doc.setFontSize(FONT_SIZE_SMALL);
+        doc.text(item.numero_ligne.toString(), xPos, yPosition);
         xPos += colWidths[0];
 
-        // Quantité
+        // IMAGE
+        if (item.image_url) {
+          try {
+            doc.addImage(item.image_url, 'JPEG', xPos, yPosition - 5, 12, 12);
+          } catch {
+            drawRect(xPos, yPosition - 5, 12, 12, COLORS.light, COLORS.border);
+            setTextColor(COLORS.textLight);
+            doc.setFontSize(8);
+            doc.text('(img)', xPos + 6, yPosition, { align: 'center' });
+          }
+        } else {
+          drawRect(xPos, yPosition - 5, 12, 12, COLORS.light, COLORS.border);
+          setTextColor(COLORS.textLight);
+          doc.setFontSize(8);
+          doc.text('(img)', xPos + 6, yPosition, { align: 'center' });
+        }
+        xPos += colWidths[1];
+
+        // QTY
         setTextColor(COLORS.text);
         doc.setFontSize(FONT_SIZE_SMALL);
         doc.text(item.quantite.toString(), xPos, yPosition);
-        xPos += colWidths[1];
-
-        // Description
-        const descriptionLines = doc.splitTextToSize(item.description || '', colWidths[2]);
-        doc.text(descriptionLines, xPos, yPosition);
         xPos += colWidths[2];
 
-        // Prix unitaire
+        // DESCRIPTION
+        const descriptionLines = doc.splitTextToSize(item.description || '', colWidths[3]);
+        doc.text(descriptionLines, xPos, yPosition);
+        xPos += colWidths[3];
+
+        // PRIX UNIT
         const prixText = facture.devise === 'USD' 
           ? `$${item.prix_unitaire.toFixed(2)}` 
           : `${item.prix_unitaire.toFixed(2)} FC`;
         doc.text(prixText, xPos, yPosition);
-        xPos += colWidths[3];
+        xPos += colWidths[4];
 
-        // Poids
+        // POIDS/CBM
         const poidsText = `${item.poids.toFixed(2)} ${facture.mode_livraison === 'aerien' ? 'kg' : 'cbm'}`;
         doc.text(poidsText, xPos, yPosition);
         totalWeight += item.poids;
-        xPos += colWidths[4];
+        xPos += colWidths[5];
 
-        // Montant
+        // MONTANT
         const totalText = facture.devise === 'USD' 
           ? `$${item.montant_total.toFixed(2)}` 
           : `${item.montant_total.toFixed(2)} FC`;
@@ -278,69 +290,87 @@ export const generateFacturePDF = async (facture: Facture) => {
 
       // ============= RÉSUMÉ DES COÛTS =============
       
-      const totalsX = PAGE_WIDTH - MARGIN_RIGHT - 100;
-      const totalsWidth = 100;
+      const totalsX = PAGE_WIDTH - MARGIN_RIGHT - 80;
+      const totalsWidth = 80;
       
       // Sous-total
-      addText('Sous-total:', totalsX, yPosition);
+      addText('SOUS-TOTAL:', totalsX, yPosition);
       const subtotalText = facture.devise === 'USD' 
         ? `$${facture.subtotal.toFixed(2)}` 
         : `${facture.subtotal.toFixed(2)} FC`;
-      addText(subtotalText, PAGE_WIDTH - MARGIN_RIGHT - 5, yPosition, undefined, undefined, COLORS.text);
+      addText(subtotalText, PAGE_WIDTH - MARGIN_RIGHT - 5, yPosition);
       yPosition += 7;
 
       // Frais
-      addText('Frais:', totalsX, yPosition);
+      addText('Frais (10% de services & transfert):', totalsX, yPosition);
       const feesText = facture.devise === 'USD' 
         ? `$${(facture.frais_transport_douane || 0).toFixed(2)}` 
         : `${(facture.frais_transport_douane || 0).toFixed(2)} FC`;
-      addText(feesText, PAGE_WIDTH - MARGIN_RIGHT - 5, yPosition, undefined, undefined, COLORS.text);
+      addText(feesText, PAGE_WIDTH - MARGIN_RIGHT - 5, yPosition);
       yPosition += 7;
 
-      // Frais de transport et douane
-      addText('Frais de transport et douane:', totalsX, yPosition);
-      addText(feesText, PAGE_WIDTH - MARGIN_RIGHT - 5, yPosition, undefined, undefined, COLORS.text);
+      // Transport & Douane
+      addText('TRANSPORT & DOUANE:', totalsX, yPosition);
+      addText(feesText, PAGE_WIDTH - MARGIN_RIGHT - 5, yPosition);
       yPosition += 7;
 
       // TOTAL GÉNÉRAL avec fond contrastant
       yPosition += 5;
-      drawRect(totalsX, yPosition - 3, totalsWidth, 12, COLORS.total);
-      setTextColor([255, 255, 255]);
+      drawRect(totalsX, yPosition - 3, totalsWidth, 12, COLORS.primary);
+      setTextColor(COLORS.white);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(FONT_SIZE_NORMAL);
       addText('TOTAL GÉNÉRAL:', totalsX + 5, yPosition);
       const totalText = facture.devise === 'USD' 
         ? `$${facture.total_general.toFixed(2)}` 
         : `${facture.total_general.toFixed(2)} FC`;
-      addText(totalText, PAGE_WIDTH - MARGIN_RIGHT - 5, yPosition, undefined, undefined, [255, 255, 255]);
+      addText(totalText, PAGE_WIDTH - MARGIN_RIGHT - 5, yPosition);
       doc.setFont('helvetica', 'normal');
       setTextColor(COLORS.text);
 
       yPosition += 20;
     }
 
-    // ============= INFORMATIONS SUPPLÉMENTAIRES =============
+    // ============= CONDITIONS ET NOTES =============
     
-    // Mentions légales
-    addText(COMPANY_INFO.rccm, MARGIN_LEFT, yPosition, FONT_SIZE_SMALL, undefined, COLORS.textLight);
+    // Conditions
+    addText('Conditions:', MARGIN_LEFT, yPosition, FONT_SIZE_NORMAL, undefined, COLORS.textGray);
     yPosition += 5;
-    addText(COMPANY_INFO.idnat, MARGIN_LEFT, yPosition, FONT_SIZE_SMALL, undefined, COLORS.textLight);
+    addText(COMPANY_INFO.feesDescription, MARGIN_LEFT, yPosition, FONT_SIZE_SMALL);
     yPosition += 5;
-    addText(COMPANY_INFO.nif, MARGIN_LEFT, yPosition, FONT_SIZE_SMALL, undefined, COLORS.textLight);
+    
+    addText('Délais de livraison:', MARGIN_LEFT, yPosition, FONT_SIZE_NORMAL, undefined, COLORS.textGray);
+    yPosition += 5;
+    addText(COMPANY_INFO.deliveryTime, MARGIN_LEFT, yPosition, FONT_SIZE_SMALL);
+    yPosition += 5;
+    
+    addText('Paiement par Mobile Money:', MARGIN_LEFT, yPosition, FONT_SIZE_NORMAL, undefined, COLORS.textGray);
+    yPosition += 5;
+    addText(COMPANY_INFO.paymentMethods, MARGIN_LEFT, yPosition, FONT_SIZE_SMALL);
     yPosition += 10;
 
-    // Détails bancaires
-    addText('Détails bancaires:', MARGIN_LEFT, yPosition, FONT_SIZE_NORMAL, undefined, COLORS.text);
-    yPosition += 5;
-    addText(COMPANY_INFO.bankAccount, MARGIN_LEFT, yPosition, FONT_SIZE_SMALL);
-    yPosition += 10;
-
-    // Coordonnées supplémentaires
-    addText('Pour plus d\'informations:', MARGIN_LEFT, yPosition, FONT_SIZE_NORMAL, undefined, COLORS.text);
-    yPosition += 5;
-    addText(`Email: ${COMPANY_INFO.email}`, MARGIN_LEFT, yPosition, FONT_SIZE_SMALL);
-    yPosition += 5;
-    addText(`Site web: ${COMPANY_INFO.website}`, MARGIN_LEFT, yPosition, FONT_SIZE_SMALL);
+    // ============= INFORMATIONS BANCAIRES ET LÉGALES =============
+    
+    drawLine(MARGIN_LEFT, yPosition, PAGE_WIDTH - MARGIN_RIGHT, yPosition, COLORS.borderPrimary);
+    yPosition += 8;
+    
+    addText('INFORMATIONS BANCAIRES ET LÉGALES:', MARGIN_LEFT, yPosition, FONT_SIZE_NORMAL, undefined, COLORS.primary);
+    yPosition += 8;
+    
+    // Banques
+    COMPANY_INFO.banks.forEach(bank => {
+      addText(bank, MARGIN_LEFT, yPosition, FONT_SIZE_SMALL);
+      yPosition += 4;
+    });
+    
+    yPosition += 4;
+    
+    // Informations légales
+    addText(`RCCM: ${COMPANY_INFO.rccm}`, MARGIN_LEFT, yPosition, FONT_SIZE_SMALL, undefined, COLORS.textLight);
+    yPosition += 4;
+    addText(`ID.NAT: ${COMPANY_INFO.idnat}`, MARGIN_LEFT, yPosition, FONT_SIZE_SMALL, undefined, COLORS.textLight);
+    yPosition += 4;
+    addText(`IMPOT: ${COMPANY_INFO.impot}`, MARGIN_LEFT, yPosition, FONT_SIZE_SMALL, undefined, COLORS.textLight);
 
     // ============= PIED DE PAGE =============
     

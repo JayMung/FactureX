@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facture 100325-005 - COCCINELLE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #ffffff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        
+        @media print {
+            body {
+                background-color: white;
+                margin: 0;
+                padding: 0;
+            }
+            .invoice-container {
+                box-shadow: none !important;
+                margin: 0 !important;
+                border: none !important;
+                padding: 20mm !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            @page {
+                size: A4;
+                margin: 0;
+            }
+        }
+        
+        .item-row td {
+            vertical-align: middle;
+        }
+        
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- Bouton d'impression (masqué à l'impression) -->
+    <div class="no-print flex justify-center mb-6 pt-6">
+        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-lg transition duration-150">
+            Imprimer / Sauvegarder en PDF
+        </button>
+    </div>
+
+    <div class="invoice-container max-w-5xl mx-auto bg-white p-10">
+        
+        <!-- En-tête -->
+        <header class="flex justify-between border-b-4 border-emerald-600 pb-6 mb-8">
+            <div class="w-3/5">
+                <h1 class="text-4xl font-extrabold text-emerald-600 mb-3">@COCCINELLE</h1>
+                <p class="text-sm text-gray-700 font-semibold mb-1">Sièges:</p>
+                <p class="text-xs text-gray-600">44, Kokolo, Q/Mbinza Pigeon, C/Ngaliema - Kinshasa</p>
+                <p class="text-xs text-gray-600">45, Avenue Nyangwe - Elie Mbayo, Q/Lido, C/Lubumbashi</p>
+                <p class="text-xs text-gray-600 mt-2">Tél: (+243) 970 746 213 / (+243) 851 958 937</p>
+                <p class="text-xs text-gray-600">
+                    Email: <a href="mailto:sales@coccinelledrc.com" class="text-blue-600 hover:text-blue-800">sales@coccinelledrc.com</a>
+                </p>
+                <p class="text-xs text-gray-600">
+                    Site: <a href="http://www.coccinelledrc.com" class="text-blue-600 hover:text-blue-800">www.coccinelledrc.com</a>
+                </p>
+            </div>
+
+            <div class="w-2/5 text-right bg-gray-50 p-4 rounded-lg">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">FACTURE</h2>
+                <div class="text-sm space-y-1">
+                    <div class="flex justify-between">
+                        <span class="font-semibold text-gray-600">N°:</span>
+                        <span class="font-bold text-gray-800">100325-005</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="font-semibold text-gray-600">Date:</span>
+                        <span class="font-bold text-gray-800">10/03/2025</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Informations Client et Livraison -->
+        <section class="flex justify-between mb-8 p-4 border rounded-lg bg-emerald-50/50">
+            <div class="w-1/2">
+                <h3 class="text-base font-bold text-gray-700 uppercase border-b border-emerald-300 pb-1 mb-2">Client(e)</h3>
+                <div class="text-sm text-gray-700 space-y-1">
+                    <p><span class="font-semibold">Nom:</span> MR GUY</p>
+                    <p><span class="font-semibold">Lieu:</span> LUBUMBASHI</p>
+                    <p><span class="font-semibold">Téléphone:</span> (+243) 973 606 281</p>
+                </div>
+            </div>
+
+            <div class="w-1/3">
+                <h3 class="text-base font-bold text-gray-700 uppercase border-b border-emerald-300 pb-1 mb-2">Livraison</h3>
+                <div class="text-sm text-gray-700 space-y-1">
+                    <p><span class="font-semibold">Destination:</span> LUBUMBASHI</p>
+                    <p><span class="font-semibold">Méthode:</span> BATEAU</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tableau des Articles -->
+        <section class="mb-8">
+            <table class="min-w-full divide-y divide-gray-200 shadow-md rounded-lg overflow-hidden">
+                <thead class="bg-emerald-600 text-white">
+                    <tr>
+                        <th class="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider">NUM</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">IMAGE</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider">QTY</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">DESCRIPTION</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider">
+                            PRIX UNIT<br>
+                            <span class="text-xs font-normal opacity-80">POIDS/CBM</span>
+                        </th>
+                        <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider">MONTANT</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <tr class="item-row bg-white hover:bg-emerald-100/50 transition-colors">
+                        <td class="px-4 py-3 text-center whitespace-nowrap text-sm text-gray-700 font-medium">1</td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <div class="w-16 h-16 bg-gray-100 rounded border flex items-center justify-center text-gray-400 text-2xl">📷</div>
+                        </td>
+                        <td class="px-4 py-3 text-center whitespace-nowrap text-base font-bold text-gray-900">700</td>
+                        <td class="px-4 py-3 text-sm text-gray-700 leading-relaxed">
+                            Tuiles de toit en métal - Rouge 0.5mm<br>
+                            <span class="text-xs text-gray-500">Spécifications: 3KG, 140x45x2.5 cm</span>
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <div class="font-bold text-gray-900">$2.43</div>
+                            <div class="text-xs text-gray-500 mt-1">2.10 cbm</div>
+                        </td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap text-base font-extrabold text-gray-900">$1,701.00</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Totaux et Récapitulatif -->
+        <section class="flex justify-end mb-8">
+            <div class="w-2/5">
+                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span class="text-sm font-medium text-gray-600">SOUS-TOTAL</span>
+                    <span class="text-sm font-semibold text-gray-800">$1,701.00</span>
+                </div>
+                
+                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span class="text-sm font-medium text-gray-600">Frais (15% de services & transfert)</span>
+                    <span class="text-sm font-semibold text-gray-800">$255.15</span>
+                </div>
+                
+                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span class="text-sm font-medium text-gray-600">TRANSPORT & DOUANE</span>
+                    <span class="text-sm font-semibold text-gray-800">$945.00</span>
+                </div>
+                
+                <div class="flex justify-between items-center py-3 bg-emerald-100 rounded-b-lg mt-2">
+                    <span class="text-lg font-bold text-gray-800 px-2">TOTAL GÉNÉRALE</span>
+                    <span class="text-xl font-extrabold text-emerald-700 px-2">$2,901.15</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Conditions et Notes -->
+        <section class="mt-8 pt-6 border-t border-gray-200 text-xs text-gray-600 space-y-3">
+            <p class="mb-2">
+                <span class="font-bold">Conditions:</span> Les frais de 10% inclus dans le coût global contiennent les frais de services & frais de transfert.
+            </p>
+            
+            <p class="mb-4">
+                <span class="font-bold">Délais de livraison:</span> 65-75 Jours selon les types de marchandises.
+            </p>
+            
+            <p class="mb-4">
+                <span class="font-bold">Paiement par Mobile Money:</span> 097 074 6213 / 085 195 8937 / 082 835 8721 / 083 186 3288
+            </p>
+
+            <!-- Informations Bancaires et Légales -->
+            <div class="mt-6 border-t pt-4 border-emerald-300 text-center">
+                <p class="font-semibold mb-2">INFORMATIONS BANCAIRES ET LÉGALES:</p>
+                <p class="mb-1">
+                    <span class="font-bold text-emerald-700">EQUITY BCDC | 0001105023-32000099001-60 | COCCINELLE</span>
+                </p>
+                <p class="mb-3">
+                    <span class="font-bold text-emerald-700">RAWBANK | 65101-00941018001-91 | COCCINELLE SARL</span>
+                </p>
+                <p>
+                    RCCM: CD/KNG/RCCM/21-B-02464 | ID.NAT: 01-F4300-N89171B | IMPOT: A2173499P
+                </p>
+            </div>
+        </section>
+
+    </div>
+</body>
+</html>

@@ -1,182 +1,212 @@
 import jsPDF from 'jspdf';
-import type { Facture, FactureItem } from '@/types';
+import 'jspdf-autotable';
+import type { Facture, FactureItem, CompanySettings } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 
-// Définir l'interface CompanySettings localement pour éviter les erreurs
-interface CompanySettings {
-  nom_entreprise: string;
-  logo_url: string;
-  rccm: string;
-  idnat: string;
-  nif: string;
-  email_entreprise: string;
-  telephone_entreprise: string;
-  adresse_entreprise: string;
-  signature_url?: string;
+// Helper pour récupérer et convertir une image en base64 pour l'intégrer au PDF
+async function fetchImageAsBase64(url: string): Promise<string | null> {
+  if (!url) return null;
+  try {
+    // Utilise un proxy pour éviter les problèmes de CORS si nécessaire
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.error("Échec de la récupération de l'image pour le PDF:", e);
+    return null;
+  }
 }
 
 export const generateFacturePDF = async (facture: Facture & { items: FactureItem[] }) => {
   const doc = new jsPDF();
+  const companySettings = await getCompanySettings();
+
+  const primaryColor = '#004A64'; // Bleu sarcelle foncé
+  const secondaryColor = '#FFC107'; // Jaune
+  const headerGreenColor = '#2E7D67'; // Vert foncé
+  const footerGreenColor = '#2E7D67';
+
   const pageWidth = doc.internal.pageSize.getWidth();
-  const leftCol = 20;
-  const rightCol = pageWidth - 20;
-  let yPosition = 20;
+  const margin = 15;
 
-  // Récupérer les paramètres entreprise
-  const companySettings = await getCompanySettings();  
-  // En-tête avec logo et infos entreprise
+  // --- EN-TÊTE ---
+  const headerY = 15;
+  // Côté gauche : Logo et informations de l'entreprise
   if (companySettings.logo_url) {
-    try {
-      doc.addImage(companySettings.logo_url, 'PNG', leftCol, yPosition, 40, 20);
-    } catch (error) {
-      console.warn('Impossible de charger le logo:', error);
+    const logoData = await fetchImageAsBase64(companySettings.logo_url);
+    if (logoData) {
+      doc.addImage(logoData, 'PNG', margin, headerY, 45, 22);
     }
-    yPosition += 30;
   }
+  
+  doc.setFontSize(9);
+  doc.setTextColor('#333');
+  let y = headerY + 30;
+  doc.text(companySettings.adresse_entreprise || '', margin, y);
+  y += 4;
+  doc.text(`Tel: ${companySettings.telephone_entreprise || ''}`, margin, y);
+  y += 4;
+  doc.text(`Email: ${companySettings.email_entreprise || ''}`, margin, y);
+  y += 4;
+  doc.text(`Web: www.coccinelledrc.com`, margin, y);
 
-  // Informations entreprise à droite
+  // Côté droit : Boîte verte
+  const boxWidth = 65;
+  const boxX = pageWidth - margin - boxWidth;
+  doc.setFillColor(headerGreenColor);
+  doc.rect(boxX, headerY, boxWidth, 28, 'F');
+
+  doc.setTextColor(255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(facture.type.toUpperCase(), boxX + boxWidth / 2, headerY + 10, { align: 'center' });
+
   doc.setFontSize(10);
-  doc.text(companySettings.nom_entreprise || 'CoxiPay', rightCol - 80, yPosition - 20);
-  doc.text(companySettings.email_entreprise || '', rightCol - 80, yPosition - 15);
-  doc.text(companySettings.telephone_entreprise || '', rightCol - 80, yPosition - 10);
-  doc.text(companySettings.adresse_entreprise || '', rightCol - 80, yPosition - 5);
-
-  // Titre et numéro
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text(facture.type === 'devis' ? 'DEVIS' : 'FACTURE', leftCol, yPosition);
-  
-  doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
-  doc.text(`N°: ${facture.facture_number}`, leftCol, yPosition + 10);
-  doc.text(`Date: ${new Date(facture.date_emission).toLocaleDateString('fr-FR')}`, leftCol, yPosition + 15);
-  
-  if (facture.date_validation) {
-    doc.text(`Validé le: ${new Date(facture.date_validation).toLocaleDateString('fr-FR')}`, leftCol, yPosition + 20);
-  }
+  doc.text(`Facture No.: ${facture.facture_number}`, boxX + 5, headerY + 19);
+  doc.text(`Date Facture: ${new Date(facture.date_emission).toLocaleDateString('fr-FR')}`, boxX + 5, headerY + 25);
 
-  // Informations client
-  const clientData = facture.clients || facture.client;
-  yPosition += 35;
-  doc.setFontSize(12);
+  // --- INFORMATIONS CLIENT & LIVRAISON ---
+  y = headerY + 50;
+  doc.setTextColor(primaryColor);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text('CLIENT:', leftCol, yPosition);
+  doc.text('CLIENT(E):', margin, y);
+  doc.text('LIEU:', margin, y + 4);
+  doc.text('PHONE:', margin, y + 8);
+
+  doc.setTextColor(0);
   doc.setFont('helvetica', 'normal');
-  doc.text(clientData?.nom || 'N/A', leftCol, yPosition + 7);
-  doc.text(clientData?.telephone || '', leftCol, yPosition + 12);
-  doc.text(clientData?.ville || '', leftCol, yPosition + 17);
+  const client = facture.clients || facture.client;
+  doc.text(client?.nom || '', margin + 20, y);
+  doc.text(client?.ville || '', margin + 20, y + 4);
+  doc.text(client?.telephone || '', margin + 20, y + 8);
 
-  // Mode de livraison et devise
-  doc.text(`Mode livraison: ${facture.mode_livraison === 'aerien' ? 'Aérien' : 'Maritime'}`, rightCol - 80, yPosition + 7);
-  doc.text(`Devise: ${facture.devise}`, rightCol - 80, yPosition + 12);
+  doc.setTextColor(primaryColor);
+  doc.setFont('helvetica', 'bold');
+  doc.text('LIVRAISON:', pageWidth / 2, y);
+  doc.text('METHODE:', pageWidth / 2, y + 4);
 
-  // Tableau des articles
-  yPosition += 30;
-  const headers = [
-    'N°',
-    'Description',
-    'Quantité',
-    'Prix Unitaire',
-    'Poids',
-    'Montant Total'
-  ];
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'normal');
+  doc.text(client?.ville || '', pageWidth / 2 + 25, y);
+  doc.text(facture.mode_livraison === 'aerien' ? 'AVION' : 'BATEAU', pageWidth / 2 + 25, y + 4);
 
-  const data = facture.items?.map((item, index) => [
-    (index + 1).toString(),
+  // --- TABLEAU ---
+  const tableY = y + 20;
+  const head = [['NUM', 'IMAGE', 'QTY', 'DESCRIPTION', 'PRIX UNIT', 'POIDS/CBM', 'MONTANT']];
+  const body = await Promise.all(facture.items.map(async item => ([
+    item.numero_ligne,
+    await fetchImageAsBase64(item.image_url || '') || '', // Pré-charger l'image
+    item.quantite,
     item.description,
-    item.quantite.toString(),
     formatCurrency(item.prix_unitaire, facture.devise),
-    `${item.poids} ${facture.mode_livraison === 'aerien' ? 'kg' : 'cbm'}`,
+    item.poids,
     formatCurrency(item.montant_total, facture.devise)
-  ]) || [];
+  ])));
 
-  // Créer le tableau manuellement
-  let currentY = yPosition;
-  const rowHeight = 10;
-  const colWidths = [15, 80, 30, 40, 30, 40];
-  
-  // En-têtes
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  let currentX = leftCol;
-  headers.forEach((header, index) => {
-    doc.text(header, currentX, currentY);
-    currentX += colWidths[index];
+  (doc as any).autoTable({
+    startY: tableY,
+    head: head,
+    body: body,
+    theme: 'grid',
+    headStyles: {
+      fillColor: primaryColor,
+      textColor: 255,
+      fontStyle: 'bold',
+      halign: 'center'
+    },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 10 },
+      1: { halign: 'center', cellWidth: 25, minCellHeight: 25 },
+      2: { halign: 'center', cellWidth: 10 },
+      3: { cellWidth: 60 },
+      4: { halign: 'right' },
+      5: { halign: 'right' },
+      6: { halign: 'right' },
+    },
+    didDrawCell: (data: any) => {
+      if (data.column.index === 1 && data.cell.section === 'body' && data.cell.raw) {
+        const imgData = data.cell.raw as string;
+        if (imgData.startsWith('data:image')) {
+          doc.addImage(imgData, 'PNG', data.cell.x + 2.5, data.cell.y + 2.5, 20, 20);
+        }
+      }
+    },
   });
-  
-  // Lignes
-  currentY += rowHeight;
-  doc.setFont('helvetica', 'normal');
-  data.forEach((row) => {
-    currentX = leftCol;
-    row.forEach((cell, index) => {
-      doc.text(cell, currentX, currentY);
-      currentX += colWidths[index];
-    });
-    currentY += rowHeight;
-  });
 
-  // Position finale après le tableau
-  yPosition = currentY + 20;
+  // --- TOTAUX ---
+  let finalY = (doc as any).lastAutoTable.finalY;
+  const totalsX = pageWidth - margin - 80;
+  const totalRowHeight = 7;
 
-  // Totaux
-  doc.setFontSize(12);
-  doc.text(`Sous-total: ${formatCurrency(facture.subtotal, facture.devise)}`, rightCol - 80, yPosition);
-  doc.text(`Frais transport: ${formatCurrency(facture.shipping_fee, facture.devise)}`, rightCol - 80, yPosition + 7);
-  doc.text(`Frais douane: ${formatCurrency(facture.frais_transport_douane, facture.devise)}`, rightCol - 80, yPosition + 14);
-  
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text(`TOTAL: ${formatCurrency(facture.total_general, facture.devise)}`, rightCol - 80, yPosition + 22);
-
-  // Conditions de vente
-  if (facture.conditions_vente) {
-    yPosition += 35;
+  const drawTotalRow = (label: string, value: string, y: number, labelColor: string | number[] = '#000', valueColor: string | number[] = '#000') => {
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.text('Conditions de vente:', leftCol, yPosition);
-    doc.setFont('helvetica', 'normal');
-    const splitConditions = doc.splitTextToSize(facture.conditions_vente, pageWidth - 40);
-    doc.text(splitConditions, leftCol, yPosition + 7);
-  }
+    doc.setTextColor(labelColor as any);
+    doc.text(label, totalsX, y);
+    doc.setTextColor(valueColor as any);
+    doc.text(value, pageWidth - margin, y, { align: 'right' });
+  };
 
-  // Signature
-  if (companySettings.signature_url) {
-    try {
-      const signatureY = doc.internal.pageSize.getHeight() - 40;
-      doc.addImage(companySettings.signature_url, 'PNG', leftCol, signatureY, 60, 30);
-    } catch (error) {
-      console.warn('Impossible de charger la signature:', error);
-    }
-  }
+  finalY += 7;
+  drawTotalRow('SOUS-TOTAL', formatCurrency(facture.subtotal, facture.devise), finalY);
+  finalY += totalRowHeight;
+  
+  const frais = facture.subtotal * 0.10; // Supposons 10% de frais comme dans le modèle
+  drawTotalRow('Frais', formatCurrency(frais, facture.devise), finalY);
+  finalY += totalRowHeight;
 
-  // Informations légales
-  yPosition = doc.internal.pageSize.getHeight() - 25;
+  doc.setFillColor(primaryColor);
+  doc.rect(totalsX - 20, finalY - 5, 100, totalRowHeight, 'F');
+  drawTotalRow('TRANSPORT & DOUANE', formatCurrency(facture.frais_transport_douane, facture.devise), finalY, '#fff', '#fff');
+  finalY += totalRowHeight;
+
+  const totalGeneral = facture.subtotal + frais + facture.frais_transport_douane;
+  doc.setFillColor(primaryColor);
+  doc.rect(totalsX - 20, finalY - 5, 50, totalRowHeight, 'F');
+  doc.setFillColor(secondaryColor);
+  doc.rect(totalsX + 30, finalY - 5, 50, totalRowHeight, 'F');
+  drawTotalRow('TOTAL GÉNÉRALE', formatCurrency(totalGeneral, facture.devise), finalY, '#fff', '#000');
+
+  // --- PIED DE PAGE ---
+  const footerY = doc.internal.pageSize.getHeight() - 30;
+  doc.setFillColor(footerGreenColor);
+  doc.rect(margin, footerY, pageWidth - (margin * 2), 20, 'F');
+
+  doc.setTextColor(255);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  const bankInfo = facture.informations_bancaires || companySettings.informations_bancaires || '';
+  doc.text(bankInfo, pageWidth / 2, footerY + 7, { align: 'center', maxWidth: pageWidth - (margin * 2) - 10 });
+
+  doc.setTextColor(0);
   doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`RCCM: ${companySettings.rccm || ''}`, leftCol, yPosition);
-  doc.text(`ID.NAT: ${companySettings.idnat || ''}`, leftCol + 60, yPosition);
-  doc.text(`NIF: ${companySettings.nif || ''}`, leftCol + 120, yPosition);
+  const legalInfo = `RCCM: ${companySettings.rccm || ''} | ID.NAT: ${companySettings.idnat || ''} | NIF: ${companySettings.nif || ''}`;
+  doc.text(legalInfo, pageWidth / 2, footerY + 15, { align: 'center' });
+  const contactInfo = `Email: ${companySettings.email_entreprise || ''} | Site Web: https://coccinelledrc.com`;
+  doc.text(contactInfo, pageWidth / 2, footerY + 19, { align: 'center' });
 
-  // Sauvegarder le PDF
-  const clientDataForName = facture.clients || facture.client;
-  const fileName = `${facture.type === 'devis' ? 'Devis' : 'Facture'}_${facture.facture_number}_${clientDataForName?.nom || 'Client'}.pdf`;
-  doc.save(fileName);
+  // --- SAUVEGARDER ---
+  doc.save(`${facture.type}_${facture.facture_number}.pdf`);
 };
 
-// Fonction utilitaire pour formater la devise
 const formatCurrency = (amount: number, currency: string): string => {
-  if (currency === 'USD') {
-    return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  } else if (currency === 'CDF') {
-    return `${amount.toLocaleString('fr-FR')} FC`;
-  }
-  return amount.toString();
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 };
 
-// Fonction pour récupérer les paramètres entreprise
-const getCompanySettings = async (): Promise<CompanySettings> => {
+const getCompanySettings = async (): Promise<Partial<CompanySettings>> => {
   try {
-    const { supabase } = await import('@/integrations/supabase/client');
     const { data } = await supabase
       .from('settings')
       .select('cle, valeur')
@@ -186,30 +216,9 @@ const getCompanySettings = async (): Promise<CompanySettings> => {
     data?.forEach(item => {
       settings[item.cle] = item.valeur;
     });
-
-    return {
-      nom_entreprise: settings.nom_entreprise || 'CoxiPay',
-      logo_url: settings.logo_url || '',
-      rccm: settings.rccm || '',
-      idnat: settings.idnat || '',
-      nif: settings.nif || '',
-      email_entreprise: settings.email_entreprise || '',
-      telephone_entreprise: settings.telephone_entreprise || '',
-      adresse_entreprise: settings.adresse_entreprise || '',
-      signature_url: settings.signature_url
-    };
+    return settings;
   } catch (error) {
     console.error('Erreur lors de la récupération des paramètres:', error);
-    return {
-      nom_entreprise: 'CoxiPay',
-      logo_url: '',
-      rccm: '',
-      idnat: '',
-      nif: '',
-      email_entreprise: '',
-      telephone_entreprise: '',
-      adresse_entreprise: '',
-      signature_url: ''
-    };
+    return {};
   }
 };

@@ -47,7 +47,8 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
     mode_livraison: 'aerien' as 'aerien' | 'maritime',
     devise: 'USD' as 'USD' | 'CDF',
     conditions_vente: '',
-    notes: ''
+    notes: '',
+    date_emission: new Date().toISOString().split('T')[0]
   });
 
   const [items, setItems] = useState<FactureItemForm[]>([
@@ -109,7 +110,8 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
         mode_livraison: facture.mode_livraison,
         devise: facture.devise,
         conditions_vente: facture.conditions_vente || '',
-        notes: facture.notes || ''
+        notes: facture.notes || '',
+        date_emission: facture.date_emission
       });
 
       // Charger le client sélectionné
@@ -133,7 +135,8 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
         mode_livraison: 'aerien',
         devise: 'USD',
         conditions_vente: '',
-        notes: ''
+        notes: '',
+        date_emission: new Date().toISOString().split('T')[0]
       });
       setSelectedClient(null);
       setItems([{
@@ -238,6 +241,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
         type: formData.type,
         mode_livraison: formData.mode_livraison,
         devise: formData.devise,
+        date_emission: formData.date_emission,
         conditions_vente: formData.conditions_vente,
         notes: formData.notes,
         items: items.map(item => ({

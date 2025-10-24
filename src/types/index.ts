@@ -365,6 +365,8 @@ export interface CompanySettings {
   email_entreprise: string;
   telephone_entreprise: string;
   adresse_entreprise?: string;
+  informations_bancaires?: string;
+  signature_url?: string;
 }
 
 // Shipping Settings types

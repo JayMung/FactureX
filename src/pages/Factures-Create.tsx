@@ -62,6 +62,9 @@ const FacturesCreate: React.FC = () => {
     informations_bancaires: ''
   });
 
+  // État pour le pourcentage de frais (15% par défaut)
+  const [fraisPercentage, setFraisPercentage] = useState(15);
+
   const [items, setItems] = useState<FactureItemForm[]>([
     {
       tempId: '1',
@@ -165,15 +168,17 @@ const FacturesCreate: React.FC = () => {
   const calculateTotals = () => {
     const subtotal = items.reduce((sum, item) => sum + item.montant_total, 0);
     const totalPoids = items.reduce((sum, item) => sum + item.poids, 0);
+    const frais = subtotal * (fraisPercentage / 100);
     const shippingFee = formData.mode_livraison === 'aerien' 
       ? totalPoids * shippingSettings.aerien 
       : totalPoids * shippingSettings.maritime;
     const fraisTransportDouane = shippingFee;
-    const totalGeneral = subtotal + fraisTransportDouane;
+    const totalGeneral = subtotal + frais + fraisTransportDouane;
 
     return {
       subtotal,
       totalPoids,
+      frais,
       shippingFee,
       fraisTransportDouane,
       totalGeneral
@@ -469,9 +474,11 @@ const FacturesCreate: React.FC = () => {
                                   src={item.image_url} 
                                   alt="Preview" 
                                   className="max-w-full max-h-full object-contain"
+                                  referrerPolicy="no-referrer"
+                                  crossOrigin="anonymous"
                                   onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                    (e.target as HTMLImageElement).parentElement!.innerHTML = '<ImageIcon class="h-8 w-8 text-gray-300" />';
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
                                   }}
                                 />
                               </div>
@@ -577,30 +584,45 @@ const FacturesCreate: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div>
-                  <Label className="text-sm text-gray-600">Sous-total</Label>
-                  <div className="text-xl font-medium mt-1">
-                    {formatCurrency(totals.subtotal)}
-                  </div>
+              <div className="space-y-3">
+                {/* Sous-total */}
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-gray-700 font-medium">SOUS-TOTAL</span>
+                  <span className="text-lg font-semibold">{formatCurrency(totals.subtotal)}</span>
                 </div>
-                <div>
-                  <Label className="text-sm text-gray-600">Poids total</Label>
-                  <div className="text-xl font-medium mt-1">
-                    {totals.totalPoids.toFixed(2)} {formData.mode_livraison === 'aerien' ? 'kg' : 'cbm'}
+                
+                {/* Frais modifiables */}
+                <div className="flex justify-between items-center py-2 border-b">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-700 font-medium">Frais</span>
+                    <Input
+                      type="number"
+                      value={fraisPercentage}
+                      onChange={(e) => setFraisPercentage(parseFloat(e.target.value) || 0)}
+                      className="w-16 h-8 text-center"
+                      min="0"
+                      step="0.1"
+                    />
+                    <span className="text-gray-600">%</span>
                   </div>
+                  <span className="text-lg font-semibold">{formatCurrency(totals.frais)}</span>
                 </div>
-                <div>
-                  <Label className="text-sm text-gray-600">Frais transport</Label>
-                  <div className="text-xl font-medium mt-1">
-                    {formatCurrency(totals.shippingFee)}
+                
+                {/* Frais transport */}
+                <div className="flex justify-between items-center py-2 border-b">
+                  <div className="flex flex-col">
+                    <span className="text-gray-700 font-medium">TRANSPORT & DOUANE</span>
+                    <span className="text-xs text-gray-500">
+                      {totals.totalPoids.toFixed(2)} {formData.mode_livraison === 'aerien' ? 'kg' : 'cbm'}
+                    </span>
                   </div>
+                  <span className="text-lg font-semibold">{formatCurrency(totals.fraisTransportDouane)}</span>
                 </div>
-                <div>
-                  <Label className="text-sm text-gray-600">Total général</Label>
-                  <div className="text-2xl font-bold text-emerald-600 mt-1">
-                    {formatCurrency(totals.totalGeneral)}
-                  </div>
+                
+                {/* Total général */}
+                <div className="flex justify-between items-center py-3 bg-emerald-50 px-4 rounded-lg mt-2">
+                  <span className="text-gray-900 font-bold text-lg">TOTAL GÉNÉRAL</span>
+                  <span className="text-2xl font-bold text-emerald-600">{formatCurrency(totals.totalGeneral)}</span>
                 </div>
               </div>
             </CardContent>

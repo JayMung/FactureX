@@ -395,7 +395,7 @@ export const generateFacturePDF = async (facture: Facture) => {
             const tableHeaders = ['N°', 'IMAGE', 'QTÉ', 'DESCRIPTION', 'PRIX UNIT', 'POIDS', 'MONTANT'];
             const tableData = facture.items.map(item => [
                 item.numero_ligne,
-                item.image_url || '(img)',
+                '', // Colonne vide pour l'image (on dessine l'image avec didDrawCell)
                 item.quantite,
                 item.description,
                 formatCurrency(item.prix_unitaire, facture.devise),
@@ -432,17 +432,21 @@ export const generateFacturePDF = async (facture: Facture) => {
                     fillColor: [COLORS.backgroundLight[0], COLORS.backgroundLight[1], COLORS.backgroundLight[2]],
                 },
                 columnStyles: {
-                    0: { halign: 'center', cellWidth: 8, fontStyle: 'bold', textColor: [COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]] },
-                    1: { halign: 'center', cellWidth: 18 },
-                    2: { halign: 'center', cellWidth: 10, fontStyle: 'bold' },
-                    3: { halign: 'left', cellWidth: 70, textColor: [COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]] },
-                    4: { halign: 'right', cellWidth: 24, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]] },
-                    5: { halign: 'right', cellWidth: 15, textColor: [COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]] },
-                    6: { halign: 'right', cellWidth: 25, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]] },
+                    0: { halign: 'center', cellWidth: 10, fontStyle: 'bold', textColor: [COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]] },
+                    1: { halign: 'center', cellWidth: 20 },
+                    2: { halign: 'center', cellWidth: 12, fontStyle: 'bold' },
+                    3: { halign: 'left', cellWidth: 65, textColor: [COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]] },
+                    4: { halign: 'right', cellWidth: 28, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]] },
+                    5: { halign: 'right', cellWidth: 18, textColor: [COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]] },
+                    6: { halign: 'right', cellWidth: 27, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]] },
                 },
                 didDrawCell: (data: any) => {
                     if (data.section === 'body' && data.column.index === 1) {
-                        const url = data.cell.raw;
+                        // Récupérer l'URL depuis les données originales de l'item
+                        const rowIndex = data.row.index;
+                        const item = facture.items?.[rowIndex];
+                        const url = item?.image_url;
+                        
                         // Placeholder image 40x40 pixels comme demandé
                         const imgSize = 14; // ~40 pixels à 72 DPI (14mm ≈ 40px)
                         const imgX = data.cell.x + (data.cell.width - imgSize) / 2;

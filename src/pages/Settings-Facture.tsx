@@ -35,7 +35,10 @@ export const SettingsFacture = () => {
   });
 
   // État pour les conditions de vente
-  const [conditionsVente, setConditionsVente] = useState('');
+  const [conditionsVente, setConditionsVente] = useState({
+    aerien: '',
+    maritime: ''
+  });
 
   // États pour les catégories
   const [categories, setCategories] = useState<ProductCategory[]>([]);
@@ -66,10 +69,16 @@ export const SettingsFacture = () => {
         setShippingSettings(prev => ({ ...prev, ...shipping }));
 
         // Charger conditions de vente
-        const conditionsData = data.find(s => s.categorie === 'facture' && s.cle === 'conditions_vente');
-        if (conditionsData) {
-          setConditionsVente(conditionsData.valeur);
-        }
+        const factureData = data.filter(s => s.categorie === 'facture');
+        const conditions: any = {};
+        factureData.forEach(item => {
+          if (item.cle === 'conditions_vente_aerien') {
+            conditions.aerien = item.valeur;
+          } else if (item.cle === 'conditions_vente_maritime') {
+            conditions.maritime = item.valeur;
+          }
+        });
+        setConditionsVente(prev => ({ ...prev, ...conditions }));
       }
     } catch (error: any) {
       console.error('Error fetching settings:', error);
@@ -117,13 +126,22 @@ export const SettingsFacture = () => {
   const handleSaveConditionsVente = async () => {
     setSaving(true);
     try {
+      const updates = [
+        {
+          categorie: 'facture',
+          cle: 'conditions_vente_aerien',
+          valeur: conditionsVente.aerien || ''
+        },
+        {
+          categorie: 'facture',
+          cle: 'conditions_vente_maritime',
+          valeur: conditionsVente.maritime || ''
+        }
+      ];
+
       const { error } = await supabase
         .from('settings')
-        .upsert([{
-          categorie: 'facture',
-          cle: 'conditions_vente',
-          valeur: conditionsVente || ''
-        }], { onConflict: 'categorie,cle' });
+        .upsert(updates, { onConflict: 'categorie,cle' });
 
       if (error) throw error;
       showSuccess('Conditions de vente sauvegardées');
@@ -238,19 +256,35 @@ export const SettingsFacture = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label>Conditions de vente</Label>
+            <Label className="flex items-center">
+              <Plane className="mr-2 h-4 w-4" />
+              Conditions de vente - Voie Aérienne
+            </Label>
             <Textarea
-              value={conditionsVente}
-              onChange={(e) => setConditionsVente(e.target.value)}
-              placeholder="Ex: Paiement à la livraison, Garantie 30 jours, etc."
-              rows={6}
+              value={conditionsVente.aerien}
+              onChange={(e) => setConditionsVente(prev => ({ ...prev, aerien: e.target.value }))}
+              placeholder="Ex: Paiement à la livraison, Délai 7-10 jours, Garantie 30 jours..."
+              rows={5}
               className="mt-1"
             />
-            <p className="text-sm text-gray-500 mt-2">
-              Ces conditions seront automatiquement pré-remplies lors de la création d'une nouvelle facture.
-              Vous pourrez les modifier individuellement pour chaque facture.
-            </p>
           </div>
+          <div>
+            <Label className="flex items-center">
+              <Ship className="mr-2 h-4 w-4" />
+              Conditions de vente - Voie Maritime
+            </Label>
+            <Textarea
+              value={conditionsVente.maritime}
+              onChange={(e) => setConditionsVente(prev => ({ ...prev, maritime: e.target.value }))}
+              placeholder="Ex: Paiement 50% à la commande, Délai 45-60 jours, Garantie 30 jours..."
+              rows={5}
+              className="mt-1"
+            />
+          </div>
+          <p className="text-sm text-gray-500">
+            Ces conditions seront automatiquement pré-remplies selon le mode de livraison choisi lors de la création d'une nouvelle facture.
+            Vous pourrez les modifier individuellement pour chaque facture.
+          </p>
           <Button onClick={handleSaveConditionsVente} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Sauvegarder les conditions

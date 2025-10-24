@@ -50,6 +50,7 @@ const FacturesCreate: React.FC = () => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [shippingSettings, setShippingSettings] = useState({ aerien: 16, maritime: 450 });
   const [currentFacture, setCurrentFacture] = useState<Facture | null>(null);
+  const [conditionsDefaut, setConditionsDefaut] = useState({ aerien: '', maritime: '' });
   
   const [formData, setFormData] = useState({
     client_id: '',
@@ -103,12 +104,18 @@ const FacturesCreate: React.FC = () => {
           maritime: settings.frais_maritime_par_cbm || 450
         });
 
-        // Charger les conditions de vente par défaut (uniquement pour nouvelle facture)
-        if (!isEditMode) {
-          const conditionsData = settingsData?.find(s => s.categorie === 'facture' && s.cle === 'conditions_vente');
-          if (conditionsData) {
-            setFormData(prev => ({ ...prev, conditions_vente: conditionsData.valeur }));
-          }
+        // Charger les conditions de vente par défaut
+        const conditionsAerien = settingsData?.find(s => s.categorie === 'facture' && s.cle === 'conditions_vente_aerien');
+        const conditionsMaritime = settingsData?.find(s => s.categorie === 'facture' && s.cle === 'conditions_vente_maritime');
+        
+        setConditionsDefaut({
+          aerien: conditionsAerien?.valeur || '',
+          maritime: conditionsMaritime?.valeur || ''
+        });
+        
+        // Charger les conditions selon le mode de livraison par défaut (aérien) uniquement pour nouvelle facture
+        if (!isEditMode && conditionsAerien) {
+          setFormData(prev => ({ ...prev, conditions_vente: conditionsAerien.valeur }));
         }
 
         // Charger la facture si en mode édition
@@ -172,6 +179,16 @@ const FacturesCreate: React.FC = () => {
     const client = clients.find(c => c.id === clientId);
     setSelectedClient(client || null);
     setFormData(prev => ({ ...prev, client_id: clientId }));
+  };
+
+  // Gérer le changement de mode de livraison
+  const handleModeLivraisonChange = (mode: 'aerien' | 'maritime') => {
+    setFormData(prev => ({ 
+      ...prev, 
+      mode_livraison: mode,
+      // Mettre à jour les conditions de vente selon le mode choisi (seulement si pas encore modifié manuellement)
+      conditions_vente: !isEditMode ? (mode === 'aerien' ? conditionsDefaut.aerien : conditionsDefaut.maritime) : prev.conditions_vente
+    }));
   };
 
   // Ajouter une ligne
@@ -358,8 +375,7 @@ const FacturesCreate: React.FC = () => {
 
                 <div>
                   <Label>Mode livraison</Label>
-                  <Select value={formData.mode_livraison} onValueChange={(value: 'aerien' | 'maritime') => 
-                    setFormData(prev => ({ ...prev, mode_livraison: value }))}>
+                  <Select value={formData.mode_livraison} onValueChange={handleModeLivraisonChange}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

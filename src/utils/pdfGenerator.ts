@@ -418,27 +418,28 @@ export const generateFacturePDF = async (facture: Facture) => {
                     fillColor: COLORS.primary,
                     textColor: COLORS.white,
                     fontStyle: 'bold',
-                    fontSize: 8,
+                    fontSize: 7.5, // Réduit de 8 à 7.5
                     halign: 'center',
                     valign: 'middle',
-                    cellPadding: 4,
+                    cellPadding: 3.5,
                     lineWidth: 0,
                 },
                 bodyStyles: {
                     textColor: [COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]],
-                    valign: 'middle',
+                    valign: 'middle', // Centrage vertical
+                    minCellHeight: 18, // Hauteur minimale pour un bon centrage
                 },
                 alternateRowStyles: {
                     fillColor: [COLORS.backgroundLight[0], COLORS.backgroundLight[1], COLORS.backgroundLight[2]],
                 },
                 columnStyles: {
-                    0: { halign: 'center', cellWidth: 10, fontStyle: 'bold', textColor: [COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]] },
-                    1: { halign: 'center', cellWidth: 20 },
-                    2: { halign: 'center', cellWidth: 12, fontStyle: 'bold' },
-                    3: { halign: 'left', cellWidth: 65, textColor: [COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]] },
-                    4: { halign: 'right', cellWidth: 28, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]] },
-                    5: { halign: 'right', cellWidth: 18, textColor: [COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]] },
-                    6: { halign: 'right', cellWidth: 27, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]] },
+                    0: { halign: 'center', cellWidth: 11, fontStyle: 'bold', textColor: [COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]], valign: 'middle' },
+                    1: { halign: 'center', cellWidth: 20, valign: 'middle' },
+                    2: { halign: 'center', cellWidth: 13, fontStyle: 'bold', valign: 'middle' },
+                    3: { halign: 'left', cellWidth: 63, textColor: [COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]], valign: 'middle' },
+                    4: { halign: 'right', cellWidth: 28, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]], valign: 'middle' },
+                    5: { halign: 'right', cellWidth: 18, textColor: [COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]], valign: 'middle' },
+                    6: { halign: 'right', cellWidth: 27, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]], valign: 'middle' },
                 },
                 didDrawCell: (data: any) => {
                     if (data.section === 'body' && data.column.index === 1) {

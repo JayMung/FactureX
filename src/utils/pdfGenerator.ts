@@ -1,19 +1,14 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { Facture } from '@/types';
 
-// Déclare l'extension autoTable pour jsPDF
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
-
 // --- CONFIGURATION DU DESIGN ---
 
-const COLORS = {
+type ColorTuple = [number, number, number];
+
+const COLORS: { [key: string]: ColorTuple } = {
     primary: [16, 185, 129],      // emerald-600
     primaryLight: [209, 250, 229], // emerald-100
     primaryLighter: [240, 253, 244], // emerald-50
@@ -59,7 +54,7 @@ export const generateFacturePDF = async (facture: Facture) => {
 
         const setFont = (style: 'normal' | 'bold' = 'normal') => doc.setFont('helvetica', style);
         const formatCurrency = (amount: number, currency: string) => {
-            const options = { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 };
+            const options: Intl.NumberFormatOptions = { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 };
             const formatted = new Intl.NumberFormat('en-US', options).format(amount);
             return currency === 'USD' ? `$${formatted}` : `${formatted} FC`;
         };
@@ -173,7 +168,7 @@ export const generateFacturePDF = async (facture: Facture) => {
                 formatCurrency(item.montant_total, facture.devise)
             ]);
 
-            doc.autoTable({
+            autoTable(doc, {
                 startY: y,
                 head: [tableHeaders],
                 body: tableData,
@@ -214,7 +209,7 @@ export const generateFacturePDF = async (facture: Facture) => {
                 },
                 margin: { left: MARGIN, right: MARGIN },
             });
-            y = doc.autoTable.previous.finalY + 10;
+            y = (doc as any).lastAutoTable.finalY + 10;
         }
 
         // ========================================

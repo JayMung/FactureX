@@ -586,13 +586,13 @@ const FacturesCreate: React.FC = () => {
             <CardContent>
               <div className="space-y-3">
                 {/* Sous-total */}
-                <div className="flex justify-between items-center py-2 border-b">
+                <div className="flex justify-end items-center py-2 border-b gap-8">
                   <span className="text-gray-700 font-medium">SOUS-TOTAL</span>
-                  <span className="text-lg font-semibold">{formatCurrency(totals.subtotal)}</span>
+                  <span className="text-lg font-semibold min-w-[120px] text-right">{formatCurrency(totals.subtotal)}</span>
                 </div>
                 
                 {/* Frais modifiables */}
-                <div className="flex justify-between items-center py-2 border-b">
+                <div className="flex justify-end items-center py-2 border-b gap-8">
                   <div className="flex items-center gap-2">
                     <span className="text-gray-700 font-medium">Frais</span>
                     <Input
@@ -605,24 +605,24 @@ const FacturesCreate: React.FC = () => {
                     />
                     <span className="text-gray-600">%</span>
                   </div>
-                  <span className="text-lg font-semibold">{formatCurrency(totals.frais)}</span>
+                  <span className="text-lg font-semibold min-w-[120px] text-right">{formatCurrency(totals.frais)}</span>
                 </div>
                 
                 {/* Frais transport */}
-                <div className="flex justify-between items-center py-2 border-b">
-                  <div className="flex flex-col">
+                <div className="flex justify-end items-center py-2 border-b gap-8">
+                  <div className="flex flex-col items-end">
                     <span className="text-gray-700 font-medium">TRANSPORT & DOUANE</span>
                     <span className="text-xs text-gray-500">
                       {totals.totalPoids.toFixed(2)} {formData.mode_livraison === 'aerien' ? 'kg' : 'cbm'}
                     </span>
                   </div>
-                  <span className="text-lg font-semibold">{formatCurrency(totals.fraisTransportDouane)}</span>
+                  <span className="text-lg font-semibold min-w-[120px] text-right">{formatCurrency(totals.fraisTransportDouane)}</span>
                 </div>
                 
                 {/* Total général */}
-                <div className="flex justify-between items-center py-3 bg-emerald-50 px-4 rounded-lg mt-2">
+                <div className="flex justify-end items-center py-3 bg-emerald-50 px-4 rounded-lg mt-2 gap-8">
                   <span className="text-gray-900 font-bold text-lg">TOTAL GÉNÉRAL</span>
-                  <span className="text-2xl font-bold text-emerald-600">{formatCurrency(totals.totalGeneral)}</span>
+                  <span className="text-2xl font-bold text-emerald-600 min-w-[120px] text-right">{formatCurrency(totals.totalGeneral)}</span>
                 </div>
               </div>
             </CardContent>

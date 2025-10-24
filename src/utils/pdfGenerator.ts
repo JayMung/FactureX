@@ -62,6 +62,9 @@ const loadImageFromUrl = async (url: string): Promise<string | null> => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         
+        // Utiliser un proxy CORS pour contourner les restrictions
+        const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=400&h=400&fit=contain&default=1`;
+        
         img.onload = () => {
             try {
                 const canvas = document.createElement('canvas');
@@ -82,13 +85,19 @@ const loadImageFromUrl = async (url: string): Promise<string | null> => {
         
         img.onerror = () => {
             console.error('Erreur chargement image:', url);
-            resolve(null);
+            // Essayer l'URL originale en fallback
+            if (img.src === proxyUrl) {
+                img.src = url;
+            } else {
+                resolve(null);
+            }
         };
         
-        img.src = url;
+        // Essayer d'abord avec le proxy
+        img.src = proxyUrl;
         
-        // Timeout après 5 secondes
-        setTimeout(() => resolve(null), 5000);
+        // Timeout après 8 secondes (plus long car proxy)
+        setTimeout(() => resolve(null), 8000);
     });
 };
 

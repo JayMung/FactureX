@@ -547,20 +547,26 @@ const FacturesCreate: React.FC = () => {
                             {item.image_url && (
                               <div className="relative w-full h-24 border rounded overflow-hidden bg-gray-100 flex items-center justify-center">
                                 <img 
-                                  src={item.image_url} 
+                                  src={`https://images.weserv.nl/?url=${encodeURIComponent(item.image_url)}&w=200&h=200&fit=contain&default=1`}
                                   alt="Preview" 
                                   className="max-w-full max-h-full object-contain"
                                   loading="lazy"
                                   style={{ display: 'block' }}
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                    const parent = target.parentElement;
-                                    if (parent && !parent.querySelector('.error-msg')) {
-                                      const errorDiv = document.createElement('div');
-                                      errorDiv.className = 'error-msg text-xs text-gray-400 text-center px-2';
-                                      errorDiv.innerHTML = '<div>❌</div><div class="mt-1">Image non disponible</div>';
-                                      parent.appendChild(errorDiv);
+                                    // Essayer l'URL originale si le proxy échoue
+                                    if (!target.dataset.fallback) {
+                                      target.dataset.fallback = 'tried';
+                                      target.src = item.image_url;
+                                    } else {
+                                      target.style.display = 'none';
+                                      const parent = target.parentElement;
+                                      if (parent && !parent.querySelector('.error-msg')) {
+                                        const errorDiv = document.createElement('div');
+                                        errorDiv.className = 'error-msg text-xs text-gray-400 text-center px-2';
+                                        errorDiv.innerHTML = '<div>❌</div><div class="mt-1">Image non disponible</div>';
+                                        parent.appendChild(errorDiv);
+                                      }
                                     }
                                   }}
                                 />

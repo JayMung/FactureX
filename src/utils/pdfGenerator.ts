@@ -56,28 +56,47 @@ const DEFAULT_COMPANY_INFO = {
     feesPercentage: 0.15 // 15% par défaut
 };
 
+// --- FONCTION POUR CHARGER IMAGE DEPUIS URL (avec gestion CORS) ---
+const loadImageFromUrl = async (url: string): Promise<string | null> => {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0);
+                    resolve(canvas.toDataURL('image/jpeg', 0.8));
+                } else {
+                    resolve(null);
+                }
+            } catch (e) {
+                console.error('Erreur conversion image:', e);
+                resolve(null);
+            }
+        };
+        
+        img.onerror = () => {
+            console.error('Erreur chargement image:', url);
+            resolve(null);
+        };
+        
+        img.src = url;
+        
+        // Timeout après 5 secondes
+        setTimeout(() => resolve(null), 5000);
+    });
+};
+
 // --- FONCTION HELPER POUR DESSINER PLACEHOLDER IMAGE ---
 const drawImagePlaceholder = (doc: jsPDF, x: number, y: number, size: number) => {
-    // Fond gris clair
+    // Fond gris clair simple
     doc.setFillColor(COLORS.background[0], COLORS.background[1], COLORS.background[2]);
-    doc.roundedRect(x, y, size, size, 1, 1, 'F');
-    
-    // Bordure fine
-    doc.setDrawColor(COLORS.border[0], COLORS.border[1], COLORS.border[2]);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(x, y, size, size, 1, 1, 'S');
-    doc.setLineWidth(0.2);
-    
-    // Icône image simulée (cadre + croix)
-    const margin = size * 0.25;
-    doc.setDrawColor(COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]);
-    doc.setLineWidth(0.4);
-    // Cadre intérieur
-    doc.rect(x + margin, y + margin, size - (margin * 2), size - (margin * 2), 'S');
-    // Croix diagonale
-    doc.line(x + margin, y + margin, x + size - margin, y + size - margin);
-    doc.line(x + size - margin, y + margin, x + margin, y + size - margin);
-    doc.setLineWidth(0.2);
+    doc.rect(x, y, size, size, 'F');
     
     // Texte "IMG" centré
     doc.setFontSize(5);
@@ -147,6 +166,18 @@ export const generateFacturePDF = async (facture: Facture) => {
     try {
         // Charger les informations depuis la DB
         const COMPANY_INFO = await loadCompanySettings();
+        
+        // Pré-charger toutes les images des items
+        const imageCache = new Map<number, string | null>();
+        if (facture.items && facture.items.length > 0) {
+            const imagePromises = facture.items.map(async (item, index) => {
+                if (item.image_url && item.image_url.startsWith('http')) {
+                    const imageData = await loadImageFromUrl(item.image_url);
+                    imageCache.set(index, imageData);
+                }
+            });
+            await Promise.all(imagePromises);
+        }
         
         const doc = new jsPDF('p', 'mm', 'a4');
         let y = MARGIN;
@@ -412,26 +443,26 @@ export const generateFacturePDF = async (facture: Facture) => {
                 },
                 didDrawCell: (data: any) => {
                     if (data.section === 'body' && data.column.index === 1) {
-                        // Récupérer l'URL depuis les données originales de l'item
+                        // Récupérer l'image pré-chargée depuis le cache
                         const rowIndex = data.row.index;
-                        const item = facture.items?.[rowIndex];
-                        const url = item?.image_url;
+                        const imageData = imageCache.get(rowIndex);
                         
                         // Placeholder image 40x40 pixels comme demandé
                         const imgSize = 14; // ~40 pixels à 72 DPI (14mm ≈ 40px)
                         const imgX = data.cell.x + (data.cell.width - imgSize) / 2;
                         const imgY = data.cell.y + (data.cell.height - imgSize) / 2;
                         
-                        if (typeof url === 'string' && url.startsWith('http')) {
+                        if (imageData) {
                             try {
-                                // Tenter de charger l'image depuis l'URL
-                                doc.addImage(url, 'JPEG', imgX, imgY, imgSize, imgSize);
+                                // Utiliser l'image pré-chargée (base64)
+                                doc.addImage(imageData, 'JPEG', imgX, imgY, imgSize, imgSize);
                             } catch (e) {
+                                console.error('Erreur ajout image au PDF:', e);
                                 // Si erreur, afficher placeholder
                                 drawImagePlaceholder(doc, imgX, imgY, imgSize);
                             }
                         } else {
-                            // Pas d'URL valide, afficher placeholder
+                            // Pas d'image chargée, afficher placeholder
                             drawImagePlaceholder(doc, imgX, imgY, imgSize);
                         }
                     }

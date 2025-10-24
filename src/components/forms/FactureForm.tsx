@@ -440,70 +440,105 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
             <CardContent>
               <div className="space-y-4">
                 {items.map((item) => (
-                  <div key={item.tempId} className="grid grid-cols-12 gap-2 items-end p-4 border rounded-lg">
-                    <div className="col-span-1">
-                      <Label className="text-xs">N°</Label>
-                      <div className="font-medium">{item.numero_ligne}</div>
-                    </div>
-                    
-                    <div className="col-span-3">
-                      <Label className="text-xs">Description</Label>
-                      <Input
-                        value={item.description}
-                        onChange={(e) => updateItem(item.tempId, 'description', e.target.value)}
-                        placeholder="Description du produit"
-                      />
-                    </div>
-
-                    <div className="col-span-1">
-                      <Label className="text-xs">Quantité</Label>
-                      <Input
-                        type="number"
-                        value={item.quantite}
-                        onChange={(e) => updateItem(item.tempId, 'quantite', parseInt(e.target.value) || 0)}
-                        min="1"
-                      />
-                    </div>
-
-                    <div className="col-span-2">
-                      <Label className="text-xs">Prix unitaire</Label>
-                      <Input
-                        type="number"
-                        value={item.prix_unitaire}
-                        onChange={(e) => updateItem(item.tempId, 'prix_unitaire', parseFloat(e.target.value) || 0)}
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-
-                    <div className="col-span-1">
-                      <Label className="text-xs">Poids ({formData.mode_livraison === 'aerien' ? 'kg' : 'cbm'})</Label>
-                      <Input
-                        type="number"
-                        value={item.poids}
-                        onChange={(e) => updateItem(item.tempId, 'poids', parseFloat(e.target.value) || 0)}
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-
-                    <div className="col-span-2">
-                      <Label className="text-xs">Montant total</Label>
-                      <div className="font-medium text-emerald-600">
-                        {formData.devise === 'USD' ? '$' : ''}{item.montant_total.toFixed(2)}{formData.devise === 'CDF' ? ' FC' : ''}
+                  <div key={item.tempId} className="grid grid-cols-12 gap-3 items-start p-4 border rounded-lg">
+                    {/* Image Preview */}
+                    <div className="col-span-12 md:col-span-2">
+                      <Label className="text-xs">Image</Label>
+                      <div className="space-y-2">
+                        <Input
+                          value={item.image_url}
+                          onChange={(e) => updateItem(item.tempId, 'image_url', e.target.value)}
+                          placeholder="URL de l'image"
+                          className="text-xs"
+                        />
+                        {item.image_url && (
+                          <div className="relative w-full h-24 bg-gray-100 rounded border overflow-hidden">
+                            <img
+                              src={item.image_url}
+                              alt="Preview"
+                              className="w-full h-full object-contain"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent && !parent.querySelector('.error-text')) {
+                                  const errorDiv = document.createElement('div');
+                                  errorDiv.className = 'error-text flex items-center justify-center h-full text-xs text-gray-400';
+                                  errorDiv.textContent = 'Image non disponible';
+                                  parent.appendChild(errorDiv);
+                                }
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    <div className="col-span-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeItem(item.tempId)}
-                        disabled={items.length === 1}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <div className="col-span-12 md:col-span-10 grid grid-cols-12 gap-2 items-end">
+                      <div className="col-span-1">
+                        <Label className="text-xs">N°</Label>
+                        <div className="font-medium text-center">{item.numero_ligne}</div>
+                      </div>
+                      
+                      <div className="col-span-3">
+                        <Label className="text-xs">Description *</Label>
+                        <Input
+                          value={item.description}
+                          onChange={(e) => updateItem(item.tempId, 'description', e.target.value)}
+                          placeholder="Description du produit"
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <Label className="text-xs">Qty *</Label>
+                        <Input
+                          type="number"
+                          value={item.quantite}
+                          onChange={(e) => updateItem(item.tempId, 'quantite', parseInt(e.target.value) || 0)}
+                          min="1"
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <Label className="text-xs">Prix unit. *</Label>
+                        <Input
+                          type="number"
+                          value={item.prix_unitaire}
+                          onChange={(e) => updateItem(item.tempId, 'prix_unitaire', parseFloat(e.target.value) || 0)}
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <Label className="text-xs">Poids ({formData.mode_livraison === 'aerien' ? 'kg' : 'cbm'})</Label>
+                        <Input
+                          type="number"
+                          value={item.poids}
+                          onChange={(e) => updateItem(item.tempId, 'poids', parseFloat(e.target.value) || 0)}
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <Label className="text-xs">Montant</Label>
+                        <div className="font-medium text-emerald-600 p-2">
+                          {formData.devise === 'USD' ? '$' : ''}{item.montant_total.toFixed(2)}{formData.devise === 'CDF' ? ' FC' : ''}
+                        </div>
+                      </div>
+
+                      <div className="col-span-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeItem(item.tempId)}
+                          disabled={items.length === 1}
+                          className="text-red-600 hover:text-red-700 mt-5"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}

@@ -538,27 +538,34 @@ const FacturesCreate: React.FC = () => {
                         {/* Image avec aperçu */}
                         <td className="p-2 align-top">
                           <div className="space-y-2">
+                            <Input
+                              value={item.image_url || ''}
+                              onChange={(e) => updateItem(item.tempId, 'image_url', e.target.value)}
+                              placeholder="https://... (URL image)"
+                              className="w-full text-xs"
+                            />
                             {item.image_url && (
-                              <div className="w-20 h-20 border rounded overflow-hidden bg-gray-50 flex items-center justify-center">
+                              <div className="relative w-full h-24 border rounded overflow-hidden bg-gray-100 flex items-center justify-center">
                                 <img 
                                   src={item.image_url} 
                                   alt="Preview" 
                                   className="max-w-full max-h-full object-contain"
-                                  referrerPolicy="no-referrer"
-                                  crossOrigin="anonymous"
+                                  loading="lazy"
+                                  style={{ display: 'block' }}
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.style.display = 'none';
+                                    const parent = target.parentElement;
+                                    if (parent && !parent.querySelector('.error-msg')) {
+                                      const errorDiv = document.createElement('div');
+                                      errorDiv.className = 'error-msg text-xs text-gray-400 text-center px-2';
+                                      errorDiv.innerHTML = '<div>❌</div><div class="mt-1">Image non disponible</div>';
+                                      parent.appendChild(errorDiv);
+                                    }
                                   }}
                                 />
                               </div>
                             )}
-                            <Input
-                              value={item.image_url || ''}
-                              onChange={(e) => updateItem(item.tempId, 'image_url', e.target.value)}
-                              placeholder="URL image"
-                              className="w-full text-xs"
-                            />
                           </div>
                         </td>
                         

@@ -392,7 +392,7 @@ export const generateFacturePDF = async (facture: Facture) => {
         // 3. TABLEAU DES ARTICLES
         // ========================================
         if (facture.items && facture.items.length > 0) {
-            const tableHeaders = ['NUM', 'IMAGE', 'QTY', 'DESCRIPTION', 'PRIX UNIT', 'POIDS/CBM', 'MONTANT'];
+            const tableHeaders = ['N°', 'IMAGE', 'QTÉ', 'DESCRIPTION', 'PRIX UNIT', 'POIDS', 'MONTANT'];
             const tableData = facture.items.map(item => [
                 item.numero_ligne,
                 item.image_url || '(img)',
@@ -432,12 +432,12 @@ export const generateFacturePDF = async (facture: Facture) => {
                     fillColor: [COLORS.backgroundLight[0], COLORS.backgroundLight[1], COLORS.backgroundLight[2]],
                 },
                 columnStyles: {
-                    0: { halign: 'center', cellWidth: 10, fontStyle: 'bold', textColor: [COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]] },
-                    1: { halign: 'center', cellWidth: 20 },
+                    0: { halign: 'center', cellWidth: 8, fontStyle: 'bold', textColor: [COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]] },
+                    1: { halign: 'center', cellWidth: 18 },
                     2: { halign: 'center', cellWidth: 10, fontStyle: 'bold' },
-                    3: { halign: 'left', cellWidth: 65, textColor: [COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]] },
-                    4: { halign: 'right', cellWidth: 25, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]] },
-                    5: { halign: 'right', cellWidth: 20, textColor: [COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]] },
+                    3: { halign: 'left', cellWidth: 70, textColor: [COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]] },
+                    4: { halign: 'right', cellWidth: 24, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]] },
+                    5: { halign: 'right', cellWidth: 15, textColor: [COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]] },
                     6: { halign: 'right', cellWidth: 25, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]] },
                 },
                 didDrawCell: (data: any) => {

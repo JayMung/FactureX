@@ -48,6 +48,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import PaymentMethodForm from '../components/forms/PaymentMethodForm';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
 import PermissionsManager from '../components/permissions/PermissionsManager';
+import { SettingsFacture } from './Settings-Facture';
 import {
   Dialog,
   DialogContent,
@@ -555,6 +556,13 @@ const SettingsWithPermissions = () => {
       icon: <FileText className="h-5 w-5" />,
       description: 'Historique des actions dans l\'application',
       adminOnly: true
+    },
+    {
+      id: 'factures',
+      label: 'Factures',
+      icon: <FileText className="h-5 w-5" />,
+      description: 'Paramètres entreprise et frais de livraison',
+      adminOnly: false
     }
   ];
 
@@ -565,7 +573,8 @@ const SettingsWithPermissions = () => {
     'payment-methods': 'payment_methods',
     'exchange-rates': 'exchange_rates',
     'transaction-fees': 'transaction_fees',
-    'activity-logs': 'activity_logs'
+    'activity-logs': 'activity_logs',
+    'factures': 'factures'
   };
 
   const filteredOptions = settingsOptions.filter(option => {
@@ -991,6 +1000,9 @@ const SettingsWithPermissions = () => {
                 </CardContent>
               </Card>
             )}
+
+            {/* Factures Settings Tab */}
+            {activeTab === 'factures' && <SettingsFacture />}
           </div>
         </div>
       </div>

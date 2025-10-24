@@ -85,21 +85,31 @@ const FacturesCreate: React.FC = () => {
           .order('nom');
         setClients(clientsData || []);
 
-        // Charger les frais de livraison
-        const { data: shippingData } = await supabase
+        // Charger les frais de livraison et conditions de vente
+        const { data: settingsData } = await supabase
           .from('settings')
-          .select('cle, valeur')
-          .eq('categorie', 'shipping');
+          .select('categorie, cle, valeur')
+          .in('categorie', ['shipping', 'facture']);
 
         const settings: any = {};
-        shippingData?.forEach(item => {
-          settings[item.cle] = parseFloat(item.valeur);
+        settingsData?.forEach(item => {
+          if (item.categorie === 'shipping') {
+            settings[item.cle] = parseFloat(item.valeur);
+          }
         });
         
         setShippingSettings({
           aerien: settings.frais_aerien_par_kg || 16,
           maritime: settings.frais_maritime_par_cbm || 450
         });
+
+        // Charger les conditions de vente par défaut (uniquement pour nouvelle facture)
+        if (!isEditMode) {
+          const conditionsData = settingsData?.find(s => s.categorie === 'facture' && s.cle === 'conditions_vente');
+          if (conditionsData) {
+            setFormData(prev => ({ ...prev, conditions_vente: conditionsData.valeur }));
+          }
+        }
 
         // Charger la facture si en mode édition
         if (isEditMode && id) {

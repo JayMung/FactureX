@@ -13,7 +13,8 @@ import {
   Tag,
   Loader2,
   Plus,
-  Trash2
+  Trash2,
+  FileText
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 
@@ -33,6 +34,9 @@ export const SettingsFacture = () => {
     frais_maritime_par_cbm: ''
   });
 
+  // État pour les conditions de vente
+  const [conditionsVente, setConditionsVente] = useState('');
+
   // États pour les catégories
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [newCategory, setNewCategory] = useState({ nom: '', code: '' });
@@ -50,15 +54,22 @@ export const SettingsFacture = () => {
       const { data } = await supabase
         .from('settings')
         .select('*')
-        .eq('categorie', 'shipping');
+        .in('categorie', ['shipping', 'facture']);
 
       if (data) {
         // Charger frais livraison
+        const shippingData = data.filter(s => s.categorie === 'shipping');
         const shipping: any = {};
-        data.forEach(item => {
+        shippingData.forEach(item => {
           shipping[item.cle] = item.valeur;
         });
         setShippingSettings(prev => ({ ...prev, ...shipping }));
+
+        // Charger conditions de vente
+        const conditionsData = data.find(s => s.categorie === 'facture' && s.cle === 'conditions_vente');
+        if (conditionsData) {
+          setConditionsVente(conditionsData.valeur);
+        }
       }
     } catch (error: any) {
       console.error('Error fetching settings:', error);
@@ -96,6 +107,26 @@ export const SettingsFacture = () => {
 
       if (error) throw error;
       showSuccess('Frais de livraison sauvegardés');
+    } catch (error: any) {
+      showError(error.message || 'Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveConditionsVente = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('settings')
+        .upsert([{
+          categorie: 'facture',
+          cle: 'conditions_vente',
+          valeur: conditionsVente || ''
+        }], { onConflict: 'categorie,cle' });
+
+      if (error) throw error;
+      showSuccess('Conditions de vente sauvegardées');
     } catch (error: any) {
       showError(error.message || 'Erreur lors de la sauvegarde');
     } finally {
@@ -193,6 +224,36 @@ export const SettingsFacture = () => {
           <Button onClick={handleSaveShippingSettings} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Sauvegarder les frais
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Conditions de vente */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <FileText className="mr-2 h-5 w-5" />
+            Conditions de vente par défaut
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label>Conditions de vente</Label>
+            <Textarea
+              value={conditionsVente}
+              onChange={(e) => setConditionsVente(e.target.value)}
+              placeholder="Ex: Paiement à la livraison, Garantie 30 jours, etc."
+              rows={6}
+              className="mt-1"
+            />
+            <p className="text-sm text-gray-500 mt-2">
+              Ces conditions seront automatiquement pré-remplies lors de la création d'une nouvelle facture.
+              Vous pourrez les modifier individuellement pour chaque facture.
+            </p>
+          </div>
+          <Button onClick={handleSaveConditionsVente} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Sauvegarder les conditions
           </Button>
         </CardContent>
       </Card>

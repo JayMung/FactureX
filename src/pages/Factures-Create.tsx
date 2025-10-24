@@ -435,52 +435,60 @@ const FacturesCreate: React.FC = () => {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="border-b bg-gray-50">
-                      <th className="text-left p-2 font-medium text-sm">N°</th>
-                      <th className="text-left p-2 font-medium text-sm min-w-[200px]">Description *</th>
-                      <th className="text-left p-2 font-medium text-sm min-w-[150px]">Image URL</th>
-                      <th className="text-left p-2 font-medium text-sm min-w-[150px]">Lien Produit</th>
-                      <th className="text-left p-2 font-medium text-sm w-[100px]">Quantité *</th>
-                      <th className="text-left p-2 font-medium text-sm w-[120px]">Prix unitaire *</th>
-                      <th className="text-left p-2 font-medium text-sm w-[100px]">Poids ({formData.mode_livraison === 'aerien' ? 'kg' : 'cbm'})</th>
-                      <th className="text-left p-2 font-medium text-sm w-[120px]">Montant total</th>
-                      <th className="text-center p-2 font-medium text-sm w-[60px]">Actions</th>
+                      <th className="text-left p-2 font-medium text-sm w-[50px]">N°</th>
+                      <th className="text-left p-2 font-medium text-sm w-[120px]">Image</th>
+                      <th className="text-left p-2 font-medium text-sm min-w-[250px]">Description *</th>
+                      <th className="text-left p-2 font-medium text-sm w-[80px]">Qty *</th>
+                      <th className="text-left p-2 font-medium text-sm w-[100px]">Prix unit. *</th>
+                      <th className="text-left p-2 font-medium text-sm w-[90px]">Poids ({formData.mode_livraison === 'aerien' ? 'kg' : 'cbm'})</th>
+                      <th className="text-left p-2 font-medium text-sm w-[110px]">Montant total</th>
+                      <th className="text-left p-2 font-medium text-sm w-[150px]">Lien Produit</th>
+                      <th className="text-center p-2 font-medium text-sm w-[80px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {items.map((item) => (
                       <tr key={item.tempId} className="border-b hover:bg-gray-50">
-                        <td className="p-2 text-center font-medium">{item.numero_ligne}</td>
-                        <td className="p-2">
-                          <Input
-                            value={item.description}
-                            onChange={(e) => updateItem(item.tempId, 'description', e.target.value)}
-                            placeholder="Description du produit"
-                            className="w-full"
-                          />
-                        </td>
-                        <td className="p-2">
-                          <div className="flex items-center gap-1">
-                            <ImageIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        <td className="p-2 text-center font-medium align-top">{item.numero_ligne}</td>
+                        
+                        {/* Image avec aperçu */}
+                        <td className="p-2 align-top">
+                          <div className="space-y-2">
+                            {item.image_url && (
+                              <div className="w-20 h-20 border rounded overflow-hidden bg-gray-50 flex items-center justify-center">
+                                <img 
+                                  src={item.image_url} 
+                                  alt="Preview" 
+                                  className="max-w-full max-h-full object-contain"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                    (e.target as HTMLImageElement).parentElement!.innerHTML = '<ImageIcon class="h-8 w-8 text-gray-300" />';
+                                  }}
+                                />
+                              </div>
+                            )}
                             <Input
                               value={item.image_url || ''}
                               onChange={(e) => updateItem(item.tempId, 'image_url', e.target.value)}
-                              placeholder="URL de l'image"
-                              className="w-full"
+                              placeholder="URL image"
+                              className="w-full text-xs"
                             />
                           </div>
                         </td>
-                        <td className="p-2">
-                          <div className="flex items-center gap-1">
-                            <LinkIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                            <Input
-                              value={item.product_url || ''}
-                              onChange={(e) => updateItem(item.tempId, 'product_url', e.target.value)}
-                              placeholder="URL du produit"
-                              className="w-full"
-                            />
-                          </div>
+                        
+                        {/* Description avec wrap */}
+                        <td className="p-2 align-top">
+                          <Textarea
+                            value={item.description}
+                            onChange={(e) => updateItem(item.tempId, 'description', e.target.value)}
+                            placeholder="Description du produit"
+                            className="w-full min-h-[80px]"
+                            rows={3}
+                          />
                         </td>
-                        <td className="p-2">
+                        
+                        {/* Quantité */}
+                        <td className="p-2 align-top">
                           <Input
                             type="number"
                             value={item.quantite}
@@ -489,7 +497,9 @@ const FacturesCreate: React.FC = () => {
                             className="w-full"
                           />
                         </td>
-                        <td className="p-2">
+                        
+                        {/* Prix unitaire */}
+                        <td className="p-2 align-top">
                           <Input
                             type="number"
                             value={item.prix_unitaire}
@@ -499,7 +509,9 @@ const FacturesCreate: React.FC = () => {
                             className="w-full"
                           />
                         </td>
-                        <td className="p-2">
+                        
+                        {/* Poids */}
+                        <td className="p-2 align-top">
                           <Input
                             type="number"
                             value={item.poids}
@@ -509,12 +521,26 @@ const FacturesCreate: React.FC = () => {
                             className="w-full"
                           />
                         </td>
-                        <td className="p-2">
+                        
+                        {/* Montant total */}
+                        <td className="p-2 align-top">
                           <div className="font-medium text-emerald-600">
                             {formatCurrency(item.montant_total)}
                           </div>
                         </td>
-                        <td className="p-2 text-center">
+                        
+                        {/* Lien Produit */}
+                        <td className="p-2 align-top">
+                          <Input
+                            value={item.product_url || ''}
+                            onChange={(e) => updateItem(item.tempId, 'product_url', e.target.value)}
+                            placeholder="URL produit"
+                            className="w-full text-xs"
+                          />
+                        </td>
+                        
+                        {/* Actions */}
+                        <td className="p-2 text-center align-top">
                           <Button
                             variant="ghost"
                             size="sm"

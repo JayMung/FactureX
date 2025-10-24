@@ -175,7 +175,7 @@ const FacturesProtected: React.FC = () => {
                     <p className="text-sm font-medium text-gray-600">Montant Total</p>
                     <p className="text-3xl font-bold text-blue-600">
                       {formatCurrency(
-                        factures.reduce((sum, f) => sum + f.total_general, 0),
+                        factures.filter(f => f.statut !== 'brouillon').reduce((sum, f) => sum + f.total_general, 0),
                         'USD'
                       )}
                     </p>

@@ -40,6 +40,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [shippingSettings, setShippingSettings] = useState({ aerien: 16, maritime: 450 });
+  const [defaultConditionsVente, setDefaultConditionsVente] = useState('');
   
   const [formData, setFormData] = useState({
     client_id: '',
@@ -91,6 +92,18 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
           aerien: settings.frais_aerien_par_kg || 16,
           maritime: settings.frais_maritime_par_cbm || 450
         });
+
+        // Charger les conditions de vente par défaut
+        const { data: conditionsData } = await supabase
+          .from('settings')
+          .select('valeur')
+          .eq('categorie', 'invoice')
+          .eq('cle', 'conditions_vente_defaut')
+          .single();
+        
+        if (conditionsData?.valeur) {
+          setDefaultConditionsVente(conditionsData.valeur);
+        }
       } catch (error) {
         console.error('Erreur lors du chargement des données:', error);
       }
@@ -100,6 +113,19 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
       fetchData();
     }
   }, [isOpen]);
+
+  // Mettre à jour les conditions de vente dynamiquement selon le mode de livraison
+  useEffect(() => {
+    if (defaultConditionsVente && !facture) {
+      // Remplacer les tags dynamiquement
+      const updatedConditions = defaultConditionsVente
+        .replace(/\[avion\]/gi, formData.mode_livraison === 'aerien' ? `${shippingSettings.aerien}$/kg` : '')
+        .replace(/\[bateau\]/gi, formData.mode_livraison === 'maritime' ? `${shippingSettings.maritime}$/cbm` : '')
+        .trim();
+      
+      setFormData(prev => ({ ...prev, conditions_vente: updatedConditions }));
+    }
+  }, [formData.mode_livraison, defaultConditionsVente, shippingSettings, facture]);
 
   // Charger les données de la facture si en mode édition
   useEffect(() => {
@@ -302,7 +328,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {facture ? 'Modifier' : 'Créer'} une {formData.type === 'devis' ? 'Devis' : 'Facture'}
+            {facture ? 'Modifier' : 'Créer'} {formData.type === 'devis' ? 'un Devis' : 'une Facture'}
           </DialogTitle>
         </DialogHeader>
 
@@ -523,12 +549,12 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
             </CardContent>
           </Card>
 
-          {/* Conditions et notes */}
+          {/* Conditions de vente */}
           <Card>
             <CardHeader>
-              <CardTitle>Conditions et notes</CardTitle>
+              <CardTitle>Conditions de vente</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               <div>
                 <Label>Conditions de vente</Label>
                 <Textarea
@@ -536,15 +562,6 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
                   onChange={(e) => setFormData(prev => ({ ...prev, conditions_vente: e.target.value }))}
                   placeholder="Conditions de vente..."
                   rows={3}
-                />
-              </div>
-              <div>
-                <Label>Notes</Label>
-                <Textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Notes additionnelles..."
-                  rows={2}
                 />
               </div>
             </CardContent>

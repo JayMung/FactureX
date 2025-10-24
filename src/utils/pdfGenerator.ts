@@ -58,26 +58,9 @@ const DEFAULT_COMPANY_INFO = {
 
 // --- FONCTION HELPER POUR DESSINER PLACEHOLDER IMAGE ---
 const drawImagePlaceholder = (doc: jsPDF, x: number, y: number, size: number) => {
-    // Fond gris clair
+    // Fond gris clair simple
     doc.setFillColor(COLORS.background[0], COLORS.background[1], COLORS.background[2]);
-    doc.roundedRect(x, y, size, size, 1, 1, 'F');
-    
-    // Bordure fine
-    doc.setDrawColor(COLORS.border[0], COLORS.border[1], COLORS.border[2]);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(x, y, size, size, 1, 1, 'S');
-    doc.setLineWidth(0.2);
-    
-    // Icône image simulée (cadre + croix)
-    const margin = size * 0.25;
-    doc.setDrawColor(COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]);
-    doc.setLineWidth(0.4);
-    // Cadre intérieur
-    doc.rect(x + margin, y + margin, size - (margin * 2), size - (margin * 2), 'S');
-    // Croix diagonale
-    doc.line(x + margin, y + margin, x + size - margin, y + size - margin);
-    doc.line(x + size - margin, y + margin, x + margin, y + size - margin);
-    doc.setLineWidth(0.2);
+    doc.rect(x, y, size, size, 'F');
     
     // Texte "IMG" centré
     doc.setFontSize(5);
@@ -169,18 +152,11 @@ export const generateFacturePDF = async (facture: Facture) => {
         
         y += 2;
         
-        // Nom de l'entreprise avec style moderne
+        // Nom de l'entreprise
         setFont('bold');
         doc.setFontSize(26);
         doc.setTextColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
         doc.text(COMPANY_INFO.name, MARGIN, y);
-        
-        // Petite ligne sous le nom
-        doc.setDrawColor(COLORS.primaryLight[0], COLORS.primaryLight[1], COLORS.primaryLight[2]);
-        doc.setLineWidth(0.8);
-        const nameWidth = doc.getTextWidth(COMPANY_INFO.name);
-        doc.line(MARGIN, y + 1.5, MARGIN + nameWidth, y + 1.5);
-        doc.setLineWidth(0.2);
         
         setFont('normal');
         doc.setFontSize(8);
@@ -206,29 +182,19 @@ export const generateFacturePDF = async (facture: Facture) => {
         y += 3;
         doc.text(`Site: ${COMPANY_INFO.website}`, MARGIN, y);
 
-        // Encadré facture côté droit avec design moderne
+        // Encadré facture côté droit
         const headerRightX = 118;
         const headerRightY = MARGIN + 2;
         const boxWidth = PAGE_WIDTH - headerRightX - MARGIN;
         const boxHeight = 32;
         
-        // Ombre légère pour effet de profondeur
-        doc.setFillColor(220, 220, 220);
-        doc.roundedRect(headerRightX + 1, headerRightY + 1, boxWidth, boxHeight, 3, 3, 'F');
-        
-        // Fond principal avec gradient simulé
+        // Fond simple
         doc.setFillColor(COLORS.backgroundLight[0], COLORS.backgroundLight[1], COLORS.backgroundLight[2]);
-        doc.roundedRect(headerRightX, headerRightY, boxWidth, boxHeight, 3, 3, 'F');
-        
-        // Bordure fine
-        doc.setDrawColor(COLORS.border[0], COLORS.border[1], COLORS.border[2]);
-        doc.setLineWidth(0.3);
-        doc.roundedRect(headerRightX, headerRightY, boxWidth, boxHeight, 3, 3, 'S');
-        doc.setLineWidth(0.2);
+        doc.rect(headerRightX, headerRightY, boxWidth, boxHeight, 'F');
 
         // Titre FACTURE avec style
         setFont('bold');
-        doc.setFontSize(24);
+        doc.setFontSize(18);
         doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);
         doc.text("FACTURE", headerRightX + boxWidth / 2, headerRightY + 12, { align: 'center' });
         
@@ -277,25 +243,15 @@ export const generateFacturePDF = async (facture: Facture) => {
         if (client) {
             const cardHeight = 28;
             
-            // Ombre pour effet de profondeur
-            doc.setFillColor(220, 220, 220);
-            doc.roundedRect(MARGIN + 0.5, y + 0.5, CONTENT_WIDTH, cardHeight, 3, 3, 'F');
-            
-            // Fond de carte avec couleur douce
+            // Fond simple
             doc.setFillColor(COLORS.primaryLightest[0], COLORS.primaryLightest[1], COLORS.primaryLightest[2]);
-            doc.roundedRect(MARGIN, y, CONTENT_WIDTH, cardHeight, 3, 3, 'F');
-            
-            // Bordure fine
-            doc.setDrawColor(COLORS.primaryLighter[0], COLORS.primaryLighter[1], COLORS.primaryLighter[2]);
-            doc.setLineWidth(0.5);
-            doc.roundedRect(MARGIN, y, CONTENT_WIDTH, cardHeight, 3, 3, 'S');
-            doc.setLineWidth(0.2);
+            doc.rect(MARGIN, y, CONTENT_WIDTH, cardHeight, 'F');
             
             y += 7;
 
             // Section Client (gauche)
             setFont('bold');
-            doc.setFontSize(9.5);
+            doc.setFontSize(7.5);
             doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
             doc.text("CLIENT(E)", MARGIN + 5, y);
             
@@ -352,7 +308,7 @@ export const generateFacturePDF = async (facture: Facture) => {
             // Section Livraison (droite)
             const deliveryX = middleX + 5;
             setFont('bold');
-            doc.setFontSize(9.5);
+            doc.setFontSize(7.5);
             doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
             doc.text("LIVRAISON", deliveryX, y);
             
@@ -484,23 +440,13 @@ export const generateFacturePDF = async (facture: Facture) => {
         const fees = facture.subtotal * feesPercentage;
         const grandTotal = facture.subtotal + fees + facture.shipping_fee;
         
-        // Carte des totaux avec ombre
+        // Carte des totaux
         const totalsCardY = y;
         const totalsCardHeight = 38;
         
-        // Ombre
-        doc.setFillColor(220, 220, 220);
-        doc.roundedRect(totalsStartX + 0.5, totalsCardY + 0.5, totalsWidth, totalsCardHeight, 3, 3, 'F');
-        
-        // Fond de carte
+        // Fond simple
         doc.setFillColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
-        doc.roundedRect(totalsStartX, totalsCardY, totalsWidth, totalsCardHeight, 3, 3, 'F');
-        
-        // Bordure
-        doc.setDrawColor(COLORS.border[0], COLORS.border[1], COLORS.border[2]);
-        doc.setLineWidth(0.3);
-        doc.roundedRect(totalsStartX, totalsCardY, totalsWidth, totalsCardHeight, 3, 3, 'S');
-        doc.setLineWidth(0.2);
+        doc.rect(totalsStartX, totalsCardY, totalsWidth, totalsCardHeight, 'F');
         
         y = totalsCardY + 7;
 

@@ -40,6 +40,9 @@ export const SettingsFacture = () => {
     maritime: ''
   });
 
+  // État pour les informations bancaires
+  const [informationsBancaires, setInformationsBancaires] = useState('');
+
   // États pour les catégories
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [newCategory, setNewCategory] = useState({ nom: '', code: '' });
@@ -68,7 +71,7 @@ export const SettingsFacture = () => {
         });
         setShippingSettings(prev => ({ ...prev, ...shipping }));
 
-        // Charger conditions de vente
+        // Charger conditions de vente et informations bancaires
         const factureData = data.filter(s => s.categorie === 'facture');
         const conditions: any = {};
         factureData.forEach(item => {
@@ -76,6 +79,8 @@ export const SettingsFacture = () => {
             conditions.aerien = item.valeur;
           } else if (item.cle === 'conditions_vente_maritime') {
             conditions.maritime = item.valeur;
+          } else if (item.cle === 'informations_bancaires') {
+            setInformationsBancaires(item.valeur);
           }
         });
         setConditionsVente(prev => ({ ...prev, ...conditions }));
@@ -145,6 +150,26 @@ export const SettingsFacture = () => {
 
       if (error) throw error;
       showSuccess('Conditions de vente sauvegardées');
+    } catch (error: any) {
+      showError(error.message || 'Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveInformationsBancaires = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('settings')
+        .upsert([{
+          categorie: 'facture',
+          cle: 'informations_bancaires',
+          valeur: informationsBancaires || ''
+        }], { onConflict: 'categorie,cle' });
+
+      if (error) throw error;
+      showSuccess('Informations bancaires sauvegardées');
     } catch (error: any) {
       showError(error.message || 'Erreur lors de la sauvegarde');
     } finally {
@@ -242,6 +267,36 @@ export const SettingsFacture = () => {
           <Button onClick={handleSaveShippingSettings} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Sauvegarder les frais
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Informations bancaires */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <FileText className="mr-2 h-5 w-5" />
+            Informations bancaires (pied de page)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label>Informations bancaires</Label>
+            <Textarea
+              value={informationsBancaires}
+              onChange={(e) => setInformationsBancaires(e.target.value)}
+              placeholder="Ex: EQUITY BCDC | 0001105023-32000099001-60 | COCCINELLE&#10;RAWBANK | 65101-00941018001-91 | COCCINELLE SARL"
+              rows={4}
+              className="mt-1 font-mono text-sm"
+            />
+            <p className="text-sm text-gray-500 mt-2">
+              Ces informations seront affichées en bas de page de la facture PDF.
+              Utilisez des retours à la ligne pour séparer les différentes banques.
+            </p>
+          </div>
+          <Button onClick={handleSaveInformationsBancaires} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Sauvegarder les informations
           </Button>
         </CardContent>
       </Card>

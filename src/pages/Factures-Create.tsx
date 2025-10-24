@@ -58,7 +58,8 @@ const FacturesCreate: React.FC = () => {
     mode_livraison: 'aerien' as 'aerien' | 'maritime',
     devise: 'USD' as 'USD' | 'CDF',
     conditions_vente: '',
-    notes: ''
+    notes: '',
+    informations_bancaires: ''
   });
 
   const [items, setItems] = useState<FactureItemForm[]>([
@@ -104,18 +105,24 @@ const FacturesCreate: React.FC = () => {
           maritime: settings.frais_maritime_par_cbm || 450
         });
 
-        // Charger les conditions de vente par défaut
+        // Charger les conditions de vente et informations bancaires par défaut
         const conditionsAerien = settingsData?.find(s => s.categorie === 'facture' && s.cle === 'conditions_vente_aerien');
         const conditionsMaritime = settingsData?.find(s => s.categorie === 'facture' && s.cle === 'conditions_vente_maritime');
+        const infosBancaires = settingsData?.find(s => s.categorie === 'facture' && s.cle === 'informations_bancaires');
         
         setConditionsDefaut({
           aerien: conditionsAerien?.valeur || '',
           maritime: conditionsMaritime?.valeur || ''
         });
         
-        // Charger les conditions selon le mode de livraison par défaut (aérien) uniquement pour nouvelle facture
-        if (!isEditMode && conditionsAerien) {
-          setFormData(prev => ({ ...prev, conditions_vente: conditionsAerien.valeur }));
+        // Charger les infos par défaut uniquement pour nouvelle facture
+        if (!isEditMode) {
+          if (conditionsAerien) {
+            setFormData(prev => ({ ...prev, conditions_vente: conditionsAerien.valeur }));
+          }
+          if (infosBancaires) {
+            setFormData(prev => ({ ...prev, informations_bancaires: infosBancaires.valeur }));
+          }
         }
 
         // Charger la facture si en mode édition
@@ -129,7 +136,8 @@ const FacturesCreate: React.FC = () => {
             mode_livraison: factureData.mode_livraison,
             devise: factureData.devise,
             conditions_vente: factureData.conditions_vente || '',
-            notes: factureData.notes || ''
+            notes: factureData.notes || '',
+            informations_bancaires: (factureData as any).informations_bancaires || ''
           });
 
           const client = clientsData?.find(c => c.id === factureData.client_id);
@@ -253,6 +261,7 @@ const FacturesCreate: React.FC = () => {
         devise: formData.devise,
         conditions_vente: formData.conditions_vente,
         notes: formData.notes,
+        informations_bancaires: formData.informations_bancaires,
         items: items.map(item => ({
           numero_ligne: item.numero_ligne,
           image_url: item.image_url,
@@ -600,7 +609,7 @@ const FacturesCreate: React.FC = () => {
           {/* Conditions et notes */}
           <Card>
             <CardHeader>
-              <CardTitle>Conditions et notes</CardTitle>
+              <CardTitle>Conditions, notes et informations bancaires</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -622,6 +631,19 @@ const FacturesCreate: React.FC = () => {
                   rows={2}
                   className="mt-1"
                 />
+              </div>
+              <div>
+                <Label>Informations bancaires (pied de page)</Label>
+                <Textarea
+                  value={formData.informations_bancaires}
+                  onChange={(e) => setFormData(prev => ({ ...prev, informations_bancaires: e.target.value }))}
+                  placeholder="Ex: EQUITY BCDC | 0001105023-32000099001-60 | COCCINELLE"
+                  rows={3}
+                  className="mt-1 font-mono text-sm"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Ces informations seront affichées en bas de la facture PDF
+                </p>
               </div>
             </CardContent>
           </Card>

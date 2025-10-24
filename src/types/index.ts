@@ -298,6 +298,7 @@ export interface Facture {
   total_general: number;
   conditions_vente?: string;
   notes?: string;
+  informations_bancaires?: string;
   created_by?: string;
   created_at: string;
   updated_at?: string;
@@ -327,6 +328,7 @@ export interface CreateFactureData {
   devise: 'USD' | 'CDF';
   conditions_vente?: string;
   notes?: string;
+  informations_bancaires?: string;
   items: Omit<FactureItem, 'id' | 'facture_id' | 'created_at'>[];
 }
 
@@ -337,6 +339,7 @@ export interface UpdateFactureData {
   statut?: 'brouillon' | 'en_attente' | 'validee' | 'annulee';
   conditions_vente?: string;
   notes?: string;
+  informations_bancaires?: string;
   items?: Omit<FactureItem, 'id' | 'facture_id' | 'created_at'>[];
 }
 

@@ -10,6 +10,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { CalendarIcon } from 'lucide-react';
 import { 
   Plus, 
   Trash2, 
@@ -57,6 +62,8 @@ const FacturesCreate: React.FC = () => {
     type: 'devis' as 'devis' | 'facture',
     mode_livraison: 'aerien' as 'aerien' | 'maritime',
     devise: 'USD' as 'USD' | 'CDF',
+    date_emission: new Date().toISOString().split('T')[0],
+    statut: 'brouillon' as 'brouillon' | 'en_attente' | 'validee' | 'annulee',
     conditions_vente: '',
     notes: '',
     informations_bancaires: ''
@@ -138,6 +145,8 @@ const FacturesCreate: React.FC = () => {
             type: factureData.type,
             mode_livraison: factureData.mode_livraison,
             devise: factureData.devise,
+            date_emission: factureData.date_emission,
+            statut: factureData.statut,
             conditions_vente: factureData.conditions_vente || '',
             notes: factureData.notes || '',
             informations_bancaires: (factureData as any).informations_bancaires || ''
@@ -259,11 +268,13 @@ const FacturesCreate: React.FC = () => {
 
     setLoading(true);
     try {
-      const factureData: CreateFactureData = {
+      const factureData: any = {
         client_id: formData.client_id,
         type: formData.type,
         mode_livraison: formData.mode_livraison,
         devise: formData.devise,
+        date_emission: formData.date_emission,
+        statut: formData.statut,
         conditions_vente: formData.conditions_vente,
         notes: formData.notes,
         informations_bancaires: formData.informations_bancaires,
@@ -329,10 +340,22 @@ const FacturesCreate: React.FC = () => {
         <div className="space-y-6 animate-in fade-in duration-300">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <Button variant="ghost" onClick={() => navigate('/factures')}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Retour aux factures
-            </Button>
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" onClick={() => navigate('/factures')}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Retour aux factures
+              </Button>
+              {isEditMode && currentFacture && (
+                <div className="text-lg font-semibold text-emerald-600">
+                  {currentFacture.facture_number}
+                </div>
+              )}
+              {!isEditMode && (
+                <div className="text-sm text-gray-500">
+                  Le numéro sera généré automatiquement
+                </div>
+              )}
+            </div>
             <div className="space-x-2">
               {isEditMode && currentFacture && (
                 <Button variant="outline" onClick={handleGeneratePDF}>
@@ -356,7 +379,8 @@ const FacturesCreate: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Première ligne : 3 colonnes */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <Label>Type</Label>
                   <Select value={formData.type} onValueChange={(value: 'devis' | 'facture') => 
@@ -371,6 +395,52 @@ const FacturesCreate: React.FC = () => {
                   </Select>
                 </div>
 
+                <div>
+                  <Label>Date d'émission *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formData.date_emission ? format(new Date(formData.date_emission), 'PPP', { locale: fr }) : 'Sélectionner une date'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formData.date_emission ? new Date(formData.date_emission) : undefined}
+                        onSelect={(date) => setFormData(prev => ({ 
+                          ...prev, 
+                          date_emission: date ? format(date, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0]
+                        }))}
+                        locale={fr}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div>
+                  <Label>Statut</Label>
+                  <Select value={formData.statut} onValueChange={(value: 'brouillon' | 'en_attente' | 'validee' | 'annulee') => 
+                    setFormData(prev => ({ ...prev, statut: value }))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="brouillon">📝 Brouillon</SelectItem>
+                      <SelectItem value="en_attente">⏳ En attente</SelectItem>
+                      <SelectItem value="validee">✅ Validée</SelectItem>
+                      <SelectItem value="annulee">❌ Annulée</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Deuxième ligne : 3 colonnes */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <Label>Client *</Label>
                   <Select value={formData.client_id} onValueChange={handleClientChange}>

@@ -326,6 +326,8 @@ export interface CreateFactureData {
   type: 'devis' | 'facture';
   mode_livraison: 'aerien' | 'maritime';
   devise: 'USD' | 'CDF';
+  date_emission: string;
+  statut?: 'brouillon' | 'en_attente' | 'validee' | 'annulee';
   conditions_vente?: string;
   notes?: string;
   informations_bancaires?: string;
@@ -336,6 +338,7 @@ export interface UpdateFactureData {
   client_id?: string;
   mode_livraison?: 'aerien' | 'maritime';
   devise?: 'USD' | 'CDF';
+  date_emission?: string;
   statut?: 'brouillon' | 'en_attente' | 'validee' | 'annulee';
   conditions_vente?: string;
   notes?: string;

@@ -107,7 +107,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
         .from('factures')
         .insert([{
           type: data.type,
-          statut: 'brouillon',
+          statut: data.statut || 'brouillon',
           client_id: data.client_id,
           mode_livraison: data.mode_livraison,
           devise: data.devise,
@@ -118,8 +118,9 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
           total_general: totalGeneral,
           conditions_vente: data.conditions_vente,
           notes: data.notes,
+          informations_bancaires: data.informations_bancaires,
           created_by: user.id,
-          date_emission: new Date().toISOString()
+          date_emission: data.date_emission
         }])
         .select()
         .single();
@@ -163,9 +164,11 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       if (data.client_id) updateData.client_id = data.client_id;
       if (data.mode_livraison) updateData.mode_livraison = data.mode_livraison;
       if (data.devise) updateData.devise = data.devise;
+      if (data.date_emission) updateData.date_emission = data.date_emission;
       if (data.statut) updateData.statut = data.statut;
       if (data.conditions_vente !== undefined) updateData.conditions_vente = data.conditions_vente;
       if (data.notes !== undefined) updateData.notes = data.notes;
+      if (data.informations_bancaires !== undefined) updateData.informations_bancaires = data.informations_bancaires;
 
       // Si on met à jour les items, recalculer les totaux
       if (data.items) {

@@ -58,9 +58,26 @@ const DEFAULT_COMPANY_INFO = {
 
 // --- FONCTION HELPER POUR DESSINER PLACEHOLDER IMAGE ---
 const drawImagePlaceholder = (doc: jsPDF, x: number, y: number, size: number) => {
-    // Fond gris clair simple
+    // Fond gris clair
     doc.setFillColor(COLORS.background[0], COLORS.background[1], COLORS.background[2]);
-    doc.rect(x, y, size, size, 'F');
+    doc.roundedRect(x, y, size, size, 1, 1, 'F');
+    
+    // Bordure fine
+    doc.setDrawColor(COLORS.border[0], COLORS.border[1], COLORS.border[2]);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(x, y, size, size, 1, 1, 'S');
+    doc.setLineWidth(0.2);
+    
+    // Icône image simulée (cadre + croix)
+    const margin = size * 0.25;
+    doc.setDrawColor(COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]);
+    doc.setLineWidth(0.4);
+    // Cadre intérieur
+    doc.rect(x + margin, y + margin, size - (margin * 2), size - (margin * 2), 'S');
+    // Croix diagonale
+    doc.line(x + margin, y + margin, x + size - margin, y + size - margin);
+    doc.line(x + size - margin, y + margin, x + margin, y + size - margin);
+    doc.setLineWidth(0.2);
     
     // Texte "IMG" centré
     doc.setFontSize(5);
@@ -152,11 +169,18 @@ export const generateFacturePDF = async (facture: Facture) => {
         
         y += 2;
         
-        // Nom de l'entreprise
+        // Nom de l'entreprise avec style moderne
         setFont('bold');
-        doc.setFontSize(26);
+        doc.setFontSize(20);
         doc.setTextColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
         doc.text(COMPANY_INFO.name, MARGIN, y);
+        
+        // Petite ligne sous le nom
+        doc.setDrawColor(COLORS.primaryLight[0], COLORS.primaryLight[1], COLORS.primaryLight[2]);
+        doc.setLineWidth(0.8);
+        const nameWidth = doc.getTextWidth(COMPANY_INFO.name);
+        doc.line(MARGIN, y + 1.5, MARGIN + nameWidth, y + 1.5);
+        doc.setLineWidth(0.2);
         
         setFont('normal');
         doc.setFontSize(8);
@@ -182,7 +206,7 @@ export const generateFacturePDF = async (facture: Facture) => {
         y += 3;
         doc.text(`Site: ${COMPANY_INFO.website}`, MARGIN, y);
 
-        // Encadré facture côté droit
+        // Encadré facture côté droit - Design simple
         const headerRightX = 118;
         const headerRightY = MARGIN + 2;
         const boxWidth = PAGE_WIDTH - headerRightX - MARGIN;
@@ -251,20 +275,14 @@ export const generateFacturePDF = async (facture: Facture) => {
 
             // Section Client (gauche)
             setFont('bold');
-            doc.setFontSize(7.5);
+            doc.setFontSize(9);
             doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
             doc.text("CLIENT(E)", MARGIN + 5, y);
-            
-            // Petite barre sous le titre
-            doc.setDrawColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
-            doc.setLineWidth(1.2);
-            doc.line(MARGIN + 5, y + 0.8, MARGIN + 23, y + 0.8);
-            doc.setLineWidth(0.2);
 
             setFont('normal');
-            doc.setFontSize(8.5);
+            doc.setFontSize(8);
             doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
-            y += 5;
+            y += 4.5;
             
             // Icônes simulées avec des puces
             doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
@@ -308,18 +326,13 @@ export const generateFacturePDF = async (facture: Facture) => {
             // Section Livraison (droite)
             const deliveryX = middleX + 5;
             setFont('bold');
-            doc.setFontSize(7.5);
+            doc.setFontSize(9);
             doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
             doc.text("LIVRAISON", deliveryX, y);
-            
-            doc.setDrawColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
-            doc.setLineWidth(1.2);
-            doc.line(deliveryX, y + 0.8, deliveryX + 23, y + 0.8);
-            doc.setLineWidth(0.2);
 
             setFont('normal');
-            doc.setFontSize(8.5);
-            y += 5;
+            doc.setFontSize(8);
+            y += 4.5;
             
             doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
             doc.circle(deliveryX + 1, y - 1, 0.8, 'F');
@@ -374,10 +387,10 @@ export const generateFacturePDF = async (facture: Facture) => {
                     fillColor: COLORS.primary,
                     textColor: COLORS.white,
                     fontStyle: 'bold',
-                    fontSize: 7.5, // Réduit de 8 à 7.5
+                    fontSize: 8,
                     halign: 'center',
                     valign: 'middle',
-                    cellPadding: 3.5,
+                    cellPadding: 3,
                     lineWidth: 0,
                 },
                 bodyStyles: {
@@ -392,10 +405,10 @@ export const generateFacturePDF = async (facture: Facture) => {
                     0: { halign: 'center', cellWidth: 11, fontStyle: 'bold', textColor: [COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]], valign: 'middle' },
                     1: { halign: 'center', cellWidth: 20, valign: 'middle' },
                     2: { halign: 'center', cellWidth: 13, fontStyle: 'bold', valign: 'middle' },
-                    3: { halign: 'left', cellWidth: 63, textColor: [COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]], valign: 'middle' },
-                    4: { halign: 'right', cellWidth: 28, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]], valign: 'middle' },
-                    5: { halign: 'right', cellWidth: 18, textColor: [COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]], valign: 'middle' },
-                    6: { halign: 'right', cellWidth: 27, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]], valign: 'middle' },
+                    3: { halign: 'center', cellWidth: 63, textColor: [COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]], valign: 'middle' },
+                    4: { halign: 'center', cellWidth: 28, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]], valign: 'middle' },
+                    5: { halign: 'center', cellWidth: 18, textColor: [COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]], valign: 'middle' },
+                    6: { halign: 'center', cellWidth: 27, fontStyle: 'bold', textColor: [COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]], valign: 'middle' },
                 },
                 didDrawCell: (data: any) => {
                     if (data.section === 'body' && data.column.index === 1) {
@@ -440,7 +453,7 @@ export const generateFacturePDF = async (facture: Facture) => {
         const fees = facture.subtotal * feesPercentage;
         const grandTotal = facture.subtotal + fees + facture.shipping_fee;
         
-        // Carte des totaux
+        // Carte des totaux - Design simple
         const totalsCardY = y;
         const totalsCardHeight = 38;
         
@@ -452,11 +465,11 @@ export const generateFacturePDF = async (facture: Facture) => {
 
         // Ligne 1: Sous-total
         setFont('normal');
-        doc.setFontSize(8.5);
+        doc.setFontSize(9);
         doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
         doc.text("SOUS-TOTAL", totalsStartX + 4, y);
         setFont('bold');
-        doc.setFontSize(9);
+        doc.setFontSize(10);
         doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);
         doc.text(formatCurrency(facture.subtotal, facture.devise), valueX, y, { align: 'right' });
         y += 6;
@@ -468,12 +481,12 @@ export const generateFacturePDF = async (facture: Facture) => {
 
         // Ligne 2: Frais (avec pourcentage dynamique)
         setFont('normal');
-        doc.setFontSize(8.5);
+        doc.setFontSize(9);
         doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
         const feesPercentageText = `Frais (${Math.round(feesPercentage * 100)}% de services & transfert)`;
         doc.text(feesPercentageText, totalsStartX + 4, y);
         setFont('bold');
-        doc.setFontSize(9);
+        doc.setFontSize(10);
         doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);
         doc.text(formatCurrency(fees, facture.devise), valueX, y, { align: 'right' });
         y += 6;
@@ -481,11 +494,11 @@ export const generateFacturePDF = async (facture: Facture) => {
 
         // Ligne 3: Transport & Douane
         setFont('normal');
-        doc.setFontSize(8.5);
+        doc.setFontSize(9);
         doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
         doc.text("TRANSPORT & DOUANE", totalsStartX + 4, y);
         setFont('bold');
-        doc.setFontSize(9);
+        doc.setFontSize(10);
         doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);
         doc.text(formatCurrency(facture.shipping_fee, facture.devise), valueX, y, { align: 'right' });
         y += 8;
@@ -493,9 +506,9 @@ export const generateFacturePDF = async (facture: Facture) => {
         // Total général avec fond vert
         const totalBoxHeight = 12;
         
-        // Fond avec dégradé simulé (vert clair)
+        // Fond simple (vert clair)
         doc.setFillColor(COLORS.primaryLighter[0], COLORS.primaryLighter[1], COLORS.primaryLighter[2]);
-        doc.roundedRect(totalsStartX + 2, y - 3, totalsWidth - 4, totalBoxHeight, 2, 2, 'F');
+        doc.rect(totalsStartX + 2, y - 3, totalsWidth - 4, totalBoxHeight, 'F');
         
         // Ligne supérieure avec couleur primaire
         doc.setDrawColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
@@ -504,11 +517,11 @@ export const generateFacturePDF = async (facture: Facture) => {
         doc.setLineWidth(0.2);
         
         setFont('bold');
-        doc.setFontSize(11);
+        doc.setFontSize(10);
         doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);
         doc.text("TOTAL GÉNÉRAL", totalsStartX + 6, y + 4);
         
-        doc.setFontSize(13);
+        doc.setFontSize(12);
         doc.setTextColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
         doc.text(formatCurrency(grandTotal, facture.devise), valueX - 2, y + 4, { align: 'right' });
 
@@ -527,7 +540,7 @@ export const generateFacturePDF = async (facture: Facture) => {
 
         // Section conditions avec icônes simulées
         setFont('bold');
-        doc.setFontSize(7.5);
+        doc.setFontSize(8);
         doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
         
         // Puce pour Conditions
@@ -536,7 +549,7 @@ export const generateFacturePDF = async (facture: Facture) => {
         doc.text("Conditions:", MARGIN + 3, y);
         
         setFont('normal');
-        doc.setFontSize(7);
+        doc.setFontSize(7.5);
         doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
         const conditionsText = doc.splitTextToSize(COMPANY_INFO.feesDescription, CONTENT_WIDTH - 23);
         doc.text(conditionsText, MARGIN + 20, y);
@@ -546,12 +559,12 @@ export const generateFacturePDF = async (facture: Facture) => {
         doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
         doc.circle(MARGIN + 1, y - 1, 0.7, 'F');
         setFont('bold');
-        doc.setFontSize(7.5);
+        doc.setFontSize(8);
         doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
         doc.text("Délais de livraison:", MARGIN + 3, y);
         
         setFont('normal');
-        doc.setFontSize(7);
+        doc.setFontSize(7.5);
         doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
         doc.text(COMPANY_INFO.deliveryTime, MARGIN + 32, y);
         y += 5;
@@ -560,12 +573,12 @@ export const generateFacturePDF = async (facture: Facture) => {
         doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
         doc.circle(MARGIN + 1, y - 1, 0.7, 'F');
         setFont('bold');
-        doc.setFontSize(7.5);
+        doc.setFontSize(8);
         doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
         doc.text("Paiement par Mobile Money:", MARGIN + 3, y);
         
         setFont('normal');
-        doc.setFontSize(7);
+        doc.setFontSize(7.5);
         doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
         doc.text(COMPANY_INFO.paymentMethods, MARGIN + 42, y);
         y += 8;
@@ -580,16 +593,21 @@ export const generateFacturePDF = async (facture: Facture) => {
         doc.setLineWidth(0.2);
         y += 6;
 
+        // ========================================
+        // FOOTER EN BAS DE PAGE (position fixe)
+        // ========================================
+        const footerStartY = 258; // Position fixe pour footer
+        
         // Section informations bancaires avec encadré
         setFont('bold');
-        doc.setFontSize(8.5);
+        doc.setFontSize(9);
         doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
-        doc.text("INFORMATIONS BANCAIRES ET LÉGALES:", PAGE_WIDTH / 2, y, { align: 'center' });
-        y += 6;
+        doc.text("INFORMATIONS BANCAIRES ET LÉGALES:", PAGE_WIDTH / 2, footerStartY, { align: 'center' });
 
         // Informations bancaires avec style moderne
+        let footerY = footerStartY + 5;
         setFont('normal');
-        doc.setFontSize(7.5);
+        doc.setFontSize(8);
         COMPANY_INFO.banks.forEach(bank => {
             const fullText = `${bank.name} ${bank.details}`;
             const totalWidth = doc.getTextWidth(fullText);
@@ -597,21 +615,21 @@ export const generateFacturePDF = async (facture: Facture) => {
             
             setFont('bold');
             doc.setTextColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
-            doc.text(bank.name, startX, y);
+            doc.text(bank.name, startX, footerY);
             
             setFont('normal');
             doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
             const nameWidth = doc.getTextWidth(bank.name);
-            doc.text(bank.details, startX + nameWidth, y);
-            y += 4;
+            doc.text(bank.details, startX + nameWidth, footerY);
+            footerY += 4;
         });
-        y += 2;
+        footerY += 2;
 
-        // Informations légales en bas
-        doc.setFontSize(6.5);
-        doc.setTextColor(COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]);
+        // Informations légales en bas (plus visibles)
+        doc.setFontSize(7.5);
+        doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
         const legalInfo = `RCCM: ${COMPANY_INFO.rccm} | ID.NAT: ${COMPANY_INFO.idnat} | IMPOT: ${COMPANY_INFO.impot}`;
-        doc.text(legalInfo, PAGE_WIDTH / 2, y, { align: 'center' });
+        doc.text(legalInfo, PAGE_WIDTH / 2, footerY, { align: 'center' });
         
         // Barre de couleur en bas de page (miroir du haut)
         doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);

@@ -8,14 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { 
-  Building2,
   Plane,
   Ship,
   Tag,
-  Upload,
   Loader2,
   Plus,
-  Edit,
   Trash2
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
@@ -29,22 +26,6 @@ interface ProductCategory {
 export const SettingsFacture = () => {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const signatureInputRef = useRef<HTMLInputElement>(null);
-
-  // États pour les paramètres entreprise
-  const [companySettings, setCompanySettings] = useState({
-    nom_entreprise: '',
-    logo_url: '',
-    rccm: '',
-    idnat: '',
-    nif: '',
-    email_entreprise: '',
-    telephone_entreprise: '',
-    adresse_entreprise: '',
-    signature_url: ''
-  });
 
   // États pour les frais de livraison
   const [shippingSettings, setShippingSettings] = useState({
@@ -69,21 +50,12 @@ export const SettingsFacture = () => {
       const { data } = await supabase
         .from('settings')
         .select('*')
-        .in('categorie', ['company', 'shipping']);
+        .eq('categorie', 'shipping');
 
       if (data) {
-        // Charger paramètres entreprise
-        const companyData = data.filter(s => s.categorie === 'company');
-        const company: any = {};
-        companyData.forEach(item => {
-          company[item.cle] = item.valeur;
-        });
-        setCompanySettings(prev => ({ ...prev, ...company }));
-
         // Charger frais livraison
-        const shippingData = data.filter(s => s.categorie === 'shipping');
         const shipping: any = {};
-        shippingData.forEach(item => {
+        data.forEach(item => {
           shipping[item.cle] = item.valeur;
         });
         setShippingSettings(prev => ({ ...prev, ...shipping }));
@@ -109,28 +81,6 @@ export const SettingsFacture = () => {
     }
   };
 
-  const handleSaveCompanySettings = async () => {
-    setSaving(true);
-    try {
-      const updates = Object.entries(companySettings).map(([cle, valeur]) => ({
-        categorie: 'company',
-        cle,
-        valeur: valeur || ''
-      }));
-
-      const { error } = await supabase
-        .from('settings')
-        .upsert(updates, { onConflict: 'categorie,cle' });
-
-      if (error) throw error;
-      showSuccess('Informations entreprise sauvegardées');
-    } catch (error: any) {
-      showError(error.message || 'Erreur lors de la sauvegarde');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleSaveShippingSettings = async () => {
     setSaving(true);
     try {
@@ -150,51 +100,6 @@ export const SettingsFacture = () => {
       showError(error.message || 'Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleImageUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-    type: 'logo' | 'signature'
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${type}_${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('company')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('company')
-        .getPublicUrl(fileName);
-
-      const settingKey = type === 'logo' ? 'logo_url' : 'signature_url';
-      
-      setCompanySettings(prev => ({ ...prev, [settingKey]: publicUrl }));
-
-      const { error } = await supabase
-        .from('settings')
-        .upsert([{
-          categorie: 'company',
-          cle: settingKey,
-          valeur: publicUrl
-        }], { onConflict: 'categorie,cle' });
-
-      if (error) throw error;
-
-      showSuccess(`${type === 'logo' ? 'Logo' : 'Signature'} uploadé avec succès`);
-    } catch (error: any) {
-      console.error(`Error uploading ${type}:`, error);
-      showError(error.message || 'Erreur lors du téléchargement');
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -251,133 +156,6 @@ export const SettingsFacture = () => {
 
   return (
     <div className="space-y-6">
-      {/* Informations Entreprise */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Building2 className="mr-2 h-5 w-5" />
-            Informations Entreprise
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Nom de l'entreprise</Label>
-              <Input
-                value={companySettings.nom_entreprise}
-                onChange={(e) => setCompanySettings(prev => ({ ...prev, nom_entreprise: e.target.value }))}
-                placeholder="CoxiPay"
-              />
-            </div>
-            <div>
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={companySettings.email_entreprise}
-                onChange={(e) => setCompanySettings(prev => ({ ...prev, email_entreprise: e.target.value }))}
-                placeholder="contact@coxipay.com"
-              />
-            </div>
-            <div>
-              <Label>Téléphone</Label>
-              <Input
-                value={companySettings.telephone_entreprise}
-                onChange={(e) => setCompanySettings(prev => ({ ...prev, telephone_entreprise: e.target.value }))}
-                placeholder="+243 XXX XXX XXX"
-              />
-            </div>
-            <div>
-              <Label>RCCM</Label>
-              <Input
-                value={companySettings.rccm}
-                onChange={(e) => setCompanySettings(prev => ({ ...prev, rccm: e.target.value }))}
-                placeholder="CD/XXX/RCCM/XX-X-XXXXX"
-              />
-            </div>
-            <div>
-              <Label>IDNAT</Label>
-              <Input
-                value={companySettings.idnat}
-                onChange={(e) => setCompanySettings(prev => ({ ...prev, idnat: e.target.value }))}
-                placeholder="01-XXX-XXXXXXX"
-              />
-            </div>
-            <div>
-              <Label>NIF</Label>
-              <Input
-                value={companySettings.nif}
-                onChange={(e) => setCompanySettings(prev => ({ ...prev, nif: e.target.value }))}
-                placeholder="A XXXXXXXXX X"
-              />
-            </div>
-          </div>
-          <div>
-            <Label>Adresse</Label>
-            <Textarea
-              value={companySettings.adresse_entreprise}
-              onChange={(e) => setCompanySettings(prev => ({ ...prev, adresse_entreprise: e.target.value }))}
-              placeholder="Adresse complète de l'entreprise"
-              rows={2}
-            />
-          </div>
-
-          {/* Logo */}
-          <div>
-            <Label>Logo de l'entreprise</Label>
-            <div className="flex items-center space-x-4 mt-2">
-              {companySettings.logo_url && (
-                <img src={companySettings.logo_url} alt="Logo" className="h-16 w-16 object-contain border rounded" />
-              )}
-              <input
-                ref={logoInputRef}
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleImageUpload(e, 'logo')}
-                className="hidden"
-              />
-              <Button
-                variant="outline"
-                onClick={() => logoInputRef.current?.click()}
-                disabled={uploading}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                {uploading ? 'Upload...' : 'Choisir logo'}
-              </Button>
-            </div>
-          </div>
-
-          {/* Signature */}
-          <div>
-            <Label>Signature/Stamp (PNG sans fond)</Label>
-            <div className="flex items-center space-x-4 mt-2">
-              {companySettings.signature_url && (
-                <img src={companySettings.signature_url} alt="Signature" className="h-16 w-32 object-contain border rounded" />
-              )}
-              <input
-                ref={signatureInputRef}
-                type="file"
-                accept="image/png"
-                onChange={(e) => handleImageUpload(e, 'signature')}
-                className="hidden"
-              />
-              <Button
-                variant="outline"
-                onClick={() => signatureInputRef.current?.click()}
-                disabled={uploading}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                {uploading ? 'Upload...' : 'Choisir signature'}
-              </Button>
-            </div>
-          </div>
-
-          <Button onClick={handleSaveCompanySettings} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Sauvegarder les informations
-          </Button>
-        </CardContent>
-      </Card>
-
       {/* Frais de Livraison */}
       <Card>
         <CardHeader>

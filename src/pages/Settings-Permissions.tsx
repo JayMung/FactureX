@@ -23,7 +23,8 @@ import {
   UserX,
   Mail,
   Phone,
-  Key
+  Key,
+  Building2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -49,6 +50,7 @@ import PaymentMethodForm from '../components/forms/PaymentMethodForm';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
 import PermissionsManager from '../components/permissions/PermissionsManager';
 import { SettingsFacture } from './Settings-Facture';
+import { CompanySettings } from '../components/settings/CompanySettings';
 import {
   Dialog,
   DialogContent,
@@ -523,6 +525,13 @@ const SettingsWithPermissions = () => {
       description: 'Informations personnelles et photo de profil'
     },
     {
+      id: 'company',
+      label: 'Entreprise',
+      icon: <Building2 className="h-5 w-5" />,
+      description: 'Informations entreprise et logo',
+      adminOnly: false
+    },
+    {
       id: 'users',
       label: 'Utilisateurs',
       icon: <Users className="h-5 w-5" />,
@@ -561,7 +570,7 @@ const SettingsWithPermissions = () => {
       id: 'factures',
       label: 'Factures',
       icon: <FileText className="h-5 w-5" />,
-      description: 'Paramètres entreprise et frais de livraison',
+      description: 'Frais de livraison et catégories produits',
       adminOnly: false
     }
   ];
@@ -569,6 +578,7 @@ const SettingsWithPermissions = () => {
   // Mapper les IDs des sections aux modules de permissions
   const sectionToModuleMap: { [key: string]: string } = {
     'profile': 'profile',
+    'company': 'settings',
     'users': 'users',
     'payment-methods': 'payment_methods',
     'exchange-rates': 'exchange_rates',
@@ -723,6 +733,9 @@ const SettingsWithPermissions = () => {
                 </CardContent>
               </Card>
             )}
+
+            {/* Company Tab */}
+            {activeTab === 'company' && <CompanySettings />}
 
             {/* Profile Tab */}
             {activeTab === 'profile' && (

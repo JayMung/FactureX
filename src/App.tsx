@@ -10,6 +10,7 @@ import IndexProtected from "./pages/Index-Protected";
 import ClientsProtected from "./pages/Clients-Protected";
 import TransactionsProtected from "./pages/Transactions-Protected";
 import FacturesProtected from "./pages/Factures-Protected";
+import FacturesCreate from "./pages/Factures-Create";
 import SettingsWithPermissions from "./pages/Settings-Permissions";
 import ActivityLogs from "./pages/ActivityLogs";
 import Login from "./pages/Login";
@@ -47,6 +48,16 @@ const App = () => (
               <Route path="/factures" element={
                 <ProtectedRouteEnhanced>
                   <FacturesProtected />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/factures/new" element={
+                <ProtectedRouteEnhanced>
+                  <FacturesCreate />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/factures/edit/:id" element={
+                <ProtectedRouteEnhanced>
+                  <FacturesCreate />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/settings" element={

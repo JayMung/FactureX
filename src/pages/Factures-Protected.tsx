@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import { useFactures } from '../hooks/useFactures';
-import FactureForm from '../components/forms/FactureForm';
 import FactureDetailsModal from '../components/modals/FactureDetailsModal';
 import type { Facture } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
@@ -42,10 +42,9 @@ const FacturesProtected: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [statutFilter, setStatutFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedFacture, setSelectedFacture] = useState<Facture | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [factureToView, setFactureToView] = useState<Facture | null>(null);
+  const navigate = useNavigate();
 
   const {
     factures,
@@ -116,17 +115,11 @@ const FacturesProtected: React.FC = () => {
   };
 
   const handleEdit = (facture: Facture) => {
-    setSelectedFacture(facture);
-    setIsFormOpen(true);
+    navigate(`/factures/edit/${facture.id}`);
   };
 
   const handleAddNew = () => {
-    setSelectedFacture(null);
-    setIsFormOpen(true);
-  };
-
-  const handleFormSuccess = () => {
-    refetch();
+    navigate('/factures/new');
   };
 
   if (error) {
@@ -398,14 +391,6 @@ const FacturesProtected: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-
-          {/* Formulaire de facture */}
-          <FactureForm
-            isOpen={isFormOpen}
-            onClose={() => setIsFormOpen(false)}
-            onSuccess={handleFormSuccess}
-            facture={selectedFacture}
-          />
 
           {/* Modal de détails */}
           {factureToView && (

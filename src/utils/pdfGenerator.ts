@@ -205,8 +205,8 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         const doc = new jsPDF('p', 'mm', 'a4');
         let y = MARGIN;
 
-        // Utiliser Times New Roman pour un look plus professionnel
-        const setFont = (style: 'normal' | 'bold' = 'normal') => doc.setFont('times', style);
+        // Utiliser Helvetica pour un look plus moderne
+        const setFont = (style: 'normal' | 'bold' = 'normal') => doc.setFont('helvetica', style);
         const formatCurrency = (amount: number, currency: string) => {
             const options: Intl.NumberFormatOptions = { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 };
             const formatted = new Intl.NumberFormat('en-US', options).format(amount);
@@ -217,9 +217,14 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         // 1. EN-TÊTE MODERNE
         // ========================================
         
-        // Barre de couleur en haut (accent moderne)
+        // Barre de couleur en haut avec dégradé simulé (accent moderne)
+        // Dégradé simulé avec 3 bandes de couleurs légèrement différentes
+        doc.setFillColor(COLORS.primaryDark[0], COLORS.primaryDark[1], COLORS.primaryDark[2]);
+        doc.rect(0, 0, PAGE_WIDTH, 1.5, 'F');
         doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
-        doc.rect(0, 0, PAGE_WIDTH, 4, 'F');
+        doc.rect(0, 1.5, PAGE_WIDTH, 1.5, 'F');
+        doc.setFillColor(COLORS.primaryLight[0], COLORS.primaryLight[1], COLORS.primaryLight[2]);
+        doc.rect(0, 3, PAGE_WIDTH, 1, 'F');
         
         y += 2;
         
@@ -426,6 +431,11 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
                 formatCurrency(item.montant_total, facture.devise)
             ]);
 
+            // Ajouter une ombre subtile au tableau (simulée avec un rectangle gris)
+            const tableStartY = y;
+            doc.setFillColor(220, 220, 220); // Gris clair pour l'ombre
+            doc.rect(MARGIN + 1, tableStartY + 1, CONTENT_WIDTH, 2, 'F'); // Ombre en bas
+            
             autoTable(doc, {
                 startY: y,
                 head: [tableHeaders],
@@ -433,7 +443,7 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
                 theme: 'grid',
                 styles: {
                     fontSize: 8,
-                    cellPadding: 3,
+                    cellPadding: 4, // Plus d'espacement
                     lineColor: [COLORS.border[0], COLORS.border[1], COLORS.border[2]],
                     lineWidth: 0.1,
                 },
@@ -492,7 +502,7 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
                 },
                 margin: { left: MARGIN, right: MARGIN },
             });
-            y = (doc as any).lastAutoTable.finalY + 10;
+            y = (doc as any).lastAutoTable.finalY + 12; // Plus d'espacement après le tableau
         }
 
         // ========================================

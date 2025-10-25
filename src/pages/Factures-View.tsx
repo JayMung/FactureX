@@ -195,31 +195,30 @@ const FacturesView: React.FC = () => {
         <div className="space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="outline"
-                onClick={() => navigate('/factures')}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour
-              </Button>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-50 rounded-lg">
-                  <FileText className="h-6 w-6 text-green-500" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    {facture.type === 'devis' ? 'Devis' : 'Facture'} #{facture.facture_number}
-                  </h1>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="outline">
-                      {facture.type === 'devis' ? '📄 Devis' : '📋 Facture'}
-                    </Badge>
-                    {getStatutBadge(facture.statut)}
-                  </div>
-                </div>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/factures')}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Retour
+            </Button>
+            
+            <div className="flex flex-col items-center gap-2">
+              <div className="p-2 bg-green-50 rounded-lg">
+                <FileText className="h-6 w-6 text-green-500" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {facture.type === 'devis' ? 'Devis' : 'Facture'} #{facture.facture_number}
+              </h1>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">
+                  {facture.type === 'devis' ? '📄 Devis' : '📋 Facture'}
+                </Badge>
+                {getStatutBadge(facture.statut)}
               </div>
             </div>
+            
+            <div className="w-32"></div>
 
             {/* Actions principales */}
             <div className="flex space-x-3">
@@ -488,7 +487,7 @@ const FacturesView: React.FC = () => {
           )}
 
           {/* Actions */}
-          <div className="flex justify-between items-center pt-4 border-t">
+          <div className="flex justify-center items-center pt-4 border-t">
             <div className="flex space-x-3">
               {facture.type === 'devis' && facture.statut === 'brouillon' && (
                 <PermissionGuard module="factures" permission="update">
@@ -502,8 +501,6 @@ const FacturesView: React.FC = () => {
                   </Button>
                 </PermissionGuard>
               )}
-            </div>
-            <div className="flex space-x-3">
               <PermissionGuard module="factures" permission="delete">
                 <Button
                   variant="destructive"

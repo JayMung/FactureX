@@ -81,7 +81,7 @@ CREATE TRIGGER on_auth_user_created_set_role
 /*
 UPDATE auth.users 
 SET raw_app_meta_data = raw_app_meta_data || '{"role": "admin"}'::jsonb
-WHERE email = 'your-admin@email.com';
+WHERE email = 'mungedijeancy@gmail.com';
 */
 
 -- To verify admin role:

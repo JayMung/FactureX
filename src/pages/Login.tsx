@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield, Loader2 } from 'lucide-react';
+import { Shield, Loader2, AlertTriangle } from 'lucide-react';
+import { clientRateLimiter, getClientIdentifier, formatResetTime } from '@/lib/ratelimit-client';
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
@@ -18,12 +19,26 @@ const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
 
+  // Note: Using client-side rate limiting (localStorage)
+  // For production, migrate to server-side rate limiting with Edge Functions
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
+      // Check rate limit before attempting login
+      const identifier = getClientIdentifier();
+      const rateLimitResult = clientRateLimiter.check('login', identifier);
+
+      if (!rateLimitResult.success) {
+        const resetTime = formatResetTime(rateLimitResult.reset);
+        throw new Error(
+          `Trop de tentatives de connexion. Veuillez réessayer dans ${resetTime}.`
+        );
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -44,6 +59,17 @@ const Login = () => {
     setError('');
 
     try {
+      // Check rate limit before attempting signup
+      const identifier = getClientIdentifier();
+      const rateLimitResult = clientRateLimiter.check('signup', identifier);
+
+      if (!rateLimitResult.success) {
+        const resetTime = formatResetTime(rateLimitResult.reset);
+        throw new Error(
+          `Trop de tentatives d'inscription. Veuillez réessayer dans ${resetTime}.`
+        );
+      }
+
       const { error } = await supabase.auth.signUp({
         email,
         password,

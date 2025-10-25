@@ -537,11 +537,6 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);
         doc.text(formatCurrency(facture.subtotal, facture.devise), valueX, y, { align: 'right' });
         y += 6;
-        
-        // Ligne séparatrice fine
-        doc.setDrawColor(COLORS.borderLight[0], COLORS.borderLight[1], COLORS.borderLight[2]);
-        doc.setLineWidth(0.2);
-        doc.line(totalsStartX + 4, y - 2, valueX, y - 2);
 
         // Ligne 2: Frais (avec pourcentage dynamique)
         setFont('normal');
@@ -554,7 +549,6 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);
         doc.text(formatCurrency(fees, facture.devise), valueX, y, { align: 'right' });
         y += 6;
-        doc.line(totalsStartX + 4, y - 2, valueX, y - 2);
 
         // Ligne 3: Transport & Douane
         setFont('normal');

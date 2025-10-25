@@ -745,15 +745,18 @@ export class SupabaseService {
   // Dashboard Stats
   async getDashboardStats(): Promise<ApiResponse<any>> {
     try {
-      const [clientsResult, transactionsResult] = await Promise.all([
+      const [clientsResult, transactionsResult, facturesResult] = await Promise.all([
         supabase.from('clients').select('id', { count: 'exact', head: true }),
-        supabase.from('transactions').select('montant, devise, benefice, montant_cny, created_at', { count: 'exact' })
+        supabase.from('transactions').select('montant, devise, benefice, montant_cny, created_at', { count: 'exact' }),
+        supabase.from('factures').select('id, type, statut, total_general, devise, created_at', { count: 'exact' })
       ]);
 
       if (clientsResult.error) throw clientsResult.error;
       if (transactionsResult.error) throw transactionsResult.error;
+      if (facturesResult.error) throw facturesResult.error;
 
       const transactions = transactionsResult.data || [];
+      const factures = facturesResult.data || [];
       const today = new Date().toISOString().split('T')[0];
       
       const totalUSD = transactions
@@ -774,6 +777,17 @@ export class SupabaseService {
         .filter(t => t.created_at?.startsWith(today))
         .length;
 
+      // Statistiques des factures
+      const facturesValidees = factures.filter(f => f.statut === 'validee');
+      
+      const facturesAmountUSD = facturesValidees
+        .filter(f => f.devise === 'USD')
+        .reduce((sum, f) => sum + (f.total_general || 0), 0);
+      
+      const facturesAmountCDF = facturesValidees
+        .filter(f => f.devise === 'CDF')
+        .reduce((sum, f) => sum + (f.total_general || 0), 0);
+
       const stats = {
         totalUSD,
         totalCDF,
@@ -782,7 +796,12 @@ export class SupabaseService {
         clientsCount: clientsResult.count || 0,
         transactionsCount: transactions.length,
         todayTransactions,
-        monthlyRevenue: totalUSD * 0.05
+        monthlyRevenue: totalUSD * 0.05,
+        // Nouvelles stats factures
+        facturesCount: factures.length,
+        facturesValidees: facturesValidees.length,
+        facturesAmountUSD,
+        facturesAmountCDF
       };
 
       return { data: stats };

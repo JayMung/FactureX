@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
@@ -227,7 +227,7 @@ const ClientsProtected: React.FC = () => {
               </Button>
               
               <PermissionGuard module="clients" permission="create">
-                <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleAddClient}>
+                <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddClient}>
                   <Plus className="mr-2 h-4 w-4" />
                   Nouveau Client
                 </Button>
@@ -235,73 +235,73 @@ const ClientsProtected: React.FC = () => {
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Stats Cards - Design System */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {/* Total Clients Card */}
-            <Card className="hover:shadow-lg transition-shadow duration-200">
+            <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-600">Total Clients</p>
-                    <p className="text-3xl font-bold text-emerald-600">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Clients</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {pagination?.count || 0}
                     </p>
                   </div>
-                  <div className="h-12 w-12 bg-emerald-100 rounded-full flex items-center justify-center">
-                    <Users className="h-6 w-6 text-emerald-600" />
+                  <div className="p-3 rounded-full bg-green-500 flex-shrink-0">
+                    <Users className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Total Payé Card */}
-            <Card className="hover:shadow-lg transition-shadow duration-200">
+            <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-600">Total Payé</p>
-                    <p className="text-3xl font-bold text-blue-600">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Payé</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {formatCurrency(
                         clients.reduce((sum, client: Client) => sum + (client.total_paye || 0), 0)
                       )}
                     </p>
                   </div>
-                  <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <DollarSign className="h-6 w-6 text-blue-600" />
+                  <div className="p-3 rounded-full bg-blue-500 flex-shrink-0">
+                    <DollarSign className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Villes Card */}
-            <Card className="hover:shadow-lg transition-shadow duration-200">
+            <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-600">Villes</p>
-                    <p className="text-3xl font-bold text-purple-600">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Villes</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {new Set(sortedData.map((c: Client) => c.ville)).size}
                     </p>
                   </div>
-                  <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
-                    <MapPin className="h-6 w-6 text-purple-600" />
+                  <div className="p-3 rounded-full bg-purple-500 flex-shrink-0">
+                    <MapPin className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Sélectionnés Card */}
-            <Card className="hover:shadow-lg transition-shadow duration-200">
+            <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-600">Sélectionnés</p>
-                    <p className="text-3xl font-bold text-orange-600">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Sélectionnés</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {selectedClients.length}
                     </p>
                   </div>
-                  <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
-                    <CheckSquare className="h-6 w-6 text-orange-600" />
+                  <div className="p-3 rounded-full bg-orange-500 flex-shrink-0">
+                    <CheckSquare className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
@@ -444,7 +444,7 @@ const ClientsProtected: React.FC = () => {
                             <p className="text-lg font-medium text-gray-900 mb-2">Aucun client</p>
                             <p className="text-sm text-gray-500 mb-4">Commencez par ajouter votre premier client</p>
                             <PermissionGuard module="clients" permission="create">
-                              <Button onClick={handleAddClient} className="bg-emerald-600 hover:bg-emerald-700">
+                              <Button onClick={handleAddClient} className="bg-green-500 hover:bg-green-600">
                                 <Plus className="mr-2 h-4 w-4" />
                                 Nouveau Client
                               </Button>
@@ -485,7 +485,7 @@ const ClientsProtected: React.FC = () => {
                               <span>{client.ville}</span>
                             </div>
                           </td>
-                          <td className="py-3 px-4 font-medium text-emerald-600">
+                          <td className="py-3 px-4 font-medium text-green-500">
                             {formatCurrency(client.total_paye || 0)}
                           </td>
                           <td className="py-3 px-4 text-sm text-gray-600">

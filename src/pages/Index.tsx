@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from 'react';
 import Layout from '../components/layout/Layout';
@@ -51,7 +51,7 @@ const Index = () => {
       value: statsLoading ? '...' : formatCurrencyValue(stats?.totalUSD || 0, 'USD'),
       change: stats?.monthlyRevenue ? { value: 12, isPositive: true } : undefined,
       icon: <DollarSign className="h-6 w-6" />,
-      color: 'text-emerald-600'
+      color: 'text-green-500'
     },
     {
       title: 'Total CDF',
@@ -127,9 +127,9 @@ const Index = () => {
     <Layout>
       <div className="space-y-6">
         {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg p-6 text-white">
+        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-6 text-white">
           <h1 className="text-2xl font-bold mb-2">Bienvenue sur FactureX</h1>
-          <p className="text-emerald-100">Gérez vos transferts USD/CDF en toute simplicité</p>
+          <p className="text-green-100">Gérez vos transferts USD/CDF en toute simplicité</p>
         </div>
 
         {/* Stats Grid */}
@@ -229,7 +229,7 @@ const Index = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button className="h-20 flex flex-col items-center justify-center space-y-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200">
+              <Button className="h-20 flex flex-col items-center justify-center space-y-2 bg-green-50 hover:bg-green-100 text-green-600 border-green-200">
                 <Plus className="h-6 w-6" />
                 <span className="text-sm">Nouvelle Transaction</span>
               </Button>

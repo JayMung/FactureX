@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from 'react';
 import { 
@@ -600,7 +600,7 @@ const SettingsWithPermissions = () => {
                       onClick={() => setActiveTab(option.id)}
                       className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
                         activeTab === option.id
-                          ? 'bg-emerald-100 text-emerald-700'
+                          ? 'bg-green-100 text-green-600'
                           : 'text-gray-600 hover:bg-gray-100'
                       }`}
                     >
@@ -627,7 +627,7 @@ const SettingsWithPermissions = () => {
                       <Users className="mr-2 h-5 w-5" />
                       Utilisateurs ({users.length})
                     </CardTitle>
-                    <Button onClick={handleAddUser} className="bg-emerald-600 hover:bg-emerald-700">
+                    <Button onClick={handleAddUser} className="bg-green-500 hover:bg-green-600">
                       <Plus className="mr-2 h-4 w-4" />
                       Ajouter un utilisateur
                     </Button>
@@ -636,7 +636,7 @@ const SettingsWithPermissions = () => {
                 <CardContent>
                   {usersLoading ? (
                     <div className="flex items-center justify-center h-32">
-                      <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+                      <Loader2 className="h-6 w-6 animate-spin text-green-500" />
                     </div>
                   ) : users.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
@@ -646,10 +646,10 @@ const SettingsWithPermissions = () => {
                   ) : (
                     <div className="space-y-4">
                       {users.map((user) => (
-                        <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div key={user.id} className="card-base transition-shadow-hover flex items-center justify-between p-4">
                           <div className="flex items-center space-x-4">
-                            <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                              <UserIcon className="h-5 w-5 text-emerald-600" />
+                            <div className="p-2.5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                              <UserIcon className="h-5 w-5 text-white" />
                             </div>
                             <div>
                               <p className="font-medium">{user.first_name} {user.last_name}</p>
@@ -657,7 +657,7 @@ const SettingsWithPermissions = () => {
                               <div className="flex items-center space-x-2 mt-1">
                                 <Badge 
                                   variant={user.role === 'admin' ? 'default' : 'secondary'}
-                                  className={user.role === 'admin' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                                  className={user.role === 'admin' ? 'bg-green-500 hover:bg-green-600' : ''}
                                 >
                                   {user.role === 'admin' ? (
                                     <>
@@ -673,7 +673,7 @@ const SettingsWithPermissions = () => {
                                 </Badge>
                                 <Badge 
                                   variant={user.is_active ? 'default' : 'secondary'}
-                                  className={user.is_active ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                                  className={user.is_active ? 'bg-green-500 hover:bg-green-600' : ''}
                                 >
                                   {user.is_active ? 'Actif' : 'Inactif'}
                                 </Badge>
@@ -685,7 +685,7 @@ const SettingsWithPermissions = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleManagePermissions(user)}
-                              className="hover:bg-emerald-50 hover:text-emerald-700"
+                              className="hover:bg-green-50 hover:text-green-600"
                               title="Gérer les permissions"
                             >
                               <Key className="h-4 w-4" />
@@ -694,7 +694,7 @@ const SettingsWithPermissions = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleToggleUserStatus(user)}
-                              className="hover:bg-emerald-50 hover:text-emerald-700"
+                              className="hover:bg-green-50 hover:text-green-600"
                             >
                               {user.is_active ? (
                                 <UserX className="h-4 w-4" />
@@ -706,7 +706,7 @@ const SettingsWithPermissions = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEditUser(user)}
-                              className="hover:bg-emerald-50 hover:text-emerald-700"
+                              className="hover:bg-green-50 hover:text-green-600"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -742,7 +742,7 @@ const SettingsWithPermissions = () => {
                 <CardContent className="space-y-6">
                   <div className="flex items-center space-x-4">
                     <div className="relative">
-                      <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center overflow-hidden">
+                      <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center overflow-hidden">
                         {profile?.avatar_url ? (
                           <img
                             src={profile.avatar_url}
@@ -750,7 +750,7 @@ const SettingsWithPermissions = () => {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <UserIcon className="h-10 w-10 text-emerald-600" />
+                          <UserIcon className="h-10 w-10 text-green-500" />
                         )}
                       </div>
                     </div>
@@ -781,7 +781,7 @@ const SettingsWithPermissions = () => {
                     </div>
                   </div>
 
-                  <Button onClick={handleSaveProfile} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+                  <Button onClick={handleSaveProfile} disabled={saving} className="bg-green-500 hover:bg-green-600">
                     {saving ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -809,7 +809,7 @@ const SettingsWithPermissions = () => {
                         setSelectedPaymentMethod(undefined);
                         setIsPaymentMethodFormOpen(true);
                       }}
-                      className="bg-emerald-600 hover:bg-emerald-700"
+                      className="bg-green-500 hover:bg-green-600"
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       Ajouter un moyen
@@ -821,15 +821,15 @@ const SettingsWithPermissions = () => {
                     {paymentMethods.map((method) => (
                       <div key={method.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                            <CreditCard className="h-5 w-5 text-emerald-600" />
+                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                            <CreditCard className="h-5 w-5 text-green-500" />
                           </div>
                           <div>
                             <p className="font-medium">{method.name}</p>
                             <p className="text-sm text-gray-500">{method.description}</p>
                             <Badge 
                               variant={method.is_active ? 'default' : 'secondary'}
-                              className={method.is_active ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                              className={method.is_active ? 'bg-green-500 hover:bg-green-600' : ''}
                             >
                               {method.is_active ? 'Actif' : 'Inactif'}
                             </Badge>
@@ -843,7 +843,7 @@ const SettingsWithPermissions = () => {
                               setSelectedPaymentMethod(method);
                               setIsPaymentMethodFormOpen(true);
                             }}
-                            className="hover:bg-emerald-50 hover:text-emerald-700"
+                            className="hover:bg-green-50 hover:text-green-600"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -901,7 +901,7 @@ const SettingsWithPermissions = () => {
                   <Button 
                     onClick={() => handleSaveSettings('taux_change', exchangeRates)}
                     disabled={saving}
-                    className="bg-emerald-600 hover:bg-emerald-700"
+                    className="bg-green-500 hover:bg-green-600"
                   >
                     {saving ? (
                       <>
@@ -961,7 +961,7 @@ const SettingsWithPermissions = () => {
                   <Button 
                     onClick={() => handleSaveSettings('frais', transactionFees)}
                     disabled={saving}
-                    className="bg-emerald-600 hover:bg-emerald-700"
+                    className="bg-green-500 hover:bg-green-600"
                   >
                     {saving ? (
                       <>
@@ -990,8 +990,8 @@ const SettingsWithPermissions = () => {
                     {activityLogs.map((log) => (
                       <div key={log.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                            <FileText className="h-5 w-5 text-emerald-600" />
+                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                            <FileText className="h-5 w-5 text-green-500" />
                           </div>
                           <div>
                             <p className="font-medium">{log.action}</p>
@@ -1092,7 +1092,7 @@ const SettingsWithPermissions = () => {
               >
                 Annuler
               </Button>
-              <Button onClick={handleSaveUser} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+              <Button onClick={handleSaveUser} disabled={saving} className="bg-green-500 hover:bg-green-600">
                 {saving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -89,16 +89,16 @@ const SidebarContent: React.FC<{
             onClick={() => handleTabClick(tab.id)}
             className={cn(
               "flex w-full items-center rounded-lg px-3 py-3 text-left transition-colors",
-              "hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2",
+              "hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2",
               activeTab === tab.id
-                ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                ? "bg-green-50 border border-green-200 text-green-600"
                 : "text-gray-700 hover:text-gray-900"
             )}
           >
             <div className={cn(
               "mr-3 flex h-10 w-10 items-center justify-center rounded-md",
               activeTab === tab.id
-                ? "bg-emerald-100 text-emerald-600"
+                ? "bg-green-100 text-green-500"
                 : "bg-gray-100 text-gray-600"
             )}>
               {tab.icon}
@@ -163,14 +163,14 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                   className={cn(
                     "flex flex-col items-center rounded-lg px-3 py-2 min-w-[70px] transition-colors whitespace-nowrap",
                     activeTab === tab.id
-                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      ? "bg-green-50 text-green-600 border border-green-200"
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   )}
                 >
                   <div className={cn(
                     "mb-1 flex h-7 w-7 items-center justify-center rounded-md",
                     activeTab === tab.id
-                      ? "bg-emerald-100 text-emerald-600"
+                      ? "bg-green-100 text-green-500"
                       : "bg-gray-100 text-gray-500"
                   )}>
                     {React.cloneElement(tab.icon as React.ReactElement, { className: "h-4 w-4" })}

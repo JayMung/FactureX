@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -69,7 +69,7 @@ const FacturesProtected: React.FC = () => {
     const variants: Record<string, { variant: any; className: string; label: string }> = {
       brouillon: { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-800', label: 'Brouillon' },
       en_attente: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800', label: 'En attente' },
-      validee: { variant: 'default' as const, className: 'bg-emerald-600 text-white', label: 'Validée' },
+      validee: { variant: 'default' as const, className: 'bg-green-500 text-white', label: 'Validée' },
       annulee: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800', label: 'Annulée' }
     };
     
@@ -143,77 +143,77 @@ const FacturesProtected: React.FC = () => {
           {/* Action Buttons */}
           <div className="flex items-center justify-end">
             <PermissionGuard module="factures" permission="create">
-              <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleAddNew}>
+              <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddNew}>
                 <Plus className="mr-2 h-4 w-4" />
                 Nouvelle Facture/Devis
               </Button>
             </PermissionGuard>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="hover:shadow-lg transition-shadow duration-200">
+          {/* Stats Cards - Design System */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-600">Total Factures</p>
-                    <p className="text-3xl font-bold text-emerald-600">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Factures</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {pagination?.count || 0}
                     </p>
                   </div>
-                  <div className="h-12 w-12 bg-emerald-100 rounded-full flex items-center justify-center">
-                    <FileText className="h-6 w-6 text-emerald-600" />
+                  <div className="p-3 rounded-full bg-green-500 flex-shrink-0">
+                    <FileText className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow duration-200">
+            <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-600">Montant Total</p>
-                    <p className="text-3xl font-bold text-blue-600">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Montant Total</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {formatCurrency(
                         factures.filter(f => f.statut !== 'brouillon').reduce((sum, f) => sum + f.total_general, 0),
                         'USD'
                       )}
                     </p>
                   </div>
-                  <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <DollarSign className="h-6 w-6 text-blue-600" />
+                  <div className="p-3 rounded-full bg-blue-500 flex-shrink-0">
+                    <DollarSign className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow duration-200">
+            <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-600">Validées</p>
-                    <p className="text-3xl font-bold text-green-600">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Validées</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {factures.filter(f => f.statut === 'validee').length}
                     </p>
                   </div>
-                  <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <CheckCircle className="h-6 w-6 text-green-600" />
+                  <div className="p-3 rounded-full bg-purple-500 flex-shrink-0">
+                    <CheckCircle className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow duration-200">
+            <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-600">En attente</p>
-                    <p className="text-3xl font-bold text-yellow-600">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">En attente</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {factures.filter(f => f.statut === 'en_attente').length}
                     </p>
                   </div>
-                  <div className="h-12 w-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <AlertCircle className="h-6 w-6 text-yellow-600" />
+                  <div className="p-3 rounded-full bg-orange-500 flex-shrink-0">
+                    <AlertCircle className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
@@ -306,7 +306,7 @@ const FacturesProtected: React.FC = () => {
                             <p className="text-lg font-medium text-gray-900 mb-2">Aucune facture</p>
                             <p className="text-sm text-gray-500 mb-4">Commencez par créer votre première facture</p>
                             <PermissionGuard module="factures" permission="create">
-                              <Button onClick={handleAddNew} className="bg-emerald-600 hover:bg-emerald-700">
+                              <Button onClick={handleAddNew} className="bg-green-500 hover:bg-green-600">
                                 <Plus className="mr-2 h-4 w-4" />
                                 Nouvelle Facture
                               </Button>
@@ -327,7 +327,7 @@ const FacturesProtected: React.FC = () => {
                           <td className="py-3 px-4 text-sm">
                             {new Date(facture.date_emission).toLocaleDateString('fr-FR')}
                           </td>
-                          <td className="py-3 px-4 font-medium text-emerald-600">
+                          <td className="py-3 px-4 font-medium text-green-500">
                             {formatCurrency(facture.total_general, facture.devise)}
                           </td>
                           <td className="py-3 px-4">
@@ -351,7 +351,7 @@ const FacturesProtected: React.FC = () => {
                                     size="sm"
                                     onClick={() => handleConvertToFacture(facture)}
                                     title="Convertir en facture"
-                                    className="text-emerald-600 hover:bg-emerald-50"
+                                    className="text-green-500 hover:bg-green-50"
                                   >
                                     <RefreshCw className="h-4 w-4" />
                                   </Button>

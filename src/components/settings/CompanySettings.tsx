@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -124,7 +124,7 @@ export const CompanySettings = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-green-500" />
       </div>
     );
   }
@@ -249,7 +249,7 @@ export const CompanySettings = () => {
           </div>
         </div>
 
-        <Button onClick={handleSaveCompanySettings} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button onClick={handleSaveCompanySettings} disabled={saving} className="bg-green-500 hover:bg-green-600">
           {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           Sauvegarder les informations
         </Button>

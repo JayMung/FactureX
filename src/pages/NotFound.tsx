@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+﻿import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Home, Shield } from "lucide-react";
@@ -17,7 +17,7 @@ const NotFound = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center">
         <div className="mb-8">
-          <div className="w-20 h-20 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-white text-2xl font-bold">C</span>
           </div>
           <h1 className="text-6xl font-bold text-gray-900 mb-4">404</h1>
@@ -30,7 +30,7 @@ const NotFound = () => {
         <div className="space-y-4">
           <Button 
             onClick={() => window.location.href = '/'}
-            className="bg-emerald-600 hover:bg-emerald-700 mr-4"
+            className="bg-green-500 hover:bg-green-600 mr-4"
           >
             <Home className="mr-2 h-4 w-4" />
             Retour à l'accueil

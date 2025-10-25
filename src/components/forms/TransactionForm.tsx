@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -403,7 +403,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             <div className="flex space-x-3 pt-4">
               <Button
                 type="submit"
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                className="flex-1 bg-green-500 hover:bg-green-600"
                 disabled={isLoading}
               >
                 {isLoading ? (

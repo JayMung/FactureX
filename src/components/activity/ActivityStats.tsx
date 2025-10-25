@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+﻿import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -96,8 +96,8 @@ const ActivityStats: React.FC<ActivityStatsProps> = ({
         label: "Créations",
         value: creations,
         icon: <Plus className="h-5 w-5" />,
-        color: "text-emerald-600",
-        bgColor: "bg-emerald-50"
+        color: "text-green-500",
+        bgColor: "bg-green-50"
       },
       {
         label: "Modifications",

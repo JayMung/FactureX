@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -270,19 +270,14 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl font-bold">
-              {isEditMode ? 'Modifier la Transaction' : 'Détails de la Transaction'}
-            </DialogTitle>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
+          <DialogTitle className="text-2xl font-bold">
+            {isEditMode ? 'Modifier la Transaction' : 'Détails de la Transaction'}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 mt-4">
+        <div className="space-y-6 mt-4 px-2">
           {/* Status and Actions Bar */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -313,7 +308,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
           <Separator />
 
           {/* Transaction Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
             {/* Left Column */}
             <div className="space-y-4">
               <div>
@@ -351,7 +346,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                     </Select>
                   </div>
                 ) : (
-                  <p className="text-2xl font-bold text-emerald-600">
+                  <p className="text-2xl font-bold text-green-500">
                     {formatCurrencyValue(transaction.montant, transaction.devise)}
                   </p>
                 )}
@@ -478,7 +473,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
               <TrendingUp className="h-5 w-5" />
               Détails de calcul
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 bg-gray-50 p-6 rounded-lg">
               <div>
                 <Label className="text-xs text-gray-500">Frais</Label>
                 {isEditMode ? (
@@ -554,7 +549,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
               <Button 
                 onClick={handleSave}
                 disabled={isSaving}
-                className="bg-emerald-600 hover:bg-emerald-700"
+                className="bg-green-500 hover:bg-green-600"
               >
                 <Save className="h-4 w-4 mr-2" />
                 {isSaving ? 'Enregistrement...' : 'Enregistrer'}

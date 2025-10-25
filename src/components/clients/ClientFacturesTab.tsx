@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -70,7 +70,7 @@ const ClientFacturesTab: React.FC<ClientFacturesTabProps> = ({ clientId, clientN
     const variants: Record<string, { variant: any; className: string; label: string }> = {
       brouillon: { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-800', label: 'Brouillon' },
       en_attente: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800', label: 'En attente' },
-      validee: { variant: 'default' as const, className: 'bg-emerald-600 text-white', label: 'Validée' },
+      validee: { variant: 'default' as const, className: 'bg-green-500 text-white', label: 'Validée' },
       annulee: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800', label: 'Annulée' }
     };
     
@@ -98,7 +98,7 @@ const ClientFacturesTab: React.FC<ClientFacturesTabProps> = ({ clientId, clientN
   if (loading) {
     return (
       <div className="flex items-center justify-center h-32">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
       </div>
     );
   }
@@ -112,9 +112,9 @@ const ClientFacturesTab: React.FC<ClientFacturesTabProps> = ({ clientId, clientN
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Factures</p>
-                <p className="text-2xl font-bold text-emerald-600">{filteredFactures.length}</p>
+                <p className="text-2xl font-bold text-green-500">{filteredFactures.length}</p>
               </div>
-              <FileText className="h-8 w-8 text-emerald-600" />
+              <FileText className="h-8 w-8 text-green-500" />
             </div>
           </CardContent>
         </Card>
@@ -221,7 +221,7 @@ const ClientFacturesTab: React.FC<ClientFacturesTabProps> = ({ clientId, clientN
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="text-right">
-                      <p className="font-medium text-emerald-600">
+                      <p className="font-medium text-green-500">
                         {formatCurrency(facture.total_general, facture.devise)}
                       </p>
                       <p className="text-sm text-gray-500">{facture.devise}</p>
@@ -231,7 +231,7 @@ const ClientFacturesTab: React.FC<ClientFacturesTabProps> = ({ clientId, clientN
                         <Eye className="h-4 w-4" />
                       </Button>
                       {facture.type === 'devis' && facture.statut === 'brouillon' && (
-                        <Button variant="ghost" size="sm" className="text-emerald-600">
+                        <Button variant="ghost" size="sm" className="text-green-500">
                           <RefreshCw className="h-4 w-4" />
                         </Button>
                       )}

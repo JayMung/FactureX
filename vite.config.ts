@@ -11,6 +11,12 @@ export default defineConfig(() => ({
       allow: ['..']
     }
   },
+  preview: {
+    host: '0.0.0.0',
+    port: 3000,
+    strictPort: true,
+    allowedHosts: ['facturex.coccinelledrc.com', '.easypanel.host']
+  },
   plugins: [dyadComponentTagger(), react()],
   resolve: {
     alias: {

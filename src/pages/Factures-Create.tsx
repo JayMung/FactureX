@@ -21,10 +21,10 @@ import {
   FileText
 } from 'lucide-react';
 import { useClients } from '../hooks/useClients';
+import { useFactures } from '../hooks/useFactures';
 import { showSuccess, showError } from '@/utils/toast';
 import ImagePreview from '@/components/ui/ImagePreview';
 import type { Client, CreateFactureData, FactureItem } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
 
 const FacturesCreate: React.FC = () => {
   usePageSetup({
@@ -34,6 +34,7 @@ const FacturesCreate: React.FC = () => {
 
   const navigate = useNavigate();
   const { clients } = useClients(1, {});
+  const { createFacture } = useFactures();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<CreateFactureData>({
     client_id: '',
@@ -123,26 +124,12 @@ const FacturesCreate: React.FC = () => {
     setLoading(true);
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Utilisateur non authentifié');
-
-      const totals = calculateTotals();
-      
       const factureData: CreateFactureData = {
         ...formData,
-        items: items.map(({ tempId, ...item }) => item),
-        created_by: user.id
+        items: items.map(({ tempId, ...item }) => item)
       };
 
-      const { data, error } = await supabase
-        .from('factures')
-        .insert([factureData])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      showSuccess(`${formData.type === 'devis' ? 'Devis' : 'Facture'} créé avec succès`);
+      await createFacture(factureData);
       navigate('/factures');
     } catch (error: any) {
       console.error('Error creating facture:', error);

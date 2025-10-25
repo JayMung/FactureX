@@ -139,6 +139,11 @@ export interface UpdateTransactionData {
   statut?: string;
   valide_par?: string;
   date_validation?: string;
+  taux_usd_cny?: number;
+  taux_usd_cdf?: number;
+  montant_cny?: number;
+  frais?: number;
+  benefice?: number;
 }
 
 export interface ExchangeRates {

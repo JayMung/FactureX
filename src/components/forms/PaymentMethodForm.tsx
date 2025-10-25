@@ -13,7 +13,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { supabaseService } from '@/services/supabase';
 
 interface PaymentMethodFormProps {
-  paymentMethod?: PaymentMethod;
+  paymentMethod?: PaymentMethod | null;
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;

@@ -1,35 +1,4 @@
-import React, { useState } from 'react';
-import Layout from '../components/layout/Layout';
-import { usePageSetup } from '../hooks/use-page-setup';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Shield, 
-  Users, 
-  Settings, 
-  Plus,
-  Edit,
-  Trash2,
-  Key,
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  Eye,
-  Calendar,
-  TrendingUp,
-  Database
-} from 'lucide-react';
-import { usePermissions } from '../hooks/usePermissions';
-import { useUserProfiles } from '../hooks/useUserProfiles';
-import { usePaymentMethods } from '../hooks/usePaymentMethods';
-import type { PaymentMethod } from '@/types';
-import { cn } from '@/lib/utils';
-
-const Settings: React.FC = () => {
+const SettingsPage: React.FC = () => {
   const [isPaymentMethodFormOpen, setIsPaymentMethodFormOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | undefined>();
 
@@ -52,4 +21,4 @@ const Settings: React.FC = () => {
   );
 };
 
-export default Settings;
+export default SettingsPage;

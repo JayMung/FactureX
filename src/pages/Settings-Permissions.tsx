@@ -898,42 +898,6 @@ const SettingsWithPermissions = () => {
                     </Button>
                   </CardContent>
                 </Card>
-
-                {/* Informations du compte */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Info className="mr-2 h-5 w-5" />
-                      Informations du compte
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center py-2 border-b">
-                        <span className="text-sm text-gray-600">ID utilisateur</span>
-                        <span className="text-sm font-mono text-gray-900">{user?.id?.slice(0, 8)}...</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2 border-b">
-                        <span className="text-sm text-gray-600">Rôle</span>
-                        <Badge variant={profile?.role === 'admin' ? 'default' : 'secondary'} className={profile?.role === 'admin' ? 'bg-green-500' : ''}>
-                          {profile?.role === 'admin' ? 'Administrateur' : 'Opérateur'}
-                        </Badge>
-                      </div>
-                      <div className="flex justify-between items-center py-2 border-b">
-                        <span className="text-sm text-gray-600">Statut du compte</span>
-                        <Badge variant="default" className="bg-green-500">
-                          {profile?.is_active ? 'Actif' : 'Inactif'}
-                        </Badge>
-                      </div>
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-sm text-gray-600">Date de création</span>
-                        <span className="text-sm text-gray-900">
-                          {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('fr-FR') : 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
             )}
 

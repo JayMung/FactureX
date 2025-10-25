@@ -13,6 +13,7 @@ import {
   Users, 
   Receipt, 
   TrendingUp,
+  TrendingDown,
   Activity,
   User,
   Settings,
@@ -51,48 +52,35 @@ const IndexProtected: React.FC = () => {
     return amount.toString();
   };
 
-  const dashboardStats = [
+  // Stats pour Factures & Revenus uniquement (Vue d'ensemble)
+  const overviewStats = [
     {
-      title: 'Total USD',
-      value: isLoading ? '...' : formatCurrencyValue(stats?.totalUSD || 0, 'USD'),
-      change: stats?.monthlyRevenue ? { value: 12, isPositive: true } : undefined,
-      icon: <DollarSign className="h-6 w-6" />,
-      color: 'text-green-600'
+      title: 'Total Factures',
+      value: isLoading ? '...' : (stats?.facturesCount || 0).toString(),
+      change: stats?.facturesCount > 0 ? { value: 8, isPositive: true } : undefined,
+      icon: <FileText className="h-6 w-6 text-white" />,
+      iconBg: 'bg-green-500'
     },
     {
-      title: 'Total CDF',
-      value: isLoading ? '...' : formatCurrencyValue(stats?.totalCDF || 0, 'CDF'),
-      change: stats?.monthlyRevenue ? { value: 8, isPositive: true } : undefined,
-      icon: <DollarSign className="h-6 w-6" />,
-      color: 'text-blue-600'
+      title: 'Montant Facturé USD',
+      value: isLoading ? '...' : formatCurrencyValue(stats?.facturesAmountUSD || 0, 'USD'),
+      change: stats?.facturesAmountUSD > 0 ? { value: 12, isPositive: true } : undefined,
+      icon: <DollarSign className="h-6 w-6 text-white" />,
+      iconBg: 'bg-blue-500'
     },
     {
-      title: 'Bénéfice Net',
-      value: isLoading ? '...' : formatCurrencyValue(stats?.beneficeNet || 0, 'USD'),
-      change: stats?.beneficeNet ? { value: 15, isPositive: true } : undefined,
-      icon: <TrendingUp className="h-6 w-6" />,
-      color: 'text-purple-600'
+      title: 'Montant Facturé CDF',
+      value: isLoading ? '...' : formatCurrencyValue(stats?.facturesAmountCDF || 0, 'CDF'),
+      change: stats?.facturesAmountCDF > 0 ? { value: 8, isPositive: true } : undefined,
+      icon: <DollarSign className="h-6 w-6 text-white" />,
+      iconBg: 'bg-purple-500'
     },
     {
-      title: 'Clients',
-      value: isLoading ? '...' : (stats?.clientsCount || 0).toString(),
-      change: stats?.clientsCount ? { value: 5, isPositive: true } : undefined,
-      icon: <Users className="h-6 w-6" />,
-      color: 'text-orange-600'
-    },
-    {
-      title: 'Transactions',
-      value: isLoading ? '...' : (stats?.transactionsCount || 0).toString(),
-      change: stats?.transactionsCount ? { value: 10, isPositive: true } : undefined,
-      icon: <Receipt className="h-6 w-6" />,
-      color: 'text-indigo-600'
-    },
-    {
-      title: "Aujourd'hui",
-      value: isLoading ? '...' : (stats?.todayTransactions || 0).toString(),
-      change: stats?.todayTransactions ? { value: 25, isPositive: true } : undefined,
-      icon: <Activity className="h-6 w-6" />,
-      color: 'text-green-600'
+      title: 'Factures Validées',
+      value: isLoading ? '...' : (stats?.facturesValidees || 0).toString(),
+      change: stats?.facturesValidees > 0 ? { value: 10, isPositive: true } : undefined,
+      icon: <TrendingUp className="h-6 w-6 text-white" />,
+      iconBg: 'bg-orange-500'
     }
   ];
 
@@ -149,16 +137,37 @@ const IndexProtected: React.FC = () => {
 
             {/* Vue d'ensemble */}
             <TabsContent value="overview" className="space-y-6">
-              {/* Stats Grid */}
-              <div className="grid-responsive-3">
-                {dashboardStats.map((stat, index) => (
-                  <StatCard
-                    key={index}
-                    title={stat.title}
-                    value={stat.value}
-                    change={stat.change}
-                    icon={stat.icon}
-                  />
+              {/* Stats avec icônes colorées */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                {overviewStats.map((stat, index) => (
+                  <Card key={index} className="card-base transition-shadow-hover">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.title}</p>
+                          <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+                            {stat.value}
+                          </p>
+                          {stat.change && (
+                            <div className="flex items-center gap-1 mt-2">
+                              {stat.change.isPositive ? (
+                                <TrendingUp className="h-4 w-4 text-success" />
+                              ) : (
+                                <TrendingDown className="h-4 w-4 text-error" />
+                              )}
+                              <span className={stat.change.isPositive ? "text-success text-xs font-medium" : "text-error text-xs font-medium"}>
+                                {stat.change.value}%
+                              </span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">vs période précédente</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className={`p-3 rounded-full ${stat.iconBg} flex-shrink-0`}>
+                          {stat.icon}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
 

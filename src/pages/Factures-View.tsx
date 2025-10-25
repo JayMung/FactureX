@@ -487,7 +487,7 @@ const FacturesView: React.FC = () => {
           )}
 
           {/* Actions */}
-          <div className="flex justify-center items-center pt-4 border-t">
+          <div className="sticky bottom-0 bg-white flex justify-center items-center pt-4 pb-4 border-t shadow-lg z-10">
             <div className="flex space-x-3">
               {facture.type === 'devis' && facture.statut === 'brouillon' && (
                 <PermissionGuard module="factures" permission="update">

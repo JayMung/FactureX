@@ -22,7 +22,10 @@ import {
   TrendingUp,
   Eye,
   Download,
-  X
+  X,
+  User,
+  Phone,
+  MapPin
 } from 'lucide-react';
 import { useClientHistory } from '@/hooks/useClientHistory';
 import { useFactures } from '@/hooks/useFactures';
@@ -177,25 +180,51 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-xl font-bold">
-                Historique complet - {client.nom}
-              </DialogTitle>
-              <p className="text-sm text-gray-500 mt-1">
-                {client.telephone} • {client.ville}
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onOpenChange(false)}
-              title="Fermer"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <DialogTitle className="text-xl font-bold">
+            Historique complet - {client.nom.split(' ').map(word => 
+              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+            ).join(' ')}
+          </DialogTitle>
         </DialogHeader>
+
+        {/* Client Info Header Card */}
+        <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-green-500 rounded-full">
+                  <User className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Nom complet</p>
+                  <p className="font-semibold text-gray-900">
+                    {client.nom.split(' ').map(word => 
+                      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                    ).join(' ')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-blue-500 rounded-full">
+                  <Phone className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Téléphone</p>
+                  <p className="font-semibold text-gray-900">{client.telephone}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-purple-500 rounded-full">
+                  <MapPin className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Ville</p>
+                  <p className="font-semibold text-gray-900">{client.ville}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
           <TabsList className="grid w-full grid-cols-2">

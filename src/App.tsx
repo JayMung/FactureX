@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { PageProvider } from '@/contexts/PageContext';
 import Layout from '@/components/layout/Layout';
 import Index from '@/pages/Index';
 import Login from '@/pages/Login';
@@ -58,22 +59,24 @@ const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
 function App() {
   return (
     <SessionProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/admin-setup" element={<AdminSetup />} />
-          <Route path="/factures/new" element={<FacturesCreate />} />
-          <Route path="/factures" element={<FacturesProtected />} />
-          <Route path="/transactions" element={<TransactionsProtected />} />
-          <Route path="/clients" element={<ClientsProtected />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/settings/permissions" element={<SettingsPermissionsPage />} />
-          <Route path="/activity-logs" element={<ActivityLogs />} />
-          <Route path="/notification-settings" element={<NotificationSettings />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Router>
+      <PageProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/admin-setup" element={<AdminSetup />} />
+            <Route path="/factures/new" element={<FacturesCreate />} />
+            <Route path="/factures" element={<FacturesProtected />} />
+            <Route path="/transactions" element={<TransactionsProtected />} />
+            <Route path="/clients" element={<ClientsProtected />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/permissions" element={<SettingsPermissionsPage />} />
+            <Route path="/activity-logs" element={<ActivityLogs />} />
+            <Route path="/notification-settings" element={<NotificationSettings />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Router>
+      </PageProvider>
     </SessionProvider>
   );
 }

@@ -133,7 +133,7 @@ const ClientsProtected: React.FC = () => {
   };
 
   const handleSelectAll = (checked: boolean) => {
-    setSelectedClients(checked ? sortedData.map(client => client.id) : []);
+    setSelectedClients(checked ? sortedData.map((client: Client) => client.id) : []);
   };
 
   const handleFormSuccess = () => {
@@ -169,12 +169,12 @@ const ClientsProtected: React.FC = () => {
 
   const exportClients = () => {
     const dataToExport = selectedClients.length > 0 
-      ? sortedData.filter(client => selectedClients.includes(client.id))
+      ? sortedData.filter((client: Client) => selectedClients.includes(client.id))
       : sortedData;
       
     const csv = [
       ['nom', 'telephone', 'ville', 'total_paye', 'created_at'],
-      ...dataToExport.map(client => [
+      ...dataToExport.map((client: Client) => [
         client.nom,
         client.telephone,
         client.ville,
@@ -262,7 +262,7 @@ const ClientsProtected: React.FC = () => {
                     <p className="text-sm font-medium text-gray-600">Total Payé</p>
                     <p className="text-3xl font-bold text-blue-600">
                       {formatCurrency(
-                        clients.reduce((sum, client) => sum + (client.total_paye || 0), 0)
+                        clients.reduce((sum, client: Client) => sum + (client.total_paye || 0), 0)
                       )}
                     </p>
                   </div>
@@ -280,7 +280,7 @@ const ClientsProtected: React.FC = () => {
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-gray-600">Villes</p>
                     <p className="text-3xl font-bold text-purple-600">
-                      {new Set(sortedData.map(c => c.ville)).size}
+                      {new Set(sortedData.map((c: Client) => c.ville)).size}
                     </p>
                   </div>
                   <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
@@ -313,8 +313,8 @@ const ClientsProtected: React.FC = () => {
             selectedCount={selectedClients.length}
             onClearSelection={() => setSelectedClients([])}
             onDeleteSelected={() => setBulkDeleteDialogOpen(true)}
-            onExportSelected={() => exportSelectedClients(sortedData.filter(c => selectedClients.includes(c.id)))}
-            onEmailSelected={() => emailSelectedClients(sortedData.filter(c => selectedClients.includes(c.id)))}
+            onExportSelected={() => exportSelectedClients(sortedData.filter((c: Client) => selectedClients.includes(c.id)))}
+            onEmailSelected={() => emailSelectedClients(sortedData.filter((c: Client) => selectedClients.includes(c.id)))}
             isDeleting={isDeleting}
           />
 
@@ -341,7 +341,7 @@ const ClientsProtected: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Toutes les villes</SelectItem>
-                {Array.from(new Set(sortedData.map(c => c.ville))).map((city: string) => (
+                {Array.from(new Set(sortedData.map((c: Client) => c.ville))).map((city: string) => (
                   <SelectItem key={city} value={city}>{city}</SelectItem>
                 ))}
               </SelectContent>
@@ -453,7 +453,7 @@ const ClientsProtected: React.FC = () => {
                         </td>
                       </tr>
                     ) : (
-                      sortedData.map((client, index) => (
+                      sortedData.map((client: Client, index: number) => (
                         <tr 
                           key={client.id} 
                           className={cn(

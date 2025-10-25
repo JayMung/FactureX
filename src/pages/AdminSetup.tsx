@@ -120,7 +120,7 @@ const AdminSetup = () => {
           </div>
           <h2 className="text-3xl font-bold text-gray-900">Configuration Admin</h2>
           <p className="mt-2 text-sm text-gray-600">
-            Créez le premier compte administrateur pour CoxiPay
+            Créez le premier compte administrateur pour FactureX
           </p>
         </div>
 
@@ -179,7 +179,7 @@ const AdminSetup = () => {
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="admin@coxipay.com"
+                  placeholder="admin@facturex.com"
                   required
                 />
               </div>

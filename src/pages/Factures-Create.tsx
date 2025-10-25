@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { Button } from '@/components/ui/button';
@@ -21,20 +21,25 @@ import {
   FileText
 } from 'lucide-react';
 import { useClients } from '../hooks/useClients';
+import { useFactures } from '../hooks/useFactures';
 import { showSuccess, showError } from '@/utils/toast';
 import ImagePreview from '@/components/ui/ImagePreview';
 import type { Client, CreateFactureData, FactureItem } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
 
 const FacturesCreate: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const isEditMode = Boolean(id);
+  
   usePageSetup({
-    title: 'Nouvelle Facture/Devis',
-    subtitle: 'Créez une nouvelle facture ou un devis'
+    title: isEditMode ? 'Modifier Facture/Devis' : 'Nouvelle Facture/Devis',
+    subtitle: isEditMode ? 'Modifiez votre facture ou devis' : 'Créez une nouvelle facture ou un devis'
   });
 
   const navigate = useNavigate();
   const { clients } = useClients(1, {});
+  const { createFacture, updateFacture, getFactureWithItems } = useFactures();
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(isEditMode);
   const [formData, setFormData] = useState<CreateFactureData>({
     client_id: '',
     type: 'devis',
@@ -49,6 +54,58 @@ const FacturesCreate: React.FC = () => {
   });
 
   const [items, setItems] = useState<FactureItem[]>([]);
+
+  // Charger les données de la facture en mode édition
+  useEffect(() => {
+    const loadFacture = async () => {
+      if (!isEditMode || !id) return;
+      
+      setLoadingData(true);
+      try {
+        const facture = await getFactureWithItems(id);
+        if (!facture) {
+          showError('Facture introuvable');
+          navigate('/factures');
+          return;
+        }
+
+        setFormData({
+          client_id: facture.client_id,
+          type: facture.type as 'devis' | 'facture',
+          mode_livraison: facture.mode_livraison,
+          devise: facture.devise,
+          date_emission: facture.date_emission.split('T')[0],
+          statut: facture.statut,
+          conditions_vente: facture.conditions_vente || '',
+          notes: facture.notes || '',
+          informations_bancaires: facture.informations_bancaires || '',
+          items: []
+        });
+
+        const loadedItems = (facture.items || []).map((item: any) => ({
+          tempId: item.id || Date.now().toString() + Math.random(),
+          id: item.id,
+          numero_ligne: item.numero_ligne,
+          quantite: item.quantite,
+          description: item.description || '',
+          prix_unitaire: item.prix_unitaire,
+          poids: item.poids,
+          montant_total: item.montant_total,
+          image_url: item.image_url,
+          product_url: item.product_url
+        }));
+        setItems(loadedItems);
+      } catch (error) {
+        console.error('Error loading facture:', error);
+        showError('Erreur lors du chargement de la facture');
+        navigate('/factures');
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    loadFacture();
+  }, [id, isEditMode]);
 
   const addItem = () => {
     const newItem: FactureItem = {
@@ -123,36 +180,44 @@ const FacturesCreate: React.FC = () => {
     setLoading(true);
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Utilisateur non authentifié');
-
-      const totals = calculateTotals();
-      
-      const factureData: CreateFactureData = {
-        ...formData,
-        items: items.map(({ tempId, ...item }) => item),
-        created_by: user.id
-      };
-
-      const { data, error } = await supabase
-        .from('factures')
-        .insert([factureData])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      showSuccess(`${formData.type === 'devis' ? 'Devis' : 'Facture'} créé avec succès`);
+      if (isEditMode && id) {
+        // Mode édition
+        await updateFacture(id, {
+          ...formData,
+          items: items.map(({ tempId, id: itemId, ...item }) => item)
+        });
+        showSuccess('Facture mise à jour avec succès');
+      } else {
+        // Mode création
+        const factureData: CreateFactureData = {
+          ...formData,
+          items: items.map(({ tempId, ...item }) => item)
+        };
+        await createFacture(factureData);
+      }
       navigate('/factures');
     } catch (error: any) {
-      console.error('Error creating facture:', error);
-      showError(error.message || 'Erreur lors de la création');
+      console.error('Error saving facture:', error);
+      showError(error.message || (isEditMode ? 'Erreur lors de la mise à jour' : 'Erreur lors de la création'));
     } finally {
       setLoading(false);
     }
   };
 
   const totals = calculateTotals();
+
+  if (loadingData) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Chargement...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -169,10 +234,10 @@ const FacturesCreate: React.FC = () => {
             </Button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                Nouveau {formData.type === 'devis' ? 'Devis' : 'Facture'}
+                {isEditMode ? 'Modifier' : 'Nouveau'} {formData.type === 'devis' ? 'Devis' : 'Facture'}
               </h1>
               <p className="text-gray-500">
-                Créez un nouveau document pour vos clients
+                {isEditMode ? 'Modifiez votre document' : 'Créez un nouveau document pour vos clients'}
               </p>
             </div>
           </div>
@@ -482,12 +547,12 @@ const FacturesCreate: React.FC = () => {
                       {loading ? (
                         <div className="flex items-center">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Création en cours...
+                          {isEditMode ? 'Mise à jour...' : 'Création en cours...'}
                         </div>
                       ) : (
                         <>
                           <Save className="mr-2 h-4 w-4" />
-                          Créer le {formData.type === 'devis' ? 'devis' : 'facture'}
+                          {isEditMode ? 'Mettre à jour' : 'Créer'} le {formData.type === 'devis' ? 'devis' : 'facture'}
                         </>
                       )}
                     </Button>

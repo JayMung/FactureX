@@ -59,6 +59,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type { PaymentMethod } from '@/types';
 
 interface UserProfile {
   id: string;
@@ -73,14 +74,6 @@ interface UserProfile {
   updated_at?: string;
 }
 
-interface PaymentMethod {
-  id: string;
-  name: string;
-  code: string;
-  is_active: boolean;
-  icon?: string;
-  description?: string;
-}
 
 interface SettingsOption {
   id: string;

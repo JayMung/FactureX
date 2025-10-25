@@ -73,7 +73,7 @@ const Login = () => {
           <div className="w-20 h-20 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-white text-3xl font-bold">C</span>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">CoxiPay</h2>
+          <h2 className="text-3xl font-bold text-gray-900">FactureX</h2>
           <p className="mt-2 text-sm text-gray-600">
             {isSignUp ? 'Créer un compte' : 'Connectez-vous à votre compte'}
           </p>
@@ -84,7 +84,7 @@ const Login = () => {
             <CardTitle>{isSignUp ? 'Inscription' : 'Connexion'}</CardTitle>
             <CardDescription>
               {isSignUp 
-                ? 'Créez votre compte pour accéder à CoxiPay'
+                ? 'Créez votre compte pour accéder à FactureX'
                 : 'Entrez vos identifiants pour accéder à votre tableau de bord'
               }
             </CardDescription>

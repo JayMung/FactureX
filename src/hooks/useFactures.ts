@@ -302,7 +302,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
         .from('factures')
         .select(`
           *,
-          client:clients(*),
+          clients!inner(*),
           items:facture_items(*)
         `)
         .eq('id', id)

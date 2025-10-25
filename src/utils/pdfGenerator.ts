@@ -234,13 +234,6 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         doc.setTextColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
         doc.text(COMPANY_INFO.name, MARGIN, y);
         
-        // Petite ligne sous le nom
-        doc.setDrawColor(COLORS.primaryLight[0], COLORS.primaryLight[1], COLORS.primaryLight[2]);
-        doc.setLineWidth(0.8);
-        const nameWidth = doc.getTextWidth(COMPANY_INFO.name);
-        doc.line(MARGIN, y + 1.5, MARGIN + nameWidth, y + 1.5);
-        doc.setLineWidth(0.2);
-        
         setFont('normal');
         doc.setFontSize(8);
         doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);

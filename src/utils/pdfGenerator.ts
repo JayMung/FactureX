@@ -621,20 +621,6 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         doc.text(conditionsText, MARGIN + 20, y);
         y += 5;
 
-        // Puce pour Délais
-        doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
-        doc.circle(MARGIN + 1, y - 1, 0.7, 'F');
-        setFont('bold');
-        doc.setFontSize(8);
-        doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
-        doc.text("Délais de livraison:", MARGIN + 3, y);
-        
-        setFont('normal');
-        doc.setFontSize(7.5);
-        doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
-        doc.text(COMPANY_INFO.deliveryTime, MARGIN + 32, y);
-        y += 5;
-
         // Puce pour Paiement
         doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
         doc.circle(MARGIN + 1, y - 1, 0.7, 'F');

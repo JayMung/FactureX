@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,6 +35,24 @@ const ClientForm: React.FC<ClientFormProps> = ({
   const { createClient, updateClient, isCreating, isUpdating } = useClients();
   const isEditing = !!client;
   const isLoading = isCreating || isUpdating;
+
+  // Mettre à jour le formulaire quand le client change
+  useEffect(() => {
+    if (client) {
+      setFormData({
+        nom: client.nom || '',
+        telephone: client.telephone || '',
+        ville: client.ville || ''
+      });
+    } else {
+      setFormData({
+        nom: '',
+        telephone: '',
+        ville: ''
+      });
+    }
+    setErrors({});
+  }, [client, isOpen]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -71,10 +89,8 @@ const ClientForm: React.FC<ClientFormProps> = ({
 
       if (isEditing && client) {
         await updateClient({ id: client.id, data: dataToSave });
-        showSuccess('Client mis à jour avec succès');
       } else {
         await createClient(dataToSave);
-        showSuccess('Client créé avec succès');
       }
       
       onSuccess?.();

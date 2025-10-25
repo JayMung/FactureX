@@ -107,15 +107,13 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className }) =>
       prev.map(n => n.id === id ? { ...n, read: true } : n)
     );
     
-    // Si toutes sont lues, marquer comme lu globalement
-    const allRead = notifications.every(n => n.read);
-    if (allRead) {
-      markAsRead();
-    }
+    // Marquer comme lu dans le système
+    markAsRead();
   };
 
   const handleMarkAllAsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    // Marquer toutes les activités comme lues
     markAsRead();
   };
 

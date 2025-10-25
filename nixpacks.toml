@@ -2,7 +2,7 @@
 nixPkgs = ['nodejs', 'nginx']
 
 [phases.install]
-cmds = ['npm ci']
+cmds = ['rm -rf node_modules', 'npm install --no-optional=false']
 
 [phases.build]
 cmds = ['npm run build']

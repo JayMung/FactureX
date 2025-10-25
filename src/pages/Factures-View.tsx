@@ -420,14 +420,14 @@ const FacturesView: React.FC = () => {
 
           {/* Récapitulatif */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center">
-                <Calculator className="mr-2 h-5 w-5" />
-                Récapitulatif
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <div className="space-y-3 max-w-md ml-auto">
+                <div className="flex justify-between items-center pb-3 border-b-2 border-green-500">
+                  <div className="flex items-center">
+                    <Calculator className="mr-2 h-5 w-5 text-green-600" />
+                    <span className="font-bold text-lg text-green-600">Récapitulatif</span>
+                  </div>
+                </div>
                 <div className="flex justify-between items-center py-2 border-b">
                   <span className="text-gray-600">Sous-total</span>
                   <span className="font-semibold text-lg">

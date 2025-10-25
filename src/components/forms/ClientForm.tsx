@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -63,11 +63,17 @@ const ClientForm: React.FC<ClientFormProps> = ({
     if (!validateForm()) return;
 
     try {
+      // Convertir le nom en minuscules avant l'enregistrement
+      const dataToSave = {
+        ...formData,
+        nom: formData.nom.toLowerCase()
+      };
+
       if (isEditing && client) {
-        await updateClient({ id: client.id, data: formData });
+        await updateClient({ id: client.id, data: dataToSave });
         showSuccess('Client mis à jour avec succès');
       } else {
-        await createClient(formData);
+        await createClient(dataToSave);
         showSuccess('Client créé avec succès');
       }
       

@@ -1,58 +1,67 @@
-import { useState, useEffect, useCallback } from 'react';
+"use client";
+
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { 
+  Transaction, 
+  TransactionFilters, 
+  CreateTransactionData, 
+  UpdateTransactionData,
+  ApiResponse,
+  PaginatedResponse
+} from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
-import { activityLogger } from '@/services/activityLogger';
-import type { Transaction, UpdateTransactionData, CreateTransactionData, TransactionFilters } from '@/types';
 
 export const useTransactions = (page: number = 1, filters: TransactionFilters = {}) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [pagination, setPagination] = useState<PaginatedResponse<Transaction> | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({
-    count: 0,
-    page: 1,
-    pageSize: 10,
-    totalPages: 0
-  });
 
-  const fetchTransactions = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
+  const fetchTransactions = async () => {
     try {
+      setLoading(true);
+      setError(null);
+
       let query = supabase
         .from('transactions')
         .select(`
           *,
           client:clients(*)
         `, { count: 'exact' })
-        .range((page - 1) * pagination.pageSize, page * pagination.pageSize - 1)
+        .range((page - 1) * 10, page * 10 - 1)
         .order('created_at', { ascending: false });
 
-      // Appliquer les filtres
       if (filters.status) {
         query = query.eq('statut', filters.status);
       }
+
       if (filters.currency) {
         query = query.eq('devise', filters.currency);
       }
+
       if (filters.clientId) {
         query = query.eq('client_id', filters.clientId);
       }
+
       if (filters.modePaiement) {
         query = query.eq('mode_paiement', filters.modePaiement);
       }
+
       if (filters.dateFrom) {
         query = query.gte('created_at', filters.dateFrom);
       }
+
       if (filters.dateTo) {
         query = query.lte('created_at', filters.dateTo);
       }
+
       if (filters.minAmount) {
         query = query.gte('montant', parseFloat(filters.minAmount));
       }
+
       if (filters.maxAmount) {
         query = query.lte('montant', parseFloat(filters.maxAmount));
       }
@@ -62,66 +71,42 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       if (error) throw error;
 
       setTransactions(data || []);
-      setPagination(prev => ({
-        ...prev,
+      setPagination({
+        data: data || [],
         count: count || 0,
         page,
-        totalPages: Math.ceil((count || 0) / prev.pageSize)
-      }));
+        pageSize: 10,
+        totalPages: Math.ceil((count || 0) / 10)
+      });
+
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [page, filters.status, filters.currency, filters.modePaiement, pagination.pageSize]);
+  };
 
-  useEffect(() => {
-    fetchTransactions();
-  }, [fetchTransactions]);
-
-  const createTransaction = async (transactionData: CreateTransactionData) => {
+  const createTransaction = async (transactionData: CreateTransactionData): Promise<ApiResponse<Transaction>> => {
     setIsCreating(true);
-    setError(null);
-
     try {
-      // Obtenir les taux et frais
-      const { data: settings } = await supabase
-        .from('settings')
-        .select('cle, valeur, categorie')
-        .in('categorie', ['taux_change', 'frais'])
-        .in('cle', ['usdToCny', 'usdToCdf', 'transfert', 'commande', 'partenaire']);
+      const rates = await getExchangeRates();
+      const fees = await getFees();
+      
+      if (rates.error || fees.error) {
+        throw new Error('Impossible de récupérer les taux ou frais');
+      }
 
-      const rates: Record<string, number> = {
-        usdToCny: 7.25,
-        usdToCdf: 2850
-      };
-
-      const fees: Record<string, number> = {
-        transfert: 5,
-        commande: 10,
-        partenaire: 3
-      };
-
-      settings?.forEach((setting: any) => {
-        if (setting.categorie === 'taux_change') {
-          rates[setting.cle] = parseFloat(setting.valeur);
-        } else if (setting.categorie === 'frais') {
-          fees[setting.cle] = parseFloat(setting.valeur);
-        }
-      });
-
-      const tauxUSD = transactionData.devise === 'USD' ? 1 : rates.usdToCdf;
-      const fraisUSD = transactionData.montant * (fees[transactionData.motif.toLowerCase() as keyof typeof fees] / 100);
+      const tauxUSD = transactionData.devise === 'USD' ? 1 : rates.data!.usdToCdf;
+      const fraisUSD = transactionData.montant * (fees.data![transactionData.motif.toLowerCase() as keyof any] / 100);
       const montantCNY = transactionData.devise === 'USD' 
-        ? transactionData.montant * rates.usdToCny 
-        : (transactionData.montant / tauxUSD) * rates.usdToCny;
-      const commissionPartenaire = transactionData.montant * (fees.partenaire / 100);
-      const benefice = fraisUSD - commissionPartenaire;
+        ? transactionData.montant * rates.data!.usdToCny 
+        : (transactionData.montant / tauxUSD) * rates.data!.usdToCny;
+      const benefice = fraisUSD;
 
       const fullTransactionData = {
         ...transactionData,
-        taux_usd_cny: rates.usdToCny,
-        taux_usd_cdf: rates.usdToCdf,
+        taux_usd_cny: rates.data!.usdToCny,
+        taux_usd_cdf: rates.data!.usdToCdf,
         montant_cny: montantCNY,
         frais: fraisUSD,
         benefice: benefice,
@@ -132,231 +117,163 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       const { data, error } = await supabase
         .from('transactions')
         .insert([fullTransactionData])
-        .select(`
-          *,
-          client:clients(*)
-        `)
+        .select()
         .single();
 
       if (error) throw error;
 
-      // Logger l'activité
-      await activityLogger.logActivityWithChanges(
-        'Création Transaction',
-        'transactions',
-        data.id,
-        {
-          before: null,
-          after: fullTransactionData
-        }
-      );
-
-      // Ajouter la nouvelle transaction à l'état local
-      setTransactions(prev => [data!, ...prev]);
-      
+      await logActivity('Création transaction', 'Transaction', data.id);
       showSuccess('Transaction créée avec succès');
-      
-      // Auto-refresh pour synchroniser les données
-      await fetchTransactions();
-      
-      return data;
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la création de la transaction');
-      showError(err.message || 'Erreur lors de la création de la transaction');
-      throw err;
+      fetchTransactions();
+
+      return { data, message: 'Transaction créée avec succès' };
+    } catch (error: any) {
+      const errorMessage = error.message || 'Erreur lors de la création de la transaction';
+      showError(errorMessage);
+      return { error: errorMessage };
     } finally {
       setIsCreating(false);
     }
   };
 
-  const updateTransaction = async (id: string, transactionData: UpdateTransactionData) => {
+  const updateTransaction = async (id: string, transactionData: UpdateTransactionData): Promise<ApiResponse<Transaction>> => {
     setIsUpdating(true);
-    setError(null);
-
     try {
-      // Si montant, devise ou motif changent, recalculer les frais et bénéfices
-      let updatedData = { ...transactionData };
-      
-      if (transactionData.montant || transactionData.devise || transactionData.motif) {
-        // Récupérer la transaction actuelle pour avoir toutes les valeurs
-        const { data: currentTransaction } = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (currentTransaction) {
-          // Récupérer les paramètres
-          const { data: settings } = await supabase
-            .from('settings')
-            .select('cle, valeur, categorie')
-            .in('categorie', ['taux_change', 'frais'])
-            .in('cle', ['usdToCny', 'usdToCdf', 'transfert', 'commande', 'partenaire']);
-
-          const rates: Record<string, number> = {
-            usdToCny: 7.25,
-            usdToCdf: 2850
-          };
-
-          const fees: Record<string, number> = {
-            transfert: 5,
-            commande: 10,
-            partenaire: 3
-          };
-
-          settings?.forEach((setting: any) => {
-            if (setting.categorie === 'taux_change') {
-              rates[setting.cle] = parseFloat(setting.valeur);
-            } else if (setting.categorie === 'frais') {
-              fees[setting.cle] = parseFloat(setting.valeur);
-            }
-          });
-
-          // Utiliser les nouvelles valeurs ou les valeurs actuelles
-          const montant = transactionData.montant ?? currentTransaction.montant;
-          const devise = transactionData.devise ?? currentTransaction.devise;
-          const motif = transactionData.motif ?? currentTransaction.motif;
-
-          const tauxUSD = devise === 'USD' ? 1 : rates.usdToCdf;
-          const fraisUSD = montant * (fees[motif.toLowerCase() as keyof typeof fees] / 100);
-          const montantCNY = devise === 'USD' 
-            ? montant * rates.usdToCny 
-            : (montant / tauxUSD) * rates.usdToCny;
-          const commissionPartenaire = montant * (fees.partenaire / 100);
-          const benefice = fraisUSD - commissionPartenaire;
-
-          // Ajouter les champs calculés
-          updatedData = {
-            ...updatedData,
-            taux_usd_cny: rates.usdToCny,
-            taux_usd_cdf: rates.usdToCdf,
-            montant_cny: montantCNY,
-            frais: fraisUSD,
-            benefice: benefice
-          };
-        }
-      }
-
       const { data, error } = await supabase
         .from('transactions')
-        .update(updatedData)
+        .update(transactionData)
         .eq('id', id)
-        .select(`
-          *,
-          client:clients(*)
-        `)
+        .select()
         .single();
 
       if (error) throw error;
 
-      // Logger l'activité
-      await activityLogger.logActivityWithChanges(
-        'Modification Transaction',
-        'transactions',
-        id,
-        {
-          before: transactions.find(t => t.id === id),
-          after: data
-        }
-      );
-
-      // Mettre à jour la transaction dans l'état local
-      setTransactions(prev => 
-        prev.map(t => t.id === id ? data! : t)
-      );
-      
+      await logActivity('Modification transaction', 'Transaction', id);
       showSuccess('Transaction mise à jour avec succès');
-      
-      // Auto-refresh pour synchroniser les données
-      await fetchTransactions();
-      
-      return data;
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la mise à jour de la transaction');
-      showError(err.message || 'Erreur lors de la mise à jour de la transaction');
-      throw err;
+      fetchTransactions();
+
+      return { data, message: 'Transaction mise à jour avec succès' };
+    } catch (error: any) {
+      const errorMessage = error.message || 'Erreur lors de la mise à jour de la transaction';
+      showError(errorMessage);
+      return { error: errorMessage };
     } finally {
       setIsUpdating(false);
     }
   };
 
-  const deleteTransaction = async (id: string) => {
+  const deleteTransaction = async (id: string): Promise<ApiResponse<void>> => {
     try {
-      console.log('Tentative de suppression de la transaction:', id);
-      
-      // Suppression directe sans vérifications complexes
-      const { error, count } = await supabase
+      const { error } = await supabase
         .from('transactions')
-        .delete({ count: 'exact' })
+        .delete()
         .eq('id', id);
 
-      if (error) {
-        console.error('Erreur Supabase lors de la suppression:', error);
-        
-        // Si c'est une erreur RLS, essayer avec une approche différente
-        if (error.code === 'PGRST301' || error.message.includes('policy')) {
-          console.log('Erreur de politique détectée, tentative alternative...');
-          
-          // Essayer de marquer comme supprimé au lieu de supprimer réellement
-          const { error: updateError } = await supabase
-            .from('transactions')
-            .update({ 
-              statut: 'Annulé',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', id);
-            
-          if (updateError) {
-            throw updateError;
-          }
-          
-          await activityLogger.logActivity(
-            'Annulation Transaction (RLS)',
-            'transactions',
-            id
-          );
-          
-          return { message: 'Transaction annulée avec succès (restriction RLS)' };
-        }
-        
-        throw error;
-      }
-      
-      console.log('Suppression réussie, count:', count);
-      
-      if (count === 0) {
-        return { error: 'Transaction non trouvée ou déjà supprimée' };
-      }
+      if (error) throw error;
 
-      // Logger l'activité
-      await activityLogger.logActivity(
-        'Suppression Transaction',
-        'transactions',
-        id
-      );
-
-      // Mettre à jour l'état local
-      setTransactions(prev => prev.filter(t => t.id !== id));
-      
+      await logActivity('Suppression transaction', 'Transaction', id);
       showSuccess('Transaction supprimée avec succès');
-      
-      // Auto-refresh pour synchroniser les données
-      await fetchTransactions();
-      
+      fetchTransactions();
+
       return { message: 'Transaction supprimée avec succès' };
     } catch (error: any) {
-      console.error('Erreur complète lors de la suppression:', error);
-      return { error: error.message || 'Erreur lors de la suppression de la transaction' };
+      const errorMessage = error.message || 'Erreur lors de la suppression de la transaction';
+      showError(errorMessage);
+      return { error: errorMessage };
     }
   };
 
+  const getExchangeRates = async () => {
+    try {
+      const { data: settings, error } = await supabase
+        .from('settings')
+        .select('cle, valeur')
+        .eq('categorie', 'taux_change')
+        .in('cle', ['usdToCny', 'usdToCdf']);
+
+      if (error) throw error;
+
+      const rates = {
+        usdToCny: 7.25,
+        usdToCdf: 2850
+      };
+
+      settings?.forEach(setting => {
+        if (setting.cle === 'usdToCny') {
+          rates.usdToCny = parseFloat(setting.valeur);
+        } else if (setting.cle === 'usdToCdf') {
+          rates.usdToCdf = parseFloat(setting.valeur);
+        }
+      });
+
+      return { data: rates };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  };
+
+  const getFees = async () => {
+    try {
+      const { data: settings, error } = await supabase
+        .from('settings')
+        .select('cle, valeur')
+        .eq('categorie', 'frais')
+        .in('cle', ['transfert', 'commande', 'partenaire']);
+
+      if (error) throw error;
+
+      const fees = {
+        transfert: 5,
+        commande: 10,
+        partenaire: 3
+      };
+
+      settings?.forEach(setting => {
+        if (setting.cle in fees) {
+          fees[setting.cle as keyof typeof fees] = parseFloat(setting.valeur);
+        }
+      });
+
+      return { data: fees };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  };
+
+  const logActivity = async (action: string, entityType: string, entityId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      await supabase
+        .from('activity_logs')
+        .insert([{
+          user_id: user.id,
+          action,
+          cible: entityType,
+          cible_id: entityId,
+          details: {
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent
+          }
+        }]);
+    } catch (error) {
+      console.error('Erreur lors de la journalisation de l\'activité:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [page, filters]);
+
   return {
     transactions,
+    pagination,
     loading,
     isCreating,
     isUpdating,
     error,
-    pagination,
     createTransaction,
     updateTransaction,
     deleteTransaction,

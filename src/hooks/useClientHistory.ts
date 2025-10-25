@@ -68,6 +68,7 @@ export const useClientHistory = (
           reference.ilike.%${filters.search}%
           ,montant.ilike.%${filters.search}%
           ,motif.ilike.%${filters.search}%
+          ,mode_paiement.ilike.%${filters.search}%
         `);
       }
 
@@ -109,7 +110,7 @@ export const useClientHistory = (
         
         if (transaction.devise === 'USD') {
           acc.totalUSD += transaction.montant;
-        } else {
+        } else if (transaction.devise === 'CDF') {
           acc.totalCDF += transaction.montant;
         }
         

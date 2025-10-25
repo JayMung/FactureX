@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
@@ -472,7 +472,14 @@ const ClientsProtected: React.FC = () => {
                           <td className="py-3 px-4 font-medium">
                             {generateReadableId(index)}
                           </td>
-                          <td className="py-3 px-4 font-medium">{client.nom}</td>
+                          <td className="py-3 px-4 font-medium">
+                            <button
+                              onClick={() => handleViewClientHistory(client)}
+                              className="text-left hover:text-green-500 hover:underline transition-colors cursor-pointer"
+                            >
+                              {client.nom}
+                            </button>
+                          </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center space-x-1">
                               <span className="text-gray-400">📞</span>

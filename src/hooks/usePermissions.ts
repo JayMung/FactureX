@@ -40,26 +40,29 @@ export const usePermissions = () => {
     module: ModuleType, 
     action: 'read' | 'create' | 'update' | 'delete'
   ): boolean => {
-    // Les admins ont toutes les permissions
-    if (user?.user_metadata?.role === 'admin') return true;
+    // Les admins ont toutes les permissions (vérifier app_metadata, pas user_metadata)
+    if (user?.app_metadata?.role === 'admin') return true;
     
-    // Si les permissions ne sont pas encore chargées, assumer l'accès pour éviter les flashs
-    if (loading) return true;
+    // SECURITY: Si les permissions ne sont pas encore chargées, refuser l'accès aux actions sensibles
+    // Seule la lecture peut être autorisée pendant le chargement
+    if (loading) {
+      return action === 'read';
+    }
     
     const modulePermissions = permissions[module];
     return modulePermissions?.[`can_${action}`] || false;
-  }, [permissions, loading, user?.user_metadata?.role]);
+  }, [permissions, loading, user?.app_metadata?.role]);
 
   // Vérifier si l'utilisateur peut accéder à un module
   const canAccessModule = useCallback((module: ModuleType): boolean => {
-    // Les admins ont tous les accès
-    if (user?.user_metadata?.role === 'admin') return true;
+    // Les admins ont tous les accès (vérifier app_metadata)
+    if (user?.app_metadata?.role === 'admin') return true;
     
-    // Si les permissions ne sont pas encore chargées, assumer l'accès pour éviter les flashs
+    // Pendant le chargement, autoriser uniquement la lecture
     if (loading) return true;
     
     return checkPermission(module, 'read');
-  }, [permissions, loading, user?.user_metadata?.role]);
+  }, [checkPermission, loading, user?.app_metadata?.role]);
 
   // Mettre à jour une permission
   const updatePermission = useCallback(async (
@@ -106,22 +109,22 @@ export const usePermissions = () => {
 
   // Obtenir les modules accessibles pour le menu
   const getAccessibleModules = useCallback(() => {
-    // Les admins ont tous les accès
-    if (user?.user_metadata?.role === 'admin') return MODULES_INFO;
+    // Les admins ont tous les accès (vérifier app_metadata)
+    if (user?.app_metadata?.role === 'admin') return MODULES_INFO;
     
     // Si les permissions ne sont pas encore chargées, retourner tous les modules pour éviter les flashs
     if (loading) return MODULES_INFO;
     
     return MODULES_INFO.filter(module => {
       // Si le module est admin-only et l'utilisateur n'est pas admin
-      if (module.adminOnly && user?.user_metadata?.role !== 'admin') {
+      if (module.adminOnly && user?.app_metadata?.role !== 'admin') {
         return false;
       }
       
       // Vérifier la permission de lecture
       return canAccessModule(module.id);
     });
-  }, [canAccessModule, loading, user?.user_metadata?.role]);
+  }, [canAccessModule, loading, user?.app_metadata?.role]);
 
   return {
     permissions,

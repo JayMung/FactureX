@@ -24,6 +24,7 @@ import { useClients } from '../hooks/useClients';
 import { useFactures } from '../hooks/useFactures';
 import { showSuccess, showError } from '@/utils/toast';
 import ImagePreview from '@/components/ui/ImagePreview';
+import { supabase } from '@/integrations/supabase/client';
 import type { Client, CreateFactureData, FactureItem } from '@/types';
 
 const FacturesCreate: React.FC = () => {
@@ -54,6 +55,49 @@ const FacturesCreate: React.FC = () => {
   });
 
   const [items, setItems] = useState<FactureItem[]>([]);
+  const [defaultConditions, setDefaultConditions] = useState({
+    aerien: '',
+    maritime: ''
+  });
+
+  // Charger les conditions de vente par défaut depuis les paramètres
+  useEffect(() => {
+    const loadDefaultConditions = async () => {
+      try {
+        const { data } = await supabase
+          .from('settings')
+          .select('*')
+          .eq('categorie', 'facture')
+          .in('cle', ['conditions_vente_aerien', 'conditions_vente_maritime']);
+        
+        if (data) {
+          const conditions: any = {};
+          data.forEach(item => {
+            if (item.cle === 'conditions_vente_aerien') {
+              conditions.aerien = item.valeur || '';
+            } else if (item.cle === 'conditions_vente_maritime') {
+              conditions.maritime = item.valeur || '';
+            }
+          });
+          setDefaultConditions(conditions);
+          
+          // Initialiser avec les conditions par défaut si pas en mode édition
+          if (!isEditMode) {
+            setFormData(prev => ({
+              ...prev,
+              conditions_vente: formData.mode_livraison === 'aerien' 
+                ? conditions.aerien 
+                : conditions.maritime
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Error loading default conditions:', error);
+      }
+    };
+    
+    loadDefaultConditions();
+  }, []);
 
   // Charger les données de la facture en mode édition
   useEffect(() => {
@@ -106,6 +150,28 @@ const FacturesCreate: React.FC = () => {
 
     loadFacture();
   }, [id, isEditMode]);
+
+  // Mettre à jour automatiquement les conditions de vente quand le mode de livraison change
+  useEffect(() => {
+    // Ne pas écraser si l'utilisateur a modifié manuellement
+    const currentConditions = formData.conditions_vente;
+    const expectedAerienConditions = defaultConditions.aerien;
+    const expectedMaritimeConditions = defaultConditions.maritime;
+    
+    // Mettre à jour seulement si les conditions actuelles correspondent aux conditions par défaut
+    // ou si elles sont vides
+    if (!currentConditions || 
+        currentConditions === expectedAerienConditions || 
+        currentConditions === expectedMaritimeConditions) {
+      const newConditions = formData.mode_livraison === 'aerien' 
+        ? defaultConditions.aerien 
+        : defaultConditions.maritime;
+      
+      if (newConditions && currentConditions !== newConditions) {
+        setFormData(prev => ({ ...prev, conditions_vente: newConditions }));
+      }
+    }
+  }, [formData.mode_livraison, defaultConditions]);
 
   const addItem = () => {
     const newItem: FactureItem = {

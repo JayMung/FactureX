@@ -89,6 +89,20 @@ const Sidebar: React.FC<SidebarProps> = ({
            (user?.user_metadata?.role === 'admin');
   });
 
+  // Séparer Paramètres pour l'afficher en bas, et réordonner le menu principal
+  const mainNavItems = filteredMenuItems
+    .filter(item => item.label !== 'Paramètres')
+    .sort((a, b) => {
+      const order: Record<string, number> = {
+        'Tableau de bord': 1,
+        'Clients': 2,
+        'Transactions': 3,
+        'Factures': 4,
+      };
+      return (order[a.label] ?? 99) - (order[b.label] ?? 99);
+    });
+  const settingsItem = filteredMenuItems.find(item => item.label === 'Paramètres');
+
   const handleLogout = async () => {
     await supabase.auth.signOut(); // <-- Maintenant correct avec l'import
     showSuccess('Déconnexion réussie');
@@ -140,7 +154,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           "space-y-2",
           isMobile && "space-y-1"
         )}>
-          {filteredMenuItems.map((item) => (
+          {mainNavItems.map((item) => (
             <li key={item.path}>
               <Button
                 variant="ghost"
@@ -164,6 +178,33 @@ const Sidebar: React.FC<SidebarProps> = ({
           ))}
         </ul>
       </nav>
+
+      {/* Paramètres placé en bas, au-dessus des infos utilisateur */}
+      {settingsItem && (
+        <div className={cn(
+          "px-4 pb-2",
+          isMobile && "px-2"
+        )}>
+          <Button
+            variant="ghost"
+            asChild
+            className={cn(
+              "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-md",
+              currentPath === settingsItem.path && "bg-green-600 dark:bg-green-700 text-white shadow-md",
+              isMobile && "px-3 justify-center"
+            )}
+          >
+            <Link to={settingsItem.path}>
+              <settingsItem.icon className={cn("h-4 w-4 flex-shrink-0", isMobile && "h-5 w-5")} />
+              {isMobile ? (
+                <span className="sr-only">{settingsItem.label}</span>
+              ) : (
+                <span className="ml-3 truncate text-sm font-medium">{settingsItem.label}</span>
+              )}
+            </Link>
+          </Button>
+        </div>
+      )}
 
       {/* User Info */}
       <div className={cn(

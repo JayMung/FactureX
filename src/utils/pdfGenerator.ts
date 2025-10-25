@@ -169,7 +169,7 @@ const loadCompanySettings = async () => {
 
 // --- FONCTION PRINCIPALE DE GÉNÉRATION PDF ---
 
-export const generateFacturePDF = async (facture: Facture) => {
+export const generateFacturePDF = async (facture: Facture, previewMode: boolean = false) => {
     try {
         // Charger les informations depuis la DB
         const COMPANY_INFO = await loadCompanySettings();
@@ -691,7 +691,14 @@ export const generateFacturePDF = async (facture: Facture) => {
 
         // --- SAUVEGARDE DU FICHIER ---
         const fileName = `${facture.type}_${facture.facture_number}.pdf`;
-        doc.save(fileName);
+        
+        if (previewMode) {
+            // Mode aperçu : retourner le blob pour affichage
+            return doc.output('blob');
+        } else {
+            // Mode téléchargement : sauvegarder directement
+            doc.save(fileName);
+        }
 
     } catch (error) {
         console.error('Erreur lors de la génération du PDF:', error);

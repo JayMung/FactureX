@@ -79,8 +79,19 @@ const FacturesPreview: React.FC = () => {
     
     setGeneratingPDF(true);
     try {
-      await generateFacturePDF(facture);
-      showSuccess('PDF généré avec succès');
+      // Générer le PDF et ouvrir l'aperçu avant impression
+      const pdfBlob = await generateFacturePDF(facture, true);
+      
+      if (pdfBlob) {
+        // Créer une URL pour le blob
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        
+        // Ouvrir dans un nouvel onglet pour l'aperçu
+        window.open(pdfUrl, '_blank');
+        
+        showSuccess('Aperçu PDF ouvert');
+      }
+      
       // Rediriger vers la liste des factures après génération
       setTimeout(() => {
         navigate('/factures');

@@ -255,15 +255,8 @@ const SettingsWithPermissions = () => {
     try {
       const { data } = await supabase
         .from('activity_logs')
-        .select(`
-          *,
-          profiles:user_id (
-            first_name,
-            last_name,
-            email
-          )
-        `)
-        .order('created_at', { ascending: false })
+        .select('*')
+        .order('date', { ascending: false })
         .limit(50);
       
       setActivityLogs(data || []);
@@ -1128,9 +1121,7 @@ const SettingsWithPermissions = () => {
                               </td>
                               <td className="py-3 px-4 text-sm">{log.cible || '-'}</td>
                               <td className="py-3 px-4 text-sm text-gray-600">
-                                {log.profiles ? 
-                                  `${log.profiles.first_name} ${log.profiles.last_name}` : 
-                                  log.user_email || 'Utilisateur inconnu'}
+                                {log.user_email || 'Système'}
                               </td>
                               <td className="py-3 px-4 text-sm text-gray-600">
                                 {log.created_at ? new Date(log.created_at).toLocaleString('fr-FR', {

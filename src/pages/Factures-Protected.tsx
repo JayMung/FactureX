@@ -315,7 +315,13 @@ const FacturesProtected: React.FC = () => {
                               {facture.type === 'devis' ? '📄 Devis' : '📋 Facture'}
                             </Badge>
                           </td>
-                          <td className="py-3 px-4 font-medium">{facture.facture_number}</td>
+                          <td 
+                            className="py-3 px-4 font-medium text-green-600 hover:text-green-700 cursor-pointer hover:underline transition-colors"
+                            onClick={() => handleViewDetails(facture)}
+                            title="Cliquer pour voir les détails"
+                          >
+                            {facture.facture_number}
+                          </td>
                           <td className="py-3 px-4">{(facture as any).clients?.nom || 'N/A'}</td>
                           <td className="py-3 px-4 text-sm">
                             {new Date(facture.date_emission).toLocaleDateString('fr-FR')}

@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { AuthProvider } from '@/components/auth/AuthProvider';
 import { PageProvider } from '@/contexts/PageContext';
 import Layout from '@/components/layout/Layout';
 import Index from '@/pages/Index';
@@ -18,47 +17,9 @@ import ActivityLogs from '@/pages/ActivityLogs';
 import NotificationSettings from '@/pages/NotificationSettings';
 import ProtectedRouteEnhanced from '@/components/auth/ProtectedRouteEnhanced';
 
-// Create a simple session context
-const SessionContext = React.createContext<{
-  session: Session | null;
-  loading: boolean;
-}>({
-  session: null,
-  loading: true,
-});
-
-const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [session, setSession] = React.useState<Session | null>(null);
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  return (
-    <SessionContext.Provider value={{ session, loading }}>
-      {children}
-    </SessionContext.Provider>
-  );
-};
-
 function App() {
   return (
-    <SessionProvider>
+    <AuthProvider>
       <PageProvider>
         <Router>
           <Routes>
@@ -77,7 +38,7 @@ function App() {
           </Routes>
         </Router>
       </PageProvider>
-    </SessionProvider>
+    </AuthProvider>
   );
 }
 

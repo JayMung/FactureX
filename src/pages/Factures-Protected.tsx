@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -103,15 +103,8 @@ const FacturesProtected: React.FC = () => {
     }
   };
 
-  const handleViewDetails = async (facture: Facture) => {
-    try {
-      const factureWithItems = await getFactureWithItems(facture.id);
-      setFactureToView(factureWithItems);
-      setDetailsModalOpen(true);
-    } catch (error) {
-      console.error('Error fetching facture details:', error);
-      showError('Erreur lors du chargement des détails');
-    }
+  const handleViewDetails = (facture: Facture) => {
+    navigate(`/factures/view/${facture.id}`);
   };
 
   const handleEdit = (facture: Facture) => {

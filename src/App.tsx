@@ -11,6 +11,7 @@ import ClientsProtected from "./pages/Clients-Protected";
 import TransactionsProtected from "./pages/Transactions-Protected";
 import FacturesProtected from "./pages/Factures-Protected";
 import FacturesCreate from "./pages/Factures-Create";
+import FacturesView from "./pages/Factures-View";
 import SettingsWithPermissions from "./pages/Settings-Permissions";
 import ActivityLogs from "./pages/ActivityLogs";
 import Login from "./pages/Login";
@@ -58,6 +59,11 @@ const App = () => (
               <Route path="/factures/edit/:id" element={
                 <ProtectedRouteEnhanced>
                   <FacturesCreate />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/factures/view/:id" element={
+                <ProtectedRouteEnhanced>
+                  <FacturesView />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/settings" element={

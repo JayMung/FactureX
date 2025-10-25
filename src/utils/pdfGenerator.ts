@@ -179,13 +179,29 @@ export const generateFacturePDF = async (facture: Facture) => {
         // Pré-charger toutes les images des items
         const imageCache = new Map<number, string | null>();
         if (facture.items && facture.items.length > 0) {
+            console.log('=== CHARGEMENT DES IMAGES ===');
+            console.log(`Nombre d'items: ${facture.items.length}`);
+            
             const imagePromises = facture.items.map(async (item, index) => {
-                if (item.image_url && item.image_url.startsWith('http')) {
+                console.log(`Item ${index + 1}:`, {
+                    description: item.description,
+                    image_url: item.image_url,
+                    hasUrl: !!item.image_url,
+                    isHttpUrl: item.image_url?.startsWith('http')
+                });
+                
+                if (item.image_url && 
+                    (item.image_url.startsWith('http://') || item.image_url.startsWith('https://'))) {
+                    console.log(`  -> Chargement de l'image depuis: ${item.image_url}`);
                     const imageData = await loadImageFromUrl(item.image_url);
                     imageCache.set(index, imageData);
+                    console.log(`  -> Image ${imageData ? 'chargée' : 'échouée'}`);
+                } else {
+                    console.log(`  -> Pas d'URL valide, placeholder sera utilisé`);
                 }
             });
             await Promise.all(imagePromises);
+            console.log('=== FIN CHARGEMENT IMAGES ===');
         }
         
         const doc = new jsPDF('p', 'mm', 'a4');

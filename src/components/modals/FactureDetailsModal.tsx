@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatCurrency';
 import ImagePreview from '@/components/ui/ImagePreview';
+import { generateFacturePDF } from '@/utils/pdfGenerator';
+import { showSuccess, showError } from '@/utils/toast';
 import type { Facture, FactureItem } from '@/types';
 
 interface FactureDetailsModalProps {
@@ -85,9 +87,17 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
     }
   };
 
-  const handleGeneratePDF = () => {
-    // TODO: Implement PDF generation
-    console.log('Generate PDF for facture:', facture.facture_number);
+  const handleGeneratePDF = async () => {
+    setLoading(true);
+    try {
+      await generateFacturePDF(facture);
+      showSuccess('PDF généré avec succès');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      showError('Erreur lors de la génération du PDF');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatutBadge = (statut: string) => {
@@ -190,7 +200,7 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
                   </label>
                   <p className="text-base font-semibold flex items-center text-gray-900">
                     <User className="mr-2 h-4 w-4 text-emerald-600" />
-                    {(facture as any).clients?.nom || 'N/A'}
+                    {(facture as any).clients?.nom || (facture as any).client?.nom || 'N/A'}
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -199,7 +209,7 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
                   </label>
                   <p className="text-base font-semibold flex items-center text-gray-900">
                     <Phone className="mr-2 h-4 w-4 text-emerald-600" />
-                    {(facture as any).clients?.telephone || 'N/A'}
+                    {(facture as any).clients?.telephone || (facture as any).client?.telephone || 'N/A'}
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -208,7 +218,7 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
                   </label>
                   <p className="text-base font-semibold flex items-center text-gray-900">
                     <MapPin className="mr-2 h-4 w-4 text-emerald-600" />
-                    {(facture as any).clients?.ville || 'N/A'}
+                    {(facture as any).clients?.ville || (facture as any).client?.ville || 'N/A'}
                   </p>
                 </div>
               </div>
@@ -316,7 +326,7 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="space-y-3 max-w-md ml-auto">
                 <div className="flex justify-between items-center py-2 border-b">
                   <span className="text-gray-600">Sous-total</span>
                   <span className="font-semibold text-lg">
@@ -368,6 +378,7 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
               <Button
                 variant="outline"
                 onClick={handleGeneratePDF}
+                disabled={loading}
               >
                 <Download className="mr-2 h-4 w-4" />
                 Générer PDF

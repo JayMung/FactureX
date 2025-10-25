@@ -2,17 +2,44 @@
 
 This checklist provides actionable steps to fix all identified security vulnerabilities.
 
+## 📊 Progression Globale
+
+**Date de dernière mise à jour:** 26 janvier 2025, 00:45
+
+### Vulnérabilités CRITIQUES (4 total)
+- ✅ **Task 1:** Credentials en variables d'environnement - **COMPLÉTÉ**
+- ✅ **Task 2:** Admin role sécurisé (app_metadata) - **COMPLÉTÉ**
+- ✅ **Task 3:** RLS policies avec isolation par organisation - **COMPLÉTÉ**
+- ⏳ **Task 4:** Content Security Policy (CSP) - **EN ATTENTE**
+
+**Progression:** 3/4 (75%) ✅
+
+### Vulnérabilités HIGH (6 total)
+- ⏳ Task 5: Rate limiting - EN ATTENTE
+- ⏳ Task 6: Password requirements - EN ATTENTE
+- ⏳ Task 7: CSRF protection - EN ATTENTE
+- ⏳ Task 8: Image proxy SSRF - EN ATTENTE
+- ⏳ Task 9: Input validation - EN ATTENTE
+- ⏳ Task 10: Security logging - EN ATTENTE
+
+**Progression:** 0/6 (0%)
+
+### Actions Restantes Immédiates
+1. ⚠️ Configurer variables d'environnement sur Vercel/VPS
+2. ⏳ Corriger CSP (Task 4)
+3. ⏳ Implémenter Tasks 5-10 (HIGH priority)
+
 ---
 
 ## 🔴 CRITICAL FIXES (Must Complete Before Deployment)
 
-### ✅ Task 1: Move Supabase Credentials to Environment Variables
+### ✅ Task 1: Move Supabase Credentials to Environment Variables - **COMPLÉTÉ** ✅
 
 **Files to modify:**
-- [ ] Create `.env` file in project root
-- [ ] Update `src/integrations/supabase/client.ts`
-- [ ] Update `.gitignore`
-- [ ] Update deployment configuration
+- [x] Create `.env` file in project root
+- [x] Update `src/integrations/supabase/client.ts`
+- [x] Update `.gitignore`
+- [ ] Update deployment configuration (Vercel/VPS)
 
 **Steps:**
 
@@ -51,13 +78,14 @@ VITE_SUPABASE_ANON_KEY=your_anon_key
 
 ---
 
-### ✅ Task 2: Fix Admin Role Assignment (Use app_metadata)
+### ✅ Task 2: Fix Admin Role Assignment (Use app_metadata) - **COMPLÉTÉ** ✅
 
 **Files to modify:**
-- [ ] `src/components/auth/AuthProvider.tsx`
-- [ ] `src/pages/AdminSetup.tsx`
-- [ ] `src/pages/Login.tsx`
-- [ ] All RLS policies in migrations
+- [x] `src/components/auth/AuthProvider.tsx`
+- [x] `src/App.tsx` (route /admin-setup désactivée en prod)
+- [x] `src/pages/Login.tsx`
+- [x] All RLS policies in migrations
+- [x] Admin user created: mungedijeancy@gmail.com
 
 **Steps:**
 
@@ -119,12 +147,15 @@ const { error } = await supabase.auth.signUp({
 
 ---
 
-### ✅ Task 3: Implement Organization-Based RLS Policies
+### ✅ Task 3: Implement Organization-Based RLS Policies - **COMPLÉTÉ** ✅
 
 **Files to create/modify:**
-- [ ] New migration file for organizations table
-- [ ] Update all table migrations
-- [ ] Update all RLS policies
+- [x] New migration file for organizations table
+- [x] Update all table migrations (clients, transactions, factures, settings)
+- [x] Update all RLS policies
+- [x] Created helper function `get_user_organization_id()`
+- [x] Created trigger for new users
+- [x] Applied via Supabase MCP
 
 **Steps:**
 

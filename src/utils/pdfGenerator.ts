@@ -615,7 +615,9 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         setFont('normal');
         doc.setFontSize(7.5);
         doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
-        const conditionsText = doc.splitTextToSize(COMPANY_INFO.feesDescription, CONTENT_WIDTH - 23);
+        // Utiliser les conditions de la facture si disponibles, sinon utiliser celles par défaut
+        const conditions = facture.conditions_vente || COMPANY_INFO.feesDescription;
+        const conditionsText = doc.splitTextToSize(conditions, CONTENT_WIDTH - 23);
         doc.text(conditionsText, MARGIN + 20, y);
         y += 5;
 

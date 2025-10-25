@@ -393,7 +393,7 @@ export const SettingsFacture = () => {
 
           <div className="space-y-2">
             {categories.map((category) => (
-              <div key={category.id} className="flex items-center justify-between p-3 border rounded-lg">
+              <div key={category.id} className="card-base transition-shadow-hover flex items-center justify-between p-3">
                 <div>
                   <p className="font-medium">{category.nom}</p>
                   <p className="text-sm text-gray-500">{category.code}</p>

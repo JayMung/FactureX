@@ -150,70 +150,70 @@ const FacturesProtected: React.FC = () => {
             </PermissionGuard>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="hover:shadow-lg transition-shadow duration-200">
+          {/* Stats Cards - Design System */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-600">Total Factures</p>
-                    <p className="text-3xl font-bold text-green-500">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Factures</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {pagination?.count || 0}
                     </p>
                   </div>
-                  <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <FileText className="h-6 w-6 text-green-500" />
+                  <div className="p-3 rounded-full bg-green-500 flex-shrink-0">
+                    <FileText className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow duration-200">
+            <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-600">Montant Total</p>
-                    <p className="text-3xl font-bold text-blue-600">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Montant Total</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {formatCurrency(
                         factures.filter(f => f.statut !== 'brouillon').reduce((sum, f) => sum + f.total_general, 0),
                         'USD'
                       )}
                     </p>
                   </div>
-                  <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <DollarSign className="h-6 w-6 text-blue-600" />
+                  <div className="p-3 rounded-full bg-blue-500 flex-shrink-0">
+                    <DollarSign className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow duration-200">
+            <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-600">Validées</p>
-                    <p className="text-3xl font-bold text-green-600">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Validées</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {factures.filter(f => f.statut === 'validee').length}
                     </p>
                   </div>
-                  <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <CheckCircle className="h-6 w-6 text-green-600" />
+                  <div className="p-3 rounded-full bg-purple-500 flex-shrink-0">
+                    <CheckCircle className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow duration-200">
+            <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-600">En attente</p>
-                    <p className="text-3xl font-bold text-yellow-600">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">En attente</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {factures.filter(f => f.statut === 'en_attente').length}
                     </p>
                   </div>
-                  <div className="h-12 w-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <AlertCircle className="h-6 w-6 text-yellow-600" />
+                  <div className="p-3 rounded-full bg-orange-500 flex-shrink-0">
+                    <AlertCircle className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>

@@ -646,10 +646,10 @@ const SettingsWithPermissions = () => {
                   ) : (
                     <div className="space-y-4">
                       {users.map((user) => (
-                        <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div key={user.id} className="card-base transition-shadow-hover flex items-center justify-between p-4">
                           <div className="flex items-center space-x-4">
-                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                              <UserIcon className="h-5 w-5 text-green-500" />
+                            <div className="p-2.5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                              <UserIcon className="h-5 w-5 text-white" />
                             </div>
                             <div>
                               <p className="font-medium">{user.first_name} {user.last_name}</p>

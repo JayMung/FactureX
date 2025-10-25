@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test SEO - FactureX</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            color: #718096;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .section h2 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        
+        .test-link {
+            display: block;
+            padding: 12px 20px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            text-decoration: none;
+            color: #667eea;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .test-link:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+        
+        .preview-box {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 15px;
+        }
+        
+        .preview-box img {
+            width: 100%;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        
+        .preview-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+        
+        .preview-desc {
+            font-size: 14px;
+            color: #718096;
+            line-height: 1.6;
+        }
+        
+        .preview-url {
+            font-size: 13px;
+            color: #a0aec0;
+            margin-top: 8px;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .status.success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .checklist {
+            list-style: none;
+        }
+        
+        .checklist li {
+            padding: 8px 0;
+            color: #4a5568;
+        }
+        
+        .checklist li:before {
+            content: "✓ ";
+            color: #48bb78;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+        
+        .warning {
+            background: #fef5e7;
+            border-left: 4px solid #f39c12;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        
+        .warning-title {
+            font-weight: 600;
+            color: #d68910;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Test SEO - FactureX</h1>
+        <p class="subtitle">Vérifiez que vos métadonnées Open Graph fonctionnent correctement</p>
+        
+        <div class="section">
+            <h2>📊 Statut des améliorations <span class="status success">✓ Implémenté</span></h2>
+            <ul class="checklist">
+                <li>Métadonnées Open Graph (Facebook, LinkedIn, WhatsApp)</li>
+                <li>Twitter Cards pour un beau preview</li>
+                <li>Image de preview personnalisée (1200x630px)</li>
+                <li>SEO classique (title, description, keywords)</li>
+                <li>Sitemap.xml et robots.txt optimisés</li>
+                <li>Manifest.json pour PWA</li>
+            </ul>
+        </div>
+        
+        <div class="section">
+            <h2>🧪 Outils de test</h2>
+            <p style="margin-bottom: 15px; color: #4a5568;">Utilisez ces outils pour vérifier vos métadonnées :</p>
+            
+            <a href="https://developers.facebook.com/tools/debug/" target="_blank" class="test-link">
+                📘 Facebook Sharing Debugger
+            </a>
+            
+            <a href="https://cards-dev.twitter.com/validator" target="_blank" class="test-link">
+                🐦 Twitter Card Validator
+            </a>
+            
+            <a href="https://www.linkedin.com/post-inspector/" target="_blank" class="test-link">
+                💼 LinkedIn Post Inspector
+            </a>
+            
+            <a href="https://search.google.com/test/rich-results" target="_blank" class="test-link">
+                🔍 Google Rich Results Test
+            </a>
+            
+            <div class="warning">
+                <div class="warning-title">⚠️ Important</div>
+                Après le déploiement, attendez 5-10 minutes puis utilisez le bouton "Scrape Again" ou "Fetch new information" sur ces outils pour forcer le rafraîchissement du cache.
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>👀 Aperçu du partage</h2>
+            <p style="margin-bottom: 15px; color: #4a5568;">Voici comment votre lien apparaîtra quand vous le partagez :</p>
+            
+            <div class="preview-box">
+                <img src="/og-image.svg" alt="Preview FactureX" onerror="this.style.display='none'">
+                <div class="preview-title">FactureX - Gestion de facturation moderne et intuitive</div>
+                <div class="preview-desc">Créez, gérez et suivez vos factures professionnelles en toute simplicité. Tableaux de bord analytiques, suivi en temps réel et génération PDF automatique.</div>
+                <div class="preview-url">facturex.coccinelledrc.com</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🔗 URL à tester</h2>
+            <p style="margin-bottom: 10px; color: #4a5568;">Copiez cette URL dans les outils ci-dessus :</p>
+            <div class="code-block">https://facturex.coccinelledrc.com</div>
+        </div>
+        
+        <div class="section">
+            <h2>📝 Métadonnées implémentées</h2>
+            <p style="margin-bottom: 10px; color: #4a5568;"><strong>Titre :</strong></p>
+            <div class="code-block">FactureX - Gestion de facturation moderne et intuitive</div>
+            
+            <p style="margin-bottom: 10px; margin-top: 15px; color: #4a5568;"><strong>Description :</strong></p>
+            <div class="code-block">Créez, gérez et suivez vos factures professionnelles en toute simplicité. Tableaux de bord analytiques, suivi en temps réel et génération PDF automatique.</div>
+            
+            <p style="margin-bottom: 10px; margin-top: 15px; color: #4a5568;"><strong>Image :</strong></p>
+            <div class="code-block">https://facturex.coccinelledrc.com/og-image.svg</div>
+        </div>
+        
+        <div class="section">
+            <h2>✅ Checklist de déploiement</h2>
+            <ul class="checklist">
+                <li>Déployer les changements sur production</li>
+                <li>Attendre 5-10 minutes pour la propagation CDN</li>
+                <li>Tester sur Facebook Debugger</li>
+                <li>Tester sur Twitter Card Validator</li>
+                <li>Tester sur LinkedIn Post Inspector</li>
+                <li>Partager le lien sur WhatsApp pour vérifier</li>
+                <li>Vérifier sur Google Search Console</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

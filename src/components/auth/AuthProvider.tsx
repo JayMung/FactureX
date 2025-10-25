@@ -54,9 +54,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
   };
 
-  const isAdmin = user?.user_metadata?.role === 'admin' || 
-                 user?.app_metadata?.role === 'admin' ||
-                 user?.user_metadata?.is_admin === true;
+  // SECURITY: Only use app_metadata (server-controlled, not client-controlled)
+  const isAdmin = user?.app_metadata?.role === 'admin';
 
   const value = {
     user,

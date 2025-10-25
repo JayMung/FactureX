@@ -50,8 +50,7 @@ const Login = () => {
         options: {
           data: {
             first_name: firstName,
-            last_name: lastName,
-            role: 'operateur'
+            last_name: lastName
           }
         }
       });

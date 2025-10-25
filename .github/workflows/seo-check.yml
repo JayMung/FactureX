@@ -1,0 +1,171 @@
+name: SEO Check
+
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'public/og-image.svg'
+      - 'public/sitemap.xml'
+      - 'public/robots.txt'
+
+jobs:
+  seo-validation:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Check Open Graph tags
+        run: |
+          echo "🔍 Vérification des métadonnées Open Graph..."
+          
+          # Vérifier la présence des tags OG essentiels
+          if ! grep -q 'property="og:title"' index.html; then
+            echo "❌ Erreur: og:title manquant"
+            exit 1
+          fi
+          
+          if ! grep -q 'property="og:description"' index.html; then
+            echo "❌ Erreur: og:description manquant"
+            exit 1
+          fi
+          
+          if ! grep -q 'property="og:image"' index.html; then
+            echo "❌ Erreur: og:image manquant"
+            exit 1
+          fi
+          
+          if ! grep -q 'property="og:url"' index.html; then
+            echo "❌ Erreur: og:url manquant"
+            exit 1
+          fi
+          
+          echo "✅ Tous les tags Open Graph essentiels sont présents"
+      
+      - name: Check Twitter Cards
+        run: |
+          echo "🔍 Vérification des Twitter Cards..."
+          
+          if ! grep -q 'property="twitter:card"' index.html; then
+            echo "❌ Erreur: twitter:card manquant"
+            exit 1
+          fi
+          
+          if ! grep -q 'property="twitter:title"' index.html; then
+            echo "❌ Erreur: twitter:title manquant"
+            exit 1
+          fi
+          
+          if ! grep -q 'property="twitter:image"' index.html; then
+            echo "❌ Erreur: twitter:image manquant"
+            exit 1
+          fi
+          
+          echo "✅ Tous les tags Twitter Cards essentiels sont présents"
+      
+      - name: Check meta description
+        run: |
+          echo "🔍 Vérification de la meta description..."
+          
+          if ! grep -q 'name="description"' index.html; then
+            echo "❌ Erreur: meta description manquante"
+            exit 1
+          fi
+          
+          # Vérifier que la description n'est pas trop courte (min 50 chars)
+          desc_length=$(grep 'name="description"' index.html | sed 's/.*content="\([^"]*\)".*/\1/' | wc -c)
+          if [ $desc_length -lt 50 ]; then
+            echo "⚠️  Avertissement: La description est trop courte (min 50 caractères recommandés)"
+          fi
+          
+          # Vérifier que la description n'est pas trop longue (max 160 chars)
+          if [ $desc_length -gt 160 ]; then
+            echo "⚠️  Avertissement: La description est trop longue (max 160 caractères recommandés)"
+          fi
+          
+          echo "✅ Meta description présente"
+      
+      - name: Check title tag
+        run: |
+          echo "🔍 Vérification du title tag..."
+          
+          if ! grep -q '<title>' index.html; then
+            echo "❌ Erreur: title tag manquant"
+            exit 1
+          fi
+          
+          # Vérifier la longueur du titre (max 60 chars recommandés)
+          title_length=$(grep '<title>' index.html | sed 's/<title>\(.*\)<\/title>/\1/' | wc -c)
+          if [ $title_length -gt 60 ]; then
+            echo "⚠️  Avertissement: Le titre est trop long (max 60 caractères recommandés pour Google)"
+          fi
+          
+          echo "✅ Title tag présent"
+      
+      - name: Check canonical URL
+        run: |
+          echo "🔍 Vérification de l'URL canonique..."
+          
+          if ! grep -q 'rel="canonical"' index.html; then
+            echo "❌ Erreur: URL canonique manquante"
+            exit 1
+          fi
+          
+          echo "✅ URL canonique présente"
+      
+      - name: Check OG image exists
+        run: |
+          echo "🔍 Vérification de l'image Open Graph..."
+          
+          if [ ! -f "public/og-image.svg" ]; then
+            echo "❌ Erreur: Image OG manquante (public/og-image.svg)"
+            exit 1
+          fi
+          
+          echo "✅ Image Open Graph présente"
+      
+      - name: Check sitemap
+        run: |
+          echo "🔍 Vérification du sitemap..."
+          
+          if [ ! -f "public/sitemap.xml" ]; then
+            echo "❌ Erreur: Sitemap manquant (public/sitemap.xml)"
+            exit 1
+          fi
+          
+          echo "✅ Sitemap présent"
+      
+      - name: Check robots.txt
+        run: |
+          echo "🔍 Vérification du robots.txt..."
+          
+          if [ ! -f "public/robots.txt" ]; then
+            echo "❌ Erreur: robots.txt manquant"
+            exit 1
+          fi
+          
+          if ! grep -q 'Sitemap:' public/robots.txt; then
+            echo "⚠️  Avertissement: Sitemap non référencé dans robots.txt"
+          fi
+          
+          echo "✅ robots.txt présent"
+      
+      - name: Summary
+        run: |
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✅ Validation SEO terminée avec succès!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "📋 Checklist:"
+          echo "  ✅ Open Graph tags"
+          echo "  ✅ Twitter Cards"
+          echo "  ✅ Meta description"
+          echo "  ✅ Title tag"
+          echo "  ✅ Canonical URL"
+          echo "  ✅ OG Image"
+          echo "  ✅ Sitemap"
+          echo "  ✅ Robots.txt"
+          echo ""
+          echo "🚀 Prêt pour le déploiement!"

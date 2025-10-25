@@ -30,7 +30,10 @@ const App = () => (
         <AuthProvider>
           <PageProvider>
             <Routes>
-              <Route path="/admin-setup" element={<AdminSetup />} />
+              {/* Admin setup disabled in production for security */}
+              {import.meta.env.DEV && (
+                <Route path="/admin-setup" element={<AdminSetup />} />
+              )}
               <Route path="/login" element={<Login />} />
               <Route path="/" element={
                 <ProtectedRouteEnhanced>

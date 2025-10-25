@@ -170,8 +170,12 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
   if (!client) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={onOpenChange} modal>
+      <DialogContent 
+        className="max-w-6xl max-h-[90vh] overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -186,6 +190,7 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
               variant="ghost"
               size="icon"
               onClick={() => onOpenChange(false)}
+              title="Fermer"
             >
               <X className="h-4 w-4" />
             </Button>

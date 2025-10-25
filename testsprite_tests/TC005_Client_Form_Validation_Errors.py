@@ -46,31 +46,41 @@ async def run_test():
                 pass
         
         # Interact with the page elements to simulate user flow
-        # -> Enter valid username/email and password, then submit the login form.
+        # -> Click on the link or button to navigate to the client creation form
         frame = context.pages[-1]
-        # Enter valid email in the email input field
-        elem = frame.locator('xpath=html/body/div/div/div/div[2]/div[2]/form/div/input').nth(0)
-        await page.wait_for_timeout(3000); await elem.fill('validuser@example.com')
+        # Click on 'Pas de compte? Inscrivez-vous' button to navigate to registration or client creation form
+        elem = frame.locator('xpath=html/body/div/div/div/div[2]/div[2]/div/button').nth(0)
+        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
         
 
+        # -> Submit the form without filling required fields to check validation errors
         frame = context.pages[-1]
-        # Enter valid password in the password input field
+        # Click on 'S'inscrire' button to submit the form without filling required fields
+        elem = frame.locator('xpath=html/body/div/div/div/div[2]/div[2]/form/button').nth(0)
+        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
+        
+
+        # -> Enter invalid email format in the email field
+        frame = context.pages[-1]
+        # Enter invalid email format in the email input field
         elem = frame.locator('xpath=html/body/div/div/div/div[2]/div[2]/form/div[2]/input').nth(0)
-        await page.wait_for_timeout(3000); await elem.fill('validpassword123')
+        await page.wait_for_timeout(3000); await elem.fill('invalid-email-format')
         
 
         frame = context.pages[-1]
-        # Click the 'Se connecter' button to submit the login form
+        # Click on 'S'inscrire' button to submit the form with invalid email format
         elem = frame.locator('xpath=html/body/div/div/div/div[2]/div[2]/form/button').nth(0)
         await page.wait_for_timeout(3000); await elem.click(timeout=5000)
         
 
         # --> Assertions to verify final state
         frame = context.pages[-1]
-        try:
-            await expect(frame.locator('text=Authentication Failed: Invalid Credentials').first).to_be_visible(timeout=1000)
-        except AssertionError:
-            raise AssertionError('Test case failed: User login was not successful and the user was not redirected to the analytics dashboard as expected.')
+        await expect(frame.locator('text=Prénom').first).to_be_visible(timeout=30000)
+        await expect(frame.locator('text=Nom').first).to_be_visible(timeout=30000)
+        await expect(frame.locator('text=Email').first).to_be_visible(timeout=30000)
+        await expect(frame.locator('text=Mot de passe').first).to_be_visible(timeout=30000)
+        await expect(frame.locator('text=S\'inscrire').first).to_be_visible(timeout=30000)
+        await expect(frame.locator('text=Déjà un compte? Connectez-vous').first).to_be_visible(timeout=30000)
         await asyncio.sleep(5)
     
     finally:

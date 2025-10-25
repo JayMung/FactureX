@@ -1,0 +1,165 @@
+/* Design System Utilities - FactureX */
+
+/* Typographie classes réutilisables */
+.heading-1 {
+  @apply text-3xl md:text-4xl font-bold leading-tight text-gray-900 dark:text-white;
+}
+
+.heading-2 {
+  @apply text-2xl md:text-3xl font-semibold leading-snug text-gray-900 dark:text-white;
+}
+
+.heading-3 {
+  @apply text-xl md:text-2xl font-semibold text-gray-900 dark:text-white;
+}
+
+.body-text {
+  @apply text-base md:text-sm text-gray-700 dark:text-gray-300 leading-relaxed;
+}
+
+.small-text {
+  @apply text-sm text-gray-500 dark:text-gray-400;
+}
+
+/* Boutons styles cohérents */
+.btn-primary {
+  @apply bg-green-500 hover:bg-green-600 text-white text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 rounded-md;
+}
+
+.btn-secondary {
+  @apply border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-md;
+}
+
+/* Cards styles */
+.card-base {
+  @apply bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg rounded-lg transition-shadow duration-200;
+}
+
+/* Inputs styles */
+.input-base {
+  @apply border-gray-300 dark:border-gray-600 focus:border-green-500 focus:ring-green-500 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500;
+}
+
+/* Labels styles */
+.label-base {
+  @apply text-sm font-medium text-gray-900 dark:text-gray-100;
+}
+
+/* Badges et status */
+.badge-success {
+  @apply bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700;
+}
+
+.badge-error {
+  @apply bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-300 dark:border-red-700;
+}
+
+.badge-warning {
+  @apply bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700;
+}
+
+.badge-info {
+  @apply bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700;
+}
+
+/* Conteneurs communs */
+.container-page {
+  @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6;
+}
+
+.container-section {
+  @apply space-y-6 animate-in fade-in duration-300;
+}
+
+/* Grids responsive */
+.grid-responsive-2 {
+  @apply grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6;
+}
+
+.grid-responsive-3 {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6;
+}
+
+.grid-responsive-4 {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6;
+}
+
+/* Animations entrée */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* Focus rings cohérents */
+.focus-ring-green {
+  @apply focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2;
+}
+
+/* Transitions communes */
+.transition-base {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+.transition-shadow-hover {
+  @apply transition-shadow duration-200 hover:shadow-lg;
+}
+
+/* Banner/Header sections */
+.banner-gradient-green {
+  @apply bg-gradient-to-r from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 rounded-lg p-6 text-white shadow-md;
+}
+
+/* Dividers */
+.divider-base {
+  @apply border-t border-gray-200 dark:border-gray-700;
+}
+
+/* Backgrounds */
+.bg-page {
+  @apply bg-white dark:bg-bg-dark;
+}
+
+.bg-card {
+  @apply bg-white dark:bg-gray-900;
+}
+
+.bg-hover {
+  @apply hover:bg-gray-50 dark:hover:bg-gray-800;
+}
+
+/* Textes status */
+.text-success {
+  @apply text-green-600 dark:text-green-400;
+}
+
+.text-error {
+  @apply text-red-600 dark:text-red-400;
+}
+
+.text-warning {
+  @apply text-yellow-600 dark:text-yellow-400;
+}
+
+.text-info {
+  @apply text-blue-600 dark:text-blue-400;
+}
+
+/* Skeleton loaders */
+.skeleton {
+  @apply animate-pulse bg-gray-200 dark:bg-gray-700 rounded;
+}
+
+/* Modal/Dialog overlay */
+.overlay-dark {
+  @apply bg-black/50 dark:bg-black/70;
+}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -104,7 +104,7 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
     const variants: Record<string, { variant: any; className: string; label: string }> = {
       brouillon: { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-800', label: 'Brouillon' },
       en_attente: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800', label: 'En attente' },
-      validee: { variant: 'default' as const, className: 'bg-emerald-600 text-white', label: 'Validée' },
+      validee: { variant: 'default' as const, className: 'bg-green-500 text-white', label: 'Validée' },
       annulee: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800', label: 'Annulée' }
     };
     
@@ -124,8 +124,8 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-emerald-50 rounded-lg">
-                <FileText className="h-6 w-6 text-emerald-600" />
+              <div className="p-2 bg-green-50 rounded-lg">
+                <FileText className="h-6 w-6 text-green-500" />
               </div>
               <div>
                 <h2 className="text-xl font-bold">
@@ -163,7 +163,7 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
                     DATE D'ÉMISSION
                   </label>
                   <p className="text-base font-semibold flex items-center text-gray-900">
-                    <Calendar className="mr-2 h-4 w-4 text-emerald-600" />
+                    <Calendar className="mr-2 h-4 w-4 text-green-500" />
                     {new Date(facture.date_emission).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
@@ -199,7 +199,7 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
                     NOM
                   </label>
                   <p className="text-base font-semibold flex items-center text-gray-900">
-                    <User className="mr-2 h-4 w-4 text-emerald-600" />
+                    <User className="mr-2 h-4 w-4 text-green-500" />
                     {(facture as any).clients?.nom || (facture as any).client?.nom || 'N/A'}
                   </p>
                 </div>
@@ -208,7 +208,7 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
                     TÉLÉPHONE
                   </label>
                   <p className="text-base font-semibold flex items-center text-gray-900">
-                    <Phone className="mr-2 h-4 w-4 text-emerald-600" />
+                    <Phone className="mr-2 h-4 w-4 text-green-500" />
                     {(facture as any).clients?.telephone || (facture as any).client?.telephone || 'N/A'}
                   </p>
                 </div>
@@ -217,7 +217,7 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
                     VILLE
                   </label>
                   <p className="text-base font-semibold flex items-center text-gray-900">
-                    <MapPin className="mr-2 h-4 w-4 text-emerald-600" />
+                    <MapPin className="mr-2 h-4 w-4 text-green-500" />
                     {(facture as any).clients?.ville || (facture as any).client?.ville || 'N/A'}
                   </p>
                 </div>
@@ -290,7 +290,7 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
                               {item.poids} <span className="text-xs text-gray-500">kg</span>
                             </span>
                           </td>
-                          <td className="py-3 px-3 text-right font-bold text-emerald-600">
+                          <td className="py-3 px-3 text-right font-bold text-green-500">
                             {formatCurrency(item.montant_total, facture.devise)}
                           </td>
                           <td className="py-3 px-3 text-center">
@@ -299,7 +299,7 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
                                 href={item.product_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-emerald-600 hover:text-emerald-700 inline-flex items-center"
+                                className="text-green-500 hover:text-green-600 inline-flex items-center"
                                 title="Voir le produit"
                               >
                                 <ExternalLink className="h-4 w-4" />
@@ -345,9 +345,9 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
                     {formatCurrency(facture.frais_transport_douane, facture.devise)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center py-3 bg-emerald-50 rounded-lg px-4">
-                  <span className="font-bold text-lg text-emerald-700">Total général</span>
-                  <span className="font-bold text-2xl text-emerald-700">
+                <div className="flex justify-between items-center py-3 bg-green-50 rounded-lg px-4">
+                  <span className="font-bold text-lg text-green-600">Total général</span>
+                  <span className="font-bold text-2xl text-green-600">
                     {formatCurrency(facture.total_general, facture.devise)}
                   </span>
                 </div>
@@ -362,7 +362,7 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
                 <Button
                   onClick={handleConvertToFacture}
                   disabled={loading}
-                  className="bg-emerald-600 hover:bg-emerald-700"
+                  className="bg-green-500 hover:bg-green-600"
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Convertir en facture

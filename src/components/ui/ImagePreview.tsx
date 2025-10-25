@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface ImagePreviewProps {
@@ -62,7 +62,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
     <div className={cn('relative overflow-hidden rounded-lg bg-gray-100', sizeClasses[size], className)}>
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-500"></div>
         </div>
       )}
       <img

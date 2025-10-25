@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,7 +40,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
     if (action.includes('Création') || action.includes('créé')) {
       if (entity === 'Client') return <Users className="h-4 w-4 text-green-600" />;
       if (entity === 'Transaction') return <Receipt className="h-4 w-4 text-blue-600" />;
-      return <Plus className="h-4 w-4 text-emerald-600" />;
+      return <Plus className="h-4 w-4 text-green-500" />;
     }
     
     if (action.includes('Modification') || action.includes('modifié')) {

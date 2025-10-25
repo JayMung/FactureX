@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
@@ -227,7 +227,7 @@ const ClientsProtected: React.FC = () => {
               </Button>
               
               <PermissionGuard module="clients" permission="create">
-                <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleAddClient}>
+                <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddClient}>
                   <Plus className="mr-2 h-4 w-4" />
                   Nouveau Client
                 </Button>
@@ -243,12 +243,12 @@ const ClientsProtected: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-gray-600">Total Clients</p>
-                    <p className="text-3xl font-bold text-emerald-600">
+                    <p className="text-3xl font-bold text-green-500">
                       {pagination?.count || 0}
                     </p>
                   </div>
-                  <div className="h-12 w-12 bg-emerald-100 rounded-full flex items-center justify-center">
-                    <Users className="h-6 w-6 text-emerald-600" />
+                  <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <Users className="h-6 w-6 text-green-500" />
                   </div>
                 </div>
               </CardContent>
@@ -444,7 +444,7 @@ const ClientsProtected: React.FC = () => {
                             <p className="text-lg font-medium text-gray-900 mb-2">Aucun client</p>
                             <p className="text-sm text-gray-500 mb-4">Commencez par ajouter votre premier client</p>
                             <PermissionGuard module="clients" permission="create">
-                              <Button onClick={handleAddClient} className="bg-emerald-600 hover:bg-emerald-700">
+                              <Button onClick={handleAddClient} className="bg-green-500 hover:bg-green-600">
                                 <Plus className="mr-2 h-4 w-4" />
                                 Nouveau Client
                               </Button>
@@ -485,7 +485,7 @@ const ClientsProtected: React.FC = () => {
                               <span>{client.ville}</span>
                             </div>
                           </td>
-                          <td className="py-3 px-4 font-medium text-emerald-600">
+                          <td className="py-3 px-4 font-medium text-green-500">
                             {formatCurrency(client.total_paye || 0)}
                           </td>
                           <td className="py-3 px-4 text-sm text-gray-600">

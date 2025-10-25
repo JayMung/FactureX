@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -211,7 +211,7 @@ const FacturesCreate: React.FC = () => {
       <Layout>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
             <p className="text-gray-600">Chargement...</p>
           </div>
         </div>
@@ -525,7 +525,7 @@ const FacturesCreate: React.FC = () => {
                     <div className="border-t pt-2">
                       <div className="flex justify-between text-lg font-bold">
                         <span>Total général:</span>
-                        <span className="text-emerald-600">
+                        <span className="text-green-500">
                           {formData.devise === 'USD' ? '$' : ''}{totals.totalGeneral.toFixed(2)}
                           {formData.devise === 'CDF' ? ' CDF' : ''}
                         </span>
@@ -541,7 +541,7 @@ const FacturesCreate: React.FC = () => {
                   <div className="space-y-3">
                     <Button
                       type="submit"
-                      className="w-full bg-emerald-600 hover:bg-emerald-700"
+                      className="w-full bg-green-500 hover:bg-green-600"
                       disabled={loading}
                     >
                       {loading ? (

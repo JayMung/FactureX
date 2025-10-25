@@ -97,23 +97,23 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <div className={cn(
-      "bg-emerald-600 text-white flex flex-col transition-all duration-300 ease-in-out",
+      "bg-green-500 dark:bg-green-600 text-white flex flex-col transition-all duration-300 ease-in-out shadow-lg",
       isMobile ? "w-16" : "w-64"
     )}>
       {/* Logo */}
       <div className={cn(
-        "p-6 border-b border-emerald-700 transition-all duration-300",
+        "p-6 border-b border-green-600 dark:border-green-700 transition-all duration-300",
         isMobile && "px-3"
       )}>
         <div className="flex items-center space-x-3">
           <div className={cn(
-            "w-10 h-10 bg-white rounded-full flex items-center justify-center flex-shrink-0",
+            "w-10 h-10 bg-white dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0 shadow-md",
             isMobile && "w-8 h-8"
           )}>
             <span className={cn(
-              "text-emerald-600 font-bold",
+              "text-green-600 dark:text-green-700 font-bold",
               isMobile && "text-sm"
-            )}>C</span>
+            )}>F</span>
           </div>
           <div className={cn(
             "min-w-0 flex-1",
@@ -124,7 +124,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               isMobile && "text-sm"
             )}>FactureX</h1>
             <p className={cn(
-              "text-xs text-emerald-100 truncate",
+              "text-xs text-green-100 dark:text-green-200 truncate",
               isMobile && "hidden"
             )}>Transferts simplifiés</p>
           </div>
@@ -146,8 +146,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                 variant="ghost"
                 asChild
                 className={cn(
-                  "w-full justify-start text-white hover:bg-emerald-700 hover:text-white transition-all duration-200 active:scale-95",
-                  currentPath === item.path && "bg-emerald-700 text-white shadow-lg",
+                  "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-md",
+                  currentPath === item.path && "bg-green-600 dark:bg-green-700 text-white shadow-md",
                   isMobile && "px-3 justify-center"
                 )}
               >
@@ -156,7 +156,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   {isMobile ? (
                     <span className="sr-only">{item.label}</span>
                   ) : (
-                    <span className="ml-3 truncate">{item.label}</span>
+                    <span className="ml-3 truncate text-sm font-medium">{item.label}</span>
                   )}
                 </Link>
               </Button>
@@ -167,26 +167,26 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* User Info */}
       <div className={cn(
-        "p-4 border-t border-emerald-700 transition-all duration-300",
+        "p-4 border-t border-green-600 dark:border-green-700 transition-all duration-300",
         isMobile && "p-2"
       )}>
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
-            <span className="text-emerald-600 font-bold text-xs">
+          <div className="w-8 h-8 bg-white dark:bg-gray-100 rounded-full flex items-center justify-center shadow-sm">
+            <span className="text-green-600 dark:text-green-700 font-bold text-xs">
               {user?.email?.charAt(0).toUpperCase() || 'U'}
             </span>
           </div>
           <div className={cn(
-            "ml-3 text-right",
+            "ml-3 text-left flex-1",
             isMobile && "hidden"
           )}>
-            <p className="text-emerald-100 text-xs">
+            <p className="text-white text-sm font-medium truncate">
               {user?.user_metadata?.first_name ? 
                 `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}` : 
                 user?.email || 'Utilisateur'
               }
             </p>
-            <p className="text-xs text-emerald-200">
+            <p className="text-xs text-green-100 dark:text-green-200 truncate">
               {user?.user_metadata?.role === 'admin' ? 'Admin' : 'Opérateur'}
             </p>
           </div>
@@ -195,13 +195,13 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Logout */}
       <div className={cn(
-        "p-4 border-t border-emerald-700 transition-all duration-300",
+        "p-4 border-t border-green-600 dark:border-green-700 transition-all duration-300",
         isMobile && "p-2"
       )}>
         <Button
           variant="ghost"
           className={cn(
-            "w-full justify-start text-white hover:bg-emerald-700 hover:text-white transition-all duration-200",
+            "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-md",
             isMobile && "px-3 justify-center"
           )}
           onClick={handleLogout}
@@ -210,7 +210,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {isMobile ? (
             <span className="sr-only">Déconnexion</span>
           ) : (
-            <span className="ml-3 truncate">Déconnexion</span>
+            <span className="ml-3 truncate text-sm font-medium">Déconnexion</span>
           )}
         </Button>
       </div>

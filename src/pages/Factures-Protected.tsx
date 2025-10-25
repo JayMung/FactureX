@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -69,7 +69,7 @@ const FacturesProtected: React.FC = () => {
     const variants: Record<string, { variant: any; className: string; label: string }> = {
       brouillon: { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-800', label: 'Brouillon' },
       en_attente: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800', label: 'En attente' },
-      validee: { variant: 'default' as const, className: 'bg-emerald-600 text-white', label: 'Validée' },
+      validee: { variant: 'default' as const, className: 'bg-green-500 text-white', label: 'Validée' },
       annulee: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800', label: 'Annulée' }
     };
     
@@ -143,7 +143,7 @@ const FacturesProtected: React.FC = () => {
           {/* Action Buttons */}
           <div className="flex items-center justify-end">
             <PermissionGuard module="factures" permission="create">
-              <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleAddNew}>
+              <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddNew}>
                 <Plus className="mr-2 h-4 w-4" />
                 Nouvelle Facture/Devis
               </Button>
@@ -157,12 +157,12 @@ const FacturesProtected: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-gray-600">Total Factures</p>
-                    <p className="text-3xl font-bold text-emerald-600">
+                    <p className="text-3xl font-bold text-green-500">
                       {pagination?.count || 0}
                     </p>
                   </div>
-                  <div className="h-12 w-12 bg-emerald-100 rounded-full flex items-center justify-center">
-                    <FileText className="h-6 w-6 text-emerald-600" />
+                  <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <FileText className="h-6 w-6 text-green-500" />
                   </div>
                 </div>
               </CardContent>
@@ -306,7 +306,7 @@ const FacturesProtected: React.FC = () => {
                             <p className="text-lg font-medium text-gray-900 mb-2">Aucune facture</p>
                             <p className="text-sm text-gray-500 mb-4">Commencez par créer votre première facture</p>
                             <PermissionGuard module="factures" permission="create">
-                              <Button onClick={handleAddNew} className="bg-emerald-600 hover:bg-emerald-700">
+                              <Button onClick={handleAddNew} className="bg-green-500 hover:bg-green-600">
                                 <Plus className="mr-2 h-4 w-4" />
                                 Nouvelle Facture
                               </Button>
@@ -327,7 +327,7 @@ const FacturesProtected: React.FC = () => {
                           <td className="py-3 px-4 text-sm">
                             {new Date(facture.date_emission).toLocaleDateString('fr-FR')}
                           </td>
-                          <td className="py-3 px-4 font-medium text-emerald-600">
+                          <td className="py-3 px-4 font-medium text-green-500">
                             {formatCurrency(facture.total_general, facture.devise)}
                           </td>
                           <td className="py-3 px-4">
@@ -351,7 +351,7 @@ const FacturesProtected: React.FC = () => {
                                     size="sm"
                                     onClick={() => handleConvertToFacture(facture)}
                                     title="Convertir en facture"
-                                    className="text-emerald-600 hover:bg-emerald-50"
+                                    className="text-green-500 hover:bg-green-50"
                                   >
                                     <RefreshCw className="h-4 w-4" />
                                   </Button>

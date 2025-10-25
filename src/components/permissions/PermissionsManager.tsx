@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -250,7 +250,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {PREDEFINED_ROLES.map((role) => (
-                  <Card key={role.name} className={getCurrentRole() === role.name ? 'border-emerald-500' : ''}>
+                  <Card key={role.name} className={getCurrentRole() === role.name ? 'border-green-500' : ''}>
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center space-x-2 text-base">
                         {role.name === 'admin' && <Crown className="h-4 w-4 text-yellow-500" />}
@@ -259,7 +259,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
                         <span>{role.name === 'admin' ? 'Administrateur' : 
                               role.name === 'operateur' ? 'Opérateur' : 'Lecteur'}</span>
                         {getCurrentRole() === role.name && (
-                          <CheckCircle className="h-4 w-4 text-emerald-500" />
+                          <CheckCircle className="h-4 w-4 text-green-500" />
                         )}
                       </CardTitle>
                     </CardHeader>

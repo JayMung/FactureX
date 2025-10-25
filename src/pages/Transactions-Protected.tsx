@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
@@ -293,7 +293,7 @@ const TransactionsProtected: React.FC = () => {
               </Button>
               
               <PermissionGuard module="transactions" permission="create">
-                <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleAddTransaction}>
+                <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddTransaction}>
                   <Plus className="mr-2 h-4 w-4" />
                   Nouvelle Transaction
                 </Button>
@@ -309,12 +309,12 @@ const TransactionsProtected: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-gray-600">Total USD</p>
-                    <p className="text-3xl font-bold text-emerald-600">
+                    <p className="text-3xl font-bold text-green-500">
                       {formatCurrencyValue(totalUSD, 'USD')}
                     </p>
                   </div>
-                  <div className="h-12 w-12 bg-emerald-100 rounded-full flex items-center justify-center">
-                    <DollarSign className="h-6 w-6 text-emerald-600" />
+                  <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <DollarSign className="h-6 w-6 text-green-500" />
                   </div>
                 </div>
               </CardContent>
@@ -470,7 +470,7 @@ const TransactionsProtected: React.FC = () => {
                             <p className="text-lg font-medium text-gray-900 mb-2">Aucune transaction</p>
                             <p className="text-sm text-gray-500 mb-4">Commencez par créer votre première transaction</p>
                             <PermissionGuard module="transactions" permission="create">
-                              <Button onClick={handleAddTransaction} className="bg-emerald-600 hover:bg-emerald-700">
+                              <Button onClick={handleAddTransaction} className="bg-green-500 hover:bg-green-600">
                                 <Plus className="mr-2 h-4 w-4" />
                                 Nouvelle Transaction
                               </Button>

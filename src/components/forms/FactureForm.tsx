@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -523,7 +523,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
 
                       <div className="col-span-2">
                         <Label className="text-xs">Montant</Label>
-                        <div className="font-medium text-emerald-600 p-2">
+                        <div className="font-medium text-green-500 p-2">
                           {formData.devise === 'USD' ? '$' : ''}{item.montant_total.toFixed(2)}{formData.devise === 'CDF' ? ' FC' : ''}
                         </div>
                       </div>
@@ -576,7 +576,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
                 </div>
                 <div>
                   <Label className="text-xs">Total général</Label>
-                  <div className="font-bold text-lg text-emerald-600">
+                  <div className="font-bold text-lg text-green-500">
                     {formData.devise === 'USD' ? '$' : ''}{totals.totalGeneral.toFixed(2)}{formData.devise === 'CDF' ? ' FC' : ''}
                   </div>
                 </div>

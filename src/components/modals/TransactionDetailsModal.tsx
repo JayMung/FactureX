@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -351,7 +351,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                     </Select>
                   </div>
                 ) : (
-                  <p className="text-2xl font-bold text-emerald-600">
+                  <p className="text-2xl font-bold text-green-500">
                     {formatCurrencyValue(transaction.montant, transaction.devise)}
                   </p>
                 )}
@@ -554,7 +554,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
               <Button 
                 onClick={handleSave}
                 disabled={isSaving}
-                className="bg-emerald-600 hover:bg-emerald-700"
+                className="bg-green-500 hover:bg-green-600"
               >
                 <Save className="h-4 w-4 mr-2" />
                 {isSaving ? 'Enregistrement...' : 'Enregistrer'}

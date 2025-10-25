@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from 'react';
 import { Navigate } from 'react-router-dom';
@@ -31,7 +31,7 @@ const ProtectedRouteEnhanced: React.FC<ProtectedRouteEnhancedProps> = ({
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 border-t-emerald-400 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 border-t-green-400 mx-auto mb-4"></div>
           <p className="text-gray-600">Chargement...</p>
         </div>
       </div>
@@ -51,7 +51,7 @@ const ProtectedRouteEnhanced: React.FC<ProtectedRouteEnhancedProps> = ({
           <p className="text-gray-600">Vous n'avez pas les permissions d'administrateur pour accéder à cette page.</p>
           <button
             onClick={() => window.history.back()}
-            className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+            className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
           >
             Retour
           </button>
@@ -71,7 +71,7 @@ const ProtectedRouteEnhanced: React.FC<ProtectedRouteEnhancedProps> = ({
           </p>
           <button
             onClick={() => window.history.back()}
-            className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+            className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
           >
             Retour
           </button>

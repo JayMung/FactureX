@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -329,7 +329,7 @@ const NotificationSettings: React.FC = () => {
               />
 
               <NotificationToggle
-                icon={<Receipt className="h-4 w-4 text-emerald-600" />}
+                icon={<Receipt className="h-4 w-4 text-green-500" />}
                 label="Transactions"
                 description="Activités liées aux transactions"
                 checked={preferences.notify_on_transaction_activity}

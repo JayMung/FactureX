@@ -57,7 +57,7 @@ const IndexProtected: React.FC = () => {
       value: isLoading ? '...' : formatCurrencyValue(stats?.totalUSD || 0, 'USD'),
       change: stats?.monthlyRevenue ? { value: 12, isPositive: true } : undefined,
       icon: <DollarSign className="h-6 w-6" />,
-      color: 'text-emerald-600'
+      color: 'text-green-600'
     },
     {
       title: 'Total CDF',
@@ -108,7 +108,7 @@ const IndexProtected: React.FC = () => {
             </p>
             <Button 
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+              className="btn-primary px-6 py-3"
             >
               Réessayer
             </Button>
@@ -123,34 +123,34 @@ const IndexProtected: React.FC = () => {
       <Layout>
         <div className="space-y-6 animate-in fade-in duration-300">
           {/* Welcome Section */}
-          <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg p-6 text-white">
-            <h1 className="text-2xl font-bold mb-2">Bienvenue sur FactureX</h1>
-            <p className="text-emerald-100">Gérez vos transferts USD/CDF en toute simplicité</p>
+          <div className="banner-gradient-green">
+            <h1 className="text-2xl md:text-3xl font-bold mb-2">Bienvenue sur FactureX</h1>
+            <p className="text-green-100">Gérez vos transferts USD/CDF en toute simplicité</p>
           </div>
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 bg-gray-100 p-1">
+            <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
               <TabsTrigger 
                 value="overview" 
-                className="flex items-center space-x-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                className="flex items-center gap-2 data-[state=active]:bg-green-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all rounded-md"
               >
                 <Activity className="h-4 w-4" />
-                <span>Vue d'ensemble</span>
+                <span className="text-sm font-medium">Vue d'ensemble</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="analytics" 
-                className="flex items-center space-x-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                className="flex items-center gap-2 data-[state=active]:bg-green-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all rounded-md"
               >
                 <BarChart3 className="h-4 w-4" />
-                <span>Analytics avancés</span>
+                <span className="text-sm font-medium">Analytics avancés</span>
               </TabsTrigger>
             </TabsList>
 
             {/* Vue d'ensemble */}
             <TabsContent value="overview" className="space-y-6">
               {/* Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid-responsive-3">
                 {dashboardStats.map((stat, index) => (
                   <StatCard
                     key={index}
@@ -158,7 +158,6 @@ const IndexProtected: React.FC = () => {
                     value={stat.value}
                     change={stat.change}
                     icon={stat.icon}
-                    className="hover:shadow-lg transition-shadow"
                   />
                 ))}
               </div>
@@ -171,18 +170,19 @@ const IndexProtected: React.FC = () => {
                 </div>
                 
                 {/* Quick Actions */}
-                <Card className="h-fit">
-                  <CardHeader>
-                    <CardTitle>Actions Rapides</CardTitle>
+                <Card className="card-base h-fit">
+                  <CardHeader className="p-6">
+                    <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Actions Rapides</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
+                  <CardContent className="p-6 pt-0">
+                    <div className="space-y-3">
                       <PermissionGuard module="transactions" permission="create">
                         <Button 
                           asChild
-                          className="w-full h-16 flex items-center justify-start space-x-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
+                          variant="outline"
+                          className="w-full h-16 flex items-center justify-start gap-3 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-700 rounded-md transition-base hover:shadow-md"
                         >
-                          <a href="/transactions">
+                          <a href="/transactions" className="flex items-center gap-3">
                             <Plus className="h-5 w-5" />
                             <span className="text-sm font-medium">Nouvelle Transaction</span>
                           </a>
@@ -192,7 +192,8 @@ const IndexProtected: React.FC = () => {
                       <PermissionGuard module="clients" permission="create">
                         <Button 
                           asChild
-                          className="w-full h-16 flex items-center justify-start space-x-3 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
+                          variant="outline"
+                          className="w-full h-16 flex items-center justify-start gap-3 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-700 rounded-md transition-base hover:shadow-md"
                         >
                           <a href="/clients">
                             <Users className="h-5 w-5" />

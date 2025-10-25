@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+﻿import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -64,7 +64,7 @@ const TopActiveUsers: React.FC<TopActiveUsersProps> = ({
 
   const getAvatarColor = (index: number) => {
     const colors = [
-      'bg-emerald-500',
+      'bg-green-500',
       'bg-blue-500',
       'bg-purple-500',
       'bg-orange-500',

@@ -41,7 +41,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="h-screen flex bg-gray-100 flex">
+    <div className="h-screen flex bg-gray-100 dark:bg-gray-900 flex">
       <Sidebar 
         isMobileOpen={sidebarOpen} 
         currentPath={location.pathname}
@@ -54,7 +54,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           user={user}
           onMenuToggle={toggleMobileSidebar} 
         />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 md:p-6 transition-opacity duration-200">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-white dark:bg-bg-dark p-4 md:p-6 transition-opacity duration-200">
           {children}
         </main>
       </div>

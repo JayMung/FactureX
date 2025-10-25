@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -223,7 +223,7 @@ export const SettingsFacture = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-green-500" />
       </div>
     );
   }
@@ -264,7 +264,7 @@ export const SettingsFacture = () => {
               />
             </div>
           </div>
-          <Button onClick={handleSaveShippingSettings} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+          <Button onClick={handleSaveShippingSettings} disabled={saving} className="bg-green-500 hover:bg-green-600">
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Sauvegarder les frais
           </Button>
@@ -294,7 +294,7 @@ export const SettingsFacture = () => {
               Utilisez des retours à la ligne pour séparer les différentes banques.
             </p>
           </div>
-          <Button onClick={handleSaveInformationsBancaires} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+          <Button onClick={handleSaveInformationsBancaires} disabled={saving} className="bg-green-500 hover:bg-green-600">
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Sauvegarder les informations
           </Button>
@@ -340,7 +340,7 @@ export const SettingsFacture = () => {
             Ces conditions seront automatiquement pré-remplies selon le mode de livraison choisi lors de la création d'une nouvelle facture.
             Vous pourrez les modifier individuellement pour chaque facture.
           </p>
-          <Button onClick={handleSaveConditionsVente} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+          <Button onClick={handleSaveConditionsVente} disabled={saving} className="bg-green-500 hover:bg-green-600">
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Sauvegarder les conditions
           </Button>
@@ -357,7 +357,7 @@ export const SettingsFacture = () => {
             </CardTitle>
             <Button
               onClick={() => setShowCategoryForm(!showCategoryForm)}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-green-500 hover:bg-green-600"
               size="sm"
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -381,7 +381,7 @@ export const SettingsFacture = () => {
                 />
               </div>
               <div className="flex space-x-2">
-                <Button onClick={handleAddCategory} size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+                <Button onClick={handleAddCategory} size="sm" className="bg-green-500 hover:bg-green-600">
                   Ajouter
                 </Button>
                 <Button onClick={() => setShowCategoryForm(false)} size="sm" variant="outline">

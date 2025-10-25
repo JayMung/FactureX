@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -63,7 +63,7 @@ const AdvancedBulkActions: React.FC<AdvancedBulkActionsProps> = ({
 
   const getSelectionColor = () => {
     if (selectedCount === 0) return "text-gray-500";
-    if (isAllSelected) return "text-emerald-600";
+    if (isAllSelected) return "text-green-500";
     return "text-blue-600";
   };
 
@@ -78,7 +78,7 @@ const AdvancedBulkActions: React.FC<AdvancedBulkActionsProps> = ({
               onClick={onSelectCurrentPage}
               className={cn(
                 "p-1 rounded hover:bg-gray-200 transition-colors",
-                currentPageFullySelected && "text-emerald-600",
+                currentPageFullySelected && "text-green-500",
                 currentPagePartiallySelected && "text-blue-600"
               )}
               disabled={isProcessing}

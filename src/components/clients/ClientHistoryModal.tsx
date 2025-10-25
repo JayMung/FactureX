@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -35,8 +35,8 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-              <User className="h-6 w-6 text-emerald-600" />
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+              <User className="h-6 w-6 text-green-500" />
             </div>
             <div>
               <h2 className="text-xl font-bold">{client.nom}</h2>

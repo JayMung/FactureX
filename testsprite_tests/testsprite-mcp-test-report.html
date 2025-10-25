@@ -1105,11 +1105,11 @@ body {
         <div class="metadata-container">
         <div class="metadata-row">
           <div class="metadata-label text-body-medium">Project Name</div>
-          <div class="metadata-value text-body">CoxiPay</div>
+          <div class="metadata-value text-body">FactureX</div>
         </div>
         <div class="metadata-row">
           <div class="metadata-label text-body-medium">Date</div>
-          <div class="metadata-value text-body">24/10/2025</div>
+          <div class="metadata-value text-body">25/10/2025</div>
         </div>
         <div class="metadata-row">
           <div class="metadata-label text-body-medium">Prepared by</div>
@@ -1130,54 +1130,109 @@ body {
         
         <div class="coverage-summary">
           <ul class="coverage-list text-body">
-            <li><span class="coverage-highlight">2/15</span> of tests passed</li>
+            <li><span class="coverage-highlight">3/18</span> of tests passed</li>
             <li><span class="coverage-highlight">Key gaps / risks:</span>
             
-              <h3>Critical Issues:</h3>
+              <h3>Critical Issues (HIGH Severity)</h3>
 <ol>
 <li>
-<p><strong>Infrastructure Failure - Proxy/Tunnel Configuration</strong>: The primary blocker for 86.7% of test failures is that resources fail to load with ERR_EMPTY_RESPONSE errors when accessed through the TestSprite tunnel proxy. This suggests:</p>
+<p><strong>Authentication Failure (TC001)</strong> - Login with valid credentials fails consistently</p>
 <ul>
-<li>Content Security Policy (CSP) in index.html may be blocking proxy requests</li>
-<li>Vite dev server configuration may not be handling proxied requests correctly</li>
-<li>Network/tunnel configuration between TestSprite and local development server needs adjustment</li>
+<li>Root cause: 400 errors from Supabase auth endpoint</li>
+<li>Impact: Blocks access to entire application</li>
+<li>Recommendation: Verify Supabase configuration, check environment variables, ensure test credentials are properly set up</li>
 </ul>
 </li>
 <li>
-<p><strong>Security Features Untested</strong>: All role-based access control, permission guards, and row-level security features remain completely unvalidated. This is a <strong>CRITICAL RISK</strong> for a production application handling financial transactions.</p>
-</li>
-<li>
-<p><strong>Form Validation Untested</strong>: Input validation for clients and transactions (using Zod schemas) could not be verified. This creates <strong>HIGH RISK</strong> for data integrity issues.</p>
-</li>
-</ol>
-<h3>Configuration Issues:</h3>
-<ol start="4">
-<li>
-<p><strong>Supabase API Issues</strong>: Multiple tests encountered Supabase authentication errors (400 Bad Request, 429 Rate Limit), indicating potential API configuration or rate limiting issues during automated testing.</p>
-</li>
-<li>
-<p><strong>WebSocket Connection Failures</strong>: Vite HMR WebSocket connections consistently failed with ERR_EMPTY_RESPONSE, though this is less critical as it's a development feature.</p>
-</li>
-<li>
-<p><strong>Routing Inconsistency</strong>: Test attempted to access /admin route instead of correct /admin-setup route, indicating documentation or route discovery issues.</p>
-</li>
-</ol>
-<h3>Recommendations:</h3>
-<ol>
-<li><strong>URGENT</strong>: Fix CSP configuration in index.html to allow TestSprite tunnel domain</li>
-<li><strong>URGENT</strong>: Update Vite configuration to properly handle proxy requests (check vite.config.ts server settings)</li>
-<li><strong>HIGH PRIORITY</strong>: Once infrastructure is fixed, re-run all failed tests to validate security, forms, and business logic</li>
-<li><strong>MEDIUM PRIORITY</strong>: Configure Supabase test environment with higher rate limits for automated testing</li>
-<li><strong>MEDIUM PRIORITY</strong>: Document correct admin setup route and API endpoints for test scripts</li>
-</ol>
-<h3>What Worked:</h3>
+<p><strong>Email Confirmation Workflow Missing (TC007, TC015, TC017)</strong></p>
 <ul>
-<li>✅ Admin setup page loads and functions correctly</li>
-<li>✅ UI components and responsive design work properly when pages load successfully</li>
-<li>✅ Application architecture and codebase structure are sound with proper separation of concerns</li>
+<li>Root cause: Email verification required but no UI to confirm/resend</li>
+<li>Impact: Users cannot access application after signup</li>
+<li>Recommendation: Implement email confirmation UI or disable email confirmation in development/test environment</li>
 </ul>
-<h3>Overall Assessment:</h3>
-<p>Only <strong>13.33%</strong> of tests passed due to infrastructure/configuration issues rather than application bugs. The codebase appears well-structured with comprehensive features including authentication, RBAC, multi-currency transactions, activity logging, and bulk operations. However, <strong>none of these critical business features could be validated</strong> due to resource loading failures. The most urgent action is resolving the proxy/CSP configuration to enable proper end-to-end testing.</p>
+</li>
+<li>
+<p><strong>Database/Signup Errors (TC006)</strong></p>
+<ul>
+<li>Root cause: 500 errors from Supabase signup endpoint</li>
+<li>Impact: Cannot create new admin accounts</li>
+<li>Recommendation: Check database RLS policies, verify signup triggers and functions in Supabase</li>
+</ul>
+</li>
+<li>
+<p><strong>Supabase Session Management Issues</strong></p>
+<ul>
+<li>Root cause: &quot;Auth session missing&quot; errors when updating user metadata</li>
+<li>Impact: Cannot complete user setup and authentication flows</li>
+<li>Recommendation: Review Supabase client initialization and session handling in AdminSetup component</li>
+</ul>
+</li>
+</ol>
+<h3>Moderate Issues (MEDIUM Severity)</h3>
+<ol start="5">
+<li>
+<p><strong>Rate Limiting Problems (Multiple tests)</strong></p>
+<ul>
+<li>Root cause: 429 errors from Supabase indicating rate limit exceeded</li>
+<li>Impact: Prevents automated testing, blocks repeated operations</li>
+<li>Recommendation: Increase Supabase rate limits for test environment or implement better retry logic with exponential backoff</li>
+</ul>
+</li>
+<li>
+<p><strong>Cascading Test Failures</strong></p>
+<ul>
+<li>Root cause: Authentication issues block testing of downstream features</li>
+<li>Impact: 83% of tests failed, most due to authentication prerequisites not met</li>
+<li>Recommendation: Fix authentication issues first to unlock testing of other features</li>
+</ul>
+</li>
+</ol>
+<h3>Testing Infrastructure Issues</h3>
+<ol start="7">
+<li><strong>Test Environment Setup</strong>
+<ul>
+<li>The test environment lacks properly configured test credentials</li>
+<li>No mechanism to bypass email verification in test mode</li>
+<li>Rate limiting not configured appropriately for automated testing</li>
+</ul>
+</li>
+</ol>
+<h3>Recommendations Summary</h3>
+<p><strong>Immediate Actions:</strong></p>
+<ol>
+<li>Fix Supabase authentication configuration and verify credentials</li>
+<li>Implement or disable email confirmation workflow for test environment</li>
+<li>Investigate and resolve database 500 errors during signup</li>
+<li>Configure appropriate rate limits for test environment</li>
+</ol>
+<p><strong>Short-term Actions:</strong></p>
+<ol>
+<li>Review and fix Supabase session management in AdminSetup</li>
+<li>Add retry logic with exponential backoff for API calls</li>
+<li>Create dedicated test environment with seeded data</li>
+<li>Implement test-specific authentication bypass mechanism</li>
+</ol>
+<p><strong>Long-term Actions:</strong></p>
+<ol>
+<li>Set up comprehensive integration test suite with proper test data management</li>
+<li>Implement monitoring for authentication and database errors</li>
+<li>Add health checks for critical dependencies (Supabase)</li>
+<li>Create development/staging environments with relaxed security for testing</li>
+</ol>
+<h3>Risk Assessment</h3>
+<p><strong>Current State:</strong></p>
+<ul>
+<li>Only 16.67% of tests passing indicates significant authentication and infrastructure issues</li>
+<li>Core business features (transactions, invoices, clients) cannot be validated</li>
+<li>Security features (RLS, access control) remain unverified</li>
+</ul>
+<p><strong>Business Impact:</strong></p>
+<ul>
+<li>High risk that authentication issues affect production users</li>
+<li>Email confirmation workflow may frustrate new users</li>
+<li>Potential data access issues due to unverified RLS policies</li>
+</ul>
+<p><strong>Priority:</strong> Critical - Authentication must be fixed before production deployment</p>
 
             </li>
 </ul>
@@ -1204,29 +1259,29 @@ body {
             <div class="table-row">
               <div class="table-cell"><span class="text-body">Authentication & Authorization</span></div>
               <div class="table-cell"><span class="text-body">3</span></div>
+              <div class="table-cell"><span class="text-body">2</span></div>
               <div class="table-cell"><span class="text-body">1</span></div>
-              <div class="table-cell"><span class="text-body">2</span></div>
-            </div>
-        
-
-            <div class="table-row">
-              <div class="table-cell"><span class="text-body">Dashboard & Analytics</span></div>
-              <div class="table-cell"><span class="text-body">2</span></div>
-              <div class="table-cell"><span class="text-body">0</span></div>
-              <div class="table-cell"><span class="text-body">2</span></div>
             </div>
         
 
             <div class="table-row">
               <div class="table-cell"><span class="text-body">Client Management</span></div>
-              <div class="table-cell"><span class="text-body">2</span></div>
-              <div class="table-cell"><span class="text-body">0</span></div>
+              <div class="table-cell"><span class="text-body">3</span></div>
+              <div class="table-cell"><span class="text-body">1</span></div>
               <div class="table-cell"><span class="text-body">2</span></div>
             </div>
         
 
             <div class="table-row">
               <div class="table-cell"><span class="text-body">Transaction Management</span></div>
+              <div class="table-cell"><span class="text-body">3</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
+              <div class="table-cell"><span class="text-body">3</span></div>
+            </div>
+        
+
+            <div class="table-row">
+              <div class="table-cell"><span class="text-body">Invoice Management (Factures)</span></div>
               <div class="table-cell"><span class="text-body">1</span></div>
               <div class="table-cell"><span class="text-body">0</span></div>
               <div class="table-cell"><span class="text-body">1</span></div>
@@ -1234,7 +1289,7 @@ body {
         
 
             <div class="table-row">
-              <div class="table-cell"><span class="text-body">Invoice Management</span></div>
+              <div class="table-cell"><span class="text-body">Dashboard & Analytics</span></div>
               <div class="table-cell"><span class="text-body">1</span></div>
               <div class="table-cell"><span class="text-body">0</span></div>
               <div class="table-cell"><span class="text-body">1</span></div>
@@ -1242,23 +1297,7 @@ body {
         
 
             <div class="table-row">
-              <div class="table-cell"><span class="text-body">Security & Access Control</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
-              <div class="table-cell"><span class="text-body">0</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
-            </div>
-        
-
-            <div class="table-row">
-              <div class="table-cell"><span class="text-body">Activity Logging & Notifications</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
-              <div class="table-cell"><span class="text-body">0</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
-            </div>
-        
-
-            <div class="table-row">
-              <div class="table-cell"><span class="text-body">Settings & Configuration</span></div>
+              <div class="table-cell"><span class="text-body">Activity Logging</span></div>
               <div class="table-cell"><span class="text-body">1</span></div>
               <div class="table-cell"><span class="text-body">0</span></div>
               <div class="table-cell"><span class="text-body">1</span></div>
@@ -1274,7 +1313,7 @@ body {
         
 
             <div class="table-row">
-              <div class="table-cell"><span class="text-body">Form Validation</span></div>
+              <div class="table-cell"><span class="text-body">CSV Import/Export</span></div>
               <div class="table-cell"><span class="text-body">1</span></div>
               <div class="table-cell"><span class="text-body">0</span></div>
               <div class="table-cell"><span class="text-body">1</span></div>
@@ -1282,10 +1321,34 @@ body {
         
 
             <div class="table-row">
-              <div class="table-cell"><span class="text-body">UI/UX & Responsive Design</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
+              <div class="table-cell"><span class="text-body">Settings & Configuration</span></div>
               <div class="table-cell"><span class="text-body">1</span></div>
               <div class="table-cell"><span class="text-body">0</span></div>
+              <div class="table-cell"><span class="text-body">1</span></div>
+            </div>
+        
+
+            <div class="table-row">
+              <div class="table-cell"><span class="text-body">Layout & Responsive Design</span></div>
+              <div class="table-cell"><span class="text-body">1</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
+              <div class="table-cell"><span class="text-body">1</span></div>
+            </div>
+        
+
+            <div class="table-row">
+              <div class="table-cell"><span class="text-body">Security & Access Control</span></div>
+              <div class="table-cell"><span class="text-body">1</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
+              <div class="table-cell"><span class="text-body">1</span></div>
+            </div>
+        
+
+            <div class="table-row">
+              <div class="table-cell"><span class="text-body">Performance Optimization</span></div>
+              <div class="table-cell"><span class="text-body">1</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
+              <div class="table-cell"><span class="text-body">1</span></div>
             </div>
         
           </div>
@@ -1314,7 +1377,7 @@ body {
                 <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
                 <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span>1/3</span>
+              <span>2/3</span>
             </div>
               </div>
               <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
@@ -1345,12 +1408,12 @@ body {
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">Login page is empty with no login form or interactive elements. Cannot proceed with login test or verify user authentication and permissions. Task stopped due to missing login form.</div>
+                    <div class="test-field-value text-body">The login attempt with valid credentials failed. The system displayed an 'Invalid login credentials' error message and did not authenticate the user or redirect to the analytics dashboard. Login functionality with valid credentials is not working as expected.</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Visualization and Result</div>
                     <div class="test-field-value text-body">
-                      <a href="https://www.testsprite.com/dashboard/mcp/tests/d10ec713-4e0c-4f9f-98f0-467dec9f253c/dba35fac-f7fc-4260-b09f-7c1cd89177e9" class="text-link">View Results</a>
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/c805cf2d-c6e9-4345-adb9-b6a534805707" class="text-link">View Results</a>
                     </div>
                   </div>
                   <div class="test-field">
@@ -1376,7 +1439,7 @@ body {
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">The application failed to load properly through the TestSprite tunnel proxy. Multiple resources returned ERR_EMPTY_RESPONSE errors, including critical files like App.tsx, Login.tsx, and Vite dependencies. This indicates a proxy/tunnel configuration issue or CSP (Content Security Policy) blocking issue. The login functionality itself exists in the codebase but was inaccessible during testing due to infrastructure problems.</div>
+                    <div class="test-field-value text-body">Critical authentication issue. The test attempted to login with valid credentials but received a 400 error from Supabase auth endpoint. This suggests either the credentials are not properly configured in the test environment, or there's an authentication configuration issue. The Supabase auth token endpoint is returning invalid credentials error, blocking access to the entire application.</div>
                   </div>
                 </div>
               </div>
@@ -1397,64 +1460,12 @@ body {
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">Login test cannot be performed because the initial page is empty and no login form or link is available.</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
-                    <div class="test-field-value text-body">
-                      <a href="https://www.testsprite.com/dashboard/mcp/tests/d10ec713-4e0c-4f9f-98f0-467dec9f253c/83cf13aa-2862-46e4-9147-50b1439bcc3c" class="text-link">View Results</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Status</div>
-                    <div class="test-field-value">
-                      
-            <div class="status-wrapper">
-                <div class="status-icon">
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-<path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
-                </div>
-                <span class="text-body status-fail">Failed</span>
-            </div>
-            
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">HIGH</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Same root cause as TC001. The test could not verify error handling for invalid credentials because the page failed to load. The Login.tsx component includes proper error handling for invalid credentials using Supabase authentication, but testing was blocked by resource loading failures.</div>
-                  </div>
-                </div>
-              </div>
-<div class="test-card">
-                <div class="test-header">
-                  <h4 class="text-body-medium">TC003</h4>
-                </div>
-                <div class="test-content">
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Name</div>
-                    <div class="test-field-value text-body">Admin Setup Initial Configuration</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Code</div>
-                    <div class="test-field-value text-body">
-                      <a href="./TC003_Admin_Setup_Initial_Configuration.py" class="text-link">TC003_Admin_Setup_Initial_Configuration.py</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Error</div>
                     <div class="test-field-value text-body">N/A</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Visualization and Result</div>
                     <div class="test-field-value text-body">
-                      <a href="https://www.testsprite.com/dashboard/mcp/tests/d10ec713-4e0c-4f9f-98f0-467dec9f253c/9ad58edd-9365-4058-b2f0-e7e604b9cc69" class="text-link">View Results</a>
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/b12acfdb-7b8d-4aff-8024-f2a58c6dee16" class="text-link">View Results</a>
                     </div>
                   </div>
                   <div class="test-field">
@@ -1477,7 +1488,56 @@ body {
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Admin setup functionality worked correctly. The test successfully navigated to the admin setup page and verified that the superuser account creation process is functional. This test passed because it likely hit the page before resource loading issues occurred or the page loaded successfully in this instance.</div>
+                    <div class="test-field-value text-body">Negative test case passed successfully. The system correctly rejects invalid credentials and displays appropriate error messages, demonstrating proper error handling for authentication failures.</div>
+                  </div>
+                </div>
+              </div>
+<div class="test-card">
+                <div class="test-header">
+                  <h4 class="text-body-medium">TC003</h4>
+                </div>
+                <div class="test-content">
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Name</div>
+                    <div class="test-field-value text-body">Permission Based UI and Route Access</div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Code</div>
+                    <div class="test-field-value text-body">
+                      <a href="./TC003_Permission_Based_UI_and_Route_Access.py" class="text-link">TC003_Permission_Based_UI_and_Route_Access.py</a>
+                    </div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Error</div>
+                    <div class="test-field-value text-body">N/A</div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
+                    <div class="test-field-value text-body">
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/e6c46a68-a600-4655-879d-a583d6b0b25b" class="text-link">View Results</a>
+                    </div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Status</div>
+                    <div class="test-field-value">
+                      <div class="status-wrapper">
+                <div class="status-icon">
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="7.99961" cy="7.99998" r="6.4" fill="#10A363" fill-opacity="0.2"/>
+                        <path d="M5.59961 8.00002L7.19961 9.60002L10.3996 6.40002" stroke="#19C379" stroke-width="1.28" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <span class="text-body status-pass">Pass</span>
+            </div>
+                    </div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Severity</div>
+                    <div class="test-field-value text-body">LOW</div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
+                    <div class="test-field-value text-body">Permission-based access control is working correctly. The system properly enforces role-based restrictions and protects routes based on user permissions (Admin/Operator).</div>
                   </div>
                 </div>
               </div>
@@ -1489,13 +1549,13 @@ body {
           <div class="accordion-header" onclick="toggleAccordion(this)">
             <div class="requirement-content">
                                           <div class="requirement-title-row">
-              <h3 class="title-requirement">Dashboard & Analytics</h3>
+              <h3 class="title-requirement">Client Management</h3>
                 <div class="requirement-status-tag status-error">
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
                 <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span>0/2</span>
+              <span>1/3</span>
             </div>
               </div>
               <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
@@ -1516,22 +1576,22 @@ body {
                 <div class="test-content">
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Name</div>
-                    <div class="test-field-value text-body">Dashboard Real-Time Statistics Display</div>
+                    <div class="test-field-value text-body">Create New Client Record with Validation</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Code</div>
                     <div class="test-field-value text-body">
-                      <a href="./TC004_Dashboard_Real_Time_Statistics_Display.py" class="text-link">TC004_Dashboard_Real_Time_Statistics_Display.py</a>
+                      <a href="./TC004_Create_New_Client_Record_with_Validation.py" class="text-link">TC004_Create_New_Client_Record_with_Validation.py</a>
                     </div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">The dashboard verification task could not be completed because the main page at http://localhost:8080/ is completely empty with no login or dashboard elements visible.</div>
+                    <div class="test-field-value text-body">Login failed due to invalid credentials. Cannot proceed with client creation form testing. Task stopped.</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Visualization and Result</div>
                     <div class="test-field-value text-body">
-                      <a href="https://www.testsprite.com/dashboard/mcp/tests/d10ec713-4e0c-4f9f-98f0-467dec9f253c/60a240cd-5f23-4166-a2e3-6f22b7fec23a" class="text-link">View Results</a>
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/050cc362-c032-4387-8631-e9a407bb6361" class="text-link">View Results</a>
                     </div>
                   </div>
                   <div class="test-field">
@@ -1557,90 +1617,10 @@ body {
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Dashboard could not be accessed due to page loading failures. The Index-Protected.tsx component contains comprehensive dashboard logic including StatCards, ActivityFeed, and analytics, but was inaccessible. Multiple Vite chunk dependencies failed to load (chunk-4B2QHNJT.js, chunk-3VTW7PKX.js, chunk-THYVJR3I.js).</div>
+                    <div class="test-field-value text-body">Test blocked by authentication issues. Cannot verify client creation functionality due to inability to access authenticated pages. This is a cascading failure from TC001.</div>
                   </div>
                 </div>
               </div>
-<div class="test-card">
-                <div class="test-header">
-                  <h4 class="text-body-medium">TC015</h4>
-                </div>
-                <div class="test-content">
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Name</div>
-                    <div class="test-field-value text-body">Real-Time Data Refresh and Caching on Dashboard</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Code</div>
-                    <div class="test-field-value text-body">
-                      <a href="./TC015_Real_Time_Data_Refresh_and_Caching_on_Dashboard.py" class="text-link">TC015_Real_Time_Data_Refresh_and_Caching_on_Dashboard.py</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">Dashboard data refresh test could not be executed.</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
-                    <div class="test-field-value text-body">
-                      <a href="https://www.testsprite.com/dashboard/mcp/tests/d10ec713-4e0c-4f9f-98f0-467dec9f253c/1800861a-6fa3-4875-bd55-4cfd05c0d1f5" class="text-link">View Results</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Status</div>
-                    <div class="test-field-value">
-                      
-            <div class="status-wrapper">
-                <div class="status-icon">
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-<path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
-                </div>
-                <span class="text-body status-fail">Failed</span>
-            </div>
-            
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">MEDIUM</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Test blocked by same resource loading issues. The application uses TanStack Query (@tanstack/react-query) for data caching and real-time updates, but this functionality could not be tested due to the @tanstack_react-query.js module failing to load.</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-                <div class="requirement-wrapper accordion-item active">
-          <div class="accordion-header" onclick="toggleAccordion(this)">
-            <div class="requirement-content">
-                                          <div class="requirement-title-row">
-              <h3 class="title-requirement">Client Management</h3>
-                <div class="requirement-status-tag status-error">
-              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-                <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span>0/2</span>
-            </div>
-              </div>
-              <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
-            </div>
-            <div class="accordion-icon">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M11.4276 6C11.9145 6 12.1687 6.61626 11.875 7.01439L11.8316 7.06689L8.40295 10.817C8.30455 10.9246 8.17364 10.9892 8.03476 10.9988C7.89589 11.0083 7.7586 10.9621 7.64865 10.8688L7.59493 10.817L4.16629 7.06689L4.11886 7.00814L4.088 6.96002L4.05714 6.90002L4.04743 6.87752L4.032 6.83564L4.01371 6.76814L4.008 6.73501L4.00229 6.69751L4 6.66189V6.58814L4.00286 6.55188L4.008 6.51438L4.01371 6.48188L4.032 6.41438L4.04743 6.37251L4.08743 6.29L4.12457 6.23375L4.16629 6.18313L4.22 6.13125L4.26401 6.0975L4.31886 6.06375L4.33944 6.05313L4.37772 6.03625L4.43944 6.01625L4.46972 6.01L4.50401 6.00375L4.53658 6.00125L11.4276 6Z" fill="var(--fg-secondary)"/>
-              </svg>
-            </div>
-          </div>
-
-            <div class="accordion-content">
-            <div class="test-wrapper">
 <div class="test-card">
                 <div class="test-header">
                   <h4 class="text-body-medium">TC005</h4>
@@ -1648,48 +1628,45 @@ body {
                 <div class="test-content">
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Name</div>
-                    <div class="test-field-value text-body">Client CRUD Operations with History Tracking</div>
+                    <div class="test-field-value text-body">Client Form Validation Errors</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Code</div>
                     <div class="test-field-value text-body">
-                      <a href="./TC005_Client_CRUD_Operations_with_History_Tracking.py" class="text-link">TC005_Client_CRUD_Operations_with_History_Tracking.py</a>
+                      <a href="./TC005_Client_Form_Validation_Errors.py" class="text-link">TC005_Client_Form_Validation_Errors.py</a>
                     </div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">The task could not be completed because the base URL loads an empty page with no interactive elements, including no login or client management access.</div>
+                    <div class="test-field-value text-body">N/A</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Visualization and Result</div>
                     <div class="test-field-value text-body">
-                      <a href="https://www.testsprite.com/dashboard/mcp/tests/d10ec713-4e0c-4f9f-98f0-467dec9f253c/49e736e4-154f-4a6f-9680-e98db970ffab" class="text-link">View Results</a>
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/8fd76da9-2976-4a79-8372-f40cf9db337c" class="text-link">View Results</a>
                     </div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Status</div>
                     <div class="test-field-value">
-                      
-            <div class="status-wrapper">
+                      <div class="status-wrapper">
                 <div class="status-icon">
                     <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-<path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
+                        <circle cx="7.99961" cy="7.99998" r="6.4" fill="#10A363" fill-opacity="0.2"/>
+                        <path d="M5.59961 8.00002L7.19961 9.60002L10.3996 6.40002" stroke="#19C379" stroke-width="1.28" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
                 </div>
-                <span class="text-body status-fail">Failed</span>
+                <span class="text-body status-pass">Pass</span>
             </div>
-            
                     </div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">HIGH</div>
+                    <div class="test-field-value text-body">LOW</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Client management page (Clients-Protected.tsx) failed to load. The codebase includes complete client management features with forms, history modals, and CRUD operations, but testing was prevented by resource loading failures including AuthProvider.tsx, PageContext.tsx, and ProtectedRouteEnhanced.tsx.</div>
+                    <div class="test-field-value text-body">Client form validation is working correctly. The form properly validates required fields and displays appropriate error messages for invalid input, ensuring data integrity.</div>
                   </div>
                 </div>
               </div>
@@ -1700,22 +1677,22 @@ body {
                 <div class="test-content">
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Name</div>
-                    <div class="test-field-value text-body">CSV Import for Clients with Validation and Duplicate Detection</div>
+                    <div class="test-field-value text-body">CRUD Operations on Client Records</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Code</div>
                     <div class="test-field-value text-body">
-                      <a href="./TC006_CSV_Import_for_Clients_with_Validation_and_Duplicate_Detection.py" class="text-link">TC006_CSV_Import_for_Clients_with_Validation_and_Duplicate_Detection.py</a>
+                      <a href="./TC006_CRUD_Operations_on_Client_Records.py" class="text-link">TC006_CRUD_Operations_on_Client_Records.py</a>
                     </div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">CSV import functionality could not be tested.</div>
+                    <div class="test-field-value text-body">Testing stopped due to critical database error preventing admin account creation. Cannot proceed with client viewing, updating, deleting, and history tracking verification.</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Visualization and Result</div>
                     <div class="test-field-value text-body">
-                      <a href="https://www.testsprite.com/dashboard/mcp/tests/d10ec713-4e0c-4f9f-98f0-467dec9f253c/f7006e17-86f5-4f4c-baa4-2a3189395542" class="text-link">View Results</a>
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/2cc81f01-32f0-4175-8b49-bd7e68e3b556" class="text-link">View Results</a>
                     </div>
                   </div>
                   <div class="test-field">
@@ -1737,11 +1714,11 @@ body {
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">MEDIUM</div>
+                    <div class="test-field-value text-body">HIGH</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">The application includes ClientsImporter component and duplicate detection logic, but these could not be accessed due to page loading failures. The feature exists in the codebase but remains untested.</div>
+                    <div class="test-field-value text-body">Critical issue with admin account creation resulting in 500 error from Supabase signup endpoint. This indicates potential database configuration issues or RLS (Row Level Security) policy problems preventing user creation.</div>
                   </div>
                 </div>
               </div>
@@ -1759,7 +1736,7 @@ body {
                 <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
                 <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span>0/1</span>
+              <span>0/3</span>
             </div>
               </div>
               <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
@@ -1780,22 +1757,22 @@ body {
                 <div class="test-content">
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Name</div>
-                    <div class="test-field-value text-body">Transaction Management with Multi-Currency Support and Filtering</div>
+                    <div class="test-field-value text-body">Create Transaction with Multiple Currencies and Status</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Code</div>
                     <div class="test-field-value text-body">
-                      <a href="./TC007_Transaction_Management_with_Multi_Currency_Support_and_Filtering.py" class="text-link">TC007_Transaction_Management_with_Multi_Currency_Support_and_Filtering.py</a>
+                      <a href="./TC007_Create_Transaction_with_Multiple_Currencies_and_Status.py" class="text-link">TC007_Create_Transaction_with_Multiple_Currencies_and_Status.py</a>
                     </div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">Transaction management could not be tested.</div>
+                    <div class="test-field-value text-body">Cannot proceed because login is blocked by unconfirmed email. No UI option to confirm or resend email confirmation was found.</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Visualization and Result</div>
                     <div class="test-field-value text-body">
-                      <a href="https://www.testsprite.com/dashboard/mcp/tests/d10ec713-4e0c-4f9f-98f0-467dec9f253c/f615e4c2-b7d4-4acc-b465-042b77061add" class="text-link">View Results</a>
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/4ef2b5ce-6402-4c6a-91bc-21667d442062" class="text-link">View Results</a>
                     </div>
                   </div>
                   <div class="test-field">
@@ -1821,38 +1798,10 @@ body {
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Transactions-Protected.tsx and related transaction components failed to load. The codebase shows comprehensive transaction management with multi-currency support, status locking for 'Servi' transactions, and advanced filtering, but these features could not be verified.</div>
+                    <div class="test-field-value text-body">Email confirmation workflow is incomplete. The system requires email verification but doesn't provide a mechanism to confirm or resend confirmation emails, blocking users from accessing the application. Additionally, rate limiting (429 errors) suggests the test encountered Supabase API limits during repeated signup attempts.</div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-
-                <div class="requirement-wrapper accordion-item active">
-          <div class="accordion-header" onclick="toggleAccordion(this)">
-            <div class="requirement-content">
-                                          <div class="requirement-title-row">
-              <h3 class="title-requirement">Invoice Management</h3>
-                <div class="requirement-status-tag status-error">
-              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-                <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span>0/1</span>
-            </div>
-              </div>
-              <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
-            </div>
-            <div class="accordion-icon">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M11.4276 6C11.9145 6 12.1687 6.61626 11.875 7.01439L11.8316 7.06689L8.40295 10.817C8.30455 10.9246 8.17364 10.9892 8.03476 10.9988C7.89589 11.0083 7.7586 10.9621 7.64865 10.8688L7.59493 10.817L4.16629 7.06689L4.11886 7.00814L4.088 6.96002L4.05714 6.90002L4.04743 6.87752L4.032 6.83564L4.01371 6.76814L4.008 6.73501L4.00229 6.69751L4 6.66189V6.58814L4.00286 6.55188L4.008 6.51438L4.01371 6.48188L4.032 6.41438L4.04743 6.37251L4.08743 6.29L4.12457 6.23375L4.16629 6.18313L4.22 6.13125L4.26401 6.0975L4.31886 6.06375L4.33944 6.05313L4.37772 6.03625L4.43944 6.01625L4.46972 6.01L4.50401 6.00375L4.53658 6.00125L11.4276 6Z" fill="var(--fg-secondary)"/>
-              </svg>
-            </div>
-          </div>
-
-            <div class="accordion-content">
-            <div class="test-wrapper">
 <div class="test-card">
                 <div class="test-header">
                   <h4 class="text-body-medium">TC008</h4>
@@ -1860,22 +1809,22 @@ body {
                 <div class="test-content">
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Name</div>
-                    <div class="test-field-value text-body">Invoice and Quotation Creation with Auto-Numbering and PDF Export</div>
+                    <div class="test-field-value text-body">Transaction Fees, Benefits and Currency Conversion Accuracy</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Code</div>
                     <div class="test-field-value text-body">
-                      <a href="./TC008_Invoice_and_Quotation_Creation_with_Auto_Numbering_and_PDF_Export.py" class="text-link">TC008_Invoice_and_Quotation_Creation_with_Auto_Numbering_and_PDF_Export.py</a>
+                      <a href="./TC008_Transaction_Fees_Benefits_and_Currency_Conversion_Accuracy.py" class="text-link">TC008_Transaction_Fees_Benefits_and_Currency_Conversion_Accuracy.py</a>
                     </div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">Invoice creation and PDF export could not be tested.</div>
+                    <div class="test-field-value text-body">Cannot be completed due to inability to login with valid admin credentials after account creation.</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Visualization and Result</div>
                     <div class="test-field-value text-body">
-                      <a href="https://www.testsprite.com/dashboard/mcp/tests/d10ec713-4e0c-4f9f-98f0-467dec9f253c/a0b42c26-6ede-42e6-bb28-6472770a88b2" class="text-link">View Results</a>
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/bc1a4d71-839f-4a6a-a4fa-e38d2141ab12" class="text-link">View Results</a>
                     </div>
                   </div>
                   <div class="test-field">
@@ -1901,38 +1850,10 @@ body {
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Factures-Protected.tsx and Factures-Create.tsx pages failed to load. The application uses jspdf and jspdf-autotable libraries for PDF generation (visible in package.json), but this functionality could not be tested.</div>
+                    <div class="test-field-value text-body">Unable to verify critical business logic for transaction calculations due to authentication barriers. This is a cascading failure preventing validation of core financial features.</div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-
-                <div class="requirement-wrapper accordion-item active">
-          <div class="accordion-header" onclick="toggleAccordion(this)">
-            <div class="requirement-content">
-                                          <div class="requirement-title-row">
-              <h3 class="title-requirement">Security & Access Control</h3>
-                <div class="requirement-status-tag status-error">
-              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-                <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span>0/1</span>
-            </div>
-              </div>
-              <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
-            </div>
-            <div class="accordion-icon">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M11.4276 6C11.9145 6 12.1687 6.61626 11.875 7.01439L11.8316 7.06689L8.40295 10.817C8.30455 10.9246 8.17364 10.9892 8.03476 10.9988C7.89589 11.0083 7.7586 10.9621 7.64865 10.8688L7.59493 10.817L4.16629 7.06689L4.11886 7.00814L4.088 6.96002L4.05714 6.90002L4.04743 6.87752L4.032 6.83564L4.01371 6.76814L4.008 6.73501L4.00229 6.69751L4 6.66189V6.58814L4.00286 6.55188L4.008 6.51438L4.01371 6.48188L4.032 6.41438L4.04743 6.37251L4.08743 6.29L4.12457 6.23375L4.16629 6.18313L4.22 6.13125L4.26401 6.0975L4.31886 6.06375L4.33944 6.05313L4.37772 6.03625L4.43944 6.01625L4.46972 6.01L4.50401 6.00375L4.53658 6.00125L11.4276 6Z" fill="var(--fg-secondary)"/>
-              </svg>
-            </div>
-          </div>
-
-            <div class="accordion-content">
-            <div class="test-wrapper">
 <div class="test-card">
                 <div class="test-header">
                   <h4 class="text-body-medium">TC009</h4>
@@ -1940,22 +1861,22 @@ body {
                 <div class="test-content">
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Name</div>
-                    <div class="test-field-value text-body">Role-Based Access Control Enforcement and Row-Level Security</div>
+                    <div class="test-field-value text-body">Transaction Status Workflow Updates</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Code</div>
                     <div class="test-field-value text-body">
-                      <a href="./TC009_Role_Based_Access_Control_Enforcement_and_Row_Level_Security.py" class="text-link">TC009_Role_Based_Access_Control_Enforcement_and_Row_Level_Security.py</a>
+                      <a href="./TC009_Transaction_Status_Workflow_Updates.py" class="text-link">TC009_Transaction_Status_Workflow_Updates.py</a>
                     </div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">The base page is empty with no visible login or user role selection elements. Could not proceed with RBAC verification.</div>
+                    <div class="test-field-value text-body">Admin account was created successfully, but login attempts failed repeatedly with 'Invalid login credentials' errors.</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Visualization and Result</div>
                     <div class="test-field-value text-body">
-                      <a href="https://www.testsprite.com/dashboard/mcp/tests/d10ec713-4e0c-4f9f-98f0-467dec9f253c/ad9f198a-1171-49e0-942a-80ce3aa30fad" class="text-link">View Results</a>
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/9eb7e61e-b6b7-4744-b348-973d06779835" class="text-link">View Results</a>
                     </div>
                   </div>
                   <div class="test-field">
@@ -1977,11 +1898,11 @@ body {
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">CRITICAL</div>
+                    <div class="test-field-value text-body">MEDIUM</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Security testing was completely blocked. Critical security files including App.tsx, AuthProvider.tsx, PermissionGuard.tsx, and ProtectedRouteEnhanced.tsx failed to load. The application has robust permission-based access control architecture, but it could not be validated. This is a critical gap as security features remain unverified.</div>
+                    <div class="test-field-value text-body">Transaction workflow testing blocked by authentication issues. Multiple rate limit errors (429) from Supabase indicate repeated failed attempts, suggesting either rate limiting configuration needs adjustment or the test environment needs better credential management.</div>
                   </div>
                 </div>
               </div>
@@ -1993,7 +1914,7 @@ body {
           <div class="accordion-header" onclick="toggleAccordion(this)">
             <div class="requirement-content">
                                           <div class="requirement-title-row">
-              <h3 class="title-requirement">Activity Logging & Notifications</h3>
+              <h3 class="title-requirement">Invoice Management (Factures)</h3>
                 <div class="requirement-status-tag status-error">
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
@@ -2020,22 +1941,22 @@ body {
                 <div class="test-content">
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Name</div>
-                    <div class="test-field-value text-body">Activity Logging with Detailed Audit Trail and Notification Center</div>
+                    <div class="test-field-value text-body">Invoice and Quotation Creation with Automatic Numbering</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Code</div>
                     <div class="test-field-value text-body">
-                      <a href="./TC010_Activity_Logging_with_Detailed_Audit_Trail_and_Notification_Center.py" class="text-link">TC010_Activity_Logging_with_Detailed_Audit_Trail_and_Notification_Center.py</a>
+                      <a href="./TC010_Invoice_and_Quotation_Creation_with_Automatic_Numbering.py" class="text-link">TC010_Invoice_and_Quotation_Creation_with_Automatic_Numbering.py</a>
                     </div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">Task could not be completed. Process was blocked at admin account creation step due to form validation errors on the 'Confirm Password' field. Without access to the dashboard, activity logging could not be tested.</div>
+                    <div class="test-field-value text-body">Testing cannot proceed because login failed with invalid credentials error.</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Visualization and Result</div>
                     <div class="test-field-value text-body">
-                      <a href="https://www.testsprite.com/dashboard/mcp/tests/d10ec713-4e0c-4f9f-98f0-467dec9f253c/03fcbe8d-bed7-4844-9ba5-25c7a574cf61" class="text-link">View Results</a>
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/f143ca53-16f8-415f-886d-abcc9deb69e5" class="text-link">View Results</a>
                     </div>
                   </div>
                   <div class="test-field">
@@ -2061,7 +1982,7 @@ body {
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Partial test execution. The test encountered form validation issues during admin setup. Additionally, Supabase authentication returned 400 errors, indicating potential API configuration issues. The WebSocket connection for Vite HMR also failed with ERR_EMPTY_RESPONSE. Activity logging components exist but remain untested.</div>
+                    <div class="test-field-value text-body">Core invoice functionality cannot be tested due to authentication barriers. Unable to verify automatic numbering, PDF generation, or status management features.</div>
                   </div>
                 </div>
               </div>
@@ -2073,7 +1994,7 @@ body {
           <div class="accordion-header" onclick="toggleAccordion(this)">
             <div class="requirement-content">
                                           <div class="requirement-title-row">
-              <h3 class="title-requirement">Settings & Configuration</h3>
+              <h3 class="title-requirement">Dashboard & Analytics</h3>
                 <div class="requirement-status-tag status-error">
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
@@ -2100,22 +2021,22 @@ body {
                 <div class="test-content">
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Name</div>
-                    <div class="test-field-value text-body">Settings Management for Company Info, Exchange Rates, and User Permissions</div>
+                    <div class="test-field-value text-body">Real-Time Analytics Dashboard Data Accuracy and Refresh</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Code</div>
                     <div class="test-field-value text-body">
-                      <a href="./TC011_Settings_Management_for_Company_Info_Exchange_Rates_and_User_Permissions.py" class="text-link">TC011_Settings_Management_for_Company_Info_Exchange_Rates_and_User_Permissions.py</a>
+                      <a href="./TC011_Real_Time_Analytics_Dashboard_Data_Accuracy_and_Refresh.py" class="text-link">TC011_Real_Time_Analytics_Dashboard_Data_Accuracy_and_Refresh.py</a>
                     </div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">Task could not be completed. Process was blocked at admin account creation due to a security timer preventing form submission.</div>
+                    <div class="test-field-value text-body">Login issue preventing access to the dashboard after admin account creation.</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Visualization and Result</div>
                     <div class="test-field-value text-body">
-                      <a href="https://www.testsprite.com/dashboard/mcp/tests/d10ec713-4e0c-4f9f-98f0-467dec9f253c/b4dcb6a2-cdb5-4cd4-9718-1fe5a80198c2" class="text-link">View Results</a>
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/15432b6e-2dbe-4c0f-8da7-1820204d8d6d" class="text-link">View Results</a>
                     </div>
                   </div>
                   <div class="test-field">
@@ -2141,7 +2062,87 @@ body {
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Test attempted to access /admin route which doesn't exist (404 error logged). The correct route is /admin-setup. Additionally, Supabase returned 429 (rate limit) error on signup endpoint, suggesting the test made too many requests. Settings pages (Settings.tsx, Settings-Permissions.tsx, Settings-Facture.tsx) exist but could not be accessed.</div>
+                    <div class="test-field-value text-body">Dashboard and analytics features remain untested. Auth session issues and metadata update failures indicate potential problems with the Supabase session management.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+                <div class="requirement-wrapper accordion-item active">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="requirement-content">
+                                          <div class="requirement-title-row">
+              <h3 class="title-requirement">Activity Logging</h3>
+                <div class="requirement-status-tag status-error">
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
+                <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>0/1</span>
+            </div>
+              </div>
+              <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
+            </div>
+            <div class="accordion-icon">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11.4276 6C11.9145 6 12.1687 6.61626 11.875 7.01439L11.8316 7.06689L8.40295 10.817C8.30455 10.9246 8.17364 10.9892 8.03476 10.9988C7.89589 11.0083 7.7586 10.9621 7.64865 10.8688L7.59493 10.817L4.16629 7.06689L4.11886 7.00814L4.088 6.96002L4.05714 6.90002L4.04743 6.87752L4.032 6.83564L4.01371 6.76814L4.008 6.73501L4.00229 6.69751L4 6.66189V6.58814L4.00286 6.55188L4.008 6.51438L4.01371 6.48188L4.032 6.41438L4.04743 6.37251L4.08743 6.29L4.12457 6.23375L4.16629 6.18313L4.22 6.13125L4.26401 6.0975L4.31886 6.06375L4.33944 6.05313L4.37772 6.03625L4.43944 6.01625L4.46972 6.01L4.50401 6.00375L4.53658 6.00125L11.4276 6Z" fill="var(--fg-secondary)"/>
+              </svg>
+            </div>
+          </div>
+
+            <div class="accordion-content">
+            <div class="test-wrapper">
+<div class="test-card">
+                <div class="test-header">
+                  <h4 class="text-body-medium">TC012</h4>
+                </div>
+                <div class="test-content">
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Name</div>
+                    <div class="test-field-value text-body">Activity Logging of CRUD Actions and Notifications</div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Code</div>
+                    <div class="test-field-value text-body">
+                      <a href="./TC012_Activity_Logging_of_CRUD_Actions_and_Notifications.py" class="text-link">TC012_Activity_Logging_of_CRUD_Actions_and_Notifications.py</a>
+                    </div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Error</div>
+                    <div class="test-field-value text-body">Stopped due to persistent security delay blocking admin account creation.</div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
+                    <div class="test-field-value text-body">
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/770a48b0-c58f-4a07-8d1e-0981437c5e0f" class="text-link">View Results</a>
+                    </div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Status</div>
+                    <div class="test-field-value">
+                      
+            <div class="status-wrapper">
+                <div class="status-icon">
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
+<path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+                </div>
+                <span class="text-body status-fail">Failed</span>
+            </div>
+            
+                    </div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Severity</div>
+                    <div class="test-field-value text-body">MEDIUM</div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
+                    <div class="test-field-value text-body">Activity logging system cannot be verified due to authentication and rate limiting issues. The 429 errors suggest Supabase rate limits are being hit during automated testing.</div>
                   </div>
                 </div>
               </div>
@@ -2175,27 +2176,187 @@ body {
             <div class="test-wrapper">
 <div class="test-card">
                 <div class="test-header">
-                  <h4 class="text-body-medium">TC012</h4>
+                  <h4 class="text-body-medium">TC013</h4>
                 </div>
                 <div class="test-content">
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Name</div>
-                    <div class="test-field-value text-body">Bulk Operations for Clients and Transactions</div>
+                    <div class="test-field-value text-body">Bulk Operations on Multiple Records</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Code</div>
                     <div class="test-field-value text-body">
-                      <a href="./TC012_Bulk_Operations_for_Clients_and_Transactions.py" class="text-link">TC012_Bulk_Operations_for_Clients_and_Transactions.py</a>
+                      <a href="./TC013_Bulk_Operations_on_Multiple_Records.py" class="text-link">TC013_Bulk_Operations_on_Multiple_Records.py</a>
                     </div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">Task could not be completed because the base page is empty with no interactive elements visible. This prevents access to clients or transactions pages.</div>
+                    <div class="test-field-value text-body">Process blocked at admin account creation step due to security delay preventing form submission.</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Visualization and Result</div>
                     <div class="test-field-value text-body">
-                      <a href="https://www.testsprite.com/dashboard/mcp/tests/d10ec713-4e0c-4f9f-98f0-467dec9f253c/4b87bb27-4255-424e-a60b-cee491fd4ae1" class="text-link">View Results</a>
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/3463be09-09d3-43cb-a86f-c75e909a572e" class="text-link">View Results</a>
+                    </div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Status</div>
+                    <div class="test-field-value">
+                      
+            <div class="status-wrapper">
+                <div class="status-icon">
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
+<path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+                </div>
+                <span class="text-body status-fail">Failed</span>
+            </div>
+            
+                    </div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Severity</div>
+                    <div class="test-field-value text-body">LOW</div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
+                    <div class="test-field-value text-body">Bulk operations features remain untested. Security delays and rate limiting prevent test execution.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+                <div class="requirement-wrapper accordion-item active">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="requirement-content">
+                                          <div class="requirement-title-row">
+              <h3 class="title-requirement">CSV Import/Export</h3>
+                <div class="requirement-status-tag status-error">
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
+                <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>0/1</span>
+            </div>
+              </div>
+              <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
+            </div>
+            <div class="accordion-icon">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11.4276 6C11.9145 6 12.1687 6.61626 11.875 7.01439L11.8316 7.06689L8.40295 10.817C8.30455 10.9246 8.17364 10.9892 8.03476 10.9988C7.89589 11.0083 7.7586 10.9621 7.64865 10.8688L7.59493 10.817L4.16629 7.06689L4.11886 7.00814L4.088 6.96002L4.05714 6.90002L4.04743 6.87752L4.032 6.83564L4.01371 6.76814L4.008 6.73501L4.00229 6.69751L4 6.66189V6.58814L4.00286 6.55188L4.008 6.51438L4.01371 6.48188L4.032 6.41438L4.04743 6.37251L4.08743 6.29L4.12457 6.23375L4.16629 6.18313L4.22 6.13125L4.26401 6.0975L4.31886 6.06375L4.33944 6.05313L4.37772 6.03625L4.43944 6.01625L4.46972 6.01L4.50401 6.00375L4.53658 6.00125L11.4276 6Z" fill="var(--fg-secondary)"/>
+              </svg>
+            </div>
+          </div>
+
+            <div class="accordion-content">
+            <div class="test-wrapper">
+<div class="test-card">
+                <div class="test-header">
+                  <h4 class="text-body-medium">TC014</h4>
+                </div>
+                <div class="test-content">
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Name</div>
+                    <div class="test-field-value text-body">CSV Import for Clients and Transactions with Duplicate Detection</div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Code</div>
+                    <div class="test-field-value text-body">
+                      <a href="./TC014_CSV_Import_for_Clients_and_Transactions_with_Duplicate_Detection.py" class="text-link">TC014_CSV_Import_for_Clients_and_Transactions_with_Duplicate_Detection.py</a>
+                    </div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Error</div>
+                    <div class="test-field-value text-body">Initial step blocked by persistent security delay message requiring 40-second wait between attempts.</div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
+                    <div class="test-field-value text-body">
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/4727104b-cdef-4674-8925-8f650238d564" class="text-link">View Results</a>
+                    </div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Status</div>
+                    <div class="test-field-value">
+                      
+            <div class="status-wrapper">
+                <div class="status-icon">
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
+<path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+                </div>
+                <span class="text-body status-fail">Failed</span>
+            </div>
+            
+                    </div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Severity</div>
+                    <div class="test-field-value text-body">LOW</div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
+                    <div class="test-field-value text-body">CSV import functionality including duplicate detection cannot be verified. Rate limiting and security delays blocked test execution.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+                <div class="requirement-wrapper accordion-item active">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="requirement-content">
+                                          <div class="requirement-title-row">
+              <h3 class="title-requirement">Settings & Configuration</h3>
+                <div class="requirement-status-tag status-error">
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
+                <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>0/1</span>
+            </div>
+              </div>
+              <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
+            </div>
+            <div class="accordion-icon">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11.4276 6C11.9145 6 12.1687 6.61626 11.875 7.01439L11.8316 7.06689L8.40295 10.817C8.30455 10.9246 8.17364 10.9892 8.03476 10.9988C7.89589 11.0083 7.7586 10.9621 7.64865 10.8688L7.59493 10.817L4.16629 7.06689L4.11886 7.00814L4.088 6.96002L4.05714 6.90002L4.04743 6.87752L4.032 6.83564L4.01371 6.76814L4.008 6.73501L4.00229 6.69751L4 6.66189V6.58814L4.00286 6.55188L4.008 6.51438L4.01371 6.48188L4.032 6.41438L4.04743 6.37251L4.08743 6.29L4.12457 6.23375L4.16629 6.18313L4.22 6.13125L4.26401 6.0975L4.31886 6.06375L4.33944 6.05313L4.37772 6.03625L4.43944 6.01625L4.46972 6.01L4.50401 6.00375L4.53658 6.00125L11.4276 6Z" fill="var(--fg-secondary)"/>
+              </svg>
+            </div>
+          </div>
+
+            <div class="accordion-content">
+            <div class="test-wrapper">
+<div class="test-card">
+                <div class="test-header">
+                  <h4 class="text-body-medium">TC015</h4>
+                </div>
+                <div class="test-content">
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Name</div>
+                    <div class="test-field-value text-body">Settings Update and Persistence</div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Code</div>
+                    <div class="test-field-value text-body">
+                      <a href="./TC015_Settings_Update_and_Persistence.py" class="text-link">TC015_Settings_Update_and_Persistence.py</a>
+                    </div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Error</div>
+                    <div class="test-field-value text-body">Admin login blocked by unconfirmed email error with no option to confirm or resend email.</div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
+                    <div class="test-field-value text-body">
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/8e75bdd8-700a-4eb7-a399-f245c98d5db9" class="text-link">View Results</a>
                     </div>
                   </div>
                   <div class="test-field">
@@ -2221,7 +2382,7 @@ body {
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Bulk operations components (bulk-actions.tsx, advanced-bulk-actions.tsx) and hooks (useBulkOperations.ts, useExtendedBulkOperations.ts) exist in the codebase but were inaccessible. WebSocket connection for Vite HMR also failed during this test.</div>
+                    <div class="test-field-value text-body">Settings management features cannot be tested. The authentication session missing errors suggest issues with Supabase session management and user metadata updates.</div>
                   </div>
                 </div>
               </div>
@@ -2233,7 +2394,7 @@ body {
           <div class="accordion-header" onclick="toggleAccordion(this)">
             <div class="requirement-content">
                                           <div class="requirement-title-row">
-              <h3 class="title-requirement">Form Validation</h3>
+              <h3 class="title-requirement">Layout & Responsive Design</h3>
                 <div class="requirement-status-tag status-error">
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
@@ -2255,27 +2416,107 @@ body {
             <div class="test-wrapper">
 <div class="test-card">
                 <div class="test-header">
-                  <h4 class="text-body-medium">TC013</h4>
+                  <h4 class="text-body-medium">TC016</h4>
                 </div>
                 <div class="test-content">
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Name</div>
-                    <div class="test-field-value text-body">Form Validation for Client and Transaction Inputs</div>
+                    <div class="test-field-value text-body">Responsive Layout and Navigation</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Code</div>
                     <div class="test-field-value text-body">
-                      <a href="./TC013_Form_Validation_for_Client_and_Transaction_Inputs.py" class="text-link">TC013_Form_Validation_for_Client_and_Transaction_Inputs.py</a>
+                      <a href="./TC016_Responsive_Layout_and_Navigation.py" class="text-link">TC016_Responsive_Layout_and_Navigation.py</a>
                     </div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">Form validation could not be tested.</div>
+                    <div class="test-field-value text-body">Login attempt failed due to invalid credentials. Cannot proceed to test responsiveness.</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Visualization and Result</div>
                     <div class="test-field-value text-body">
-                      <a href="https://www.testsprite.com/dashboard/mcp/tests/d10ec713-4e0c-4f9f-98f0-467dec9f253c/efa7b6cb-e10c-482f-8b55-b16e1833109f" class="text-link">View Results</a>
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/69c72e0b-69d4-4a9a-bf97-5531c78f9d86" class="text-link">View Results</a>
+                    </div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Status</div>
+                    <div class="test-field-value">
+                      
+            <div class="status-wrapper">
+                <div class="status-icon">
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
+<path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+                </div>
+                <span class="text-body status-fail">Failed</span>
+            </div>
+            
+                    </div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Severity</div>
+                    <div class="test-field-value text-body">LOW</div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
+                    <div class="test-field-value text-body">UI/UX responsiveness testing blocked by authentication issues.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+                <div class="requirement-wrapper accordion-item active">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="requirement-content">
+                                          <div class="requirement-title-row">
+              <h3 class="title-requirement">Security & Access Control</h3>
+                <div class="requirement-status-tag status-error">
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
+                <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>0/1</span>
+            </div>
+              </div>
+              <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
+            </div>
+            <div class="accordion-icon">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11.4276 6C11.9145 6 12.1687 6.61626 11.875 7.01439L11.8316 7.06689L8.40295 10.817C8.30455 10.9246 8.17364 10.9892 8.03476 10.9988C7.89589 11.0083 7.7586 10.9621 7.64865 10.8688L7.59493 10.817L4.16629 7.06689L4.11886 7.00814L4.088 6.96002L4.05714 6.90002L4.04743 6.87752L4.032 6.83564L4.01371 6.76814L4.008 6.73501L4.00229 6.69751L4 6.66189V6.58814L4.00286 6.55188L4.008 6.51438L4.01371 6.48188L4.032 6.41438L4.04743 6.37251L4.08743 6.29L4.12457 6.23375L4.16629 6.18313L4.22 6.13125L4.26401 6.0975L4.31886 6.06375L4.33944 6.05313L4.37772 6.03625L4.43944 6.01625L4.46972 6.01L4.50401 6.00375L4.53658 6.00125L11.4276 6Z" fill="var(--fg-secondary)"/>
+              </svg>
+            </div>
+          </div>
+
+            <div class="accordion-content">
+            <div class="test-wrapper">
+<div class="test-card">
+                <div class="test-header">
+                  <h4 class="text-body-medium">TC017</h4>
+                </div>
+                <div class="test-content">
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Name</div>
+                    <div class="test-field-value text-body">Server-side RLS and Access Control Verification</div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Code</div>
+                    <div class="test-field-value text-body">
+                      <a href="./TC017_Server_side_RLS_and_Access_Control_Verification.py" class="text-link">TC017_Server_side_RLS_and_Access_Control_Verification.py</a>
+                    </div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Error</div>
+                    <div class="test-field-value text-body">Admin account creation succeeded but login blocked due to unconfirmed email.</div>
+                  </div>
+                  <div class="test-field">
+                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
+                    <div class="test-field-value text-body">
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/320174cd-1222-4f39-9393-a1d1aead10a3" class="text-link">View Results</a>
                     </div>
                   </div>
                   <div class="test-field">
@@ -2301,7 +2542,7 @@ body {
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Forms use react-hook-form with Zod validation (visible in package.json dependencies), but validation logic could not be tested due to page loading failures. This is a high-severity gap as form validation is critical for data integrity.</div>
+                    <div class="test-field-value text-body">Critical security features cannot be validated. Email confirmation requirement without proper workflow blocks security testing. Rate limiting and auth session issues prevent RLS policy verification.</div>
                   </div>
                 </div>
               </div>
@@ -2313,13 +2554,13 @@ body {
           <div class="accordion-header" onclick="toggleAccordion(this)">
             <div class="requirement-content">
                                           <div class="requirement-title-row">
-              <h3 class="title-requirement">UI/UX & Responsive Design</h3>
-                <div class="requirement-status-tag status-success">
+              <h3 class="title-requirement">Performance Optimization</h3>
+                <div class="requirement-status-tag status-error">
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#10A363" fill-opacity="0.2"/>
-                <path d="M5.59961 8.00002L7.19961 9.60002L10.3996 6.40002" stroke="#19C379" stroke-width="1.28" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
+                <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span>1/1</span>
+              <span>0/1</span>
             </div>
               </div>
               <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
@@ -2335,41 +2576,44 @@ body {
             <div class="test-wrapper">
 <div class="test-card">
                 <div class="test-header">
-                  <h4 class="text-body-medium">TC014</h4>
+                  <h4 class="text-body-medium">TC018</h4>
                 </div>
                 <div class="test-content">
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Name</div>
-                    <div class="test-field-value text-body">Responsive UI and Reusable Components Verification</div>
+                    <div class="test-field-value text-body">Performance: Pagination and Lazy Loading Verification</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Code</div>
                     <div class="test-field-value text-body">
-                      <a href="./TC014_Responsive_UI_and_Reusable_Components_Verification.py" class="text-link">TC014_Responsive_UI_and_Reusable_Components_Verification.py</a>
+                      <a href="./TC018_Performance_Pagination_and_Lazy_Loading_Verification.py" class="text-link">TC018_Performance_Pagination_and_Lazy_Loading_Verification.py</a>
                     </div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">N/A</div>
+                    <div class="test-field-value text-body">Could not access dashboard or data listing pages to verify pagination and lazy loading due to login failures.</div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Test Visualization and Result</div>
                     <div class="test-field-value text-body">
-                      <a href="https://www.testsprite.com/dashboard/mcp/tests/d10ec713-4e0c-4f9f-98f0-467dec9f253c/2a1a84eb-569f-4def-af6e-c76efe5583eb" class="text-link">View Results</a>
+                      <a href="https://www.testsprite.com/dashboard/mcp/tests/99facf46-598b-401a-949c-b916d7a8e864/ac194eef-0f6d-4c6b-92f8-594c45758ac7" class="text-link">View Results</a>
                     </div>
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Status</div>
                     <div class="test-field-value">
-                      <div class="status-wrapper">
+                      
+            <div class="status-wrapper">
                 <div class="status-icon">
                     <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="7.99961" cy="7.99998" r="6.4" fill="#10A363" fill-opacity="0.2"/>
-                        <path d="M5.59961 8.00002L7.19961 9.60002L10.3996 6.40002" stroke="#19C379" stroke-width="1.28" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+<circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
+<path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
                 </div>
-                <span class="text-body status-pass">Pass</span>
+                <span class="text-body status-fail">Failed</span>
             </div>
+            
                     </div>
                   </div>
                   <div class="test-field">
@@ -2378,7 +2622,7 @@ body {
                   </div>
                   <div class="test-field">
                     <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">UI responsiveness test passed successfully. The application's responsive design and component library (Shadcn UI + Radix UI + Tailwind CSS) functioned correctly across different viewport sizes. This indicates that when the application does load, the UI framework is properly configured.</div>
+                    <div class="test-field-value text-body">Performance features cannot be tested due to authentication barriers.</div>
                   </div>
                 </div>
               </div>
@@ -2402,7 +2646,7 @@ body {
         </div>
         <div class="metadata-row">
           <div class="metadata-label text-body-medium">Code Repo</div>
-          <div class="metadata-value text-body">CoxiPay</div>
+          <div class="metadata-value text-body">FactureX</div>
         </div>
         <div class="metadata-row">
           <div class="metadata-label text-body-medium">Test Results</div>

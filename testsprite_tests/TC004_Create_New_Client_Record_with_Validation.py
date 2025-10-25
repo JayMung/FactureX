@@ -46,21 +46,21 @@ async def run_test():
                 pass
         
         # Interact with the page elements to simulate user flow
-        # -> Enter valid username/email and password, then submit the login form.
+        # -> Input valid email and password, then submit login form to access dashboard.
         frame = context.pages[-1]
-        # Enter valid email in the email input field
+        # Input valid email for login
         elem = frame.locator('xpath=html/body/div/div/div/div[2]/div[2]/form/div/input').nth(0)
-        await page.wait_for_timeout(3000); await elem.fill('validuser@example.com')
+        await page.wait_for_timeout(3000); await elem.fill('testuser@example.com')
         
 
         frame = context.pages[-1]
-        # Enter valid password in the password input field
+        # Input valid password for login
         elem = frame.locator('xpath=html/body/div/div/div/div[2]/div[2]/form/div[2]/input').nth(0)
-        await page.wait_for_timeout(3000); await elem.fill('validpassword123')
+        await page.wait_for_timeout(3000); await elem.fill('TestPassword123')
         
 
         frame = context.pages[-1]
-        # Click the 'Se connecter' button to submit the login form
+        # Click the login button to submit credentials
         elem = frame.locator('xpath=html/body/div/div/div/div[2]/div[2]/form/button').nth(0)
         await page.wait_for_timeout(3000); await elem.click(timeout=5000)
         
@@ -68,9 +68,9 @@ async def run_test():
         # --> Assertions to verify final state
         frame = context.pages[-1]
         try:
-            await expect(frame.locator('text=Authentication Failed: Invalid Credentials').first).to_be_visible(timeout=1000)
+            await expect(frame.locator('text=Client creation successful').first).to_be_visible(timeout=1000)
         except AssertionError:
-            raise AssertionError('Test case failed: User login was not successful and the user was not redirected to the analytics dashboard as expected.')
+            raise AssertionError('Test case failed: The client creation did not succeed as expected. The new client does not appear in the clients list after form submission.')
         await asyncio.sleep(5)
     
     finally:

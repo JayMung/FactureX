@@ -46,19 +46,28 @@ async def run_test():
                 pass
         
         # Interact with the page elements to simulate user flow
-        # -> Find and navigate to the login page or reveal login form on the current page.
-        await page.mouse.wheel(0, 300)
+        # -> Enter invalid username/email and password, then submit the login form
+        frame = context.pages[-1]
+        # Enter invalid email in the email input field
+        elem = frame.locator('xpath=html/body/div/div/div/div[2]/div[2]/form/div/input').nth(0)
+        await page.wait_for_timeout(3000); await elem.fill('invalid@example.com')
         
 
-        # -> Try to find any clickable elements or links that might lead to the login page or reveal login form.
-        await page.mouse.wheel(0, 300)
+        frame = context.pages[-1]
+        # Enter invalid password in the password input field
+        elem = frame.locator('xpath=html/body/div/div/div/div[2]/div[2]/form/div[2]/input').nth(0)
+        await page.wait_for_timeout(3000); await elem.fill('wrongpassword')
+        
+
+        frame = context.pages[-1]
+        # Click the login button to submit the form
+        elem = frame.locator('xpath=html/body/div/div/div/div[2]/div[2]/form/button').nth(0)
+        await page.wait_for_timeout(3000); await elem.click(timeout=5000)
         
 
         # --> Assertions to verify final state
-        try:
-            await expect(page.locator('text=Login Successful! Welcome User')).to_be_visible(timeout=1000)
-        except AssertionError:
-            raise AssertionError('Test case failed: Login was expected to be denied with invalid credentials, but a success message was found instead.')
+        frame = context.pages[-1]
+        await expect(frame.locator('text=Invalid login credentials').first).to_be_visible(timeout=30000)
         await asyncio.sleep(5)
     
     finally:

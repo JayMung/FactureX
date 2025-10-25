@@ -3,34 +3,68 @@
     "TypeScript",
     "React 18",
     "Vite",
-    "React Router",
-    "TanStack Query",
-    "Supabase",
     "Tailwind CSS",
-    "Shadcn UI",
-    "Radix UI",
+    "shadcn/ui",
+    "Supabase",
+    "TanStack Query",
+    "React Router v6",
     "Zod",
     "React Hook Form"
   ],
   "features": [
     {
-      "name": "Authentication & Authorization",
-      "description": "User authentication with Supabase, protected routes, permission-based access control, and role management",
+      "name": "Authentication System",
+      "description": "User authentication with Supabase, admin setup, login/logout, protected routes, and permission-based access control",
       "files": [
         "src/components/auth/AuthProvider.tsx",
         "src/components/auth/ProtectedRoute.tsx",
         "src/components/auth/ProtectedRouteEnhanced.tsx",
         "src/components/auth/PermissionGuard.tsx",
+        "src/contexts/AuthContext.tsx",
         "src/integrations/supabase/auth.ts",
-        "src/integrations/supabase/client.ts",
-        "src/hooks/usePermissions.ts",
         "src/pages/Login.tsx",
         "src/pages/AdminSetup.tsx"
       ]
     },
     {
-      "name": "Dashboard",
-      "description": "Main dashboard with statistics, analytics, real-time activity feed, transaction charts, and quick actions",
+      "name": "Client Management",
+      "description": "Create, read, update, and delete client records with client history tracking and facture association",
+      "files": [
+        "src/pages/Clients-Protected.tsx",
+        "src/components/forms/ClientForm.tsx",
+        "src/components/clients/ClientFacturesTab.tsx",
+        "src/components/clients/ClientHistoryModal.tsx",
+        "src/hooks/useClients.ts",
+        "src/hooks/useClientHistory.ts"
+      ]
+    },
+    {
+      "name": "Transaction Management",
+      "description": "USD/CDF currency transfer management with automatic exchange rates and transaction tracking",
+      "files": [
+        "src/pages/Transactions-Protected.tsx",
+        "src/components/forms/TransactionForm.tsx",
+        "src/components/modals/TransactionDetailsModal.tsx",
+        "src/components/charts/TransactionChart.tsx",
+        "src/hooks/useTransactions.ts"
+      ]
+    },
+    {
+      "name": "Invoice (Facture) Management",
+      "description": "Create, edit, and manage invoices with PDF generation capabilities",
+      "files": [
+        "src/pages/Factures-Protected.tsx",
+        "src/pages/Factures-Create.tsx",
+        "src/components/forms/FactureForm.tsx",
+        "src/components/modals/FactureDetailsModal.tsx",
+        "src/hooks/useFactures.ts",
+        "src/utils/pdfGenerator.ts",
+        "src/utils/pdfGeneratorHTML.ts"
+      ]
+    },
+    {
+      "name": "Dashboard & Analytics",
+      "description": "Real-time analytics dashboard with statistics, charts, and activity monitoring",
       "files": [
         "src/pages/Index-Protected.tsx",
         "src/components/dashboard/AdvancedDashboard.tsx",
@@ -42,44 +76,8 @@
       ]
     },
     {
-      "name": "Client Management",
-      "description": "CRUD operations for clients, client history tracking, bulk operations, CSV import, and client invoices",
-      "files": [
-        "src/pages/Clients-Protected.tsx",
-        "src/components/forms/ClientForm.tsx",
-        "src/components/clients/ClientHistoryModal.tsx",
-        "src/components/clients/ClientFacturesTab.tsx",
-        "src/components/import/ClientsImporter.tsx",
-        "src/hooks/useClients.ts",
-        "src/hooks/useClientHistory.ts"
-      ]
-    },
-    {
-      "name": "Transaction Management",
-      "description": "USD/CDF money transfer transactions with CRUD operations, filtering, sorting, bulk actions, CSV import, and transaction details",
-      "files": [
-        "src/pages/Transactions-Protected.tsx",
-        "src/components/forms/TransactionForm.tsx",
-        "src/components/modals/TransactionDetailsModal.tsx",
-        "src/components/charts/TransactionChart.tsx",
-        "src/components/import/TransactionsImporter.tsx",
-        "src/hooks/useTransactions.ts"
-      ]
-    },
-    {
-      "name": "Invoice Management (Factures)",
-      "description": "Invoice creation, editing, viewing with PDF export, status management, and client assignment",
-      "files": [
-        "src/pages/Factures-Protected.tsx",
-        "src/pages/Factures-Create.tsx",
-        "src/components/forms/FactureForm.tsx",
-        "src/components/modals/FactureDetailsModal.tsx",
-        "src/hooks/useFactures.ts"
-      ]
-    },
-    {
-      "name": "Activity Logging",
-      "description": "Real-time activity tracking, activity feed, notification center, and activity analytics",
+      "name": "Activity Logging System",
+      "description": "Track and display all system activities with real-time updates and detailed logs",
       "files": [
         "src/pages/ActivityLogs.tsx",
         "src/components/activity/ActivityFeed.tsx",
@@ -89,59 +87,61 @@
         "src/components/activity/NotificationCenter.tsx",
         "src/hooks/useActivityLogs.ts",
         "src/hooks/useRealTimeActivity.ts",
-        "src/hooks/useNotificationPreferences.ts"
+        "src/services/activityLogger.ts"
       ]
     },
     {
-      "name": "Settings & Configuration",
-      "description": "Company settings, payment methods, user permissions management, and notification preferences",
+      "name": "Permissions & Role Management",
+      "description": "User role and permission system with admin/operator distinctions",
       "files": [
-        "src/pages/Settings.tsx",
         "src/pages/Settings-Permissions.tsx",
-        "src/pages/Settings-Facture.tsx",
-        "src/pages/NotificationSettings.tsx",
-        "src/components/settings/CompanySettings.tsx",
-        "src/components/forms/PaymentMethodForm.tsx",
         "src/components/permissions/PermissionsManager.tsx",
-        "src/hooks/useSettings.ts",
-        "src/hooks/usePaymentMethods.ts",
+        "src/services/permissionsService.ts",
         "src/hooks/useUserProfiles.ts"
       ]
     },
     {
-      "name": "Bulk Operations",
-      "description": "Advanced bulk actions for clients and transactions including export, delete, and status updates",
+      "name": "Settings Management",
+      "description": "System settings, company information, payment methods, and notification preferences",
       "files": [
-        "src/components/ui/bulk-actions.tsx",
-        "src/components/ui/advanced-bulk-actions.tsx",
-        "src/hooks/useBulkOperations.ts",
-        "src/hooks/useExtendedBulkOperations.ts",
-        "src/hooks/useExtendedSelection.ts"
+        "src/pages/Settings.tsx",
+        "src/pages/Settings-Facture.tsx",
+        "src/pages/NotificationSettings.tsx",
+        "src/components/settings/CompanySettings.tsx",
+        "src/components/forms/PaymentMethodForm.tsx",
+        "src/hooks/useSettings.ts",
+        "src/hooks/usePaymentMethods.ts",
+        "src/hooks/useNotificationPreferences.ts"
       ]
     },
     {
-      "name": "CSV Import/Export",
-      "description": "Import clients and transactions from CSV files with validation and error reporting",
+      "name": "Data Import System",
+      "description": "CSV import functionality for clients and transactions with duplicate detection",
       "files": [
         "src/components/import/CSVImporter.tsx",
         "src/components/import/ClientsImporter.tsx",
         "src/components/import/TransactionsImporter.tsx",
-        "src/components/import/import-report.tsx"
-      ]
-    },
-    {
-      "name": "Duplicate Detection",
-      "description": "Automated detection of duplicate records in clients and transactions",
-      "files": [
+        "src/components/import/import-report.tsx",
         "src/components/duplicates/duplicate-detector.tsx"
       ]
     },
     {
-      "name": "Advanced Filtering & Sorting",
-      "description": "Multi-criteria filtering and sorting for data tables",
+      "name": "Bulk Operations",
+      "description": "Batch operations for multiple records including delete, export, and status updates",
+      "files": [
+        "src/components/ui/bulk-actions.tsx",
+        "src/components/ui/advanced-bulk-actions.tsx",
+        "src/hooks/useBulkOperations.ts",
+        "src/hooks/useExtendedBulkOperations.ts"
+      ]
+    },
+    {
+      "name": "Filtering & Search",
+      "description": "Advanced filtering capabilities for data tables and search functionality",
       "files": [
         "src/components/filters/AdvancedFilters.tsx",
-        "src/hooks/useSorting.ts"
+        "src/components/ui/sortable-header.tsx",
+        "src/components/ui/pagination-custom.tsx"
       ]
     },
     {
@@ -150,23 +150,36 @@
       "files": [
         "src/components/layout/Layout.tsx",
         "src/components/layout/Header.tsx",
-        "src/components/layout/Sidebar.tsx"
+        "src/components/layout/Sidebar.tsx",
+        "src/components/ui/settings-sidebar.tsx"
+      ]
+    },
+    {
+      "name": "Supabase Integration",
+      "description": "Database operations, real-time subscriptions, and authentication through Supabase",
+      "files": [
+        "src/integrations/supabase/client.ts",
+        "src/services/supabase.ts",
+        "src/services/supabase-extended.ts"
       ]
     },
     {
       "name": "UI Components Library",
-      "description": "Reusable UI components based on Shadcn UI and Radix UI for consistent design",
+      "description": "Reusable UI components based on shadcn/ui with custom styling",
       "files": [
         "src/components/ui/button.tsx",
-        "src/components/ui/card.tsx",
+        "src/components/ui/input.tsx",
         "src/components/ui/dialog.tsx",
         "src/components/ui/table.tsx",
+        "src/components/ui/card.tsx",
         "src/components/ui/form.tsx",
-        "src/components/ui/input.tsx",
         "src/components/ui/select.tsx",
         "src/components/ui/toast.tsx",
-        "src/components/ui/alert.tsx",
-        "src/components/ui/badge.tsx"
+        "src/components/ui/alert-dialog.tsx",
+        "src/components/ui/badge.tsx",
+        "src/components/ui/calendar.tsx",
+        "src/components/ui/checkbox.tsx",
+        "src/components/ui/dropdown-menu.tsx"
       ]
     }
   ]

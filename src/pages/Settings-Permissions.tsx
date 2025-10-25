@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from 'react';
 import { 
@@ -539,6 +539,13 @@ const SettingsWithPermissions = () => {
       adminOnly: true
     },
     {
+      id: 'factures',
+      label: 'Factures',
+      icon: <FileText className="h-5 w-5" />,
+      description: 'Frais de livraison et catégories produits',
+      adminOnly: false
+    },
+    {
       id: 'exchange-rates',
       label: 'Taux de change',
       icon: <DollarSign className="h-5 w-5" />,
@@ -558,13 +565,6 @@ const SettingsWithPermissions = () => {
       icon: <FileText className="h-5 w-5" />,
       description: 'Historique des actions dans l\'application',
       adminOnly: true
-    },
-    {
-      id: 'factures',
-      label: 'Factures',
-      icon: <FileText className="h-5 w-5" />,
-      description: 'Frais de livraison et catégories produits',
-      adminOnly: false
     }
   ];
 

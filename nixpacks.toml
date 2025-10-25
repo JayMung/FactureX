@@ -2,10 +2,10 @@
 nixPkgs = ['nodejs', 'nginx']
 
 [phases.install]
-cmds = ['rm -rf node_modules', 'npm install --no-optional=false']
+cmds = ['rm -rf node_modules package-lock.json', 'npm install --force']
 
 [phases.build]
 cmds = ['npm run build']
 
 [start]
-cmd = 'npx serve -s dist -l 3000'
+cmd = 'npm run preview -- --host 0.0.0.0 --port 3000'

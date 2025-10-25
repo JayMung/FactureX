@@ -128,7 +128,7 @@ const Header: React.FC<HeaderProps> = ({
                       {displayName}
                     </p>
                     <p className="text-xs text-gray-500 truncate">
-                      {user?.email || 'admin@faturex.com'}
+                      {user?.email || 'admin@facturex.com'}
                     </p>
                   </div>
                 </Button>

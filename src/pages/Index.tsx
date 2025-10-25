@@ -128,7 +128,7 @@ const Index = () => {
       <div className="space-y-6">
         {/* Welcome Section */}
         <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg p-6 text-white">
-          <h1 className="text-2xl font-bold mb-2">Bienvenue sur FatureX</h1>
+          <h1 className="text-2xl font-bold mb-2">Bienvenue sur FactureX</h1>
           <p className="text-emerald-100">Gérez vos transferts USD/CDF en toute simplicité</p>
         </div>
 

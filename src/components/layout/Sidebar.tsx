@@ -122,7 +122,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <h1 className={cn(
               "text-xl font-bold truncate",
               isMobile && "text-sm"
-            )}>FatureX</h1>
+            )}>FactureX</h1>
             <p className={cn(
               "text-xs text-emerald-100 truncate",
               isMobile && "hidden"

@@ -8,4 +8,4 @@ cmds = ['rm -rf node_modules package-lock.json', 'npm install --force']
 cmds = ['npm run build']
 
 [start]
-cmd = 'npx serve -s dist -l 3000 -n'
+cmd = 'npx serve -s dist --listen 3000 --no-clipboard'

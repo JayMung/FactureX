@@ -661,7 +661,7 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         setFont('normal');
         doc.setFontSize(8);
         COMPANY_INFO.banks.forEach(bank => {
-            const fullText = `${bank.name} ${bank.details}`;
+            const fullText = `${bank.name}  ${bank.details}`; // Double espace pour meilleur espacement
             const totalWidth = doc.getTextWidth(fullText);
             const startX = (PAGE_WIDTH - totalWidth) / 2;
             
@@ -672,7 +672,7 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
             setFont('normal');
             doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
             const nameWidth = doc.getTextWidth(bank.name);
-            doc.text(bank.details, startX + nameWidth, footerY);
+            doc.text(` ${bank.details}`, startX + nameWidth, footerY); // Espace avant les détails
             footerY += 4;
         });
         footerY += 2;

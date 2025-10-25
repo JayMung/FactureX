@@ -477,7 +477,9 @@ const ClientsProtected: React.FC = () => {
                               onClick={() => handleViewClientHistory(client)}
                               className="text-left hover:text-green-500 hover:underline transition-colors cursor-pointer"
                             >
-                              {client.nom}
+                              {client.nom.split(' ').map(word => 
+                                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                              ).join(' ')}
                             </button>
                           </td>
                           <td className="py-3 px-4">

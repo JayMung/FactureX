@@ -24,7 +24,9 @@ import {
   Mail,
   Phone,
   Key,
-  Building2
+  Building2,
+  Lock,
+  Save
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -732,67 +734,207 @@ const SettingsWithPermissions = () => {
 
             {/* Profile Tab */}
             {activeTab === 'profile' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <UserIcon className="mr-2 h-5 w-5" />
-                    Profil
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="relative">
-                      <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center overflow-hidden">
-                        {profile?.avatar_url ? (
-                          <img
-                            src={profile.avatar_url}
-                            alt="Avatar"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <UserIcon className="h-10 w-10 text-green-500" />
-                        )}
+              <div className="space-y-6">
+                {/* Photo de profil */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <UserIcon className="mr-2 h-5 w-5" />
+                      Photo de profil
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center space-x-6">
+                      <div className="relative">
+                        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
+                          {profile?.avatar_url ? (
+                            <img
+                              src={profile.avatar_url}
+                              alt="Avatar"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <UserIcon className="h-12 w-12 text-green-500" />
+                          )}
+                        </div>
+                        <button
+                          className="absolute bottom-0 right-0 bg-green-500 hover:bg-green-600 text-white rounded-full p-2 shadow-lg transition-colors"
+                          title="Changer la photo"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg">{profileForm.first_name} {profileForm.last_name}</h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {profile?.role === 'admin' ? '👑 Administrateur' : '👤 Opérateur'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Membre depuis {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' }) : 'N/A'}
+                        </p>
                       </div>
                     </div>
-                    <div>
-                      <h3 className="font-medium">{user?.email}</h3>
-                      <p className="text-sm text-gray-500">
-                        {profile?.role === 'admin' ? 'Administrateur' : 'Opérateur'}
-                      </p>
-                    </div>
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Informations personnelles */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Informations personnelles</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <div>
-                      <Label htmlFor="first_name">Prénom</Label>
+                      <Label htmlFor="email">Adresse email</Label>
                       <Input
-                        id="first_name"
-                        value={profileForm.first_name}
-                        onChange={(e) => setProfileForm(prev => ({ ...prev, first_name: e.target.value }))}
+                        id="email"
+                        type="email"
+                        value={user?.email || ''}
+                        disabled
+                        className="bg-gray-50"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">L'email ne peut pas être modifié</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="first_name">Prénom</Label>
+                        <Input
+                          id="first_name"
+                          value={profileForm.first_name}
+                          onChange={(e) => setProfileForm(prev => ({ ...prev, first_name: e.target.value }))}
+                          placeholder="Votre prénom"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="last_name">Nom</Label>
+                        <Input
+                          id="last_name"
+                          value={profileForm.last_name}
+                          onChange={(e) => setProfileForm(prev => ({ ...prev, last_name: e.target.value }))}
+                          placeholder="Votre nom"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="phone">Numéro de téléphone</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={profileForm.phone || ''}
+                        onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
+                        placeholder="+243 XXX XXX XXX"
                       />
                     </div>
+
+                    <Button onClick={handleSaveProfile} disabled={saving} className="bg-green-500 hover:bg-green-600">
+                      {saving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sauvegarde...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Sauvegarder les modifications
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Sécurité et mot de passe */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Lock className="mr-2 h-5 w-5" />
+                      Sécurité et mot de passe
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-start">
+                        <Shield className="h-5 w-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-medium text-blue-900">Modifier votre mot de passe</h4>
+                          <p className="text-sm text-blue-700 mt-1">
+                            Pour des raisons de sécurité, changez régulièrement votre mot de passe.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     <div>
-                      <Label htmlFor="last_name">Nom</Label>
+                      <Label htmlFor="current_password">Mot de passe actuel</Label>
                       <Input
-                        id="last_name"
-                        value={profileForm.last_name}
-                        onChange={(e) => setProfileForm(prev => ({ ...prev, last_name: e.target.value }))}
+                        id="current_password"
+                        type="password"
+                        placeholder="Entrez votre mot de passe actuel"
                       />
                     </div>
-                  </div>
 
-                  <Button onClick={handleSaveProfile} disabled={saving} className="bg-green-500 hover:bg-green-600">
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Sauvegarde...
-                      </>
-                    ) : (
-                      'Sauvegarder les modifications'
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="new_password">Nouveau mot de passe</Label>
+                        <Input
+                          id="new_password"
+                          type="password"
+                          placeholder="Minimum 8 caractères"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="confirm_password">Confirmer le mot de passe</Label>
+                        <Input
+                          id="confirm_password"
+                          type="password"
+                          placeholder="Confirmez le nouveau mot de passe"
+                        />
+                      </div>
+                    </div>
+
+                    <Button variant="outline" className="border-green-500 text-green-600 hover:bg-green-50">
+                      <Lock className="mr-2 h-4 w-4" />
+                      Changer le mot de passe
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Informations du compte */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Info className="mr-2 h-5 w-5" />
+                      Informations du compte
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center py-2 border-b">
+                        <span className="text-sm text-gray-600">ID utilisateur</span>
+                        <span className="text-sm font-mono text-gray-900">{user?.id?.slice(0, 8)}...</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b">
+                        <span className="text-sm text-gray-600">Rôle</span>
+                        <Badge variant={profile?.role === 'admin' ? 'default' : 'secondary'} className={profile?.role === 'admin' ? 'bg-green-500' : ''}>
+                          {profile?.role === 'admin' ? 'Administrateur' : 'Opérateur'}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b">
+                        <span className="text-sm text-gray-600">Statut du compte</span>
+                        <Badge variant="default" className="bg-green-500">
+                          {profile?.is_active ? 'Actif' : 'Inactif'}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-sm text-gray-600">Date de création</span>
+                        <span className="text-sm text-gray-900">
+                          {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('fr-FR') : 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             )}
 
             {/* Payment Methods Tab */}

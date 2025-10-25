@@ -257,15 +257,17 @@ const FacturesCreate: React.FC = () => {
           items: items.map(({ tempId, id: itemId, ...item }) => item)
         });
         showSuccess('Facture mise à jour avec succès');
+        navigate(`/factures/preview/${id}`);
       } else {
         // Mode création
         const factureData: CreateFactureData = {
           ...formData,
           items: items.map(({ tempId, ...item }) => item)
         };
-        await createFacture(factureData);
+        const newFacture = await createFacture(factureData);
+        showSuccess(`${formData.type === 'devis' ? 'Devis' : 'Facture'} créé avec succès`);
+        navigate(`/factures/preview/${newFacture.id}`);
       }
-      navigate('/factures');
     } catch (error: any) {
       console.error('Error saving facture:', error);
       showError(error.message || (isEditMode ? 'Erreur lors de la mise à jour' : 'Erreur lors de la création'));

@@ -275,11 +275,11 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         doc.setFillColor(COLORS.backgroundLight[0], COLORS.backgroundLight[1], COLORS.backgroundLight[2]);
         doc.rect(headerRightX, headerRightY, boxWidth, boxHeight, 'F');
 
-        // Titre FACTURE avec style
+        // Titre FACTURE avec style (aligné à droite)
         setFont('bold');
         doc.setFontSize(18);
         doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);
-        doc.text("FACTURE", headerRightX + boxWidth / 2, headerRightY + 12, { align: 'center' });
+        doc.text("FACTURE", PAGE_WIDTH - MARGIN - 8, headerRightY + 12, { align: 'right' });
         
         // Ligne de séparation élégante
         doc.setDrawColor(COLORS.primaryLight[0], COLORS.primaryLight[1], COLORS.primaryLight[2]);

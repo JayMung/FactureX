@@ -188,7 +188,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
         </head>
         <body>
           <div class="header">
-            <h2>COXIPAY</h2>
+            <h2>FATUREX</h2>
             <p>Reçu de Transaction</p>
           </div>
           
@@ -240,7 +240,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
           
           <div class="footer">
             <p>Merci de votre confiance!</p>
-            <p class="center">www.coxipay.com</p>
+            <p class="center">www.faturex.com</p>
           </div>
           
           <script>

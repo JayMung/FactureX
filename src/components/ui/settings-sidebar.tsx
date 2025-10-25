@@ -78,7 +78,7 @@ const SidebarContent: React.FC<{
       <div className="border-b px-6 py-4">
         <h2 className="text-lg font-semibold text-gray-900">Paramètres</h2>
         <p className="text-sm text-gray-500">
-          Configurez les paramètres de l'application CoxiPay
+          Configurez les paramètres de l'application FatureX
         </p>
       </div>
       

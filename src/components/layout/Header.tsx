@@ -112,6 +112,14 @@ const Header: React.FC<HeaderProps> = ({
                   variant="ghost" 
                   className="flex items-center space-x-3 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 px-3 py-2 rounded-md focus:ring-2 focus:ring-green-500"
                 >
+                  <div className="hidden md:block text-left">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {displayName}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {user?.email || 'admin@facturex.com'}
+                    </p>
+                  </div>
                   <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center overflow-hidden shadow-sm">
                     {avatarUrl ? (
                       <img
@@ -122,14 +130,6 @@ const Header: React.FC<HeaderProps> = ({
                     ) : (
                       <User className="h-4 w-4 text-white" />
                     )}
-                  </div>
-                  <div className="hidden md:block text-right">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {displayName}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {user?.email || 'admin@facturex.com'}
-                    </p>
                   </div>
                 </Button>
               </DropdownMenuTrigger>

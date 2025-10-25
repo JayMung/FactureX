@@ -62,8 +62,8 @@ const loadImageFromUrl = async (url: string): Promise<string | null> => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         
-        // Utiliser un proxy CORS pour contourner les restrictions
-        const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=400&h=400&fit=contain&default=1`;
+        // Utiliser le même proxy Supabase que ImagePreview.tsx
+        const proxyUrl = `https://ddnxtuhswmewoxrwswzg.supabase.co/functions/v1/image-proxy?url=${encodeURIComponent(url)}`;
         
         img.onload = () => {
             try {
@@ -84,20 +84,18 @@ const loadImageFromUrl = async (url: string): Promise<string | null> => {
         };
         
         img.onerror = () => {
-            console.error('Erreur chargement image:', url);
-            // Essayer l'URL originale en fallback
-            if (img.src === proxyUrl) {
-                img.src = url;
-            } else {
-                resolve(null);
-            }
+            console.error('Erreur chargement image via proxy:', url);
+            resolve(null);
         };
         
-        // Essayer d'abord avec le proxy
+        // Charger l'image via le proxy Supabase
         img.src = proxyUrl;
         
-        // Timeout après 8 secondes (plus long car proxy)
-        setTimeout(() => resolve(null), 8000);
+        // Timeout après 10 secondes
+        setTimeout(() => {
+            console.warn('Timeout lors du chargement de l\'image:', url);
+            resolve(null);
+        }, 10000);
     });
 };
 

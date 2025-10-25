@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -176,14 +176,16 @@ const FacturesCreate: React.FC = () => {
   const addItem = () => {
     const newItem: FactureItem = {
       tempId: Date.now().toString(),
-      numero_ligne: items.length + 1,
+      numero_ligne: 1,
       quantite: 1,
       description: '',
       prix_unitaire: 0,
       poids: 0,
       montant_total: 0
     };
-    setItems([...items, newItem]);
+    const newItems = [newItem, ...items];
+    const reindexed = newItems.map((it, idx) => ({ ...it, numero_ligne: idx + 1 }));
+    setItems(reindexed);
   };
 
   const updateItem = (tempId: string, field: keyof FactureItem, value: any) => {
@@ -203,7 +205,9 @@ const FacturesCreate: React.FC = () => {
   };
 
   const removeItem = (tempId: string) => {
-    setItems(items.filter(item => item.tempId !== tempId));
+    const filtered = items.filter(item => item.tempId !== tempId);
+    const reindexed = filtered.map((it, idx) => ({ ...it, numero_ligne: idx + 1 }));
+    setItems(reindexed);
   };
 
   const calculateTotals = () => {
@@ -556,7 +560,7 @@ const FacturesCreate: React.FC = () => {
             </div>
 
             {/* Sidebar */}
-            <div className="space-y-6">
+            <div className="space-y-6 lg:sticky lg:top-4 lg:self-start lg:max-h-screen lg:overflow-visible">
               {/* Totals */}
               <Card>
                 <CardHeader>

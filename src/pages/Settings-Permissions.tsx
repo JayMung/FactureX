@@ -1133,11 +1133,15 @@ const SettingsWithPermissions = () => {
                                 }) : '-'}
                               </td>
                               <td className="py-3 px-4 text-sm text-gray-500">
-                                {log.details ? (
-                                  <span className="truncate max-w-xs inline-block" title={JSON.stringify(log.details)}>
-                                    {typeof log.details === 'object' ? JSON.stringify(log.details).slice(0, 50) + '...' : log.details}
+                                {log.details && typeof log.details === 'object' ? (
+                                  <span>
+                                    {log.details.facture_number ? `Facture ${log.details.facture_number}` : 
+                                     log.details.client_name ? `Client: ${log.details.client_name}` :
+                                     log.details.montant ? `Montant: ${log.details.montant}` :
+                                     log.details.converted_from ? `Converti depuis ${log.details.converted_from}` :
+                                     '-'}
                                   </span>
-                                ) : '-'}
+                                ) : log.details ? log.details : '-'}
                               </td>
                             </tr>
                           ))}

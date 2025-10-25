@@ -173,16 +173,6 @@ const Login = () => {
                   : 'Pas de compte? Inscrivez-vous'
                 }
               </button>
-              
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <Link 
-                  to="/admin-setup"
-                  className="text-sm font-medium text-gray-700 hover:text-green-600 dark:text-gray-300 dark:hover:text-green-500 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-green-500 rounded"
-                >
-                  <Shield className="h-4 w-4" />
-                  Première configuration? Créer un compte admin
-                </Link>
-              </div>
             </div>
           </CardContent>
         </Card>

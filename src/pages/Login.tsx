@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Shield, Loader2, AlertTriangle } from 'lucide-react';
 import { clientRateLimiter, getClientIdentifier, formatResetTime } from '@/lib/ratelimit-client';
+import { validatePassword } from '@/lib/password-validation';
+import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
@@ -59,6 +61,12 @@ const Login = () => {
     setError('');
 
     try {
+      // Validate password strength before attempting signup
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.isValid) {
+        throw new Error(passwordValidation.errors[0] || 'Le mot de passe ne respecte pas les exigences de sécurité');
+      }
+
       // Check rate limit before attempting signup
       const identifier = getClientIdentifier();
       const rateLimitResult = clientRateLimiter.check('signup', identifier);
@@ -70,7 +78,7 @@ const Login = () => {
         );
       }
 
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -82,7 +90,15 @@ const Login = () => {
       });
 
       if (error) throw error;
-      setError('Inscription réussie! Veuillez vérifier votre email.');
+      
+      // Check if user already exists (Supabase returns user but with identities empty)
+      if (data?.user && !data?.user?.identities?.length) {
+        setError('Cet email est déjà utilisé. Veuillez vous connecter ou utiliser un autre email.');
+        setIsSignUp(false);
+        return;
+      }
+      
+      setError('Inscription réussie! Veuillez vérifier votre email pour confirmer votre compte.');
       setIsSignUp(false);
     } catch (error: any) {
       setError(error.message || 'Erreur d\'inscription');
@@ -175,6 +191,7 @@ const Login = () => {
                   placeholder="••••••••"
                   className="border-gray-300 dark:border-gray-600 focus:border-green-500 focus:ring-green-500 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500"
                 />
+                {isSignUp && <PasswordStrengthIndicator password={password} />}
               </div>
 
               <Button 

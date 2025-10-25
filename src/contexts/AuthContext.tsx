@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUser } from '@/integrations/supabase/auth';
+import { clearCSRFToken } from '@/lib/csrf-protection';
 
 interface AuthContextType {
   user: User | null;
@@ -57,6 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    clearCSRFToken(); // Clear CSRF token on logout for security
     setUser(null);
   };
 

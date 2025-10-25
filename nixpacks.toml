@@ -2,7 +2,7 @@
 nixPkgs = ['nodejs', 'nginx']
 
 [phases.install]
-cmds = ['rm -rf node_modules', 'npm install --no-optional=false']
+cmds = ['rm -rf node_modules package-lock.json', 'npm install --force']
 
 [phases.build]
 cmds = ['npm run build']

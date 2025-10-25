@@ -26,7 +26,9 @@ import {
   Key,
   Building2,
   Lock,
-  Save
+  Save,
+  Receipt,
+  History
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -543,7 +545,7 @@ const SettingsWithPermissions = () => {
     {
       id: 'factures',
       label: 'Factures',
-      icon: <FileText className="h-5 w-5" />,
+      icon: <Receipt className="h-5 w-5" />,
       description: 'Frais de livraison et catégories produits',
       adminOnly: false
     },
@@ -564,7 +566,7 @@ const SettingsWithPermissions = () => {
     {
       id: 'activity-logs',
       label: 'Logs d\'activité',
-      icon: <FileText className="h-5 w-5" />,
+      icon: <History className="h-5 w-5" />,
       description: 'Historique des actions dans l\'application',
       adminOnly: true
     }
@@ -1087,28 +1089,62 @@ const SettingsWithPermissions = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <FileText className="mr-2 h-5 w-5" />
+                    <History className="mr-2 h-5 w-5" />
                     Logs d'activité
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {activityLogs.map((log) => (
-                      <div key={log.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                            <FileText className="h-5 w-5 text-green-500" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{log.action}</p>
-                            <p className="text-sm text-gray-500">
-                              {log.cible} - {new Date(log.created_at).toLocaleString('fr-FR')}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  {activityLogs.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <History className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p>Aucune activité enregistrée</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Action</th>
+                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Cible</th>
+                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Utilisateur</th>
+                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Date</th>
+                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Détails</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {activityLogs.map((log) => (
+                            <tr key={log.id} className="border-b hover:bg-gray-50 transition-colors">
+                              <td className="py-3 px-4">
+                                <Badge variant="outline" className="font-medium">
+                                  {log.action}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4 text-sm">{log.cible || '-'}</td>
+                              <td className="py-3 px-4 text-sm text-gray-600">
+                                {log.user_email || 'Système'}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-600">
+                                {log.created_at ? new Date(log.created_at).toLocaleString('fr-FR', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : '-'}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-500">
+                                {log.details ? (
+                                  <span className="truncate max-w-xs inline-block" title={JSON.stringify(log.details)}>
+                                    {typeof log.details === 'object' ? JSON.stringify(log.details).slice(0, 50) + '...' : log.details}
+                                  </span>
+                                ) : '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

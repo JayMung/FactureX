@@ -590,7 +590,7 @@ const SettingsWithPermissions = () => {
       <div className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 lg:sticky lg:top-4 lg:self-start lg:max-h-screen lg:overflow-visible">
             <Card>
               <CardContent className="p-4">
                 <nav className="space-y-2">

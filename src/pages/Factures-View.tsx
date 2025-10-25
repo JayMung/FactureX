@@ -227,15 +227,16 @@ const FacturesView: React.FC = () => {
                 <Button
                   variant="outline"
                   onClick={handleEdit}
+                  className="border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700"
                 >
                   <Edit className="mr-2 h-4 w-4" />
                   Modifier
                 </Button>
               </PermissionGuard>
               <Button
-                variant="outline"
                 onClick={handleGeneratePDF}
                 disabled={actionLoading}
+                className="bg-green-500 hover:bg-green-600 text-white"
               >
                 <Download className="mr-2 h-4 w-4" />
                 Générer PDF

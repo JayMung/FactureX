@@ -10,6 +10,7 @@ import { Loader2, Save, X } from 'lucide-react';
 import type { Client, CreateClientData } from '@/types';
 import { useClients } from '@/hooks/useClients';
 import { showSuccess, showError } from '@/utils/toast';
+import { capitalizeWords } from '@/utils/textFormat';
 
 interface ClientFormProps {
   client?: Client;
@@ -81,10 +82,10 @@ const ClientForm: React.FC<ClientFormProps> = ({
     if (!validateForm()) return;
 
     try {
-      // Convertir le nom en minuscules avant l'enregistrement
+      // Capitaliser chaque mot du nom (Jean Mukendi)
       const dataToSave = {
         ...formData,
-        nom: formData.nom.toLowerCase()
+        nom: capitalizeWords(formData.nom.trim())
       };
 
       if (isEditing && client) {

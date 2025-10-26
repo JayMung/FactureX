@@ -76,11 +76,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         animate={{
           x: isDesktop ? 0 : (sidebarOpen ? 0 : '-100%')
         }}
-        transition={{
-          type: 'spring',
-          stiffness: 300,
-          damping: 30
-        }}
+        transition={
+          isDesktop 
+            ? { duration: 0 } // Pas d'animation sur desktop
+            : { type: 'spring', stiffness: 300, damping: 30 } // Animation spring sur mobile
+        }
         className="fixed lg:static inset-y-0 left-0 z-50 lg:z-auto"
       >
         <Sidebar 

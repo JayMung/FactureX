@@ -122,21 +122,21 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4">
-        <ul className="space-y-2">
+      <nav className="flex-1 px-3 py-4">
+        <ul className="space-y-3">
           {mainNavItems.map((item) => (
             <li key={item.path}>
               <Button
                 variant="ghost"
                 asChild
                 className={cn(
-                  "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-md",
-                  currentPath === item.path && "bg-green-600 dark:bg-green-700 text-white shadow-md"
+                  "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-lg h-11 px-4",
+                  currentPath === item.path && "bg-white dark:bg-white text-green-600 dark:text-green-600 shadow-lg font-semibold hover:bg-white hover:text-green-600"
                 )}
               >
                 <Link to={item.path}>
-                  <item.icon className="h-4 w-4 flex-shrink-0" />
-                  <span className="ml-3 truncate text-sm font-medium">{item.label}</span>
+                  <item.icon className="h-5 w-5 flex-shrink-0" />
+                  <span className="ml-3 truncate text-base font-medium">{item.label}</span>
                 </Link>
               </Button>
             </li>
@@ -146,18 +146,18 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Paramètres placé en bas, au-dessus des infos utilisateur */}
       {settingsItem && (
-        <div className="px-4 pb-2">
+        <div className="px-3 pb-3">
           <Button
             variant="ghost"
             asChild
             className={cn(
-              "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-md",
-              currentPath === settingsItem.path && "bg-green-600 dark:bg-green-700 text-white shadow-md"
+              "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-lg h-11 px-4",
+              currentPath === settingsItem.path && "bg-white dark:bg-white text-green-600 dark:text-green-600 shadow-lg font-semibold hover:bg-white hover:text-green-600"
             )}
           >
             <Link to={settingsItem.path}>
-              <settingsItem.icon className="h-4 w-4 flex-shrink-0" />
-              <span className="ml-3 truncate text-sm font-medium">{settingsItem.label}</span>
+              <settingsItem.icon className="h-5 w-5 flex-shrink-0" />
+              <span className="ml-3 truncate text-base font-medium">{settingsItem.label}</span>
             </Link>
           </Button>
         </div>

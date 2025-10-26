@@ -7,6 +7,7 @@ import { usePageSetup } from '../hooks/use-page-setup';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
   FileText,
   Calendar,
@@ -37,9 +38,11 @@ const FacturesPreview: React.FC = () => {
   const navigate = useNavigate();
   const { getFactureWithItems } = useFactures();
   
-  const [facture, setFacture] = useState<Facture | null>(null);
+  const [facture, setFacture] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [generatingPDF, setGeneratingPDF] = useState(false);
+  const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   usePageSetup({
     title: 'Aperçu avant impression',
@@ -79,28 +82,49 @@ const FacturesPreview: React.FC = () => {
     
     setGeneratingPDF(true);
     try {
-      // Générer le PDF et ouvrir l'aperçu avant impression
+      // Générer le PDF
       const pdfBlob = await generateFacturePDF(facture, true);
       
       if (pdfBlob) {
         // Créer une URL pour le blob
-        const pdfUrl = URL.createObjectURL(pdfBlob);
+        const url = URL.createObjectURL(pdfBlob);
+        setPdfUrl(url);
+        setPdfDialogOpen(true);
         
-        // Ouvrir dans un nouvel onglet pour l'aperçu
-        window.open(pdfUrl, '_blank');
-        
-        showSuccess('Aperçu PDF ouvert');
+        showSuccess('PDF généré avec succès');
       }
-      
-      // Rediriger vers la liste des factures après génération
-      setTimeout(() => {
-        navigate('/factures');
-      }, 1500);
     } catch (error) {
       console.error('Error generating PDF:', error);
       showError('Erreur lors de la génération du PDF');
     } finally {
       setGeneratingPDF(false);
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    if (!pdfUrl || !facture) return;
+    
+    // Créer le nom du fichier: Nom du client - Numero facture
+    const clientName = facture.clients?.nom || facture.client?.nom || 'Client';
+    const factureNumber = facture.facture_number || 'FACTURE';
+    const fileName = `${clientName} - ${factureNumber}.pdf`;
+    
+    // Télécharger le fichier
+    const link = document.createElement('a');
+    link.href = pdfUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showSuccess('PDF téléchargé');
+  };
+
+  const handleClosePdfDialog = () => {
+    setPdfDialogOpen(false);
+    if (pdfUrl) {
+      URL.revokeObjectURL(pdfUrl);
+      setPdfUrl(null);
     }
   };
 
@@ -176,29 +200,28 @@ const FacturesPreview: React.FC = () => {
           </div>
 
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="outline"
-                onClick={() => navigate('/factures')}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour à la liste
-              </Button>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-50 rounded-lg">
-                  <FileText className="h-6 w-6 text-green-500" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    {facture.type === 'devis' ? 'Devis' : 'Facture'} #{facture.facture_number}
-                  </h1>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="outline">
-                      {facture.type === 'devis' ? '📄 Devis' : '📋 Facture'}
-                    </Badge>
-                    {getStatutBadge(facture.statut)}
-                  </div>
+          <div className="flex flex-col items-center space-y-4">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/factures')}
+              className="self-start"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Retour à la liste
+            </Button>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-50 rounded-lg">
+                <FileText className="h-6 w-6 text-green-500" />
+              </div>
+              <div className="text-center">
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {facture.type === 'devis' ? 'Devis' : 'Facture'} #{facture.facture_number}
+                </h1>
+                <div className="flex items-center justify-center gap-2 mt-1">
+                  <Badge variant="outline">
+                    {facture.type === 'devis' ? '📄 Devis' : '📋 Facture'}
+                  </Badge>
+                  {getStatutBadge(facture.statut)}
                 </div>
               </div>
             </div>
@@ -513,6 +536,65 @@ const FacturesPreview: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Dialogue PDF */}
+        <Dialog open={pdfDialogOpen} onOpenChange={handleClosePdfDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+                PDF généré avec succès
+              </DialogTitle>
+              <DialogDescription>
+                {facture.clients?.nom || facture.client?.nom || 'Client'} - {facture.facture_number}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-6">
+              <div className="text-center space-y-4">
+                <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                  <FileText className="h-8 w-8 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Votre PDF est prêt à être téléchargé
+                  </p>
+                  <p className="text-xs text-gray-500 font-mono bg-gray-50 p-2 rounded">
+                    {facture.clients?.nom || facture.client?.nom || 'Client'} - {facture.facture_number}.pdf
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3">
+              <Button
+                onClick={handleDownloadPDF}
+                className="w-full bg-green-500 hover:bg-green-600"
+                size="lg"
+              >
+                <Download className="mr-2 h-5 w-5" />
+                Télécharger le PDF
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (pdfUrl) {
+                    window.open(pdfUrl, '_blank');
+                  }
+                }}
+                className="w-full"
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Ouvrir dans un nouvel onglet
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={handleClosePdfDialog}
+                className="w-full"
+              >
+                Fermer
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </Layout>
     </ProtectedRouteEnhanced>
   );

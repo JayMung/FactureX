@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -12,8 +13,20 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
   const { user } = useAuth(); // Utiliser le user depuis AuthProvider
   const location = useLocation();
+
+  // Détecter si on est sur desktop
+  useEffect(() => {
+    const checkDesktop = () => {
+      setIsDesktop(window.innerWidth >= 1024); // lg breakpoint
+    };
+    
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkDesktop);
+  }, []);
 
   // Listen for menu toggle events
   useEffect(() => {
@@ -26,9 +39,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return () => window.removeEventListener('toggle-main-menu', handleMenuToggle, true);
   }, []);
 
-  const toggleMobileSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+  const toggleMobileSidebar = useCallback(() => {
+    setSidebarOpen(prev => !prev);
+  }, []);
 
   // Get page title based on current path
   const getPageTitle = () => {
@@ -41,13 +54,42 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="h-screen flex bg-gray-100 dark:bg-gray-900 flex">
-      <Sidebar 
-        isMobileOpen={sidebarOpen} 
-        currentPath={location.pathname}
-      />
+    <div className="h-screen flex bg-gray-100 dark:bg-gray-900">
+      {/* Backdrop pour mobile avec animation */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
       
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Sidebar avec animation fluide sur mobile uniquement */}
+      <motion.div
+        initial={false}
+        animate={{
+          x: isDesktop ? 0 : (sidebarOpen ? 0 : '-100%')
+        }}
+        transition={{
+          type: 'spring',
+          stiffness: 300,
+          damping: 30
+        }}
+        className="fixed lg:static inset-y-0 left-0 z-50 lg:z-auto"
+      >
+        <Sidebar 
+          isMobileOpen={false} 
+          currentPath={location.pathname}
+        />
+      </motion.div>
+      
+      <div className="flex-1 flex flex-col overflow-hidden w-full lg:w-auto">
         <Header 
           title={getPageTitle()} 
           subtitle={getPageTitle() === 'Tableau de bord' ? "Vue d'ensemble de votre activité" : undefined}

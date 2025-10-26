@@ -296,23 +296,22 @@ const FacturesCreate: React.FC = () => {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="outline"
-              onClick={() => navigate('/factures')}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Retour
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {isEditMode ? 'Modifier' : 'Nouveau'} {formData.type === 'devis' ? 'Devis' : 'Facture'}
-              </h1>
-              <p className="text-gray-500">
-                {isEditMode ? 'Modifiez votre document' : 'Créez un nouveau document pour vos clients'}
-              </p>
-            </div>
+          <Button
+            variant="outline"
+            onClick={() => navigate('/factures')}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Retour
+          </Button>
+          <div className="text-center flex-1">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {isEditMode ? 'Modifier' : 'Nouveau'} {formData.type === 'devis' ? 'Devis' : 'Facture'}
+            </h1>
+            <p className="text-gray-500">
+              {isEditMode ? 'Modifiez votre document' : 'Créez un nouveau document pour vos clients'}
+            </p>
           </div>
+          <div className="w-24"></div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -328,7 +327,7 @@ const FacturesCreate: React.FC = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="type">Type</Label>
                       <Select
@@ -376,7 +375,7 @@ const FacturesCreate: React.FC = () => {
                     </Select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="mode_livraison">Mode de livraison</Label>
                       <Select
@@ -453,7 +452,7 @@ const FacturesCreate: React.FC = () => {
                             </Button>
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                               <Label>Quantité</Label>
                               <Input
@@ -484,7 +483,7 @@ const FacturesCreate: React.FC = () => {
                             />
                           </div>
 
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                               <Label>Prix unitaire</Label>
                               <Input

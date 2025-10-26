@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Save, X, DollarSign, Calculator } from 'lucide-react';
+import { DatePicker } from '@/components/ui/date-picker';
 import type { Transaction, Client, PaymentMethod } from '@/types';
 import { useClients } from '@/hooks/useClients';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
@@ -35,6 +36,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     mode_paiement: '',
     date_paiement: new Date().toISOString().split('T')[0]
   });
+  
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isCalculating, setIsCalculating] = useState(false);
@@ -333,11 +336,15 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             {/* Date */}
             <div className="space-y-2">
               <Label htmlFor="date_paiement">Date de paiement *</Label>
-              <Input
-                id="date_paiement"
-                type="date"
-                value={formData.date_paiement}
-                onChange={(e) => handleChange('date_paiement', e.target.value)}
+              <DatePicker
+                date={selectedDate}
+                onDateChange={(date) => {
+                  if (date) {
+                    setSelectedDate(date);
+                    handleChange('date_paiement', date.toISOString().split('T')[0]);
+                  }
+                }}
+                placeholder="Sélectionner une date"
                 className={errors.date_paiement ? 'border-red-500' : ''}
               />
               {errors.date_paiement && (

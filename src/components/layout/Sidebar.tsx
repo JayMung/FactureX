@@ -17,7 +17,6 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { showSuccess } from '@/utils/toast';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SidebarProps {
   isMobileOpen?: boolean;
@@ -25,12 +24,10 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
-  isMobileOpen = false, 
   currentPath 
 }) => {
   const { user } = useAuth();
-  const { getAccessibleModules, loading, checkPermission } = usePermissions();
-  const isMobile = useIsMobile();
+  const { getAccessibleModules } = usePermissions();
 
   // Obtenir les modules accessibles selon les permissions
   const accessibleModules = getAccessibleModules();
@@ -104,56 +101,29 @@ const Sidebar: React.FC<SidebarProps> = ({
   const settingsItem = filteredMenuItems.find(item => item.label === 'Paramètres');
 
   const handleLogout = async () => {
-    await supabase.auth.signOut(); // <-- Maintenant correct avec l'import
+    await supabase.auth.signOut(); 
     showSuccess('Déconnexion réussie');
   };
 
 
   return (
-    <div className={cn(
-      "bg-green-500 dark:bg-green-600 text-white flex flex-col transition-all duration-300 ease-in-out shadow-lg",
-      isMobile ? "w-16" : "w-64"
-    )}>
+    <div className="bg-green-500 dark:bg-green-600 text-white flex flex-col h-full w-64 shadow-lg">
       {/* Logo */}
-      <div className={cn(
-        "p-6 border-b border-green-600 dark:border-green-700 transition-all duration-300",
-        isMobile && "px-3"
-      )}>
+      <div className="p-6 border-b border-green-600 dark:border-green-700">
         <div className="flex items-center space-x-3">
-          <div className={cn(
-            "w-10 h-10 bg-white dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0 shadow-md",
-            isMobile && "w-8 h-8"
-          )}>
-            <span className={cn(
-              "text-green-600 dark:text-green-700 font-bold",
-              isMobile && "text-sm"
-            )}>F</span>
+          <div className="w-10 h-10 bg-white dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+            <span className="text-green-600 dark:text-green-700 font-bold">F</span>
           </div>
-          <div className={cn(
-            "min-w-0 flex-1",
-            isMobile && "hidden"
-          )}>
-            <h1 className={cn(
-              "text-xl font-bold truncate",
-              isMobile && "text-sm"
-            )}>FactureX</h1>
-            <p className={cn(
-              "text-xs text-green-100 dark:text-green-200 truncate",
-              isMobile && "hidden"
-            )}>Transferts simplifiés</p>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl font-bold truncate">FactureX</h1>
+            <p className="text-xs text-green-100 dark:text-green-200 truncate">Transferts simplifiés</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className={cn(
-        "flex-1 p-4 transition-all duration-300",
-        isMobile && "p-2"
-      )}>
-        <ul className={cn(
-          "space-y-2",
-          isMobile && "space-y-1"
-        )}>
+      <nav className="flex-1 p-4">
+        <ul className="space-y-2">
           {mainNavItems.map((item) => (
             <li key={item.path}>
               <Button
@@ -161,17 +131,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                 asChild
                 className={cn(
                   "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-md",
-                  currentPath === item.path && "bg-green-600 dark:bg-green-700 text-white shadow-md",
-                  isMobile && "px-3 justify-center"
+                  currentPath === item.path && "bg-green-600 dark:bg-green-700 text-white shadow-md"
                 )}
               >
                 <Link to={item.path}>
-                  <item.icon className={cn("h-4 w-4 flex-shrink-0", isMobile && "h-5 w-5")} />
-                  {isMobile ? (
-                    <span className="sr-only">{item.label}</span>
-                  ) : (
-                    <span className="ml-3 truncate text-sm font-medium">{item.label}</span>
-                  )}
+                  <item.icon className="h-4 w-4 flex-shrink-0" />
+                  <span className="ml-3 truncate text-sm font-medium">{item.label}</span>
                 </Link>
               </Button>
             </li>
@@ -181,46 +146,32 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Paramètres placé en bas, au-dessus des infos utilisateur */}
       {settingsItem && (
-        <div className={cn(
-          "px-4 pb-2",
-          isMobile && "px-2"
-        )}>
+        <div className="px-4 pb-2">
           <Button
             variant="ghost"
             asChild
             className={cn(
               "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-md",
-              currentPath === settingsItem.path && "bg-green-600 dark:bg-green-700 text-white shadow-md",
-              isMobile && "px-3 justify-center"
+              currentPath === settingsItem.path && "bg-green-600 dark:bg-green-700 text-white shadow-md"
             )}
           >
             <Link to={settingsItem.path}>
-              <settingsItem.icon className={cn("h-4 w-4 flex-shrink-0", isMobile && "h-5 w-5")} />
-              {isMobile ? (
-                <span className="sr-only">{settingsItem.label}</span>
-              ) : (
-                <span className="ml-3 truncate text-sm font-medium">{settingsItem.label}</span>
-              )}
+              <settingsItem.icon className="h-4 w-4 flex-shrink-0" />
+              <span className="ml-3 truncate text-sm font-medium">{settingsItem.label}</span>
             </Link>
           </Button>
         </div>
       )}
 
       {/* User Info */}
-      <div className={cn(
-        "p-4 border-t border-green-600 dark:border-green-700 transition-all duration-300",
-        isMobile && "p-2"
-      )}>
+      <div className="p-4 border-t border-green-600 dark:border-green-700">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-white dark:bg-gray-100 rounded-full flex items-center justify-center shadow-sm">
             <span className="text-green-600 dark:text-green-700 font-bold text-xs">
               {user?.email?.charAt(0).toUpperCase() || 'U'}
             </span>
           </div>
-          <div className={cn(
-            "ml-3 text-left flex-1",
-            isMobile && "hidden"
-          )}>
+          <div className="ml-3 text-left flex-1">
             <p className="text-white text-sm font-medium truncate">
               {user?.user_metadata?.first_name ? 
                 `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}` : 
@@ -235,24 +186,14 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Logout */}
-      <div className={cn(
-        "p-4 border-t border-green-600 dark:border-green-700 transition-all duration-300",
-        isMobile && "p-2"
-      )}>
+      <div className="p-4 border-t border-green-600 dark:border-green-700">
         <Button
           variant="ghost"
-          className={cn(
-            "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-md",
-            isMobile && "px-3 justify-center"
-          )}
+          className="w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-md"
           onClick={handleLogout}
         >
-          <LogOut className={cn("h-4 w-4 flex-shrink-0", isMobile && "h-5 w-5")} />
-          {isMobile ? (
-            <span className="sr-only">Déconnexion</span>
-          ) : (
-            <span className="ml-3 truncate text-sm font-medium">Déconnexion</span>
-          )}
+          <LogOut className="h-4 w-4 flex-shrink-0" />
+          <span className="ml-3 truncate text-sm font-medium">Déconnexion</span>
         </Button>
       </div>
     </div>

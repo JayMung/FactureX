@@ -31,6 +31,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { useFactures } from '../hooks/useFactures';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import PermissionGuard from '../components/auth/PermissionGuard';
+import { supabase } from '@/integrations/supabase/client';
 import type { Facture } from '@/types';
 
 const FacturesView: React.FC = () => {
@@ -41,6 +42,7 @@ const FacturesView: React.FC = () => {
   const [facture, setFacture] = useState<Facture | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [creatorName, setCreatorName] = useState<string>('Vendeur');
 
   usePageSetup({
     title: facture ? `${facture.type === 'devis' ? 'Devis' : 'Facture'} #${facture.facture_number}` : 'Détails',
@@ -63,6 +65,33 @@ const FacturesView: React.FC = () => {
           return;
         }
         setFacture(data);
+        
+        // Charger le nom du créateur (utiliser l'utilisateur actuel comme fallback)
+        try {
+          let creatorId = (data as any).created_by;
+          
+          // Si pas de created_by, utiliser l'utilisateur actuel
+          if (!creatorId) {
+            const { data: { user } } = await supabase.auth.getUser();
+            creatorId = user?.id;
+          }
+          
+          if (creatorId) {
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('first_name, last_name')
+              .eq('id', creatorId)
+              .single();
+            
+            if (!profileError && profileData) {
+              const fullName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim();
+              setCreatorName(fullName || 'Vendeur');
+            }
+          }
+        } catch (profileError) {
+          console.log('Could not load creator profile, using default');
+          // Silently fail - keep default "Vendeur"
+        }
       } catch (error) {
         console.error('Error loading facture:', error);
         showError('Erreur lors du chargement de la facture');
@@ -194,34 +223,31 @@ const FacturesView: React.FC = () => {
       <Layout>
         <div className="space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <Button
               variant="outline"
               onClick={() => navigate('/factures')}
+              className="w-full sm:w-auto"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Retour
             </Button>
             
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-2 flex-1">
               <div className="p-2 bg-green-50 rounded-lg">
                 <FileText className="h-6 w-6 text-green-500" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 text-center">
                 {facture.type === 'devis' ? 'Devis' : 'Facture'} #{facture.facture_number}
               </h1>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">
-                  {facture.type === 'devis' ? '📄 Devis' : '📋 Facture'}
-                </Badge>
-                {getStatutBadge(facture.statut)}
+              <div className="flex items-center gap-2 text-gray-600">
+                <User className="h-4 w-4" />
+                <p className="text-sm font-medium">Vendeur: {creatorName}</p>
               </div>
             </div>
-            
-            <div className="w-32"></div>
 
             {/* Actions principales */}
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:space-x-3 w-full lg:w-auto">
               <PermissionGuard module="factures" permission="update">
                 <Button
                   variant="outline"
@@ -249,14 +275,22 @@ const FacturesView: React.FC = () => {
               <CardTitle className="text-lg">Informations générales</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    NUMÉRO
+                    TYPE
                   </label>
-                  <p className="text-base font-bold text-gray-900">
-                    {facture.facture_number}
+                  <p className="text-base font-semibold text-gray-900">
+                    {facture.type === 'devis' ? '📄 Devis' : '📋 Facture'}
                   </p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    STATUT
+                  </label>
+                  <div className="pt-1">
+                    {getStatutBadge(facture.statut)}
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -265,6 +299,14 @@ const FacturesView: React.FC = () => {
                   <p className="text-base font-semibold flex items-center text-gray-900">
                     <Calendar className="mr-2 h-4 w-4 text-green-500" />
                     {new Date(facture.date_emission).toLocaleDateString('fr-FR')}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    NUMÉRO
+                  </label>
+                  <p className="text-base font-bold text-gray-900">
+                    {facture.facture_number}
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -293,7 +335,7 @@ const FacturesView: React.FC = () => {
               <CardTitle className="text-lg">Informations client</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                     NOM
@@ -340,18 +382,18 @@ const FacturesView: React.FC = () => {
                   <p>Aucun article dans cette facture</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
+                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                  <table className="w-full min-w-[800px]">
                     <thead>
                       <tr className="bg-gray-100 border-b-2 border-gray-300">
-                        <th className="text-left py-3 px-3 font-semibold text-sm">N°</th>
-                        <th className="text-left py-3 px-3 font-semibold text-sm">Image</th>
-                        <th className="text-left py-3 px-3 font-semibold text-sm">Description</th>
-                        <th className="text-center py-3 px-3 font-semibold text-sm">Quantité</th>
-                        <th className="text-right py-3 px-3 font-semibold text-sm">Prix unitaire</th>
-                        <th className="text-right py-3 px-3 font-semibold text-sm">Poids</th>
-                        <th className="text-right py-3 px-3 font-semibold text-sm">Montant total</th>
-                        <th className="text-center py-3 px-3 font-semibold text-sm">Lien</th>
+                        <th className="text-left py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">N°</th>
+                        <th className="text-left py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">Image</th>
+                        <th className="text-left py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">Description</th>
+                        <th className="text-center py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">Qté</th>
+                        <th className="text-right py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">P.U.</th>
+                        <th className="text-right py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">Poids</th>
+                        <th className="text-right py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">Total</th>
+                        <th className="text-center py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">Lien</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -488,7 +530,7 @@ const FacturesView: React.FC = () => {
 
           {/* Actions */}
           <div className="sticky bottom-0 bg-white flex justify-center items-center pt-4 pb-4 border-t shadow-lg z-10">
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:space-x-3 w-full sm:w-auto px-4 sm:px-0">
               {facture.type === 'devis' && facture.statut === 'brouillon' && (
                 <PermissionGuard module="factures" permission="update">
                   <Button

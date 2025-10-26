@@ -640,7 +640,8 @@ const SettingsWithPermissions = () => {
                     </CardTitle>
                     <Button onClick={handleAddUser} className="bg-green-500 hover:bg-green-600">
                       <Plus className="mr-2 h-4 w-4" />
-                      Ajouter un utilisateur
+                      <span className="hidden sm:inline">Ajouter un utilisateur</span>
+                      <span className="sm:hidden">Ajouter</span>
                     </Button>
                   </div>
                 </CardHeader>
@@ -657,7 +658,7 @@ const SettingsWithPermissions = () => {
                   ) : (
                     <div className="space-y-4">
                       {users.map((user) => (
-                        <div key={user.id} className="card-base transition-shadow-hover flex items-center justify-between p-4">
+                        <div key={user.id} className="card-base transition-shadow-hover flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 gap-4">
                           <div className="flex items-center space-x-4">
                             <div className="p-2.5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
                               <UserIcon className="h-5 w-5 text-white" />
@@ -691,7 +692,7 @@ const SettingsWithPermissions = () => {
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -882,7 +883,7 @@ const SettingsWithPermissions = () => {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="new_password">Nouveau mot de passe</Label>
                         <Input
@@ -934,7 +935,7 @@ const SettingsWithPermissions = () => {
                 <CardContent>
                   <div className="space-y-4">
                     {paymentMethods.map((method) => (
-                      <div key={method.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div key={method.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
                         <div className="flex items-center space-x-4">
                           <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                             <CreditCard className="h-5 w-5 text-green-500" />
@@ -991,7 +992,7 @@ const SettingsWithPermissions = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="usdToCdf">USD vers CDF</Label>
                       <Input
@@ -1041,7 +1042,7 @@ const SettingsWithPermissions = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
                       <Label htmlFor="transfert">Transfert (%)</Label>
                       <Input

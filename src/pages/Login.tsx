@@ -127,8 +127,8 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-bg-dark py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="h-screen overflow-hidden flex items-center justify-center bg-white dark:bg-bg-dark px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-6 max-h-[90vh] overflow-y-auto py-4">
         <div className="text-center">
           <div className="w-16 h-16 md:w-20 md:h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-md">
             <span className="text-white text-2xl md:text-3xl font-bold">F</span>

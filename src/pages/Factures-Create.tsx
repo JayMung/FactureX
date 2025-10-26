@@ -18,7 +18,8 @@ import {
   ArrowLeft,
   Package,
   Calculator,
-  FileText
+  FileText,
+  RotateCcw
 } from 'lucide-react';
 import { useClients } from '../hooks/useClients';
 import { useFactures } from '../hooks/useFactures';
@@ -59,6 +60,8 @@ const FacturesCreate: React.FC = () => {
   const [items, setItems] = useState<FactureItem[]>([]);
   const [customFraisPercentage, setCustomFraisPercentage] = useState<number | null>(null);
   const [isEditingFrais, setIsEditingFrais] = useState(false);
+  const [customTransportFee, setCustomTransportFee] = useState<number | null>(null);
+  const [isEditingTransport, setIsEditingTransport] = useState(false);
   const [defaultConditions, setDefaultConditions] = useState({
     aerien: '',
     maritime: ''
@@ -222,13 +225,16 @@ const FacturesCreate: React.FC = () => {
     const fraisPercentage = customFraisPercentage !== null ? customFraisPercentage : (fees?.commande || 15);
     const frais = subtotal * (fraisPercentage / 100);
     
-    // Get shipping rates from settings (simplified for now)
+    // Get shipping rates from settings or custom value
     const fraisAerien = 16; // Default value
     const fraisMaritime = 450; // Default value
     
-    const fraisTransportDouane = formData.mode_livraison === 'aerien' 
-      ? totalPoids * fraisAerien 
-      : totalPoids * fraisMaritime;
+    // Use custom transport fee if set, otherwise calculate normally
+    const fraisTransportDouane = customTransportFee !== null 
+      ? customTransportFee 
+      : (formData.mode_livraison === 'aerien' 
+        ? totalPoids * fraisAerien 
+        : totalPoids * fraisMaritime);
     
     const totalGeneral = subtotal + frais + fraisTransportDouane;
 
@@ -238,6 +244,7 @@ const FacturesCreate: React.FC = () => {
       frais,
       fraisPercentage,
       fraisTransportDouane,
+      customTransportFee,
       totalGeneral
     };
   };
@@ -573,10 +580,29 @@ const FacturesCreate: React.FC = () => {
               {/* Totals */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Calculator className="mr-2 h-5 w-5" />
-                    Récapitulatif
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center">
+                      <Calculator className="mr-2 h-5 w-5" />
+                      Récapitulatif
+                    </CardTitle>
+                    {(customFraisPercentage !== null || customTransportFee !== null) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setCustomFraisPercentage(null);
+                          setCustomTransportFee(null);
+                          setIsEditingFrais(false);
+                          setIsEditingTransport(false);
+                        }}
+                        className="h-8 w-8 p-0"
+                        title="Réinitialiser les calculs automatiques"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
@@ -619,7 +645,30 @@ const FacturesCreate: React.FC = () => {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Frais transport & douane:</span>
+                      {isEditingTransport ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-600">Frais transport & douane:</span>
+                          <Input
+                            type="number"
+                            value={customTransportFee !== null ? customTransportFee : totals.fraisTransportDouane}
+                            onChange={(e) => setCustomTransportFee(parseFloat(e.target.value) || 0)}
+                            onBlur={() => setIsEditingTransport(false)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') setIsEditingTransport(false);
+                            }}
+                            className="w-24 h-6 text-sm px-2"
+                            autoFocus
+                          />
+                        </div>
+                      ) : (
+                        <span 
+                          className="text-gray-600 cursor-pointer hover:text-green-600 transition-colors"
+                          onDoubleClick={() => setIsEditingTransport(true)}
+                          title="Double-cliquer pour modifier (forfait)"
+                        >
+                          Frais transport & douane:
+                        </span>
+                      )}
                       <span className="font-medium">
                         {formData.devise === 'USD' ? '$' : ''}{totals.fraisTransportDouane.toFixed(2)}
                         {formData.devise === 'CDF' ? ' CDF' : ''}

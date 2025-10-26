@@ -441,7 +441,7 @@ export class SupabaseService {
 
       const fees: Fees = {
         transfert: 5,
-        commande: 10,
+        commande: 15,
         partenaire: 3
       };
 

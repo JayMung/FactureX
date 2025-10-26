@@ -99,7 +99,14 @@ const ClientForm: React.FC<ClientFormProps> = ({
       setFormData({ nom: '', telephone: '', ville: '' });
       setErrors({});
     } catch (error: any) {
-      showError(error.message || 'Une erreur est survenue');
+      // Gestion spécifique pour les doublons
+      if (error.message?.includes('duplicate') || error.message?.includes('unique')) {
+        setErrors({ telephone: 'Ce numéro existe déjà' });
+        // Le toast est déjà affiché par le hook useClients
+      } else {
+        setErrors({ general: error.message || 'Une erreur est survenue' });
+        // Le toast est déjà affiché par le hook useClients
+      }
     }
   };
 

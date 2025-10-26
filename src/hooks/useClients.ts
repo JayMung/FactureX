@@ -40,7 +40,12 @@ export const useClients = (page: number = 1, filters: ClientFilters = {}) => {
       }
     },
     onError: (error: any) => {
-      showError(error.message || 'Erreur lors de la création du client');
+      // Message spécifique pour les doublons
+      if (error.message?.includes('duplicate') || error.message?.includes('unique')) {
+        showError('Un client avec ce numéro de téléphone existe déjà');
+      } else {
+        showError(error.message || 'Erreur lors de la création du client');
+      }
     }
   });
 

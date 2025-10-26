@@ -106,6 +106,11 @@ export class SupabaseService {
 
       return { data, message: 'Client créé avec succès' };
     } catch (error: any) {
+      // Traduire les erreurs Postgres en messages conviviaux
+      if (error.message?.includes('clients_telephone_organization_unique') || 
+          error.code === '23505') {
+        return { error: 'Un client avec ce numéro de téléphone existe déjà' };
+      }
       return { error: error.message };
     }
   }

@@ -24,10 +24,7 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  Eye,
-  Calendar,
-  TrendingUp,
-  Database
+  Eye
 } from 'lucide-react';
 import { useRealTimeActivity } from '../hooks/useRealTimeActivity';
 import { supabase } from '@/integrations/supabase/client';
@@ -403,79 +400,8 @@ const ActivityLogs: React.FC = () => {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Aujourd'hui</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {stats.today}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">activités</p>
-                </div>
-                <div className="text-blue-600">
-                  <Calendar className="h-8 w-8" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Créations</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {stats.creations}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">total</p>
-                </div>
-                <div className="text-green-600">
-                  <Plus className="h-8 w-8" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Modifications</p>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {stats.modifications}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">total</p>
-                </div>
-                <div className="text-yellow-600">
-                  <Edit className="h-8 w-8" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {stats.total}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">activités</p>
-                </div>
-                <div className="text-gray-900">
-                  <Database className="h-8 w-8" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Statistiques */}
-        <ActivityStats activities={activities} className="mb-6" />
+        <ActivityStats activities={activities} />
 
         {/* Graphiques */}
         <ActivityChart activities={activities} className="mb-6" />

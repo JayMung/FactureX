@@ -29,7 +29,6 @@ import { formatCurrency } from '../utils/formatCurrency';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import ActivityFeed from '../components/activity/ActivityFeed';
-import NotificationCenter from '../components/activity/NotificationCenter';
 import AdvancedDashboard from '../components/dashboard/AdvancedDashboard';
 
 const IndexProtected: React.FC = () => {
@@ -179,21 +178,22 @@ const IndexProtected: React.FC = () => {
                 </div>
                 
                 {/* Quick Actions */}
-                <Card className="card-base h-fit">
-                  <CardHeader className="p-6">
-                    <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Actions Rapides</CardTitle>
+                <Card className="card-base">
+                  <CardHeader className="p-4">
+                    <CardTitle className="text-lg font-bold text-gray-900 dark:text-white">Actions Rapides</CardTitle>
                   </CardHeader>
-                  <CardContent className="p-6 pt-0">
-                    <div className="space-y-3">
+                  <CardContent className="p-4 pt-0">
+                    <div className="space-y-2">
                       <PermissionGuard module="transactions" permission="create">
                         <Button 
                           asChild
                           variant="outline"
-                          className="w-full h-16 flex items-center justify-start gap-3 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-700 rounded-md transition-base hover:shadow-md"
+                          size="sm"
+                          className="w-full justify-start gap-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-700"
                         >
-                          <a href="/transactions" className="flex items-center gap-3">
-                            <Plus className="h-5 w-5" />
-                            <span className="text-sm font-medium">Nouvelle Transaction</span>
+                          <a href="/transactions" className="flex items-center gap-2">
+                            <Plus className="h-4 w-4" />
+                            <span className="text-sm">Nouvelle Transaction</span>
                           </a>
                         </Button>
                       </PermissionGuard>
@@ -202,22 +202,25 @@ const IndexProtected: React.FC = () => {
                         <Button 
                           asChild
                           variant="outline"
-                          className="w-full h-16 flex items-center justify-start gap-3 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-700 rounded-md transition-base hover:shadow-md"
+                          size="sm"
+                          className="w-full justify-start gap-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-700"
                         >
-                          <a href="/clients">
-                            <Users className="h-5 w-5" />
-                            <span className="text-sm font-medium">Ajouter Client</span>
+                          <a href="/clients" className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            <span className="text-sm">Ajouter Client</span>
                           </a>
                         </Button>
                       </PermissionGuard>
                       
                       <Button 
                         asChild
-                        className="w-full h-16 flex items-center justify-start space-x-3 bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 rounded-lg transition-all duration-200 active:scale-95 hover:shadow-md"
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-start gap-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200"
                       >
-                        <a href="/activity-logs">
-                          <Activity className="h-5 w-5" />
-                          <span className="text-sm font-medium">Voir Activités</span>
+                        <a href="/activity-logs" className="flex items-center gap-2">
+                          <Activity className="h-4 w-4" />
+                          <span className="text-sm">Voir Activités</span>
                         </a>
                       </Button>
                     </div>
@@ -231,11 +234,6 @@ const IndexProtected: React.FC = () => {
               <AdvancedDashboard />
             </TabsContent>
           </Tabs>
-
-          {/* NotificationCenter */}
-          <div className="lg:col-span-1">
-            <NotificationCenter />
-          </div>
         </div>
       </Layout>
     </ProtectedRouteEnhanced>

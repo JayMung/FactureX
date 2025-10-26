@@ -15,6 +15,7 @@ import FacturesView from "./pages/Factures-View";
 import FacturesPreview from "./pages/Factures-Preview";
 import SettingsWithPermissions from "./pages/Settings-Permissions";
 import ActivityLogs from "./pages/ActivityLogs";
+import SecurityDashboard from "./pages/SecurityDashboard";
 import Login from "./pages/Login";
 import AdminSetup from "./pages/AdminSetup";
 import NotFound from "./pages/NotFound";
@@ -83,6 +84,11 @@ const App = () => (
               <Route path="/activity-logs" element={
                 <ProtectedRouteEnhanced>
                   <ActivityLogs />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/security-dashboard" element={
+                <ProtectedRouteEnhanced>
+                  <SecurityDashboard />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="*" element={<NotFound />} />

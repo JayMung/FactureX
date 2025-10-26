@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -182,7 +182,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
           </div>
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="max-h-[500px] overflow-y-auto">
           <div className="space-y-3">
             {activities.map((activity) => (
               <div 

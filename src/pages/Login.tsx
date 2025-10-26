@@ -10,6 +10,13 @@ import { Shield, Loader2, AlertTriangle } from 'lucide-react';
 import { clientRateLimiter, getClientIdentifier, formatResetTime } from '@/lib/ratelimit-client';
 import { validatePassword } from '@/lib/password-validation';
 import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
+import { 
+  logLoginSuccess, 
+  logLoginFailed, 
+  logSignupSuccess, 
+  logSignupFailed,
+  logRateLimitExceeded 
+} from '@/services/securityLogger';
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
@@ -36,6 +43,7 @@ const Login = () => {
 
       if (!rateLimitResult.success) {
         const resetTime = formatResetTime(rateLimitResult.reset);
+        await logRateLimitExceeded('login', rateLimitResult.remaining);
         throw new Error(
           `Trop de tentatives de connexion. Veuillez réessayer dans ${resetTime}.`
         );
@@ -46,7 +54,12 @@ const Login = () => {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        await logLoginFailed(email, error.message);
+        throw error;
+      }
+      
+      await logLoginSuccess(email);
       navigate('/');
     } catch (error: any) {
       setError(error.message || 'Erreur de connexion');
@@ -73,6 +86,7 @@ const Login = () => {
 
       if (!rateLimitResult.success) {
         const resetTime = formatResetTime(rateLimitResult.reset);
+        await logRateLimitExceeded('signup', rateLimitResult.remaining);
         throw new Error(
           `Trop de tentatives d'inscription. Veuillez réessayer dans ${resetTime}.`
         );
@@ -89,15 +103,20 @@ const Login = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        await logSignupFailed(email, error.message);
+        throw error;
+      }
       
       // Check if user already exists (Supabase returns user but with identities empty)
       if (data?.user && !data?.user?.identities?.length) {
+        await logSignupFailed(email, 'Email already exists');
         setError('Cet email est déjà utilisé. Veuillez vous connecter ou utiliser un autre email.');
         setIsSignUp(false);
         return;
       }
       
+      await logSignupSuccess(email);
       setError('Inscription réussie! Veuillez vérifier votre email pour confirmer votre compte.');
       setIsSignUp(false);
     } catch (error: any) {

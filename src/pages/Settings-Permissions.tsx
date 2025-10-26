@@ -36,6 +36,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu,
@@ -110,6 +111,12 @@ const SettingsWithPermissions = () => {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  // Hook d'authentification
+  const { user: authUser } = useAuth();
+  
+  // Vérifier si l'utilisateur est admin
+  const isAdmin = authUser?.app_metadata?.role === 'admin';
 
   // Hook des permissions
   const { checkPermission, canAccessModule, getAccessibleModules } = usePermissions();
@@ -1088,10 +1095,23 @@ const SettingsWithPermissions = () => {
             {activeTab === 'activity-logs' && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <History className="mr-2 h-5 w-5" />
-                    Logs d'activité
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center">
+                      <History className="mr-2 h-5 w-5" />
+                      Logs d'activité
+                    </CardTitle>
+                    {isAdmin && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => navigate('/security-dashboard')}
+                        className="flex items-center gap-2"
+                      >
+                        <Shield className="h-4 w-4" />
+                        Dashboard de sécurité
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {activityLogs.length === 0 ? (

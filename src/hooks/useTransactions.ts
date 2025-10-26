@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
 import { activityLogger } from '@/services/activityLogger';
+import { getFriendlyErrorMessage } from '@/utils/errorHandler';
 import type { Transaction, UpdateTransactionData, CreateTransactionData, TransactionFilters } from '@/types';
 
 export const useTransactions = (page: number = 1, filters: TransactionFilters = {}) => {
@@ -10,6 +11,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [pagination, setPagination] = useState({
     count: 0,
     page: 1,
@@ -69,11 +71,13 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
         totalPages: Math.ceil((count || 0) / prev.pageSize)
       }));
     } catch (err: any) {
-      setError(err.message);
+      const friendlyMessage = getFriendlyErrorMessage(err, 'Erreur de chargement des transactions');
+      setError(friendlyMessage);
+      showError(friendlyMessage);
     } finally {
       setLoading(false);
     }
-  }, [page, filters.status, filters.currency, filters.modePaiement, pagination.pageSize]);
+  }, [page, filters.status, filters.currency, filters.modePaiement, pagination.pageSize, refreshTrigger]);
 
   useEffect(() => {
     fetchTransactions();
@@ -151,18 +155,18 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
         }
       );
 
-      // Ajouter la nouvelle transaction à l'état local
-      setTransactions(prev => [data!, ...prev]);
-      
       showSuccess('Transaction créée avec succès');
       
-      // Auto-refresh pour synchroniser les données
-      await fetchTransactions();
+      // Forcer le refresh immédiatement
+      setRefreshTrigger(prev => prev + 1);
+      // Appel direct pour refresh immédiat
+      setTimeout(() => fetchTransactions(), 100);
       
       return data;
     } catch (err: any) {
-      setError(err.message || 'Erreur lors de la création de la transaction');
-      showError(err.message || 'Erreur lors de la création de la transaction');
+      const friendlyMessage = getFriendlyErrorMessage(err, 'Erreur de création');
+      setError(friendlyMessage);
+      showError(friendlyMessage);
       throw err;
     } finally {
       setIsCreating(false);
@@ -260,20 +264,17 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
         }
       );
 
-      // Mettre à jour la transaction dans l'état local
-      setTransactions(prev => 
-        prev.map(t => t.id === id ? data! : t)
-      );
-      
       showSuccess('Transaction mise à jour avec succès');
       
-      // Auto-refresh pour synchroniser les données
-      await fetchTransactions();
+      // Forcer le refresh immédiatement
+      setRefreshTrigger(prev => prev + 1);
+      setTimeout(() => fetchTransactions(), 100);
       
       return data;
     } catch (err: any) {
-      setError(err.message || 'Erreur lors de la mise à jour de la transaction');
-      showError(err.message || 'Erreur lors de la mise à jour de la transaction');
+      const friendlyMessage = getFriendlyErrorMessage(err, 'Erreur de mise à jour');
+      setError(`Une erreur est survenue lors de la mise à jour de la transaction. Veuillez réessayer.`);
+      showError(`Une erreur est survenue lors de la mise à jour de la transaction. Veuillez réessayer.`);
       throw err;
     } finally {
       setIsUpdating(false);
@@ -335,13 +336,11 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
         id
       );
 
-      // Mettre à jour l'état local
-      setTransactions(prev => prev.filter(t => t.id !== id));
-      
       showSuccess('Transaction supprimée avec succès');
       
-      // Auto-refresh pour synchroniser les données
-      await fetchTransactions();
+      // Forcer le refresh immédiatement
+      setRefreshTrigger(prev => prev + 1);
+      setTimeout(() => fetchTransactions(), 100);
       
       return { message: 'Transaction supprimée avec succès' };
     } catch (error: any) {

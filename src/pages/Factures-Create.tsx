@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useClients } from '../hooks/useClients';
 import { useFactures } from '../hooks/useFactures';
-import { useFees } from '../hooks/useSettings';
+import { useFees, useExchangeRates } from '../hooks/useSettings';
 import { showSuccess, showError } from '@/utils/toast';
 import ImagePreview from '@/components/ui/ImagePreview';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,6 +41,7 @@ const FacturesCreate: React.FC = () => {
   const navigate = useNavigate();
   const { clients } = useClients(1, {});
   const { fees } = useFees();
+  const { rates } = useExchangeRates();
   const { createFacture, updateFacture, getFactureWithItems } = useFactures();
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(isEditMode);
@@ -106,9 +107,49 @@ const FacturesCreate: React.FC = () => {
     loadDefaultConditions();
   }, []);
 
-  // Charger les données de la facture en mode édition
+  // Charger les données de la facture en mode édition ou duplication
   useEffect(() => {
     const loadFacture = async () => {
+      // Vérifier d'abord s'il y a une facture à dupliquer
+      const duplicateData = sessionStorage.getItem('duplicateFacture');
+      if (duplicateData && !isEditMode) {
+        try {
+          const facture = JSON.parse(duplicateData);
+          sessionStorage.removeItem('duplicateFacture'); // Nettoyer après utilisation
+          
+          setFormData({
+            client_id: facture.client_id,
+            type: facture.type as 'devis' | 'facture',
+            mode_livraison: facture.mode_livraison,
+            devise: facture.devise,
+            date_emission: facture.date_emission,
+            statut: 'brouillon',
+            conditions_vente: facture.conditions_vente || '',
+            notes: facture.notes || '',
+            informations_bancaires: facture.informations_bancaires || '',
+            items: []
+          });
+
+          const loadedItems = (facture.items || []).map((item: any, index: number) => ({
+            tempId: Date.now().toString() + index,
+            numero_ligne: item.numero_ligne,
+            quantite: item.quantite,
+            description: item.description || '',
+            prix_unitaire: item.prix_unitaire,
+            poids: item.poids,
+            montant_total: item.montant_total,
+            image_url: item.image_url,
+            product_url: item.product_url
+          }));
+          setItems(loadedItems);
+          showSuccess('Facture dupliquée! Modifiez et enregistrez.');
+        } catch (error) {
+          console.error('Error loading duplicate:', error);
+        }
+        return;
+      }
+
+      // Mode édition normal
       if (!isEditMode || !id) return;
       
       setLoadingData(true);
@@ -218,34 +259,40 @@ const FacturesCreate: React.FC = () => {
   };
 
   const calculateTotals = () => {
-    const subtotal = items.reduce((sum, item) => sum + item.montant_total, 0);
+    // Calculer en USD d'abord
+    const subtotalUSD = items.reduce((sum, item) => sum + item.montant_total, 0);
     const totalPoids = items.reduce((sum, item) => sum + item.poids, 0);
     
     // Frais (15% du sous-total) depuis les settings ou custom
     const fraisPercentage = customFraisPercentage !== null ? customFraisPercentage : (fees?.commande || 15);
-    const frais = subtotal * (fraisPercentage / 100);
+    const fraisUSD = subtotalUSD * (fraisPercentage / 100);
     
     // Get shipping rates from settings or custom value
     const fraisAerien = 16; // Default value
     const fraisMaritime = 450; // Default value
     
     // Use custom transport fee if set, otherwise calculate normally
-    const fraisTransportDouane = customTransportFee !== null 
+    const fraisTransportDouaneUSD = customTransportFee !== null 
       ? customTransportFee 
       : (formData.mode_livraison === 'aerien' 
         ? totalPoids * fraisAerien 
         : totalPoids * fraisMaritime);
     
-    const totalGeneral = subtotal + frais + fraisTransportDouane;
+    const totalGeneralUSD = subtotalUSD + fraisUSD + fraisTransportDouaneUSD;
 
+    // Appliquer la conversion si la devise est CDF
+    const tauxUSDtoCDF = rates?.usdToCdf || 2100;
+    const conversionRate = formData.devise === 'CDF' ? tauxUSDtoCDF : 1;
+    
     return {
-      subtotal,
+      subtotal: subtotalUSD * conversionRate,
       totalPoids,
-      frais,
+      frais: fraisUSD * conversionRate,
       fraisPercentage,
-      fraisTransportDouane,
+      fraisTransportDouane: fraisTransportDouaneUSD * conversionRate,
       customTransportFee,
-      totalGeneral
+      totalGeneral: totalGeneralUSD * conversionRate,
+      tauxConversion: conversionRate
     };
   };
 

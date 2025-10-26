@@ -21,7 +21,8 @@ import {
   DollarSign,
   CheckCircle,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Copy
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
@@ -52,8 +53,8 @@ const FacturesProtected: React.FC = () => {
     isLoading,
     error,
     deleteFacture,
-    convertToFacture,
     getFactureWithItems,
+    convertToFacture,
     refetch
   } = useFactures(currentPage, {
     type: typeFilter === 'all' ? undefined : typeFilter as 'devis' | 'facture',
@@ -109,6 +110,33 @@ const FacturesProtected: React.FC = () => {
 
   const handleEdit = (facture: Facture) => {
     navigate(`/factures/edit/${facture.id}`);
+  };
+
+  const handleDuplicate = async (facture: Facture) => {
+    try {
+      // Récupérer la facture complète avec les items
+      const factureComplete = await getFactureWithItems(facture.id);
+      
+      if (!factureComplete) {
+        showError('Impossible de récupérer la facture');
+        return;
+      }
+
+      // Stocker les données dans sessionStorage pour les utiliser dans le formulaire
+      sessionStorage.setItem('duplicateFacture', JSON.stringify({
+        ...factureComplete,
+        facture_number: null, // Nouveau numéro sera généré
+        statut: 'brouillon',
+        date_emission: new Date().toISOString().split('T')[0]
+      }));
+
+      // Rediriger vers le formulaire de création
+      navigate('/factures/new');
+      showSuccess('Facture dupliquée! Modifiez et enregistrez.');
+    } catch (error) {
+      console.error('Error duplicating facture:', error);
+      showError('Erreur lors de la duplication');
+    }
   };
 
   const handleAddNew = () => {
@@ -356,6 +384,18 @@ const FacturesProtected: React.FC = () => {
                                   </Button>
                                 </PermissionGuard>
                               )}
+                              
+                              <PermissionGuard module="factures" permission="create">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDuplicate(facture)}
+                                  title="Dupliquer"
+                                  className="text-blue-600 hover:bg-blue-50"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              </PermissionGuard>
                               
                               <PermissionGuard module="factures" permission="update">
                                 <Button

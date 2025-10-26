@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useClients } from '../hooks/useClients';
 import { useFactures } from '../hooks/useFactures';
+import { useFees } from '../hooks/useSettings';
 import { showSuccess, showError } from '@/utils/toast';
 import ImagePreview from '@/components/ui/ImagePreview';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,6 +39,7 @@ const FacturesCreate: React.FC = () => {
 
   const navigate = useNavigate();
   const { clients } = useClients(1, {});
+  const { fees } = useFees();
   const { createFacture, updateFacture, getFactureWithItems } = useFactures();
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(isEditMode);
@@ -55,6 +57,8 @@ const FacturesCreate: React.FC = () => {
   });
 
   const [items, setItems] = useState<FactureItem[]>([]);
+  const [customFraisPercentage, setCustomFraisPercentage] = useState<number | null>(null);
+  const [isEditingFrais, setIsEditingFrais] = useState(false);
   const [defaultConditions, setDefaultConditions] = useState({
     aerien: '',
     maritime: ''
@@ -214,21 +218,25 @@ const FacturesCreate: React.FC = () => {
     const subtotal = items.reduce((sum, item) => sum + item.montant_total, 0);
     const totalPoids = items.reduce((sum, item) => sum + item.poids, 0);
     
+    // Frais (15% du sous-total) depuis les settings ou custom
+    const fraisPercentage = customFraisPercentage !== null ? customFraisPercentage : (fees?.commande || 15);
+    const frais = subtotal * (fraisPercentage / 100);
+    
     // Get shipping rates from settings (simplified for now)
     const fraisAerien = 16; // Default value
     const fraisMaritime = 450; // Default value
     
-    const shippingFee = formData.mode_livraison === 'aerien' 
+    const fraisTransportDouane = formData.mode_livraison === 'aerien' 
       ? totalPoids * fraisAerien 
       : totalPoids * fraisMaritime;
     
-    const fraisTransportDouane = shippingFee;
-    const totalGeneral = subtotal + fraisTransportDouane;
+    const totalGeneral = subtotal + frais + fraisTransportDouane;
 
     return {
       subtotal,
       totalPoids,
-      shippingFee,
+      frais,
+      fraisPercentage,
       fraisTransportDouane,
       totalGeneral
     };
@@ -256,7 +264,7 @@ const FacturesCreate: React.FC = () => {
           ...formData,
           items: items.map(({ tempId, id: itemId, ...item }) => item)
         });
-        showSuccess('Facture mise à jour avec succès');
+        // Toast déjà affiché par le hook
         navigate(`/factures/preview/${id}`);
       } else {
         // Mode création
@@ -265,7 +273,7 @@ const FacturesCreate: React.FC = () => {
           items: items.map(({ tempId, ...item }) => item)
         };
         const newFacture = await createFacture(factureData);
-        showSuccess(`${formData.type === 'devis' ? 'Devis' : 'Facture'} créé avec succès`);
+        // Toast déjà affiché par le hook
         navigate(`/factures/preview/${newFacture.id}`);
       }
     } catch (error: any) {
@@ -580,9 +588,33 @@ const FacturesCreate: React.FC = () => {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Frais de livraison:</span>
+                      {isEditingFrais ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-600">Frais</span>
+                          <Input
+                            type="number"
+                            value={customFraisPercentage !== null ? customFraisPercentage : totals.fraisPercentage}
+                            onChange={(e) => setCustomFraisPercentage(parseFloat(e.target.value) || 0)}
+                            onBlur={() => setIsEditingFrais(false)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') setIsEditingFrais(false);
+                            }}
+                            className="w-16 h-6 text-sm px-2"
+                            autoFocus
+                          />
+                          <span className="text-gray-600">%:</span>
+                        </div>
+                      ) : (
+                        <span 
+                          className="text-gray-600 cursor-pointer hover:text-green-600 transition-colors"
+                          onDoubleClick={() => setIsEditingFrais(true)}
+                          title="Double-cliquer pour modifier"
+                        >
+                          Frais ({totals.fraisPercentage}%):
+                        </span>
+                      )}
                       <span className="font-medium">
-                        {formData.devise === 'USD' ? '$' : ''}{totals.shippingFee.toFixed(2)}
+                        {formData.devise === 'USD' ? '$' : ''}{totals.frais.toFixed(2)}
                         {formData.devise === 'CDF' ? ' CDF' : ''}
                       </span>
                     </div>

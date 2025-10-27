@@ -446,9 +446,9 @@ const FacturesPreview: React.FC = () => {
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-gray-600">Poids total</span>
-                  <span className="font-mono">
-                    {facture.total_poids} <span className="text-xs text-gray-500">kg</span>
+                  <span className="text-gray-600">Frais de services</span>
+                  <span className="font-semibold text-lg">
+                    {formatCurrency(facture.frais || 0, facture.devise)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b">

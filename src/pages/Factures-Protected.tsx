@@ -9,6 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
 import {
   Search,
   Plus,
@@ -22,12 +29,14 @@ import {
   CheckCircle,
   AlertCircle,
   RefreshCw,
-  Copy
+  Copy,
+  ChevronDown
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import { useFactures } from '../hooks/useFactures';
+import { usePermissions } from '../hooks/usePermissions';
 import FactureDetailsModal from '../components/modals/FactureDetailsModal';
 import type { Facture } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
@@ -46,6 +55,7 @@ const FacturesProtected: React.FC = () => {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [factureToView, setFactureToView] = useState<Facture | null>(null);
   const navigate = useNavigate();
+  const { checkPermission } = usePermissions();
 
   const {
     factures,
@@ -53,6 +63,7 @@ const FacturesProtected: React.FC = () => {
     isLoading,
     error,
     deleteFacture,
+    updateFacture,
     getFactureWithItems,
     convertToFacture,
     refetch
@@ -71,6 +82,7 @@ const FacturesProtected: React.FC = () => {
       brouillon: { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-800', label: 'Brouillon' },
       en_attente: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800', label: 'En attente' },
       validee: { variant: 'default' as const, className: 'bg-green-500 text-white', label: 'Validée' },
+      payee: { variant: 'default' as const, className: 'bg-blue-500 text-white', label: 'Payée' },
       annulee: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800', label: 'Annulée' }
     };
     
@@ -80,6 +92,24 @@ const FacturesProtected: React.FC = () => {
         {config.label}
       </Badge>
     );
+  };
+
+  const handleStatutChange = async (facture: Facture, newStatut: string) => {
+    try {
+      await updateFacture(facture.id, { 
+        statut: newStatut as any,
+        // Ajouter la date de validation si le statut devient "validée" ou "payee"
+        ...(newStatut === 'validee' || newStatut === 'payee' ? { 
+          date_validation: new Date().toISOString() 
+        } : {})
+      });
+      
+      showSuccess(`Statut de la facture mis à jour: ${getStatutBadge(newStatut).props.children}`);
+      refetch();
+    } catch (error: any) {
+      console.error('Error updating statut:', error);
+      showError(error.message || 'Erreur lors de la mise à jour du statut');
+    }
   };
 
   const handleConvertToFacture = async (facture: Facture) => {
@@ -280,6 +310,7 @@ const FacturesProtected: React.FC = () => {
                 <SelectItem value="brouillon">Brouillon</SelectItem>
                 <SelectItem value="en_attente">En attente</SelectItem>
                 <SelectItem value="validee">Validée</SelectItem>
+                <SelectItem value="payee">Payée</SelectItem>
                 <SelectItem value="annulee">Annulée</SelectItem>
               </SelectContent>
             </Select>
@@ -358,7 +389,85 @@ const FacturesProtected: React.FC = () => {
                             {formatCurrency(facture.total_general, facture.devise)}
                           </td>
                           <td className="py-3 px-4">
-                            {getStatutBadge(facture.statut)}
+                            {checkPermission('factures', 'update') ? (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="h-8 flex items-center gap-2 hover:bg-gray-50"
+                                  >
+                                    {getStatutBadge(facture.statut)}
+                                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-48">
+                                  <DropdownMenuItem 
+                                    onClick={() => handleStatutChange(facture, 'brouillon')}
+                                    className={cn(
+                                      "cursor-pointer",
+                                      facture.statut === 'brouillon' && 'bg-gray-50'
+                                    )}
+                                  >
+                                    <div className="flex items-center">
+                                      <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
+                                      Brouillon
+                                    </div>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => handleStatutChange(facture, 'en_attente')}
+                                    className={cn(
+                                      "cursor-pointer",
+                                      facture.statut === 'en_attente' && 'bg-yellow-50'
+                                    )}
+                                  >
+                                    <div className="flex items-center">
+                                      <div className="w-2 h-2 bg-yellow-400 rounded-full mr-2"></div>
+                                      En attente
+                                    </div>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => handleStatutChange(facture, 'validee')}
+                                    className={cn(
+                                      "cursor-pointer",
+                                      facture.statut === 'validee' && 'bg-green-50'
+                                    )}
+                                  >
+                                    <div className="flex items-center">
+                                      <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                                      Validée
+                                    </div>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => handleStatutChange(facture, 'payee')}
+                                    className={cn(
+                                      "cursor-pointer",
+                                      facture.statut === 'payee' && 'bg-blue-50'
+                                    )}
+                                  >
+                                    <div className="flex items-center">
+                                      <DollarSign className="w-4 h-4 text-blue-500 mr-2" />
+                                      Payée
+                                    </div>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    onClick={() => handleStatutChange(facture, 'annulee')}
+                                    className={cn(
+                                      "cursor-pointer",
+                                      facture.statut === 'annulee' && 'bg-red-50'
+                                    )}
+                                  >
+                                    <div className="flex items-center">
+                                      <AlertCircle className="w-4 h-4 text-red-500 mr-2" />
+                                      Annulée
+                                    </div>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            ) : (
+                              getStatutBadge(facture.statut)
+                            )}
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center space-x-2">

@@ -31,7 +31,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
           client:clients(*)
         `, { count: 'exact' })
         .range((page - 1) * pagination.pageSize, page * pagination.pageSize - 1)
-        .order('created_at', { ascending: false });
+        .order('date_paiement', { ascending: false });
 
       // Appliquer les filtres
       if (filters.status) {

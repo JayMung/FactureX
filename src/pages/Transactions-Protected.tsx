@@ -523,7 +523,7 @@ const TransactionsProtected: React.FC = () => {
                           </td>
                           <td className="py-3 px-4">{transaction.client?.nom || 'Client inconnu'}</td>
                           <td className="py-3 px-4 text-sm text-gray-600">
-                            {new Date(transaction.created_at).toLocaleDateString('fr-FR')}
+                            {new Date(transaction.date_paiement).toLocaleDateString('fr-FR')}
                           </td>
                           <td className="py-3 px-4">
                             <span className="font-medium">

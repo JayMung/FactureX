@@ -93,7 +93,7 @@ const Header: React.FC<HeaderProps> = ({
             >
               <Menu className="h-6 w-6" />
             </button>
-            <div className="ml-4 lg:ml-0">
+            <div className="ml-4">
               <h1 className="text-xl md:text-2xl font-bold leading-tight text-gray-900 dark:text-white">{title}</h1>
               {subtitle && (
                 <p className="text-sm text-gray-700 dark:text-gray-300">{subtitle}</p>

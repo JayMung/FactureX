@@ -328,7 +328,7 @@ const FacturesProtected: React.FC = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Type</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Mode</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-700">N° Facture</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-700">Client</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
@@ -370,8 +370,8 @@ const FacturesProtected: React.FC = () => {
                       factures.map((facture) => (
                         <tr key={facture.id} className="border-b hover:bg-gray-50">
                           <td className="py-3 px-4">
-                            <Badge variant="outline">
-                              {facture.type === 'devis' ? '📄 Devis' : '📋 Facture'}
+                            <Badge variant={facture.mode_livraison === 'aerien' ? 'default' : 'secondary'}>
+                              {facture.mode_livraison === 'aerien' ? '✈️ Aérien' : '🚢 Maritime'}
                             </Badge>
                           </td>
                           <td 
@@ -479,20 +479,6 @@ const FacturesProtected: React.FC = () => {
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              
-                              {facture.type === 'devis' && facture.statut === 'brouillon' && (
-                                <PermissionGuard module="factures" permission="update">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleConvertToFacture(facture)}
-                                    title="Convertir en facture"
-                                    className="text-green-500 hover:bg-green-50"
-                                  >
-                                    <RefreshCw className="h-4 w-4" />
-                                  </Button>
-                                </PermissionGuard>
-                              )}
                               
                               <PermissionGuard module="factures" permission="create">
                                 <Button

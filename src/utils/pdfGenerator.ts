@@ -531,12 +531,11 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         doc.text(formatCurrency(facture.subtotal, facture.devise), valueX, y, { align: 'right' });
         y += 6;
 
-        // Ligne 2: Frais (avec pourcentage dynamique)
+        // Ligne 2: Frais
         setFont('normal');
         doc.setFontSize(9);
         doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
-        const feesPercentageText = `Frais (${Math.round(feesPercentage * 100)}% de services & transfert)`;
-        doc.text(feesPercentageText, totalsStartX + 4, y);
+        doc.text("FRAIS", totalsStartX + 4, y);
         setFont('bold');
         doc.setFontSize(10);
         doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);

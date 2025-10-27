@@ -173,6 +173,7 @@ export interface Facture {
   shipping_fee: number;
   subtotal: number;
   total_poids: number;
+  frais: number;
   frais_transport_douane: number;
   total_general: number;
   conditions_vente?: string;

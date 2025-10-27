@@ -59,6 +59,8 @@ const TransactionsProtected: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | undefined>();
+  const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
+  const [bulkActionOpen, setBulkActionOpen] = useState(false);
   
   // États pour les modales de confirmation
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -258,16 +260,14 @@ const TransactionsProtected: React.FC = () => {
       .filter(t => t.devise === 'USD')
       .reduce((sum, t) => sum + t.montant, 0);
     
-    const totalCDF = transactions
-      .filter(t => t.devise === 'CDF')
-      .reduce((sum, t) => sum + t.montant, 0);
+    const totalFrais = transactions.reduce((sum, t) => sum + t.frais, 0);
 
     const totalBenefice = transactions.reduce((sum, t) => sum + t.benefice, 0);
 
-    return { totalUSD, totalCDF, totalBenefice };
+    return { totalUSD, totalFrais, totalBenefice };
   };
 
-  const { totalUSD, totalCDF, totalBenefice } = calculateStats();
+  const { totalUSD, totalFrais, totalBenefice } = calculateStats();
 
   const generateReadableId = (index: number) => {
     const paddedNumber = (index + 1).toString().padStart(3, '0');
@@ -357,14 +357,14 @@ const TransactionsProtected: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Total CDF Card */}
+            {/* Total Frais Card */}
             <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total CDF</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Frais</p>
                     <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {totalCDF === 0 ? '0 CDF' : formatCurrencyValue(totalCDF, 'CDF')}
+                      {formatCurrencyValue(totalFrais, 'USD')}
                     </p>
                   </div>
                   <div className="p-3 rounded-full bg-blue-500 flex-shrink-0">

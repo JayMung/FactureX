@@ -752,7 +752,7 @@ export class SupabaseService {
     try {
       const [clientsResult, transactionsResult, facturesResult] = await Promise.all([
         supabase.from('clients').select('id', { count: 'exact', head: true }),
-        supabase.from('transactions').select('montant, devise, benefice, montant_cny, created_at', { count: 'exact' }),
+        supabase.from('transactions').select('montant, devise, benefice, montant_cny, frais, created_at', { count: 'exact' }),
         supabase.from('factures').select('id, type, statut, total_general, devise, created_at', { count: 'exact' })
       ]);
 
@@ -778,6 +778,9 @@ export class SupabaseService {
       const beneficeNet = transactions
         .reduce((sum, t) => sum + (t.benefice || 0), 0);
 
+      const totalFrais = transactions
+        .reduce((sum, t) => sum + (t.frais || 0), 0);
+
       const todayTransactions = transactions
         .filter(t => t.created_at?.startsWith(today))
         .length;
@@ -798,6 +801,7 @@ export class SupabaseService {
         totalCDF,
         totalCNY,
         beneficeNet,
+        totalFrais,
         clientsCount: clientsResult.count || 0,
         transactionsCount: transactions.length,
         todayTransactions,

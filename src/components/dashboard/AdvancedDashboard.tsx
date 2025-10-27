@@ -19,6 +19,20 @@ import {
 import { formatCurrency } from '@/utils/formatCurrency';
 import { useDashboardAnalytics } from '@/hooks/useDashboardAnalytics';
 import { cn } from '@/lib/utils';
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 
 interface AdvancedDashboardProps {
   className?: string;
@@ -227,15 +241,47 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-64 flex items-center justify-center">
-            <div className="text-center">
-              <BarChart3 className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-              <p className="text-gray-500">Graphique en cours de développement</p>
-              <p className="text-sm text-gray-400 mt-2">
-                Intégration avec Chart.js ou Recharts prévue
-              </p>
-            </div>
-          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            {chartType === 'revenue' ? (
+              <AreaChart data={analytics.dailyStats}>
+                <defs>
+                  <linearGradient id="colorUSD" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorCDF" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} />
+                <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+                <Legend />
+                <Area type="monotone" dataKey="revenueUSD" stroke="#10b981" fillOpacity={1} fill="url(#colorUSD)" name="Revenus USD" />
+                <Area type="monotone" dataKey="revenueCDF" stroke="#3b82f6" fillOpacity={1} fill="url(#colorCDF)" name="Revenus CDF" />
+              </AreaChart>
+            ) : chartType === 'transactions' ? (
+              <BarChart data={analytics.dailyStats}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} />
+                <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+                <Legend />
+                <Bar dataKey="transactions" fill="#3b82f6" radius={[8, 8, 0, 0]} name="Transactions" />
+              </BarChart>
+            ) : (
+              <LineChart data={analytics.dailyStats}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} />
+                <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+                <Legend />
+                <Line type="monotone" dataKey="newClients" stroke="#9333ea" strokeWidth={2} dot={{ fill: '#9333ea', r: 4 }} activeDot={{ r: 6 }} name="Nouveaux clients" />
+              </LineChart>
+            )}
+          </ResponsiveContainer>
         </CardContent>
       </Card>
 

@@ -68,9 +68,9 @@ const IndexProtected: React.FC = () => {
       iconBg: 'bg-blue-500'
     },
     {
-      title: 'Montant Facturé CDF',
-      value: isLoading ? '...' : formatCurrencyValue(stats?.facturesAmountCDF || 0, 'CDF'),
-      change: stats?.facturesAmountCDF > 0 ? { value: 8, isPositive: true } : undefined,
+      title: 'Total Frais',
+      value: isLoading ? '...' : formatCurrencyValue(stats?.totalFrais || 0, 'USD'),
+      change: stats?.totalFrais > 0 ? { value: 8, isPositive: true } : undefined,
       icon: <DollarSign className="h-6 w-6 text-white" />,
       iconBg: 'bg-purple-500'
     },

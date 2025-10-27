@@ -19,11 +19,13 @@ import {
   Package,
   Calculator,
   FileText,
-  RotateCcw
+  RotateCcw,
+  Clock
 } from 'lucide-react';
 import { useClients } from '../hooks/useClients';
 import { useFactures } from '../hooks/useFactures';
 import { useFees, useExchangeRates } from '../hooks/useSettings';
+import { useAutoSave } from '../hooks/useAutoSave';
 import { showSuccess, showError } from '@/utils/toast';
 import ImagePreview from '@/components/ui/ImagePreview';
 import { supabase } from '@/integrations/supabase/client';
@@ -67,6 +69,36 @@ const FacturesCreate: React.FC = () => {
     aerien: '',
     maritime: ''
   });
+
+  // Auto-save functionality
+  const storageKey = isEditMode ? `facture_edit_${id}` : 'facture_new_draft';
+  const autoSaveData = {
+    formData,
+    items,
+    customFraisPercentage,
+    customTransportFee
+  };
+  
+  const { loadSavedData, clearSavedData, hasSavedData } = useAutoSave({
+    data: autoSaveData,
+    storageKey,
+    debounceMs: 3000, // 3 seconds
+    enabled: !isEditMode // Only auto-save in create mode, not edit mode
+  });
+
+  // Load saved data on component mount (only for new invoices)
+  useEffect(() => {
+    if (!isEditMode && hasSavedData()) {
+      const savedData = loadSavedData();
+      if (savedData) {
+        setFormData(savedData.formData || formData);
+        setItems(savedData.items || []);
+        setCustomFraisPercentage(savedData.customFraisPercentage);
+        setCustomTransportFee(savedData.customTransportFee);
+        showSuccess('Brouillon restauré', { duration: 2000 });
+      }
+    }
+  }, []); // Only run on mount
 
   // Charger les conditions de vente par défaut depuis les paramètres
   useEffect(() => {
@@ -327,6 +359,10 @@ const FacturesCreate: React.FC = () => {
           items: items.map(({ tempId, ...item }) => item)
         };
         const newFacture = await createFacture(factureData);
+        // Clear auto-save data after successful creation
+        if (!isEditMode) {
+          clearSavedData();
+        }
         // Toast déjà affiché par le hook
         navigate(`/factures/preview/${newFacture.id}`);
       }
@@ -372,8 +408,29 @@ const FacturesCreate: React.FC = () => {
             <p className="text-gray-500">
               {isEditMode ? 'Modifiez votre document' : 'Créez un nouveau document pour vos clients'}
             </p>
+            {!isEditMode && (
+              <div className="flex items-center justify-center mt-2 text-sm text-green-600">
+                <Clock className="mr-1 h-3 w-3" />
+                Sauvegarde automatique activée
+              </div>
+            )}
           </div>
-          <div className="w-24"></div>
+          <div className="w-24 flex justify-end">
+            {!isEditMode && hasSavedData() && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  clearSavedData();
+                  showSuccess('Brouillon supprimé', { duration: 2000 });
+                }}
+                className="text-gray-500 hover:text-red-600"
+                title="Supprimer le brouillon"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

@@ -56,7 +56,8 @@ const Login = () => {
 
       if (error) {
         await logLoginFailed(email, error.message);
-        throw error;
+        // Generic error message to prevent user enumeration
+        throw new Error('Email ou mot de passe incorrect');
       }
       
       await logLoginSuccess(email);
@@ -105,13 +106,14 @@ const Login = () => {
 
       if (error) {
         await logSignupFailed(email, error.message);
-        throw error;
+        // Generic error message to prevent user enumeration
+        throw new Error('Erreur lors de la création du compte. Veuillez réessayer.');
       }
       
       // Check if user already exists (Supabase returns user but with identities empty)
       if (data?.user && !data?.user?.identities?.length) {
         await logSignupFailed(email, 'Email already exists');
-        setError('Cet email est déjà utilisé. Veuillez vous connecter ou utiliser un autre email.');
+        setError('Si ce compte existe, vérifiez votre email pour confirmer votre inscription.');
         setIsSignUp(false);
         return;
       }

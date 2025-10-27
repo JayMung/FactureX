@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ import { useFactures } from '@/hooks/useFactures';
 import { generateFacturePDF } from '@/utils/pdfGenerator';
 import type { Facture, FactureItem, Client, CreateFactureData } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
+import { validateFactureForm } from '@/lib/validation';
 
 interface FactureFormProps {
   isOpen: boolean;
@@ -248,39 +249,112 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
         
         return updatedItem;
       }
-      return item;
     });
-    setItems(updatedItems);
-  };
+    setSelectedClient(null);
+    setItems([{
+      tempId: '1',
+      numero_ligne: 1,
+      image_url: '',
+      product_url: '',
+      quantite: 1,
+      description: '',
+      prix_unitaire: 0,
+      poids: 0,
+      montant_total: 0
+    }]);
+  }
+}, [facture, isOpen, clients]);
 
-  // Sauvegarder la facture
-  const handleSave = async () => {
-    if (!formData.client_id || items.some(item => !item.description || item.prix_unitaire <= 0)) {
-      showError('Veuillez remplir tous les champs obligatoires');
+// Calculer les totaux
+const calculateTotals = () => {
+  const subtotal = items.reduce((sum, item) => sum + item.montant_total, 0);
+  const totalPoids = items.reduce((sum, item) => sum + item.poids, 0);
+  const shippingFee = formData.mode_livraison === 'aerien' 
+    ? totalPoids * shippingSettings.aerien 
+    : totalPoids * shippingSettings.maritime;
+  const fraisTransportDouane = shippingFee; // Selon votre logique
+  const totalGeneral = subtotal + fraisTransportDouane;
+
+  return {
+    subtotal,
+    totalPoids,
+    shippingFee,
+    fraisTransportDouane,
+    totalGeneral
+  };
+};
+
+const totals = calculateTotals();
+
+// Gérer le changement de client
+const handleClientChange = (clientId: string) => {
+  const client = clients.find(c => c.id === clientId);
+  setSelectedClient(client || null);
+  setFormData(prev => ({ ...prev, client_id: clientId }));
+};
+
+// Ajouter une ligne
+const addItem = () => {
+  const newItem: FactureItemForm = {
+    tempId: Date.now().toString(),
+    numero_ligne: items.length + 1,
+    image_url: '',
+    product_url: '',
+    quantite: 1,
+    description: '',
+    prix_unitaire: 0,
+    poids: 0,
+    montant_total: 0
+  };
+  setItems([...items, newItem]);
+};
+
+// Supprimer une ligne
+const removeItem = (tempId: string) => {
+  if (items.length > 1) {
+    const updatedItems = items.filter(item => item.tempId !== tempId);
+    const renumberedItems = updatedItems.map((item, index) => ({
+      ...item,
+      numero_ligne: index + 1
+    }));
+    setItems(renumberedItems);
+  }
+};
+
+// Mettre à jour un item
+const updateItem = (tempId: string, field: keyof FactureItemForm, value: any) => {
+  const updatedItems = items.map(item => {
+    if (item.tempId === tempId) {
+      const updatedItem = { ...item, [field]: value };
+      
+      // Recalculer le montant total si nécessaire
+      if (field === 'quantite' || field === 'prix_unitaire') {
+        updatedItem.montant_total = updatedItem.quantite * updatedItem.prix_unitaire;
+      }
+      
+      return updatedItem;
+    }
+    return item;
+  });
+  setItems(updatedItems);
+};
+
+// Sauvegarder la facture
+const handleSave = async () => {
+  setLoading(true);
+  try {
+    // Validation serveur robuste
+    const validationResult = validateFactureForm({
+      ...formData,
+      items: items
+    });
+
+    if (!validationResult.isValid) {
+      showError(validationResult.errors.join(', '));
       return;
     }
 
-    setLoading(true);
-    try {
-      const factureData: CreateFactureData = {
-        client_id: formData.client_id,
-        type: formData.type,
-        mode_livraison: formData.mode_livraison,
-        devise: formData.devise,
-        date_emission: formData.date_emission,
-        conditions_vente: formData.conditions_vente,
-        notes: formData.notes,
-        items: items.map(item => ({
-          numero_ligne: item.numero_ligne,
-          image_url: item.image_url,
-          product_url: item.product_url,
-          quantite: item.quantite,
-          description: item.description,
-          prix_unitaire: item.prix_unitaire,
-          poids: item.poids,
-          montant_total: item.montant_total
-        }))
-      };
+    const factureData: CreateFactureData = validationResult.data;
 
       if (facture) {
         await updateFacture(facture.id, factureData);

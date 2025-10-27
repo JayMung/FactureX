@@ -15,6 +15,7 @@ import FacturesPreview from "./pages/Factures-Preview";
 import SettingsWithPermissions from "./pages/Settings-Permissions";
 import ActivityLogs from "./pages/ActivityLogs";
 import SecurityDashboard from "./pages/SecurityDashboard";
+import SecurityAudit from "./pages/SecurityAudit";
 import Login from "./pages/Login";
 import AdminSetup from "./pages/AdminSetup";
 import NotFound from "./pages/NotFound";
@@ -34,6 +35,7 @@ const App = () => (
                 <Route path="/admin-setup" element={<AdminSetup />} />
               )}
               <Route path="/login" element={<Login />} />
+              <Route path="/security_audit" element={<SecurityAudit />} />
               <Route path="/" element={
                 <ProtectedRouteEnhanced>
                   <IndexProtected />

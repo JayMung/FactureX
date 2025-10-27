@@ -431,24 +431,24 @@ const FacturesView: React.FC = () => {
                   <p>Aucun article dans cette facture</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <div className="overflow-x-auto -mx-4 sm:mx-0 flex justify-center">
                   <table className="w-full min-w-[800px]">
                     <thead>
                       <tr className="bg-gray-100 border-b-2 border-gray-300">
-                        <th className="text-left py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">N°</th>
-                        <th className="text-left py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">Image</th>
-                        <th className="text-left py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">Description</th>
+                        <th className="text-center py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">N°</th>
+                        <th className="text-center py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">Image</th>
+                        <th className="text-center py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">Description</th>
                         <th className="text-center py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">Qté</th>
-                        <th className="text-right py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">P.U.</th>
-                        <th className="text-right py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">Poids</th>
-                        <th className="text-right py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">Total</th>
+                        <th className="text-center py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">P.U.</th>
+                        <th className="text-center py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">Poids</th>
+                        <th className="text-center py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">Total</th>
                         <th className="text-center py-2 sm:py-3 px-2 sm:px-3 font-semibold text-xs sm:text-sm">Lien</th>
                       </tr>
                     </thead>
                     <tbody>
                       {items.map((item, index) => (
                         <tr key={item.id || index} className="border-b hover:bg-gray-50 transition-colors bg-white">
-                          <td className="py-3 px-3 font-medium">{item.numero_ligne}</td>
+                          <td className="py-3 px-3 font-medium text-center">{item.numero_ligne}</td>
                           <td className="py-3 px-3">
                             {item.image_url ? (
                               <div className="flex items-center justify-center">
@@ -467,21 +467,21 @@ const FacturesView: React.FC = () => {
                               </div>
                             )}
                           </td>
-                          <td className="py-3 px-3 max-w-xs">
-                            <div className="line-clamp-2" title={item.description}>
+                          <td className="py-3 px-3 max-w-xs text-center">
+                            <div className="line-clamp-2 inline-block" title={item.description}>
                               {item.description || '-'}
                             </div>
                           </td>
                           <td className="py-3 px-3 text-center font-semibold">{item.quantite}</td>
-                          <td className="py-3 px-3 text-right">
+                          <td className="py-3 px-3 text-center">
                             {formatCurrency(item.prix_unitaire, facture.devise)}
                           </td>
-                          <td className="py-3 px-3 text-right">
+                          <td className="py-3 px-3 text-center">
                             <span className="font-mono">
                               {item.poids} <span className="text-xs text-gray-500">kg</span>
                             </span>
                           </td>
-                          <td className="py-3 px-3 text-right font-bold text-green-500">
+                          <td className="py-3 px-3 text-center font-bold text-green-500">
                             {formatCurrency(item.montant_total, facture.devise)}
                           </td>
                           <td className="py-3 px-3 text-center">

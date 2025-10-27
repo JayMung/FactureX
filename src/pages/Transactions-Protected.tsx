@@ -356,9 +356,11 @@ const TransactionsProtected: React.FC = () => {
 
   const { totalUSD, totalFrais, totalBenefice } = calculateStats();
 
-  const generateReadableId = (index: number) => {
+  const generateReadableId = (transactionId: string, index: number) => {
+    // Utiliser les derniers caractères de l'ID UUID pour garantir l'unicité
+    const shortId = transactionId.slice(-6).toUpperCase();
     const paddedNumber = (index + 1).toString().padStart(3, '0');
-    return `TX${paddedNumber}`;
+    return `TX${paddedNumber}-${shortId}`;
   };
 
   const exportTransactions = () => {
@@ -675,7 +677,7 @@ const TransactionsProtected: React.FC = () => {
                         sortKey="id"
                         currentSort={sortConfig}
                         onSort={handleSort}
-                        className="w-20"
+                        className="min-w-[120px]"
                       />
                       <SortableHeader
                         title="Client"
@@ -779,8 +781,8 @@ const TransactionsProtected: React.FC = () => {
                               onCheckedChange={() => handleSelectTransaction(transaction.id)}
                             />
                           </td>
-                          <td className="py-3 px-4 font-medium">
-                            {generateReadableId((currentPage - 1) * (pagination?.pageSize || 10) + index)}
+                          <td className="py-3 px-4 font-medium min-w-[120px]">
+                            {generateReadableId(transaction.id, index)}
                           </td>
                           <td className="py-3 px-4">{transaction.client?.nom || 'Client inconnu'}</td>
                           <td className="py-3 px-4 text-sm text-gray-600">

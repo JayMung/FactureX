@@ -44,6 +44,7 @@ import { useSorting } from '../hooks/useSorting';
 import SortableHeader from '../components/ui/sortable-header';
 import Pagination from '../components/ui/pagination-custom';
 import FactureDetailsModal from '../components/modals/FactureDetailsModal';
+import ConfirmDialog from '@/components/ui/confirm-dialog';
 import type { Facture } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { cn } from '@/lib/utils';
@@ -61,6 +62,8 @@ const FacturesProtected: React.FC = () => {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [factureToView, setFactureToView] = useState<Facture | null>(null);
   const [selectedFactures, setSelectedFactures] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [factureToDelete, setFactureToDelete] = useState<string | null>(null);
   const navigate = useNavigate();
   const { checkPermission } = usePermissions();
 
@@ -132,14 +135,24 @@ const FacturesProtected: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette facture?')) return;
+  const handleDelete = (id: string) => {
+    setFactureToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!factureToDelete) return;
     
     try {
-      await deleteFacture(id);
+      await deleteFacture(factureToDelete);
       refetch();
+      showSuccess('Facture supprimée avec succès');
     } catch (error) {
       console.error('Error deleting:', error);
+      showError('Erreur lors de la suppression');
+    } finally {
+      setDeleteDialogOpen(false);
+      setFactureToDelete(null);
     }
   };
 
@@ -782,6 +795,18 @@ const FacturesProtected: React.FC = () => {
               }}
             />
           )}
+
+          {/* Boîte de dialogue de confirmation de suppression */}
+          <ConfirmDialog
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+            title="Supprimer la facture"
+            description="Êtes-vous sûr de vouloir supprimer cette facture? Cette action est irréversible."
+            confirmText="Supprimer"
+            cancelText="Annuler"
+            onConfirm={handleConfirmDelete}
+            variant="destructive"
+          />
         </div>
       </Layout>
     </ProtectedRouteEnhanced>

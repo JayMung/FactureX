@@ -162,9 +162,11 @@ const ClientsProtected: React.FC = () => {
     return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const generateReadableId = (index: number) => {
+  const generateReadableId = (clientId: string, index: number) => {
+    // Utiliser les derniers caractères de l'ID UUID pour garantir l'unicité
+    const shortId = clientId.slice(-6).toUpperCase();
     const paddedNumber = (index + 1).toString().padStart(3, '0');
-    return `CL${paddedNumber}`;
+    return `CL${paddedNumber}-${shortId}`;
   };
 
   const exportClients = () => {
@@ -385,7 +387,7 @@ const ClientsProtected: React.FC = () => {
                         sortKey="id"
                         currentSort={sortConfig}
                         onSort={handleSort}
-                        className="w-20"
+                        className="min-w-[120px]"
                       />
                       <SortableHeader
                         title="Nom"
@@ -469,8 +471,8 @@ const ClientsProtected: React.FC = () => {
                               className="rounded border-gray-300"
                             />
                           </td>
-                          <td className="py-3 px-4 font-medium">
-                            {generateReadableId(index)}
+                          <td className="py-3 px-4 font-medium min-w-[120px]">
+                            {generateReadableId(client.id, index)}
                           </td>
                           <td className="py-3 px-4 font-medium">
                             <button

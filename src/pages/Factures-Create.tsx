@@ -70,6 +70,9 @@ const FacturesCreate: React.FC = () => {
     maritime: ''
   });
 
+  // Store display values for inputs to preserve decimals
+  const [itemDisplayValues, setItemDisplayValues] = useState<Record<string, { poids: string; prix_unitaire: string }>>({});
+
   // Auto-save functionality
   const storageKey = isEditMode ? `facture_edit_${id}` : 'facture_new_draft';
   const autoSaveData = {
@@ -282,6 +285,22 @@ const FacturesCreate: React.FC = () => {
       }
       return item;
     }));
+  };
+
+  // Update display value for input
+  const updateDisplayValue = (tempId: string, field: 'poids' | 'prix_unitaire', value: string) => {
+    setItemDisplayValues(prev => ({
+      ...prev,
+      [tempId]: {
+        ...prev[tempId],
+        [field]: value
+      }
+    }));
+  };
+
+  // Get display value for input
+  const getDisplayValue = (tempId: string, field: 'poids' | 'prix_unitaire', actualValue: number) => {
+    return itemDisplayValues[tempId]?.[field] || (actualValue === 0 ? '' : actualValue.toString());
   };
 
   const removeItem = (tempId: string) => {
@@ -584,10 +603,23 @@ const FacturesCreate: React.FC = () => {
                             <div>
                               <Label>Poids (kg)</Label>
                               <Input
-                                type="number"
-                                value={item.poids}
-                                onChange={(e) => updateItem(item.tempId, 'poids', parseFloat(e.target.value) || 0)}
-                                step="0.01"
+                                type="text"
+                                inputMode="decimal"
+                                value={getDisplayValue(item.tempId, 'poids', item.poids)}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(',', '.');
+                                  // Allow only numbers and one decimal point
+                                  const cleanValue = value.replace(/[^0-9.]/g, '').replace(/\.(?=.*\.)/g, '');
+                                  updateDisplayValue(item.tempId, 'poids', cleanValue);
+                                  const numValue = cleanValue === '' ? 0 : parseFloat(cleanValue);
+                                  updateItem(item.tempId, 'poids', numValue);
+                                }}
+                                onBlur={(e) => {
+                                  const value = parseFloat(e.target.value) || 0;
+                                  updateItem(item.tempId, 'poids', value);
+                                  updateDisplayValue(item.tempId, 'poids', value.toString());
+                                }}
+                                placeholder="0.00"
                                 min="0"
                               />
                             </div>
@@ -606,19 +638,32 @@ const FacturesCreate: React.FC = () => {
                             <div>
                               <Label>Prix unitaire</Label>
                               <Input
-                                type="number"
-                                value={item.prix_unitaire}
-                                onChange={(e) => updateItem(item.tempId, 'prix_unitaire', parseFloat(e.target.value) || 0)}
-                                step="0.01"
+                                type="text"
+                                inputMode="decimal"
+                                value={getDisplayValue(item.tempId, 'prix_unitaire', item.prix_unitaire)}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(',', '.');
+                                  // Allow only numbers and one decimal point
+                                  const cleanValue = value.replace(/[^0-9.]/g, '').replace(/\.(?=.*\.)/g, '');
+                                  updateDisplayValue(item.tempId, 'prix_unitaire', cleanValue);
+                                  const numValue = cleanValue === '' ? 0 : parseFloat(cleanValue);
+                                  updateItem(item.tempId, 'prix_unitaire', numValue);
+                                }}
+                                onBlur={(e) => {
+                                  const value = parseFloat(e.target.value) || 0;
+                                  updateItem(item.tempId, 'prix_unitaire', value);
+                                  updateDisplayValue(item.tempId, 'prix_unitaire', value.toString());
+                                }}
+                                placeholder="0.00"
                                 min="0"
                               />
                             </div>
                             <div>
                               <Label>Montant total</Label>
                               <Input
-                                value={item.montant_total.toFixed(2)}
+                                value={`${formData.devise === 'USD' ? '$' : ''}${item.montant_total.toFixed(2)}${formData.devise === 'CDF' ? ' CDF' : ''}`}
                                 readOnly
-                                className="bg-gray-50"
+                                className="bg-gray-50 font-semibold text-green-600 border-green-200"
                               />
                             </div>
                           </div>
@@ -641,6 +686,16 @@ const FacturesCreate: React.FC = () => {
                                 />
                               </div>
                             )}
+                          </div>
+
+                          <div>
+                            <Label>Lien du produit (interne)</Label>
+                            <Input
+                              value={item.product_url || ''}
+                              onChange={(e) => updateItem(item.tempId, 'product_url', e.target.value.trim())}
+                              placeholder="https://... (URL produit - usage interne)"
+                              className="w-full text-xs"
+                            />
                           </div>
                         </div>
                       ))}

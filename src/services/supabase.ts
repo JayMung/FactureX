@@ -279,7 +279,11 @@ export class SupabaseService {
 
       if (error) throw error;
 
-      await this.logActivity('Création transaction', 'Transaction', data.id);
+      await this.logActivity('Création transaction', 'transactions', data.id, {
+        transaction_id: `TXN-${data.id.substring(0, 8)}`,
+        montant: data.montant,
+        devise: data.devise
+      });
 
       return { data, message: 'Transaction créée avec succès' };
     } catch (error: any) {
@@ -298,7 +302,11 @@ export class SupabaseService {
 
       if (error) throw error;
 
-      await this.logActivity('Modification transaction', 'Transaction', id);
+      await this.logActivity('Modification transaction', 'transactions', id, {
+        transaction_id: `TXN-${id.substring(0, 8)}`,
+        montant: data.montant,
+        devise: data.devise
+      });
 
       return { data, message: 'Transaction mise à jour avec succès' };
     } catch (error: any) {
@@ -724,7 +732,7 @@ export class SupabaseService {
     }
   }
 
-  async logActivity(action: string, entityType?: string, entityId?: string): Promise<void> {
+  async logActivity(action: string, entityType?: string, entityId?: string, additionalDetails?: any): Promise<void> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -739,7 +747,8 @@ export class SupabaseService {
           cible_id: entityId,
           details: {
             timestamp: new Date().toISOString(),
-            userAgent: navigator.userAgent
+            userAgent: navigator.userAgent,
+            ...additionalDetails
           }
         }]);
     } catch (error) {

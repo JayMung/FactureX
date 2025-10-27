@@ -155,9 +155,12 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       // Log l'activité
       await logActivity({
         action: 'CREATE',
-        cible: data.type === 'devis' ? 'Devis' : 'Facture',
+        cible: 'factures',
         cible_id: factureData.id,
-        details: { facture_number: factureData.facture_number }
+        details: { 
+          facture_number: factureData.facture_number,
+          type: data.type
+        }
       });
 
       showSuccess(`${data.type === 'devis' ? 'Devis' : 'Facture'} créé(e) avec succès`);
@@ -250,11 +253,21 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
 
       if (error) throw error;
 
+      // Récupérer le numéro de facture pour le log
+      const { data: factureData } = await supabase
+        .from('factures')
+        .select('facture_number')
+        .eq('id', id)
+        .single();
+
       await logActivity({
         action: 'UPDATE',
-        cible: 'Facture',
+        cible: 'factures',
         cible_id: id,
-        details: updateData
+        details: {
+          facture_number: factureData?.facture_number,
+          ...updateData
+        }
       });
 
       showSuccess('Facture mise à jour avec succès');

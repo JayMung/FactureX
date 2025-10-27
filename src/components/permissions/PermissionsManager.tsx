@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -156,7 +156,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {MODULES_INFO.filter(module => !module.adminOnly || user.role === 'admin').map((module) => {
+                  {MODULES_INFO.map((module) => {
                     const modulePerms = permissions[module.id] || {
                       can_read: false,
                       can_create: false,

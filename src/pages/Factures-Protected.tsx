@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   DropdownMenu,
@@ -30,7 +31,9 @@ import {
   AlertCircle,
   RefreshCw,
   Copy,
-  ChevronDown
+  ChevronDown,
+  XCircle,
+  TrendingUp
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
@@ -54,6 +57,7 @@ const FacturesProtected: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [factureToView, setFactureToView] = useState<Facture | null>(null);
+  const [selectedFactures, setSelectedFactures] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   const { checkPermission } = usePermissions();
 
@@ -173,6 +177,71 @@ const FacturesProtected: React.FC = () => {
     navigate('/factures/new');
   };
 
+  // Fonctions de sélection multiple
+  const handleSelectAll = () => {
+    if (selectedFactures.size === factures.length) {
+      setSelectedFactures(new Set());
+    } else {
+      setSelectedFactures(new Set(factures.map(f => f.id)));
+    }
+  };
+
+  const handleSelectFacture = (id: string) => {
+    const newSelected = new Set(selectedFactures);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedFactures(newSelected);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedFactures.size === 0) return;
+    
+    try {
+      const promises = Array.from(selectedFactures).map(id => deleteFacture(id));
+      await Promise.all(promises);
+      showSuccess(`${selectedFactures.size} facture(s) supprimée(s)`);
+      setSelectedFactures(new Set());
+    } catch (error: any) {
+      showError('Erreur lors de la suppression');
+    }
+  };
+
+  const handleBulkStatusChange = async (newStatut: string) => {
+    if (selectedFactures.size === 0) return;
+    
+    try {
+      const promises = Array.from(selectedFactures).map(id => 
+        updateFacture(id, { statut: newStatut as any })
+      );
+      await Promise.all(promises);
+      showSuccess(`${selectedFactures.size} facture(s) mise(s) à jour`);
+      setSelectedFactures(new Set());
+    } catch (error: any) {
+      showError('Erreur lors de la mise à jour');
+    }
+  };
+
+  // Calculer les totaux des factures sélectionnées
+  const calculateSelectedTotals = () => {
+    const selectedFacts = factures.filter(f => selectedFactures.has(f.id));
+    
+    const totalUSD = selectedFacts
+      .filter(f => f.devise === 'USD')
+      .reduce((sum, f) => sum + f.total_general, 0);
+    
+    const totalCDF = selectedFacts
+      .filter(f => f.devise === 'CDF')
+      .reduce((sum, f) => sum + f.total_general, 0);
+    
+    const totalFrais = selectedFacts
+      .reduce((sum, f) => sum + (f.frais || 0), 0);
+    
+    return { totalUSD, totalCDF, totalFrais };
+  };
+
   if (error) {
     return (
       <Layout>
@@ -191,6 +260,100 @@ const FacturesProtected: React.FC = () => {
     <ProtectedRouteEnhanced requiredModule="factures" requiredPermission="read">
       <Layout>
         <div className="space-y-6 animate-in fade-in duration-300">
+          {/* Bulk Actions Bar */}
+          {selectedFactures.size > 0 && (() => {
+            const selectedTotals = calculateSelectedTotals();
+            return (
+              <Card className="bg-blue-50 border-blue-200">
+                <CardContent className="p-4">
+                  <div className="flex flex-col space-y-4">
+                    {/* Première ligne: Sélection et actions */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <Badge variant="default" className="bg-blue-600">
+                          {selectedFactures.size} sélectionnée(s)
+                        </Badge>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedFactures(new Set())}
+                        >
+                          Désélectionner tout
+                        </Button>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Changer le statut
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => handleBulkStatusChange('brouillon')}>
+                              Brouillon
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleBulkStatusChange('en_attente')}>
+                              En attente
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleBulkStatusChange('validee')}>
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Validée
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleBulkStatusChange('payee')}>
+                              Payée
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleBulkStatusChange('annulee')}>
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Annulée
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <PermissionGuard module="factures" permission="delete">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleBulkDelete}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Supprimer
+                          </Button>
+                        </PermissionGuard>
+                      </div>
+                    </div>
+                    
+                    {/* Deuxième ligne: Résumé des montants */}
+                    <div className="flex items-center justify-center space-x-6 text-sm border-t border-blue-200 pt-3">
+                      <div className="flex items-center space-x-2">
+                        <DollarSign className="h-4 w-4 text-green-600" />
+                        <span className="font-medium text-gray-700">Total USD:</span>
+                        <span className="font-bold text-green-600">
+                          {formatCurrency(selectedTotals.totalUSD, 'USD')}
+                        </span>
+                      </div>
+                      {selectedTotals.totalCDF > 0 && (
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-gray-700">Total CDF:</span>
+                          <span className="font-bold text-blue-600">
+                            {formatCurrency(selectedTotals.totalCDF, 'CDF')}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center space-x-2">
+                        <TrendingUp className="h-4 w-4 text-orange-600" />
+                        <span className="font-medium text-gray-700">Frais:</span>
+                        <span className="font-bold text-orange-600">
+                          {formatCurrency(selectedTotals.totalFrais, 'USD')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           {/* Action Buttons */}
           <div className="flex items-center justify-end">
             <PermissionGuard module="factures" permission="create">
@@ -328,6 +491,12 @@ const FacturesProtected: React.FC = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
+                      <th className="w-12 py-3 px-4">
+                        <Checkbox
+                          checked={selectedFactures.size === factures.length && factures.length > 0}
+                          onCheckedChange={handleSelectAll}
+                        />
+                      </th>
                       <th className="text-left py-3 px-4 font-medium text-gray-700">Mode</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-700">N° Facture</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-700">Client</th>
@@ -341,6 +510,7 @@ const FacturesProtected: React.FC = () => {
                     {isLoading && factures.length === 0 ? (
                       Array.from({ length: 5 }).map((_, index) => (
                         <tr key={index} className="border-b">
+                          <td className="py-3 px-4"><Skeleton className="h-4 w-4" /></td>
                           <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
                           <td className="py-3 px-4"><Skeleton className="h-4 w-32" /></td>
                           <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
@@ -352,7 +522,7 @@ const FacturesProtected: React.FC = () => {
                       ))
                     ) : factures.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-16">
+                        <td colSpan={8} className="py-16">
                           <div className="flex flex-col items-center justify-center text-center">
                             <FileText className="h-16 w-16 text-gray-300 mb-4" />
                             <p className="text-lg font-medium text-gray-900 mb-2">Aucune facture</p>
@@ -369,6 +539,12 @@ const FacturesProtected: React.FC = () => {
                     ) : (
                       factures.map((facture) => (
                         <tr key={facture.id} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-4">
+                            <Checkbox
+                              checked={selectedFactures.has(facture.id)}
+                              onCheckedChange={() => handleSelectFacture(facture.id)}
+                            />
+                          </td>
                           <td className="py-3 px-4">
                             <Badge variant={facture.mode_livraison === 'aerien' ? 'default' : 'secondary'}>
                               {facture.mode_livraison === 'aerien' ? '✈️ Aérien' : '🚢 Maritime'}

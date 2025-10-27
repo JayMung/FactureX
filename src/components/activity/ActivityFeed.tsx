@@ -103,17 +103,45 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
 
   const formatActivityMessage = (activity: any) => {
     const userName = activity.user ? `${(activity.user as any).first_name} ${(activity.user as any).last_name}` : 'Utilisateur';
-    const entity = activity.details?.entityName || activity.cible || 'élément';
+    const entity = activity.cible || 'élément';
     
-    if (activity.action.includes('Création')) {
-      return `${userName} a créé ${entity}`;
-    } else if (activity.action.includes('Modification')) {
-      return `${userName} a modifié ${entity}`;
-    } else if (activity.action.includes('Suppression')) {
-      return `${userName} a supprimé ${entity}`;
-    } else if (activity.action.includes('Auth')) {
-      return `${userName} s'est connecté`;
+    // Récupérer les détails spécifiques depuis activity.details
+    const details = activity.details || {};
+    const entityId = activity.cible_id;
+    
+    // Construire un identifiant descriptif
+    let identifier = '';
+    if (entity === 'Facture' || entity === 'factures') {
+      identifier = details.facture_number || details.numero || (entityId ? `#${entityId.substring(0, 8)}` : '');
+    } else if (entity === 'Transaction' || entity === 'transactions') {
+      identifier = details.transaction_id || details.numero || (entityId ? `#${entityId.substring(0, 8)}` : '');
+    } else if (entity === 'Client' || entity === 'clients') {
+      identifier = details.client_name || details.nom || '';
     }
+    
+    // Formater le nom de l'entité
+    let entityName = entity;
+    if (entity === 'factures' || entity === 'Facture') entityName = 'une facture';
+    else if (entity === 'transactions' || entity === 'Transaction') entityName = 'une transaction';
+    else if (entity === 'clients' || entity === 'Client') entityName = 'un client';
+    else if (entity === 'UserProfile') entityName = 'un utilisateur';
+    else if (entity === 'PaymentMethod') entityName = 'un moyen de paiement';
+    
+    // Construire le message avec l'identifiant
+    const fullEntity = identifier ? `${entityName} - ${identifier}` : entityName;
+    
+    if (activity.action.includes('Création') || activity.action.includes('créé') || activity.action.includes('CREATE')) {
+      return `${userName} a créé ${fullEntity}`;
+    } else if (activity.action.includes('Modification') || activity.action.includes('modifié') || activity.action.includes('UPDATE')) {
+      return `${userName} a modifié ${fullEntity}`;
+    } else if (activity.action.includes('Suppression') || activity.action.includes('supprimé') || activity.action.includes('DELETE')) {
+      return `${userName} a supprimé ${fullEntity}`;
+    } else if (activity.action.includes('Auth') || activity.action.includes('Connexion')) {
+      return `${userName} s'est connecté`;
+    } else if (activity.action.includes('Validation')) {
+      return `${userName} a validé ${fullEntity}`;
+    }
+    
     return activity.action;
   };
 

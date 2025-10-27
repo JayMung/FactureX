@@ -68,7 +68,15 @@ export class PermissionsService {
       const role = PREDEFINED_ROLES.find(r => r.name === roleName);
       if (!role) throw new Error(`Rôle ${roleName} non trouvé`);
 
-      // Supprimer d'abord toutes les permissions existantes pour cet utilisateur
+      // 1. Mettre à jour le rôle dans la table profiles
+      const { error: updateRoleError } = await supabase
+        .from('profiles')
+        .update({ role: roleName })
+        .eq('id', userId);
+
+      if (updateRoleError) throw updateRoleError;
+
+      // 2. Supprimer toutes les permissions existantes pour cet utilisateur
       const { error: deleteError } = await supabase
         .from('user_permissions')
         .delete()
@@ -76,7 +84,7 @@ export class PermissionsService {
 
       if (deleteError) throw deleteError;
 
-      // Appliquer les nouvelles permissions
+      // 3. Appliquer les nouvelles permissions
       const permissions = Object.entries(role.permissions).map(([module, perms]) => ({
         user_id: userId,
         module,

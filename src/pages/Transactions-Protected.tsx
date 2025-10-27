@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   DropdownMenu,
@@ -255,6 +256,88 @@ const TransactionsProtected: React.FC = () => {
     }
   };
 
+  // Fonctions de sélection multiple
+  const handleSelectAll = () => {
+    if (selectedTransactions.size === transactions.length) {
+      setSelectedTransactions(new Set());
+    } else {
+      setSelectedTransactions(new Set(transactions.map(t => t.id)));
+    }
+  };
+
+  const handleSelectTransaction = (id: string) => {
+    const newSelected = new Set(selectedTransactions);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedTransactions(newSelected);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedTransactions.size === 0) return;
+    
+    try {
+      setIsDeleting(true);
+      const promises = Array.from(selectedTransactions).map(id => deleteTransaction(id));
+      await Promise.all(promises);
+      showSuccess(`${selectedTransactions.size} transaction(s) supprimée(s)`);
+      setSelectedTransactions(new Set());
+      setBulkActionOpen(false);
+    } catch (error: any) {
+      showError('Erreur lors de la suppression');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleBulkStatusChange = async (newStatus: string) => {
+    if (selectedTransactions.size === 0) return;
+    
+    try {
+      const promises = Array.from(selectedTransactions).map(id => 
+        updateTransaction(id, {
+          statut: newStatus,
+          ...(newStatus === 'Servi' ? {
+            valide_par: currentUserId || undefined,
+            date_validation: new Date().toISOString()
+          } : {})
+        })
+      );
+      await Promise.all(promises);
+      showSuccess(`${selectedTransactions.size} transaction(s) mise(s) à jour`);
+      setSelectedTransactions(new Set());
+      setBulkActionOpen(false);
+    } catch (error: any) {
+      showError('Erreur lors de la mise à jour');
+    }
+  };
+
+  // Calculer les totaux des transactions sélectionnées
+  const calculateSelectedTotals = () => {
+    const selectedTxs = transactions.filter(t => selectedTransactions.has(t.id));
+    
+    const totalUSD = selectedTxs
+      .filter(t => t.devise === 'USD')
+      .reduce((sum, t) => sum + t.montant, 0);
+    
+    const totalCDF = selectedTxs
+      .filter(t => t.devise === 'CDF')
+      .reduce((sum, t) => sum + t.montant, 0);
+    
+    const totalCNY = selectedTxs
+      .reduce((sum, t) => sum + (t.montant_cny || 0), 0);
+    
+    const totalFrais = selectedTxs
+      .reduce((sum, t) => sum + t.frais, 0);
+    
+    const totalBenefice = selectedTxs
+      .reduce((sum, t) => sum + t.benefice, 0);
+    
+    return { totalUSD, totalCDF, totalCNY, totalFrais, totalBenefice };
+  };
+
   const calculateStats = () => {
     const totalUSD = transactions
       .filter(t => t.devise === 'USD')
@@ -317,6 +400,116 @@ const TransactionsProtected: React.FC = () => {
     <ProtectedRouteEnhanced requiredModule="transactions" requiredPermission="read">
       <Layout>
         <div className="space-y-6 animate-in fade-in duration-300">
+          {/* Bulk Actions Bar */}
+          {selectedTransactions.size > 0 && (() => {
+            const selectedTotals = calculateSelectedTotals();
+            return (
+              <Card className="bg-blue-50 border-blue-200">
+                <CardContent className="p-4">
+                  <div className="flex flex-col space-y-4">
+                    {/* Première ligne: Sélection et actions */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <Badge variant="default" className="bg-blue-600">
+                          {selectedTransactions.size} sélectionnée(s)
+                        </Badge>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedTransactions(new Set())}
+                        >
+                          Désélectionner tout
+                        </Button>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Changer le statut
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => handleBulkStatusChange('En attente')}>
+                              <Clock className="mr-2 h-4 w-4" />
+                              En attente
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleBulkStatusChange('Servi')}>
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Servi
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleBulkStatusChange('Remboursé')}>
+                              <RotateCcw className="mr-2 h-4 w-4" />
+                              Remboursé
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleBulkStatusChange('Annulé')}>
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Annulé
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <PermissionGuard module="transactions" permission="delete">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleBulkDelete}
+                            disabled={isDeleting}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Supprimer
+                          </Button>
+                        </PermissionGuard>
+                      </div>
+                    </div>
+                    
+                    {/* Deuxième ligne: Résumé des montants */}
+                    <div className="flex items-center justify-center space-x-6 text-sm border-t border-blue-200 pt-3">
+                      <div className="flex items-center space-x-2">
+                        <DollarSign className="h-4 w-4 text-green-600" />
+                        <span className="font-medium text-gray-700">Montant USD:</span>
+                        <span className="font-bold text-green-600">
+                          {formatCurrencyValue(selectedTotals.totalUSD, 'USD')}
+                        </span>
+                      </div>
+                      {selectedTotals.totalCDF > 0 && (
+                        <div className="flex items-center space-x-2">
+                          <Wallet className="h-4 w-4 text-blue-600" />
+                          <span className="font-medium text-gray-700">Montant CDF:</span>
+                          <span className="font-bold text-blue-600">
+                            {formatCurrencyValue(selectedTotals.totalCDF, 'CDF')}
+                          </span>
+                        </div>
+                      )}
+                      {selectedTotals.totalCNY > 0 && (
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-gray-700">CNY:</span>
+                          <span className="font-bold text-purple-600">
+                            {formatCurrencyValue(selectedTotals.totalCNY, 'CNY')}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center space-x-2">
+                        <TrendingUp className="h-4 w-4 text-orange-600" />
+                        <span className="font-medium text-gray-700">Bénéfice:</span>
+                        <span className="font-bold text-orange-600">
+                          {formatCurrencyValue(selectedTotals.totalBenefice, 'USD')}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Receipt className="h-4 w-4 text-gray-600" />
+                        <span className="font-medium text-gray-700">Frais:</span>
+                        <span className="font-bold text-gray-600">
+                          {formatCurrencyValue(selectedTotals.totalFrais, 'USD')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           {/* Action Buttons */}
           <div className="flex items-center justify-end">
             <div className="flex space-x-2">
@@ -467,6 +660,12 @@ const TransactionsProtected: React.FC = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
+                      <th className="w-12 py-3 px-4">
+                        <Checkbox
+                          checked={selectedTransactions.size === transactions.length && transactions.length > 0}
+                          onCheckedChange={handleSelectAll}
+                        />
+                      </th>
                       <th className="text-left py-3 px-4 font-medium text-gray-700">ID</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-700">Client</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
@@ -484,6 +683,7 @@ const TransactionsProtected: React.FC = () => {
                     {loading ? (
                       Array.from({ length: 5 }).map((_, index) => (
                         <tr key={index} className="border-b">
+                          <td className="py-3 px-4"><Skeleton className="h-4 w-4" /></td>
                           <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
                           <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
                           <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
@@ -499,7 +699,7 @@ const TransactionsProtected: React.FC = () => {
                       ))
                     ) : transactions.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className="py-16">
+                        <td colSpan={12} className="py-16">
                           <div className="flex flex-col items-center justify-center text-center">
                             <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                               <Receipt className="h-8 w-8 text-gray-400" />
@@ -518,6 +718,12 @@ const TransactionsProtected: React.FC = () => {
                     ) : (
                       transactions.map((transaction, index) => (
                         <tr key={transaction.id} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-4">
+                            <Checkbox
+                              checked={selectedTransactions.has(transaction.id)}
+                              onCheckedChange={() => handleSelectTransaction(transaction.id)}
+                            />
+                          </td>
                           <td className="py-3 px-4 font-medium">
                             {generateReadableId((currentPage - 1) * (pagination?.pageSize || 10) + index)}
                           </td>

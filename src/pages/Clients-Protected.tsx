@@ -541,14 +541,39 @@ const ClientsProtected: React.FC = () => {
                 </table>
               </div>
 
-              {/* Pagination */}
-              {pagination && pagination.totalPages > 1 && (
-                <div className="mt-6">
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={pagination.totalPages}
-                    onPageChange={setCurrentPage}
-                  />
+              {/* Pagination avec sélecteur de taille */}
+              {pagination && (
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600">Afficher</span>
+                    <Select value="10" onValueChange={(value) => {
+                      // Note: La taille de page est gérée côté serveur
+                      // Cette UI est préparée pour une future implémentation
+                      console.log('Page size:', value);
+                    }}>
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="text-sm text-gray-600">par page</span>
+                    <span className="text-sm text-gray-500 ml-4">
+                      {pagination.totalCount} client{pagination.totalCount > 1 ? 's' : ''} au total
+                    </span>
+                  </div>
+                  
+                  {pagination.totalPages > 1 && (
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={pagination.totalPages}
+                      onPageChange={setCurrentPage}
+                    />
+                  )}
                 </div>
               )}
             </CardContent>

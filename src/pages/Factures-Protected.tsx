@@ -40,6 +40,9 @@ import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import { useFactures } from '../hooks/useFactures';
 import { usePermissions } from '../hooks/usePermissions';
+import { useSorting } from '../hooks/useSorting';
+import SortableHeader from '../components/ui/sortable-header';
+import Pagination from '../components/ui/pagination-custom';
 import FactureDetailsModal from '../components/modals/FactureDetailsModal';
 import type { Facture } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
@@ -75,6 +78,8 @@ const FacturesProtected: React.FC = () => {
     type: typeFilter === 'all' ? undefined : typeFilter as 'devis' | 'facture',
     statut: statutFilter === 'all' ? undefined : statutFilter
   });
+
+  const { sortedData, sortConfig, handleSort } = useSorting(factures);
 
   const formatCurrency = (amount: number, devise: string) => {
     const formatted = amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -497,12 +502,42 @@ const FacturesProtected: React.FC = () => {
                           onCheckedChange={handleSelectAll}
                         />
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Mode</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">N° Facture</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Client</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Montant</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Statut</th>
+                      <SortableHeader
+                        title="Mode"
+                        sortKey="mode_livraison"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        title="N° Facture"
+                        sortKey="facture_number"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        title="Client"
+                        sortKey="clients.nom"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        title="Date"
+                        sortKey="date_emission"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        title="Montant"
+                        sortKey="total_general"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        title="Statut"
+                        sortKey="statut"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                      />
                       <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                     </tr>
                   </thead>
@@ -537,7 +572,7 @@ const FacturesProtected: React.FC = () => {
                         </td>
                       </tr>
                     ) : (
-                      factures.map((facture) => (
+                      sortedData.map((facture) => (
                         <tr key={facture.id} className="border-b hover:bg-gray-50">
                           <td className="py-3 px-4">
                             <Checkbox
@@ -699,6 +734,40 @@ const FacturesProtected: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination avec sélecteur de taille */}
+              {pagination && (
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600">Afficher</span>
+                    <Select value="10" onValueChange={(value) => {
+                      console.log('Page size:', value);
+                    }}>
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="text-sm text-gray-600">par page</span>
+                    <span className="text-sm text-gray-500 ml-4">
+                      {pagination.count} facture{pagination.count > 1 ? 's' : ''} au total
+                    </span>
+                  </div>
+                  
+                  {pagination.totalPages > 1 && (
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={pagination.totalPages}
+                      onPageChange={setCurrentPage}
+                    />
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

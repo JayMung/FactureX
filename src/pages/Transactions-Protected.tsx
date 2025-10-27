@@ -37,7 +37,9 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTransactions } from '../hooks/useTransactions';
 import { usePermissions } from '../hooks/usePermissions';
+import { useSorting } from '../hooks/useSorting';
 import Pagination from '../components/ui/pagination-custom';
+import SortableHeader from '../components/ui/sortable-header';
 import TransactionForm from '../components/forms/TransactionForm';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
 import TransactionDetailsModal from '../components/modals/TransactionDetailsModal';
@@ -102,6 +104,8 @@ const TransactionsProtected: React.FC = () => {
     deleteTransaction,
     refetch
   } = useTransactions(currentPage, memoFilters);
+
+  const { sortedData, sortConfig, handleSort } = useSorting(transactions);
 
   const formatCurrencyValue = (amount: number, currency: string) => {
     if (currency === 'USD') {
@@ -666,16 +670,67 @@ const TransactionsProtected: React.FC = () => {
                           onCheckedChange={handleSelectAll}
                         />
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">ID</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Client</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Montant</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Motif</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Frais</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Bénéfice</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">CNY</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Mode</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Statut</th>
+                      <SortableHeader
+                        title="ID"
+                        sortKey="id"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                        className="w-20"
+                      />
+                      <SortableHeader
+                        title="Client"
+                        sortKey="client.nom"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        title="Date"
+                        sortKey="date_paiement"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        title="Montant"
+                        sortKey="montant"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        title="Motif"
+                        sortKey="motif"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        title="Frais"
+                        sortKey="frais"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        title="Bénéfice"
+                        sortKey="benefice"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        title="CNY"
+                        sortKey="montant_cny"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        title="Mode"
+                        sortKey="mode_paiement"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
+                        title="Statut"
+                        sortKey="statut"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                      />
                       <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                     </tr>
                   </thead>
@@ -716,7 +771,7 @@ const TransactionsProtected: React.FC = () => {
                         </td>
                       </tr>
                     ) : (
-                      transactions.map((transaction, index) => (
+                      sortedData.map((transaction, index) => (
                         <tr key={transaction.id} className="border-b hover:bg-gray-50">
                           <td className="py-3 px-4">
                             <Checkbox
@@ -849,14 +904,37 @@ const TransactionsProtected: React.FC = () => {
                 </table>
               </div>
 
-              {/* Pagination */}
-              {pagination && pagination.totalPages > 1 && (
-                <div className="mt-6">
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={pagination.totalPages}
-                    onPageChange={setCurrentPage}
-                  />
+              {/* Pagination avec sélecteur de taille */}
+              {pagination && (
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600">Afficher</span>
+                    <Select value="10" onValueChange={(value) => {
+                      console.log('Page size:', value);
+                    }}>
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="text-sm text-gray-600">par page</span>
+                    <span className="text-sm text-gray-500 ml-4">
+                      {pagination.count} transaction{pagination.count > 1 ? 's' : ''} au total
+                    </span>
+                  </div>
+                  
+                  {pagination.totalPages > 1 && (
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={pagination.totalPages}
+                      onPageChange={setCurrentPage}
+                    />
+                  )}
                 </div>
               )}
             </CardContent>

@@ -56,8 +56,52 @@ const ActivityLogsTab: React.FC = () => {
   const [selectedActivity, setSelectedActivity] = useState<ActivityLog | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
+  const [pageSize, setPageSize] = useState(10);
 
-  const pageSize = 50;
+  // Fonction pour formater les messages d'activité
+  const formatActivityMessage = (activity: ActivityLog) => {
+    const userName = activity.user ? `${activity.user.first_name} ${activity.user.last_name}` : 'Utilisateur';
+    const entity = activity.cible || 'élément';
+    
+    // Récupérer les détails spécifiques
+    const details = activity.details || {};
+    const entityId = activity.cible_id;
+    
+    // Construire un identifiant descriptif
+    let identifier = '';
+    if (entity === 'Facture' || entity === 'factures') {
+      identifier = details.facture_number || details.numero || (entityId ? `#${entityId.substring(0, 8)}` : '');
+    } else if (entity === 'Transaction' || entity === 'transactions') {
+      identifier = details.transaction_id || details.numero || (entityId ? `#${entityId.substring(0, 8)}` : '');
+    } else if (entity === 'Client' || entity === 'clients') {
+      identifier = details.client_name || details.nom || '';
+    }
+    
+    // Formater le nom de l'entité
+    let entityName = entity;
+    if (entity === 'factures' || entity === 'Facture') entityName = 'une facture';
+    else if (entity === 'transactions' || entity === 'Transaction') entityName = 'une transaction';
+    else if (entity === 'clients' || entity === 'Client') entityName = 'un client';
+    else if (entity === 'UserProfile') entityName = 'un utilisateur';
+    else if (entity === 'PaymentMethod') entityName = 'un moyen de paiement';
+    
+    // Construire le message avec l'identifiant
+    const fullEntity = identifier ? `${entityName} - ${identifier}` : entityName;
+    
+    if (activity.action.includes('Création') || activity.action.includes('créé') || activity.action.includes('CREATE')) {
+      return `${userName} a créé ${fullEntity}`;
+    } else if (activity.action.includes('Modification') || activity.action.includes('modifié') || activity.action.includes('UPDATE')) {
+      return `${userName} a modifié ${fullEntity}`;
+    } else if (activity.action.includes('Suppression') || activity.action.includes('supprimé') || activity.action.includes('DELETE')) {
+      return `${userName} a supprimé ${fullEntity}`;
+    } else if (activity.action.includes('Auth') || activity.action.includes('Connexion')) {
+      return `${userName} s'est connecté`;
+    } else if (activity.action.includes('Validation')) {
+      return `${userName} a validé ${fullEntity}`;
+    }
+    
+    return activity.action;
+  };
 
   const fetchActivities = async (page: number = 1, filters: any = {}) => {
     setLoading(true);
@@ -149,12 +193,13 @@ const ActivityLogsTab: React.FC = () => {
 
   useEffect(() => {
     fetchActivities(currentPage, {
-      search: searchTerm,
       action: actionFilter,
       user: userFilter,
-      date: dateFilter
+      date: dateFilter,
+      search: searchTerm
     });
-  }, [currentPage, searchTerm, actionFilter, userFilter, dateFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, actionFilter, userFilter, dateFilter, searchTerm, pageSize]);
 
   const handleRefresh = () => {
     fetchActivities(1, {
@@ -253,22 +298,6 @@ const ActivityLogsTab: React.FC = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
-
-  const formatActivityMessage = (activity: ActivityLog) => {
-    const userName = `${activity.user?.first_name} ${activity.user?.last_name}`;
-    const entity = activity.details?.entityName || activity.cible || 'élément';
-    
-    if (activity.action.includes('Création')) {
-      return `${userName} a créé ${entity}`;
-    } else if (activity.action.includes('Modification')) {
-      return `${userName} a modifié ${entity}`;
-    } else if (activity.action.includes('Suppression')) {
-      return `${userName} a supprimé ${entity}`;
-    } else if (activity.action.includes('Auth')) {
-      return `${userName} s'est connecté`;
-    }
-    return activity.action;
   };
 
   const handleViewDetails = (activity: ActivityLog) => {
@@ -467,14 +496,35 @@ const ActivityLogsTab: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
-      )}
+      {/* Pagination avec sélecteur de taille */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-600">Afficher</span>
+          <Select value={pageSize.toString()} onValueChange={(value) => {
+            setPageSize(parseInt(value));
+            setCurrentPage(1);
+          }}>
+            <SelectTrigger className="w-20">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-gray-600">par page</span>
+        </div>
+        
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        )}
+      </div>
       
       {/* Modal */}
       <ActivityDetailsModal

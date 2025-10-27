@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
@@ -8,6 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
 import { 
   Search, 
   Plus, 
@@ -23,10 +30,12 @@ import {
   DollarSign,
   TrendingUp,
   Receipt,
-  Wallet
+  Wallet,
+  ChevronDown
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTransactions } from '../hooks/useTransactions';
+import { usePermissions } from '../hooks/usePermissions';
 import Pagination from '../components/ui/pagination-custom';
 import TransactionForm from '../components/forms/TransactionForm';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
@@ -61,6 +70,7 @@ const TransactionsProtected: React.FC = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [transactionToView, setTransactionToView] = useState<Transaction | null>(null);
+  const { checkPermission } = usePermissions();
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -129,6 +139,17 @@ const TransactionsProtected: React.FC = () => {
       default:
         return "bg-gray-100 text-gray-800";
     }
+  };
+
+  const getStatusBadge = (status: string) => {
+    return (
+      <div className="flex items-center space-x-1">
+        {getStatusIcon(status)}
+        <Badge className={getStatusColor(status)}>
+          {status}
+        </Badge>
+      </div>
+    );
   };
 
   const handleDeleteTransaction = (transaction: Transaction) => {
@@ -214,6 +235,22 @@ const TransactionsProtected: React.FC = () => {
   const handleFormSuccess = () => {
     // Les mutations dans useTransactions gèrent déjà l'actualisation automatique
     // Pas besoin de refetch manuel
+  };
+
+  const handleStatusChange = async (transaction: Transaction, newStatus: string) => {
+    try {
+      await updateTransaction(transaction.id, {
+        statut: newStatus,
+        ...(newStatus === 'Servi' ? {
+          valide_par: currentUserId || undefined,
+          date_validation: new Date().toISOString()
+        } : {})
+      });
+      showSuccess(`Statut mis à jour: ${newStatus}`);
+    } catch (error: any) {
+      console.error('Error updating status:', error);
+      showError(error.message || 'Erreur lors de la mise à jour du statut');
+    }
   };
 
   const calculateStats = () => {
@@ -509,12 +546,61 @@ const TransactionsProtected: React.FC = () => {
                           </td>
                           <td className="py-3 px-4 text-sm">{transaction.mode_paiement}</td>
                           <td className="py-3 px-4">
-                            <div className="flex items-center space-x-1">
-                              {getStatusIcon(transaction.statut)}
-                              <Badge className={getStatusColor(transaction.statut)}>
-                                {transaction.statut}
-                              </Badge>
-                            </div>
+                            {checkPermission('transactions', 'update') ? (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="h-8 flex items-center gap-2 hover:bg-gray-50"
+                                  >
+                                    {getStatusBadge(transaction.statut)}
+                                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-48">
+                                  <DropdownMenuItem 
+                                    onClick={() => handleStatusChange(transaction, 'En attente')}
+                                    className="cursor-pointer"
+                                  >
+                                    <div className="flex items-center">
+                                      <Clock className="h-4 w-4 text-yellow-600 mr-2" />
+                                      En attente
+                                    </div>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => handleStatusChange(transaction, 'Servi')}
+                                    className="cursor-pointer"
+                                  >
+                                    <div className="flex items-center">
+                                      <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                                      Servi
+                                    </div>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => handleStatusChange(transaction, 'Remboursé')}
+                                    className="cursor-pointer"
+                                  >
+                                    <div className="flex items-center">
+                                      <RotateCcw className="h-4 w-4 text-blue-600 mr-2" />
+                                      Remboursé
+                                    </div>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    onClick={() => handleStatusChange(transaction, 'Annulé')}
+                                    className="cursor-pointer"
+                                  >
+                                    <div className="flex items-center">
+                                      <XCircle className="h-4 w-4 text-red-600 mr-2" />
+                                      Annulé
+                                    </div>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            ) : (
+                              getStatusBadge(transaction.statut)
+                            )}
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center space-x-2">
@@ -537,19 +623,6 @@ const TransactionsProtected: React.FC = () => {
                                   <Edit className="h-4 w-4" />
                                 </Button>
                               </PermissionGuard>
-                              
-                              {transaction.statut === 'En attente' && (
-                                <PermissionGuard module="transactions" permission="update">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="text-green-600"
-                                    onClick={() => handleValidateTransaction(transaction)}
-                                  >
-                                    <CheckCircle className="h-4 w-4" />
-                                  </Button>
-                                </PermissionGuard>
-                              )}
                               
                               <PermissionGuard module="transactions" permission="delete">
                                 <Button 

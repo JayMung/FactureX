@@ -87,8 +87,9 @@ const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center">
             <button
               onClick={onMenuToggle}
-              className="lg:hidden p-2 rounded-md text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
-              aria-label="Ouvrir le menu"
+              className="p-2 rounded-md text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
+              aria-label="Basculer le menu"
+              title="Afficher/Masquer le menu"
             >
               <Menu className="h-6 w-6" />
             </button>

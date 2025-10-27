@@ -12,7 +12,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true); // Ouverte par défaut
   const [isDesktop, setIsDesktop] = useState(false);
   const { user } = useAuth(); // Utiliser le user depuis AuthProvider
   const location = useLocation();
@@ -20,7 +20,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   // Détecter si on est sur desktop
   useEffect(() => {
     const checkDesktop = () => {
-      setIsDesktop(window.innerWidth >= 1024); // lg breakpoint
+      const desktop = window.innerWidth >= 1024;
+      setIsDesktop(desktop);
+      // Sur mobile, fermer la sidebar par défaut
+      if (!desktop) {
+        setSidebarOpen(false);
+      }
     };
     
     checkDesktop();
@@ -57,39 +62,42 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="h-screen flex bg-gray-100 dark:bg-gray-900">
       {/* Backdrop pour mobile avec animation */}
       <AnimatePresence>
-        {sidebarOpen && (
+        {sidebarOpen && !isDesktop && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={() => setSidebarOpen(false)}
             aria-hidden="true"
           />
         )}
       </AnimatePresence>
       
-      {/* Sidebar avec animation fluide sur mobile uniquement */}
-      <motion.div
-        initial={false}
-        animate={{
-          x: isDesktop ? 0 : (sidebarOpen ? 0 : '-100%')
-        }}
-        transition={
-          isDesktop 
-            ? { duration: 0 } // Pas d'animation sur desktop
-            : { type: 'spring', stiffness: 300, damping: 30 } // Animation spring sur mobile
-        }
-        className="fixed lg:static inset-y-0 left-0 z-50 lg:z-auto"
-      >
-        <Sidebar 
-          isMobileOpen={false} 
-          currentPath={location.pathname}
-        />
-      </motion.div>
+      {/* Sidebar avec animation fluide */}
+      <AnimatePresence mode="wait">
+        {sidebarOpen && (
+          <motion.div
+            initial={{ x: isDesktop ? 0 : '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: isDesktop ? 0 : '-100%' }}
+            transition={
+              isDesktop 
+                ? { duration: 0.2, ease: 'easeInOut' }
+                : { type: 'spring', stiffness: 300, damping: 30 }
+            }
+            className={`${isDesktop ? 'relative' : 'fixed'} inset-y-0 left-0 z-50`}
+          >
+            <Sidebar 
+              isMobileOpen={false} 
+              currentPath={location.pathname}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
       
-      <div className="flex-1 flex flex-col overflow-hidden w-full lg:w-auto">
+      <div className="flex-1 flex flex-col overflow-hidden w-full">
         <Header 
           title={getPageTitle()} 
           subtitle={getPageTitle() === 'Tableau de bord' ? "Vue d'ensemble de votre activité" : undefined}

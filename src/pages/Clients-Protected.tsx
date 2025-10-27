@@ -563,7 +563,7 @@ const ClientsProtected: React.FC = () => {
                     </Select>
                     <span className="text-sm text-gray-600">par page</span>
                     <span className="text-sm text-gray-500 ml-4">
-                      {pagination.totalCount} client{pagination.totalCount > 1 ? 's' : ''} au total
+                      {pagination.count} client{pagination.count > 1 ? 's' : ''} au total
                     </span>
                   </div>
                   

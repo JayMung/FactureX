@@ -795,6 +795,21 @@ const FacturesCreate: React.FC = () => {
               <Card>
                 <CardContent className="pt-6">
                   <div className="space-y-3">
+                    {!isEditMode && hasSavedData() && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full text-gray-600 hover:text-red-600 hover:border-red-200"
+                        onClick={() => {
+                          clearSavedData();
+                          showSuccess('Brouillon supprimé', { duration: 2000 });
+                        }}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Supprimer le brouillon
+                      </Button>
+                    )}
+                    
                     <Button
                       type="submit"
                       className="w-full bg-green-500 hover:bg-green-600"

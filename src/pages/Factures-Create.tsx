@@ -663,7 +663,7 @@ const FacturesCreate: React.FC = () => {
                     <div className="flex justify-between">
                       {isEditingFrais ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-gray-600">Frais</span>
+                          <span className="text-gray-600">Frais de services</span>
                           <Input
                             type="number"
                             value={customFraisPercentage !== null ? customFraisPercentage : totals.fraisPercentage}
@@ -683,7 +683,7 @@ const FacturesCreate: React.FC = () => {
                           onDoubleClick={() => setIsEditingFrais(true)}
                           title="Double-cliquer pour modifier"
                         >
-                          Frais ({totals.fraisPercentage}%):
+                          Frais de services ({totals.fraisPercentage}%):
                         </span>
                       )}
                       <span className="font-medium">

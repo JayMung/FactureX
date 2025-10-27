@@ -476,9 +476,9 @@ const FacturesView: React.FC = () => {
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-gray-600 text-base">Poids total</span>
+                  <span className="text-gray-600 text-base">Frais de services</span>
                   <span className="font-semibold text-base">
-                    {facture.total_poids} <span className="text-sm text-gray-500">kg</span>
+                    {formatCurrency(facture.frais || 0, facture.devise)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b">

@@ -93,14 +93,25 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
         shippingSettings?.find(s => s.cle === 'frais_maritime_par_cbm')?.valeur || '450'
       );
 
+      // Récupérer les frais de commission depuis les settings
+      const { data: feeSettings } = await supabase
+        .from('settings')
+        .select('cle, valeur')
+        .eq('categorie', 'facture');
+
+      const fraisPercentage = parseFloat(
+        feeSettings?.find(s => s.cle === 'frais_commande')?.valeur || '15'
+      );
+
       // Calculer les totaux
       const subtotal = data.items.reduce((sum, item) => sum + item.montant_total, 0);
       const totalPoids = data.items.reduce((sum, item) => sum + item.poids, 0);
+      const fraisCommission = subtotal * (fraisPercentage / 100);
       const shippingFee = data.mode_livraison === 'aerien' 
         ? totalPoids * fraisAerien 
         : totalPoids * fraisMaritime;
       const fraisTransportDouane = shippingFee;
-      const totalGeneral = subtotal + fraisTransportDouane;
+      const totalGeneral = subtotal + fraisCommission + fraisTransportDouane;
 
       // Insérer la facture
       const { data: factureData, error: factureError } = await supabase
@@ -114,6 +125,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
           shipping_fee: shippingFee,
           subtotal,
           total_poids: totalPoids,
+          frais: fraisCommission,
           frais_transport_douane: fraisTransportDouane,
           total_general: totalGeneral,
           conditions_vente: data.conditions_vente,
@@ -184,8 +196,19 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
           shippingSettings?.find(s => s.cle === 'frais_maritime_par_cbm')?.valeur || '450'
         );
 
+        // Récupérer les frais de commission depuis les settings
+        const { data: feeSettings } = await supabase
+          .from('settings')
+          .select('cle, valeur')
+          .eq('categorie', 'facture');
+
+        const fraisPercentage = parseFloat(
+          feeSettings?.find(s => s.cle === 'frais_commande')?.valeur || '15'
+        );
+
         const subtotal = data.items.reduce((sum, item) => sum + item.montant_total, 0);
         const totalPoids = data.items.reduce((sum, item) => sum + item.poids, 0);
+        const fraisCommission = subtotal * (fraisPercentage / 100);
         
         const modeLivraison = data.mode_livraison || (await supabase
           .from('factures')
@@ -198,11 +221,12 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
           : totalPoids * fraisMaritime;
         
         const fraisTransportDouane = shippingFee;
-        const totalGeneral = subtotal + fraisTransportDouane;
+        const totalGeneral = subtotal + fraisCommission + fraisTransportDouane;
 
         updateData.shipping_fee = shippingFee;
         updateData.subtotal = subtotal;
         updateData.total_poids = totalPoids;
+        updateData.frais = fraisCommission;
         updateData.frais_transport_douane = fraisTransportDouane;
         updateData.total_general = totalGeneral;
 

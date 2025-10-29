@@ -586,11 +586,17 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         // Vérifier s'il y a assez d'espace pour les conditions et le footer (environ 40mm nécessaires)
         const footerHeight = 40; // Réduit de 45 à 40
         const pageHeight = 297; // A4 height
+        const minFooterY = pageHeight - 45; // Position minimale pour le footer (45mm du bas)
         
         if (y + footerHeight > pageHeight - 15) {
             // Pas assez d'espace, créer une nouvelle page
             doc.addPage();
             y = MARGIN + 10;
+        }
+        
+        // Si on a beaucoup d'espace vide, pousser le footer vers le bas
+        if (y < minFooterY) {
+            y = minFooterY;
         }
         
         // Ligne de séparation élégante

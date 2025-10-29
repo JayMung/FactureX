@@ -96,9 +96,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       const montant = parseFloat(formData.montant);
       const tauxUSD = formData.devise === 'USD' ? 1 : rates.usdToCdf;
       const fraisUSD = montant * (fees[formData.motif.toLowerCase() as keyof typeof fees] / 100);
+      const montantNet = montant - fraisUSD; // Montant après déduction des frais
       const montantCNY = formData.devise === 'USD' 
-        ? montant * rates.usdToCny 
-        : (montant / tauxUSD) * rates.usdToCny;
+        ? montantNet * rates.usdToCny 
+        : (montantNet / tauxUSD) * rates.usdToCny;
       const commissionPartenaire = montant * (fees.partenaire / 100);
       const benefice = fraisUSD - commissionPartenaire;
 

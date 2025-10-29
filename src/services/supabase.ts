@@ -255,9 +255,10 @@ export class SupabaseService {
 
       const tauxUSD = transactionData.devise === 'USD' ? 1 : rates.data!.usdToCdf;
       const fraisUSD = transactionData.montant * (fees.data![transactionData.motif.toLowerCase() as keyof Fees] / 100);
+      const montantNet = transactionData.montant - fraisUSD; // Montant après déduction des frais
       const montantCNY = transactionData.devise === 'USD' 
-        ? transactionData.montant * rates.data!.usdToCny 
-        : (transactionData.montant / tauxUSD) * rates.data!.usdToCny;
+        ? montantNet * rates.data!.usdToCny 
+        : (montantNet / tauxUSD) * rates.data!.usdToCny;
       const benefice = fraisUSD;
 
       const fullTransactionData = {

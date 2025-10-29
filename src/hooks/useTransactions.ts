@@ -116,9 +116,10 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
 
       const tauxUSD = transactionData.devise === 'USD' ? 1 : rates.usdToCdf;
       const fraisUSD = transactionData.montant * (fees[transactionData.motif.toLowerCase() as keyof typeof fees] / 100);
+      const montantNet = transactionData.montant - fraisUSD; // Montant après déduction des frais
       const montantCNY = transactionData.devise === 'USD' 
-        ? transactionData.montant * rates.usdToCny 
-        : (transactionData.montant / tauxUSD) * rates.usdToCny;
+        ? montantNet * rates.usdToCny 
+        : (montantNet / tauxUSD) * rates.usdToCny;
       const commissionPartenaire = transactionData.montant * (fees.partenaire / 100);
       const benefice = fraisUSD - commissionPartenaire;
 
@@ -223,9 +224,10 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
 
           const tauxUSD = devise === 'USD' ? 1 : rates.usdToCdf;
           const fraisUSD = montant * (fees[motif.toLowerCase() as keyof typeof fees] / 100);
+          const montantNet = montant - fraisUSD; // Montant après déduction des frais
           const montantCNY = devise === 'USD' 
-            ? montant * rates.usdToCny 
-            : (montant / tauxUSD) * rates.usdToCny;
+            ? montantNet * rates.usdToCny 
+            : (montantNet / tauxUSD) * rates.usdToCny;
           const commissionPartenaire = montant * (fees.partenaire / 100);
           const benefice = fraisUSD - commissionPartenaire;
 

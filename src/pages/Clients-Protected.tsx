@@ -211,32 +211,10 @@ const ClientsProtected: React.FC = () => {
       </Layout>
     );
   }
-
   return (
     <ProtectedRouteEnhanced requiredModule="clients" requiredPermission="read">
       <Layout>
         <div className="space-y-6 animate-in fade-in duration-300">
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end">
-            <div className="flex space-x-2">
-              <Button 
-                variant="outline" 
-                onClick={exportClients}
-                disabled={sortedData.length === 0}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Exporter
-              </Button>
-              
-              <PermissionGuard module="clients" permission="create">
-                <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddClient}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nouveau Client
-                </Button>
-              </PermissionGuard>
-            </div>
-          </div>
-
           {/* Stats Cards - Design System */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {/* Total Clients Card */}
@@ -357,14 +335,33 @@ const ClientsProtected: React.FC = () => {
           {/* Clients Table */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Liste des Clients</span>
-                {selectedClients.length > 0 && (
-                  <span className="text-sm text-gray-500">
-                    {selectedClients.length} sur {sortedData.length} sélectionné(s)
-                  </span>
-                )}
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <CardTitle>Liste des Clients</CardTitle>
+                  {selectedClients.length > 0 && (
+                    <span className="text-sm text-gray-500">
+                      {selectedClients.length} sur {sortedData.length} sélectionné(s)
+                    </span>
+                  )}
+                </div>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={exportClients}
+                    disabled={sortedData.length === 0}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Exporter
+                  </Button>
+                  
+                  <PermissionGuard module="clients" permission="create">
+                    <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddClient}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Nouveau Client
+                    </Button>
+                  </PermissionGuard>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">

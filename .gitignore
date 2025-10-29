@@ -28,3 +28,44 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Supabase
+.supabase/
+supabase/.branches/
+supabase/.temp/
+
+# Testing
+coverage/
+.nyc_output/
+*.test.local
+
+# Cache
+.cache/
+.parcel-cache/
+.turbo/
+
+# Temporary files
+*.tmp
+*.temp
+.temp/
+tmp/
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Secrets (double protection)
+secrets/
+*.key
+*.pem
+*.cert

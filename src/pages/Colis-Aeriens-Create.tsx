@@ -88,7 +88,8 @@ const ColisAeriensCreate: React.FC = () => {
       // Parser les paramètres
       settingsData?.forEach(setting => {
         if (setting.cle === 'fournisseurs') {
-          setFournisseurs(setting.valeur.split(','));
+          // Nettoyer les espaces et filtrer les valeurs vides
+          setFournisseurs(setting.valeur.split(',').map(f => f.trim()).filter(f => f));
         } else if (setting.cle === 'tarif_aerien_regulier') {
           setTarifRegulier(parseFloat(setting.valeur));
         } else if (setting.cle === 'tarif_aerien_express') {
@@ -254,7 +255,7 @@ const ColisAeriensCreate: React.FC = () => {
                         <option value="">Sélectionner un client</option>
                         {clients.map(client => (
                           <option key={client.id} value={client.id}>
-                            {client.nom} - {client.telephone}
+                            {client.nom}
                           </option>
                         ))}
                       </select>

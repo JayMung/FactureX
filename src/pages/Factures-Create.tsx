@@ -99,7 +99,7 @@ const FacturesCreate: React.FC = () => {
         setItems(savedData.items || []);
         setCustomFraisPercentage(savedData.customFraisPercentage);
         setCustomTransportFee(savedData.customTransportFee);
-        showSuccess('Brouillon restauré', { duration: 2000 });
+        showSuccess('Brouillon restauré');
       }
     }
   }, []); // Only run on mount
@@ -203,7 +203,7 @@ const FacturesCreate: React.FC = () => {
           mode_livraison: facture.mode_livraison,
           devise: facture.devise,
           date_emission: facture.date_emission.split('T')[0],
-          statut: facture.statut,
+          statut: facture.statut as 'brouillon' | 'en_attente' | 'validee' | 'annulee',
           conditions_vente: facture.conditions_vente || '',
           notes: facture.notes || '',
           informations_bancaires: facture.informations_bancaires || '',
@@ -488,7 +488,7 @@ const FacturesCreate: React.FC = () => {
                 size="sm"
                 onClick={() => {
                   clearSavedData();
-                  showSuccess('Brouillon supprimé', { duration: 2000 });
+                  showSuccess('Brouillon supprimé');
                 }}
                 className="text-gray-500 hover:text-red-600"
                 title="Supprimer le brouillon"
@@ -928,7 +928,7 @@ const FacturesCreate: React.FC = () => {
                         className="w-full text-gray-600 hover:text-red-600 hover:border-red-200"
                         onClick={() => {
                           clearSavedData();
-                          showSuccess('Brouillon supprimé', { duration: 2000 });
+                          showSuccess('Brouillon supprimé');
                         }}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />

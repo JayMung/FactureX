@@ -32,7 +32,8 @@ import {
   Filter,
   Download,
   X,
-  MoreVertical
+  MoreVertical,
+  Trash2
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { showSuccess, showError } from '@/utils/toast';
@@ -145,6 +146,28 @@ const ColisAeriens: React.FC = () => {
     event?.stopPropagation();
     setSelectedColis(colis);
     setIsDetailModalOpen(true);
+  };
+
+  // Supprimer un colis
+  const handleDelete = async (colisId: string, colisName: string) => {
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer le colis ${colisName} ?\n\nCette action est irréversible.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('colis')
+        .delete()
+        .eq('id', colisId);
+
+      if (error) throw error;
+
+      showSuccess('Colis supprimé avec succès');
+      loadColis(); // Recharger la liste
+    } catch (error) {
+      console.error('Error deleting colis:', error);
+      showError('Erreur lors de la suppression du colis');
+    }
   };
 
   // Statistiques rapides
@@ -393,6 +416,14 @@ const ColisAeriens: React.FC = () => {
                                       </DropdownMenuItem>
                                     </>
                                   )}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleDelete(c.id, generateColisId(c))}
+                                    className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Supprimer
+                                  </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </div>
@@ -435,6 +466,14 @@ const ColisAeriens: React.FC = () => {
                                     </DropdownMenuItem>
                                   </>
                                 )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleDelete(c.id, generateColisId(c))}
+                                  className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Supprimer
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </td>
@@ -476,8 +515,8 @@ const ColisAeriens: React.FC = () => {
                         <p className="font-medium">{selectedColis.client?.telephone}</p>
                       </div>
                       <div>
-                        <span className="text-sm text-gray-500">Email:</span>
-                        <p className="font-medium">{selectedColis.client?.email || '-'}</p>
+                        <span className="text-sm text-gray-500">Adresse:</span>
+                        <p className="font-medium">{selectedColis.client?.adresse || '-'}</p>
                       </div>
                     </CardContent>
                   </Card>

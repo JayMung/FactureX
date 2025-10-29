@@ -365,10 +365,18 @@ const FacturesCreate: React.FC = () => {
     setLoading(true);
     
     try {
+      // Calculer les totaux avec les valeurs personnalisées
+      const finalTotals = calculateTotals();
+      
       if (isEditMode && id) {
         // Mode édition
         await updateFacture(id, {
           ...formData,
+          subtotal: finalTotals.subtotal,
+          frais: finalTotals.frais,
+          frais_transport_douane: finalTotals.fraisTransportDouane,
+          total_poids: finalTotals.totalPoids,
+          total_general: finalTotals.totalGeneral,
           items: items.map(({ tempId, id: itemId, ...item }) => item)
         });
         // Toast déjà affiché par le hook
@@ -377,6 +385,11 @@ const FacturesCreate: React.FC = () => {
         // Mode création
         const factureData: CreateFactureData = {
           ...formData,
+          subtotal: finalTotals.subtotal,
+          frais: finalTotals.frais,
+          frais_transport_douane: finalTotals.fraisTransportDouane,
+          total_poids: finalTotals.totalPoids,
+          total_general: finalTotals.totalGeneral,
           items: items.map(({ tempId, ...item }) => item)
         };
         const newFacture = await createFacture(factureData);

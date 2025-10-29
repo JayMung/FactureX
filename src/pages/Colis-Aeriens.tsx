@@ -515,8 +515,8 @@ const ColisAeriens: React.FC = () => {
                         <p className="font-medium">{selectedColis.client?.telephone}</p>
                       </div>
                       <div>
-                        <span className="text-sm text-gray-500">Adresse:</span>
-                        <p className="font-medium">{selectedColis.client?.adresse || '-'}</p>
+                        <span className="text-sm text-gray-500">Ville:</span>
+                        <p className="font-medium">{selectedColis.client?.ville || '-'}</p>
                       </div>
                     </CardContent>
                   </Card>

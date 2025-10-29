@@ -11,6 +11,10 @@ export default defineConfig(() => ({
       allow: ['..']
     }
   },
+  // Désactiver les source maps en développement pour éviter les erreurs CSP
+  esbuild: {
+    sourcemap: false
+  },
   preview: {
     host: '0.0.0.0',
     port: 3000,

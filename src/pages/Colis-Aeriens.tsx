@@ -79,7 +79,11 @@ const ColisAeriens: React.FC = () => {
       if (error) throw error;
       
       console.log('📦 Colis chargés:', data?.length || 0, 'éléments');
-      console.log('📋 Liste des colis:', data);
+      if (data && data.length > 0) {
+        console.log('📋 Liste des colis:', data.map(c => ({ id: c.id, nom: c.client?.nom, tracking: c.tracking_chine })));
+      } else {
+        console.log('📋 Liste des colis: (vide)');
+      }
       
       setColis(data || []);
     } catch (error) {
@@ -186,25 +190,31 @@ const ColisAeriens: React.FC = () => {
       const { error, data } = await supabase
         .from('colis')
         .delete()
-        .eq('id', colisToDelete.id)
-        .select(); // Ajouter .select() pour voir ce qui a été supprimé
+        .eq('id', colisToDelete.id);
 
       if (error) {
         console.error('❌ Erreur suppression:', error);
         throw error;
       }
 
-      console.log('✅ Colis supprimé avec succès:', data);
+      console.log('✅ Colis supprimé avec succès');
+
+      // Supprimer immédiatement de l'état local pour éviter les problèmes de cache
+      setColis(prevColis => {
+        const updatedColis = prevColis.filter(c => c.id !== colisToDelete.id);
+        console.log('🗑️ Colis retiré de l\'état local. Restants:', updatedColis.length);
+        return updatedColis;
+      });
 
       showSuccess('Colis supprimé avec succès');
       setDeleteDialogOpen(false);
       setColisToDelete(null);
       
-      // Attendre un peu avant de recharger
+      // Recharger après un court délai pour synchroniser avec la DB
       setTimeout(() => {
-        console.log('🔄 Rechargement de la liste...');
+        console.log('🔄 Synchronisation avec la base de données...');
         loadColis();
-      }, 500);
+      }, 1000);
     } catch (error) {
       console.error('❌ Error deleting colis:', error);
       showError('Erreur lors de la suppression du colis');

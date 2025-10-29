@@ -518,27 +518,6 @@ const TransactionsProtected: React.FC = () => {
             );
           })()}
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end">
-            <div className="flex space-x-2">
-              <Button 
-                variant="outline" 
-                onClick={exportTransactions}
-                disabled={transactions.length === 0}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Exporter
-              </Button>
-              
-              <PermissionGuard module="transactions" permission="create">
-                <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddTransaction}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nouvelle Transaction
-                </Button>
-              </PermissionGuard>
-            </div>
-          </div>
-
           {/* Stats Cards - Design System */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {/* Total USD Card */}
@@ -661,7 +640,26 @@ const TransactionsProtected: React.FC = () => {
           {/* Transactions Table */}
           <Card>
             <CardHeader>
-              <CardTitle>Liste des Transactions</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Liste des Transactions</CardTitle>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={exportTransactions}
+                    disabled={transactions.length === 0}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Exporter
+                  </Button>
+                  
+                  <PermissionGuard module="transactions" permission="create">
+                    <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddTransaction}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Nouvelle Transaction
+                    </Button>
+                  </PermissionGuard>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto overflow-y-hidden">

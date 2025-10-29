@@ -801,7 +801,6 @@ const FacturesProtected: React.FC = () => {
             confirmText="Supprimer"
             cancelText="Annuler"
             onConfirm={handleConfirmDelete}
-            variant="destructive"
           />
         </div>
       </Layout>

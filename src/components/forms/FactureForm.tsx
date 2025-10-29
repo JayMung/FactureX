@@ -3,26 +3,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { 
   Plus, 
   Trash2, 
   Upload, 
-  Calculator,
-  Plane,
-  Ship,
-  DollarSign,
-  Package
+  Calculator
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useFactures } from '@/hooks/useFactures';
-import { generateFacturePDF } from '@/utils/pdfGenerator';
-import type { Facture, FactureItem, Client, CreateFactureData } from '@/types';
+import type { Facture, FactureItem, Client } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { validateFactureForm } from '@/lib/validation';
+import { formatCurrency } from '@/utils/formatCurrency';
 
 interface FactureFormProps {
   isOpen: boolean;
@@ -67,68 +61,85 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
     }
   ]);
 
-  // Charger les clients et les paramètres
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Charger les clients
-        const { data: clientsData } = await supabase
-          .from('clients')
-          .select('*')
-          .order('nom');
-        setClients(clientsData || []);
+  const fetchData = async () => {
+    try {
+      // Charger les clients
+      const { data: clientsData } = await supabase
+        .from('clients')
+        .select('*')
+        .order('nom');
+      setClients(clientsData || []);
 
-        // Charger les frais de livraison
-        const { data: shippingData } = await supabase
-          .from('settings')
-          .select('cle, valeur')
-          .eq('categorie', 'shipping');
-
-        const settings: any = {};
-        shippingData?.forEach(item => {
-          settings[item.cle] = parseFloat(item.valeur);
-        });
+      // Charger les paramètres
+      const { data: settingsData } = await supabase
+        .from('settings')
+        .select('cle, valeur')
+        .in('cle', ['frais_livraison_aerien', 'frais_livraison_maritime', 'conditions_vente_defaut']);
+      
+      if (settingsData) {
+        const settings = settingsData.reduce((acc, setting) => {
+          acc[setting.cle.replace('frais_livraison_', '')] = parseFloat(setting.valeur);
+          return acc;
+        }, {} as Record<string, number>);
         
         setShippingSettings({
-          aerien: settings.frais_aerien_par_kg || 16,
-          maritime: settings.frais_maritime_par_cbm || 450
+          aerien: settings.aerien || 16,
+          maritime: settings.maritime || 450
         });
-
-        // Charger les conditions de vente par défaut
-        const { data: conditionsData } = await supabase
-          .from('settings')
-          .select('valeur')
-          .eq('categorie', 'invoice')
-          .eq('cle', 'conditions_vente_defaut')
-          .single();
         
-        if (conditionsData?.valeur) {
-          setDefaultConditionsVente(conditionsData.valeur);
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des données:', error);
+        const conditionsVente = settingsData.find(s => s.cle === 'conditions_vente_defaut');
+        setDefaultConditionsVente(conditionsVente?.valeur || '');
       }
-    };
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
+  };
 
+  useEffect(() => {
     if (isOpen) {
       fetchData();
     }
   }, [isOpen]);
 
-  // Mettre à jour les conditions de vente dynamiquement selon le mode de livraison
-  useEffect(() => {
-    if (defaultConditionsVente && !facture) {
-      // Remplacer les tags dynamiquement
-      const updatedConditions = defaultConditionsVente
-        .replace(/\[avion\]/gi, formData.mode_livraison === 'aerien' ? `${shippingSettings.aerien}$/kg` : '')
-        .replace(/\[bateau\]/gi, formData.mode_livraison === 'maritime' ? `${shippingSettings.maritime}$/cbm` : '')
-        .trim();
+  const loadItems = async () => {
+    try {
+      const { data: itemsData } = await supabase
+        .from('facture_items')
+        .select('*')
+        .eq('facture_id', facture?.id)
+        .order('numero_ligne');
       
-      setFormData(prev => ({ ...prev, conditions_vente: updatedConditions }));
+      if (itemsData && itemsData.length > 0) {
+        const formattedItems = itemsData.map(item => ({
+          tempId: item.id,
+          numero_ligne: item.numero_ligne,
+          image_url: item.image_url || '',
+          product_url: item.product_url || '',
+          quantite: item.quantite,
+          description: item.description,
+          prix_unitaire: item.prix_unitaire,
+          poids: item.poids,
+          montant_total: item.montant_total
+        }));
+        setItems(formattedItems);
+      } else {
+        setItems([{
+          tempId: '1',
+          numero_ligne: 1,
+          image_url: '',
+          product_url: '',
+          quantite: 1,
+          description: '',
+          prix_unitaire: 0,
+          poids: 0,
+          montant_total: 0
+        }]);
+      }
+    } catch (error) {
+      console.error('Error loading items:', error);
     }
-  }, [formData.mode_livraison, defaultConditionsVente, shippingSettings, facture]);
+  };
 
-  // Charger les données de la facture si en mode édition
   useEffect(() => {
     if (facture && isOpen) {
       setFormData({
@@ -141,31 +152,18 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
         date_emission: facture.date_emission
       });
 
-      // Charger le client sélectionné
-      const client = clients.find(c => c.id === facture.client_id);
-      setSelectedClient(client || null);
-
-      // Charger les items (simulation - à adapter selon votre structure)
-      if (facture.items) {
-        const itemsForm = facture.items.map((item, index) => ({
-          ...item,
-          tempId: `existing-${item.id}`,
-          numero_ligne: index + 1
-        }));
-        setItems(itemsForm);
-      }
-    } else {
-      // Reset formulaire pour nouvelle facture
+      loadItems();
+    } else if (!facture && isOpen) {
+      // Reset form pour nouvelle facture
       setFormData({
         client_id: '',
         type: 'devis',
         mode_livraison: 'aerien',
         devise: 'USD',
-        conditions_vente: '',
+        conditions_vente: defaultConditionsVente,
         notes: '',
         date_emission: new Date().toISOString().split('T')[0]
       });
-      setSelectedClient(null);
       setItems([{
         tempId: '1',
         numero_ligne: 1,
@@ -178,37 +176,26 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
         montant_total: 0
       }]);
     }
-  }, [facture, isOpen, clients]);
+  }, [facture, isOpen]);
 
-  // Calculer les totaux
   const calculateTotals = () => {
     const subtotal = items.reduce((sum, item) => sum + item.montant_total, 0);
-    const totalPoids = items.reduce((sum, item) => sum + item.poids, 0);
-    const shippingFee = formData.mode_livraison === 'aerien' 
-      ? totalPoids * shippingSettings.aerien 
-      : totalPoids * shippingSettings.maritime;
-    const fraisTransportDouane = shippingFee; // Selon votre logique
+    const fraisTransportDouane = subtotal * 0.1; // Selon votre logique
     const totalGeneral = subtotal + fraisTransportDouane;
 
     return {
       subtotal,
-      totalPoids,
-      shippingFee,
       fraisTransportDouane,
       totalGeneral
     };
   };
 
-  const totals = calculateTotals();
-
-  // Gérer le changement de client
   const handleClientChange = (clientId: string) => {
     const client = clients.find(c => c.id === clientId);
     setSelectedClient(client || null);
     setFormData(prev => ({ ...prev, client_id: clientId }));
   };
 
-  // Ajouter une ligne
   const addItem = () => {
     const newItem: FactureItemForm = {
       tempId: Date.now().toString(),
@@ -224,7 +211,6 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
     setItems([...items, newItem]);
   };
 
-  // Supprimer une ligne
   const removeItem = (tempId: string) => {
     if (items.length > 1) {
       const updatedItems = items.filter(item => item.tempId !== tempId);
@@ -236,125 +222,49 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
     }
   };
 
-  // Mettre à jour un item
   const updateItem = (tempId: string, field: keyof FactureItemForm, value: any) => {
     const updatedItems = items.map(item => {
       if (item.tempId === tempId) {
         const updatedItem = { ...item, [field]: value };
         
-        // Recalculer le montant total si nécessaire
-        if (field === 'quantite' || field === 'prix_unitaire') {
-          updatedItem.montant_total = updatedItem.quantite * updatedItem.prix_unitaire;
+        // Recalculer le montant total si prix ou quantité change
+        if (field === 'prix_unitaire' || field === 'quantite') {
+          updatedItem.montant_total = updatedItem.prix_unitaire * updatedItem.quantite;
         }
         
         return updatedItem;
       }
+      return item;
     });
-    setSelectedClient(null);
-    setItems([{
-      tempId: '1',
-      numero_ligne: 1,
-      image_url: '',
-      product_url: '',
-      quantite: 1,
-      description: '',
-      prix_unitaire: 0,
-      poids: 0,
-      montant_total: 0
-    }]);
-  }
-}, [facture, isOpen, clients]);
-
-// Calculer les totaux
-const calculateTotals = () => {
-  const subtotal = items.reduce((sum, item) => sum + item.montant_total, 0);
-  const totalPoids = items.reduce((sum, item) => sum + item.poids, 0);
-  const shippingFee = formData.mode_livraison === 'aerien' 
-    ? totalPoids * shippingSettings.aerien 
-    : totalPoids * shippingSettings.maritime;
-  const fraisTransportDouane = shippingFee; // Selon votre logique
-  const totalGeneral = subtotal + fraisTransportDouane;
-
-  return {
-    subtotal,
-    totalPoids,
-    shippingFee,
-    fraisTransportDouane,
-    totalGeneral
+    setItems(updatedItems);
   };
-};
 
-const totals = calculateTotals();
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const validationResult = validateFactureForm({
+        ...formData,
+        items: items
+      });
 
-// Gérer le changement de client
-const handleClientChange = (clientId: string) => {
-  const client = clients.find(c => c.id === clientId);
-  setSelectedClient(client || null);
-  setFormData(prev => ({ ...prev, client_id: clientId }));
-};
-
-// Ajouter une ligne
-const addItem = () => {
-  const newItem: FactureItemForm = {
-    tempId: Date.now().toString(),
-    numero_ligne: items.length + 1,
-    image_url: '',
-    product_url: '',
-    quantite: 1,
-    description: '',
-    prix_unitaire: 0,
-    poids: 0,
-    montant_total: 0
-  };
-  setItems([...items, newItem]);
-};
-
-// Supprimer une ligne
-const removeItem = (tempId: string) => {
-  if (items.length > 1) {
-    const updatedItems = items.filter(item => item.tempId !== tempId);
-    const renumberedItems = updatedItems.map((item, index) => ({
-      ...item,
-      numero_ligne: index + 1
-    }));
-    setItems(renumberedItems);
-  }
-};
-
-// Mettre à jour un item
-const updateItem = (tempId: string, field: keyof FactureItemForm, value: any) => {
-  const updatedItems = items.map(item => {
-    if (item.tempId === tempId) {
-      const updatedItem = { ...item, [field]: value };
-      
-      // Recalculer le montant total si nécessaire
-      if (field === 'quantite' || field === 'prix_unitaire') {
-        updatedItem.montant_total = updatedItem.quantite * updatedItem.prix_unitaire;
+      if (!validationResult.isValid) {
+        showError(validationResult.error || 'Veuillez corriger les erreurs dans le formulaire');
+        return;
       }
-      
-      return updatedItem;
-    }
-    return item;
-  });
-  setItems(updatedItems);
-};
 
-// Sauvegarder la facture
-const handleSave = async () => {
-  setLoading(true);
-  try {
-    // Validation serveur robuste
-    const validationResult = validateFactureForm({
-      ...formData,
-      items: items
-    });
-
-    if (!validationResult.isValid) {
-      showError(validationResult.errors.join(', '));
-      return;
-    }
-
-    const factureData: CreateFactureData = validationResult.data;
+      const factureData = {
+        ...formData,
+        items: items.map(item => ({
+          numero_ligne: item.numero_ligne,
+          image_url: item.image_url,
+          product_url: item.product_url,
+          quantite: item.quantite,
+          description: item.description,
+          prix_unitaire: item.prix_unitaire,
+          poids: item.poids,
+          montant_total: item.montant_total
+        }))
+      };
 
       if (facture) {
         await updateFacture(facture.id, factureData);
@@ -367,33 +277,10 @@ const handleSave = async () => {
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error('Erreur lors de la sauvegarde:', error);
-      showError(error.message || 'Erreur lors de la sauvegarde');
+      console.error('Error saving facture:', error);
+      showError('Erreur lors de la sauvegarde de la facture');
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Générer le PDF
-  const handleGeneratePDF = async () => {
-    if (!facture) return;
-    
-    try {
-      // Récupérer les items complets
-      const { data: itemsData } = await supabase
-        .from('facture_items')
-        .select('*')
-        .eq('facture_id', facture.id);
-
-      const factureWithItems = {
-        ...facture,
-        items: itemsData || []
-      };
-
-      await generateFacturePDF(factureWithItems);
-    } catch (error: any) {
-      console.error('Erreur lors de la génération du PDF:', error);
-      showError('Erreur lors de la génération du PDF');
     }
   };
 
@@ -402,96 +289,88 @@ const handleSave = async () => {
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {facture ? 'Modifier' : 'Créer'} {formData.type === 'devis' ? 'un Devis' : 'une Facture'}
+            {facture ? 'Modifier' : 'Créer'} {formData.type === 'devis' ? 'Devis' : 'Facture'}
           </DialogTitle>
         </DialogHeader>
-
+        
         <div className="space-y-6">
-          {/* Informations générales */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Package className="mr-2 h-5 w-5" />
-                Informations générales
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <Label>Type</Label>
-                  <Select value={formData.type} onValueChange={(value: 'devis' | 'facture') => 
-                    setFormData(prev => ({ ...prev, type: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="devis">Devis</SelectItem>
-                      <SelectItem value="facture">Facture</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>Client</Label>
-                  <Select value={formData.client_id} onValueChange={handleClientChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map(client => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.nom}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>Mode livraison</Label>
-                  <Select value={formData.mode_livraison} onValueChange={(value: 'aerien' | 'maritime') => 
-                    setFormData(prev => ({ ...prev, mode_livraison: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="aerien">
-                        <div className="flex items-center">
-                          <Plane className="mr-2 h-4 w-4" />
-                          Aérien ({shippingSettings.aerien}$/{formData.mode_livraison === 'aerien' ? 'kg' : 'cbm'})
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="maritime">
-                        <div className="flex items-center">
-                          <Ship className="mr-2 h-4 w-4" />
-                          Maritime ({shippingSettings.maritime}$/{formData.mode_livraison === 'maritime' ? 'cbm' : 'kg'})
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>Devise</Label>
-                  <Select value={formData.devise} onValueChange={(value: 'USD' | 'CDF') => 
-                    setFormData(prev => ({ ...prev, devise: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="CDF">CDF</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Informations client sélectionné */}
-              {selectedClient && (
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <h4 className="font-medium mb-2">Informations client</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                    <div><strong>Nom:</strong> {selectedClient.nom}</div>
+          {/* Formulaire principal */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Client</Label>
+              <select
+                value={formData.client_id}
+                onChange={(e) => handleClientChange(e.target.value)}
+                className="w-full p-2 border rounded"
+              >
+                <option value="">Sélectionner un client</option>
+                {clients.map(client => (
+                  <option key={client.id} value={client.id}>
+                    {client.nom}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <Label>Type</Label>
+              <select
+                value={formData.type}
+                onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as 'devis' | 'facture' }))}
+                className="w-full p-2 border rounded"
+              >
+                <option value="devis">Devis</option>
+                <option value="facture">Facture</option>
+              </select>
+            </div>
+            
+            <div>
+              <Label>Mode de livraison</Label>
+              <select
+                value={formData.mode_livraison}
+                onChange={(e) => setFormData(prev => ({ ...prev, mode_livraison: e.target.value as 'aerien' | 'maritime' }))}
+                className="w-full p-2 border rounded"
+              >
+                <option value="aerien">Aérien</option>
+                <option value="maritime">Maritime</option>
+              </select>
+            </div>
+            
+            <div>
+              <Label>Devise</Label>
+              <select
+                value={formData.devise}
+                onChange={(e) => setFormData(prev => ({ ...prev, devise: e.target.value as 'USD' | 'CDF' }))}
+                className="w-full p-2 border rounded"
+              >
+                <option value="USD">USD</option>
+                <option value="CDF">CDF</option>
+              </select>
+            </div>
+          </div>
+          
+          {/* Tableau des items */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Articles</h3>
+            <div className="border rounded">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="p-2 text-left">#</th>
+                    <th className="p-2 text-left">Description</th>
+                    <th className="p-2 text-center">Quantité</th>
+                    <th className="p-2 text-right">Prix unitaire</th>
+                    <th className="p-2 text-right">Montant</th>
+                    <th className="p-2 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr key={item.tempId} className="border-t">
+                      <td className="p-2">{item.numero_ligne}</td>
+                      <td className="p-2">
+                        <input
+                          type="text"
                     <div><strong>Téléphone:</strong> {selectedClient.telephone}</div>
                     <div><strong>Ville:</strong> {selectedClient.ville}</div>
                   </div>

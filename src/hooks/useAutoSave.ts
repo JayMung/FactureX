@@ -51,10 +51,7 @@ export const useAutoSave = ({
 
         // Show subtle success message for first save and every 5th save
         if (saveCountRef.current === 1 || saveCountRef.current % 5 === 0) {
-          showSuccess('Brouillon sauvegardé automatiquement', {
-            duration: 2000,
-            position: 'bottom-right'
-          });
+          showSuccess('Brouillon sauvegardé automatiquement');
         }
 
         console.log(`[AutoSave] Saved ${storageKey} (${saveCountRef.current} times)`);

@@ -186,18 +186,41 @@ const ColisAeriens: React.FC = () => {
 
       console.log('✅ Colis trouvé avant suppression:', checkData);
 
+      // Vérifier s'il y a des enregistrements liés qui pourraient empêcher la suppression
+      console.log('🔍 Vérification des enregistrements liés...');
+      
+      const [paiements, tracking, historiques] = await Promise.all([
+        supabase.from('paiements').select('id').eq('colis_id', colisToDelete.id),
+        supabase.from('tracking_updates').select('id').eq('colis_id', colisToDelete.id),
+        supabase.from('colis_historique').select('id').eq('colis_id', colisToDelete.id)
+      ]);
+
+      console.log('📋 Enregistrements liés:', {
+        paiements: paiements.data?.length || 0,
+        tracking: tracking.data?.length || 0,
+        historiques: historiques.data?.length || 0
+      });
+
       // Supprimer le colis
-      const { error, data } = await supabase
+      const { error, data, count } = await supabase
         .from('colis')
-        .delete()
-        .eq('id', colisToDelete.id);
+        .delete({ count: 'exact' }) // Demander le count exact
+        .eq('id', colisToDelete.id)
+        .select(); // Ajouter select pour voir les données supprimées
+
+      console.log('📊 Résultat suppression:', { error, data, count });
 
       if (error) {
         console.error('❌ Erreur suppression:', error);
         throw error;
       }
 
-      console.log('✅ Colis supprimé avec succès');
+      if (count === 0) {
+        console.warn('⚠️ Aucun colis supprimé ! Le colis n\'existe peut-être pas ou RLS bloque.');
+        throw new Error('Aucun colis supprimé - vérifier les permissions RLS');
+      }
+
+      console.log('✅ Colis supprimé avec succès. Nombre supprimé:', count);
 
       // Supprimer immédiatement de l'état local pour éviter les problèmes de cache
       setColis(prevColis => {

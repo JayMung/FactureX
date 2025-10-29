@@ -99,7 +99,9 @@ const ColisAeriensCreate: React.FC = () => {
       settingsData?.forEach(setting => {
         if (setting.cle === 'fournisseurs') {
           // Nettoyer les espaces et filtrer les valeurs vides
-          setFournisseurs(setting.valeur.split(',').map(f => f.trim()).filter(f => f));
+          const fournisseursList = setting.valeur.split(',').map(f => f.trim()).filter(f => f);
+          console.log('🔍 Fournisseurs chargés depuis la DB:', fournisseursList);
+          setFournisseurs(fournisseursList);
         } else if (setting.cle === 'tarif_aerien_regulier') {
           regulier = parseFloat(setting.valeur);
           setTarifRegulier(regulier);
@@ -315,12 +317,21 @@ const ColisAeriensCreate: React.FC = () => {
                         required
                       >
                         <option value="">Sélectionner un fournisseur</option>
-                        {fournisseurs.map(fournisseur => (
-                          <option key={fournisseur} value={fournisseur}>
-                            {fournisseur}
-                          </option>
-                        ))}
+                        {fournisseurs.length > 0 ? (
+                          fournisseurs.map(fournisseur => (
+                            <option key={fournisseur} value={fournisseur}>
+                              {fournisseur}
+                            </option>
+                          ))
+                        ) : (
+                          <option disabled>Chargement des fournisseurs...</option>
+                        )}
                       </select>
+                      {fournisseurs.length === 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          💡 Ajoutez des fournisseurs dans Paramètres → Colis
+                        </p>
+                      )}
                     </div>
 
                     <div>

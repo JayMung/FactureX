@@ -49,32 +49,46 @@ const FacturesPreview: React.FC = () => {
     subtitle: 'Vérifiez votre document avant de générer le PDF'
   });
 
-  useEffect(() => {
-    const loadFacture = async () => {
-      if (!id) {
+  // Fonction pour charger la facture
+  const loadFacture = async () => {
+    if (!id) {
+      navigate('/factures');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = await getFactureWithItems(id);
+      if (!data) {
+        showError('Facture introuvable');
         navigate('/factures');
         return;
       }
+      setFacture(data);
+    } catch (error) {
+      console.error('Error loading facture:', error);
+      showError('Erreur lors du chargement de la facture');
+      navigate('/factures');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      setLoading(true);
-      try {
-        const data = await getFactureWithItems(id);
-        if (!data) {
-          showError('Facture introuvable');
-          navigate('/factures');
-          return;
-        }
-        setFacture(data);
-      } catch (error) {
-        console.error('Error loading facture:', error);
-        showError('Erreur lors du chargement de la facture');
-        navigate('/factures');
-      } finally {
-        setLoading(false);
+  // Charger au montage et quand on revient sur la page
+  useEffect(() => {
+    loadFacture();
+  }, [id]);
+
+  // Recharger quand la page devient visible (après navigation)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadFacture();
       }
     };
 
-    loadFacture();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [id]);
 
   const handleGeneratePDF = async () => {

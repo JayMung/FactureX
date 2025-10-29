@@ -140,7 +140,9 @@ const ColisAeriens: React.FC = () => {
   };
 
   // Ouvrir le modal de détails
-  const handleViewDetails = (colis: Colis) => {
+  const handleViewDetails = (colis: Colis, event?: React.MouseEvent) => {
+    event?.preventDefault();
+    event?.stopPropagation();
     setSelectedColis(colis);
     setIsDetailModalOpen(true);
   };
@@ -293,8 +295,10 @@ const ColisAeriens: React.FC = () => {
                         <tr key={c.id} className="border-b hover:bg-gray-50 transition-colors">
                           <td className="py-3 px-2 md:px-4">
                             <button
-                              onClick={() => handleViewDetails(c)}
+                              onClick={(e) => handleViewDetails(c, e)}
                               className="text-blue-600 hover:text-blue-800 font-mono text-sm font-medium hover:underline"
+                              title="Voir les détails du colis"
+                              type="button"
                             >
                               {generateColisId(c)}
                             </button>
@@ -360,7 +364,7 @@ const ColisAeriens: React.FC = () => {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem
-                                    onClick={() => handleViewDetails(c)}
+                                    onClick={(e) => handleViewDetails(c, e)}
                                     className="cursor-pointer"
                                   >
                                     <Eye className="h-4 w-4 mr-2" />
@@ -402,7 +406,7 @@ const ColisAeriens: React.FC = () => {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
-                                  onClick={() => handleViewDetails(c)}
+                                  onClick={(e) => handleViewDetails(c, e)}
                                   className="cursor-pointer"
                                 >
                                   <Eye className="h-4 w-4 mr-2" />

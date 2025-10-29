@@ -505,10 +505,10 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         const totalsWidth = PAGE_WIDTH - totalsStartX - MARGIN;
         const valueX = PAGE_WIDTH - MARGIN - 3;
         
-        // Calcul des frais en utilisant le pourcentage depuis les settings (ou facture si disponible)
-        const feesPercentage = (COMPANY_INFO as any).feesPercentage || 0.15;
-        const fees = facture.subtotal * feesPercentage;
-        const grandTotal = facture.subtotal + fees + facture.shipping_fee;
+        // Utiliser les frais de la facture (qui peuvent être personnalisés)
+        const fees = facture.frais || 0;
+        const fraisTransportDouane = facture.frais_transport_douane || 0;
+        const grandTotal = facture.total_general || (facture.subtotal + fees + fraisTransportDouane);
         
         // Carte des totaux - Design simple
         const totalsCardY = y;

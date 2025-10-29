@@ -223,6 +223,38 @@ const FacturesCreate: React.FC = () => {
           product_url: item.product_url
         }));
         setItems(loadedItems);
+
+        // Charger les valeurs personnalisées si elles existent
+        // Calculer le pourcentage de frais personnalisé
+        if (facture.frais && facture.subtotal) {
+          const calculatedPercentage = (facture.frais / facture.subtotal) * 100;
+          const defaultPercentage = fees?.commande || 15;
+          // Si le pourcentage est différent du défaut, c'est une valeur personnalisée
+          if (Math.abs(calculatedPercentage - defaultPercentage) > 0.01) {
+            setCustomFraisPercentage(calculatedPercentage);
+          }
+        }
+
+        // Charger les frais de transport personnalisés
+        // Calculer ce que serait la valeur automatique
+        const totalPoids = loadedItems.reduce((sum, item) => sum + item.poids, 0);
+        const fraisAerien = 16; // Valeur par défaut
+        const fraisMaritime = 450; // Valeur par défaut
+        const autoTransportFee = facture.mode_livraison === 'aerien' 
+          ? totalPoids * fraisAerien 
+          : totalPoids * fraisMaritime;
+        
+        // Convertir en USD si la facture est en CDF
+        const tauxUSDtoCDF = rates?.usdToCdf || 2100;
+        const conversionRate = facture.devise === 'CDF' ? tauxUSDtoCDF : 1;
+        const autoTransportFeeInCurrentCurrency = autoTransportFee * conversionRate;
+        
+        // Si les frais de transport sont différents de la valeur auto, c'est personnalisé
+        if (facture.frais_transport_douane && 
+            Math.abs(facture.frais_transport_douane - autoTransportFeeInCurrentCurrency) > 0.01) {
+          // Stocker en USD
+          setCustomTransportFee(facture.frais_transport_douane / conversionRate);
+        }
       } catch (error) {
         console.error('Error loading facture:', error);
         showError('Erreur lors du chargement de la facture');

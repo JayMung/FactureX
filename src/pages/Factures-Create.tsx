@@ -65,6 +65,7 @@ const FacturesCreate: React.FC = () => {
   const [isEditingFrais, setIsEditingFrais] = useState(false);
   const [customTransportFee, setCustomTransportFee] = useState<number | null>(null);
   const [isEditingTransport, setIsEditingTransport] = useState(false);
+  const [tempTransportValue, setTempTransportValue] = useState<string>('');
   const [defaultConditions, setDefaultConditions] = useState({
     aerien: '',
     maritime: ''
@@ -810,15 +811,29 @@ const FacturesCreate: React.FC = () => {
                           <span className="text-gray-600">Frais transport & douane:</span>
                           <Input
                             type="number"
-                            value={customTransportFee !== null ? (customTransportFee * totals.tauxConversion).toFixed(2) : totals.fraisTransportDouane.toFixed(2)}
-                            onChange={(e) => {
-                              const valueInCurrentCurrency = parseFloat(e.target.value) || 0;
+                            value={tempTransportValue}
+                            onChange={(e) => setTempTransportValue(e.target.value)}
+                            onFocus={() => {
+                              // Initialize temp value when entering edit mode
+                              const displayValue = customTransportFee !== null 
+                                ? (customTransportFee * totals.tauxConversion).toFixed(2)
+                                : totals.fraisTransportDouane.toFixed(2);
+                              setTempTransportValue(displayValue);
+                            }}
+                            onBlur={() => {
+                              // Save the value when leaving edit mode
+                              const valueInCurrentCurrency = parseFloat(tempTransportValue) || 0;
                               const valueInUSD = valueInCurrentCurrency / totals.tauxConversion;
                               setCustomTransportFee(valueInUSD);
+                              setIsEditingTransport(false);
                             }}
-                            onBlur={() => setIsEditingTransport(false)}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') setIsEditingTransport(false);
+                              if (e.key === 'Enter') {
+                                const valueInCurrentCurrency = parseFloat(tempTransportValue) || 0;
+                                const valueInUSD = valueInCurrentCurrency / totals.tauxConversion;
+                                setCustomTransportFee(valueInUSD);
+                                setIsEditingTransport(false);
+                              }
                             }}
                             className="w-24 h-6 text-sm px-2"
                             autoFocus

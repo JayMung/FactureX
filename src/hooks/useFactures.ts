@@ -103,15 +103,28 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
         feeSettings?.find(s => s.cle === 'frais_commande')?.valeur || '15'
       );
 
-      // Calculer les totaux
-      const subtotal = data.items.reduce((sum, item) => sum + item.montant_total, 0);
-      const totalPoids = data.items.reduce((sum, item) => sum + item.poids, 0);
-      const fraisCommission = subtotal * (fraisPercentage / 100);
-      const shippingFee = data.mode_livraison === 'aerien' 
-        ? totalPoids * fraisAerien 
-        : totalPoids * fraisMaritime;
-      const fraisTransportDouane = shippingFee;
-      const totalGeneral = subtotal + fraisCommission + fraisTransportDouane;
+      // Utiliser les totaux fournis ou les calculer automatiquement
+      let subtotal, totalPoids, fraisCommission, shippingFee, fraisTransportDouane, totalGeneral;
+      
+      if (data.subtotal !== undefined && data.frais !== undefined && data.frais_transport_douane !== undefined) {
+        // Utiliser les valeurs fournies (avec personnalisations)
+        subtotal = data.subtotal;
+        totalPoids = data.total_poids || data.items.reduce((sum, item) => sum + item.poids, 0);
+        fraisCommission = data.frais;
+        fraisTransportDouane = data.frais_transport_douane;
+        shippingFee = fraisTransportDouane;
+        totalGeneral = data.total_general || (subtotal + fraisCommission + fraisTransportDouane);
+      } else {
+        // Calculer automatiquement
+        subtotal = data.items.reduce((sum, item) => sum + item.montant_total, 0);
+        totalPoids = data.items.reduce((sum, item) => sum + item.poids, 0);
+        fraisCommission = subtotal * (fraisPercentage / 100);
+        shippingFee = data.mode_livraison === 'aerien' 
+          ? totalPoids * fraisAerien 
+          : totalPoids * fraisMaritime;
+        fraisTransportDouane = shippingFee;
+        totalGeneral = subtotal + fraisCommission + fraisTransportDouane;
+      }
 
       // Insérer la facture
       const { data: factureData, error: factureError } = await supabase
@@ -185,8 +198,15 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       if (data.notes !== undefined) updateData.notes = data.notes;
       if (data.informations_bancaires !== undefined) updateData.informations_bancaires = data.informations_bancaires;
 
-      // Si on met à jour les items, recalculer les totaux
-      if (data.items) {
+      // Si les totaux sont fournis, les utiliser directement (valeurs personnalisées)
+      if (data.subtotal !== undefined) updateData.subtotal = data.subtotal;
+      if (data.frais !== undefined) updateData.frais = data.frais;
+      if (data.frais_transport_douane !== undefined) updateData.frais_transport_douane = data.frais_transport_douane;
+      if (data.total_poids !== undefined) updateData.total_poids = data.total_poids;
+      if (data.total_general !== undefined) updateData.total_general = data.total_general;
+
+      // Si on met à jour les items ET qu'aucun total n'est fourni, recalculer automatiquement
+      if (data.items && data.subtotal === undefined) {
         const { data: shippingSettings } = await supabase
           .from('settings')
           .select('cle, valeur')

@@ -497,11 +497,51 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
                 showHead: 'everyPage', // Répéter l'en-tête sur chaque page
                 rowPageBreak: 'avoid', // Éviter de couper une ligne entre deux pages
             });
-            y = (doc as any).lastAutoTable.finalY + 12; // Plus d'espacement après le tableau
+            y = (doc as any).lastAutoTable.finalY + 10; // Espacement après le tableau
         }
 
         // ========================================
-        // 4. SECTION TOTAUX (DESIGN MODERNE AVEC CARTE)
+        // 4. CONDITIONS ET PAIEMENT (AVANT LES TOTAUX)
+        // ========================================
+        
+        // Section conditions avec icônes simulées
+        setFont('bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+        
+        // Puce pour Conditions
+        doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+        doc.circle(MARGIN + 1, y - 1, 0.7, 'F');
+        doc.text("Conditions:", MARGIN + 3, y);
+        
+        setFont('normal');
+        doc.setFontSize(7);
+        doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+        // Utiliser les conditions de la facture si disponibles, sinon utiliser celles par défaut
+        const conditions = facture.conditions_vente || COMPANY_INFO.feesDescription;
+        const conditionsText = doc.splitTextToSize(conditions, CONTENT_WIDTH - 23);
+        doc.text(conditionsText, MARGIN + 20, y);
+        
+        // Calculer la hauteur du texte des conditions
+        const conditionsHeight = conditionsText.length * 3;
+        y += Math.max(4, conditionsHeight);
+
+        // Puce pour Paiement
+        doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+        doc.circle(MARGIN + 1, y - 1, 0.7, 'F');
+        setFont('bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+        doc.text("Paiement par Mobile Money:", MARGIN + 3, y);
+        
+        setFont('normal');
+        doc.setFontSize(7);
+        doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+        doc.text(COMPANY_INFO.paymentMethods, MARGIN + 42, y);
+        y += 10; // Espace avant les totaux
+
+        // ========================================
+        // 5. SECTION TOTAUX (DESIGN MODERNE AVEC CARTE)
         // ========================================
         const totalsStartX = 105;
         const totalsWidth = PAGE_WIDTH - totalsStartX - MARGIN;
@@ -577,16 +617,16 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         doc.setTextColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
         doc.text(formatCurrency(grandTotal, facture.devise), valueX - 2, y + 4, { align: 'right' });
 
-        y = totalsCardY + totalsCardHeight + 8; // Réduit de 12 à 8 pour moins d'espace
+        y = totalsCardY + totalsCardHeight + 10; // Espace après les totaux
 
         // ========================================
-        // 5. PIED DE PAGE (DESIGN MODERNE)
+        // 6. FOOTER - INFORMATIONS BANCAIRES (EN BAS DE PAGE)
         // ========================================
         
-        // Vérifier s'il y a assez d'espace pour les conditions et le footer (environ 40mm nécessaires)
-        const footerHeight = 40; // Réduit de 45 à 40
+        // Vérifier s'il y a assez d'espace pour le footer (environ 25mm nécessaires)
+        const footerHeight = 25; // Réduit car plus de conditions/paiement
         const pageHeight = 297; // A4 height
-        const minFooterY = pageHeight - 45; // Position minimale pour le footer (45mm du bas)
+        const minFooterY = pageHeight - 30; // Position minimale pour le footer (30mm du bas)
         
         if (y + footerHeight > pageHeight - 15) {
             // Pas assez d'espace, créer une nouvelle page
@@ -599,49 +639,6 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
             y = minFooterY;
         }
         
-        // Ligne de séparation élégante
-        doc.setDrawColor(COLORS.border[0], COLORS.border[1], COLORS.border[2]);
-        doc.setLineWidth(0.3);
-        doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
-        doc.setLineWidth(0.2);
-        y += 5; // Réduit de 7 à 5
-
-        // Section conditions avec icônes simulées
-        setFont('bold');
-        doc.setFontSize(7.5); // Réduit de 8 à 7.5
-        doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
-        
-        // Puce pour Conditions
-        doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
-        doc.circle(MARGIN + 1, y - 1, 0.7, 'F');
-        doc.text("Conditions:", MARGIN + 3, y);
-        
-        setFont('normal');
-        doc.setFontSize(7); // Réduit de 7.5 à 7
-        doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
-        // Utiliser les conditions de la facture si disponibles, sinon utiliser celles par défaut
-        const conditions = facture.conditions_vente || COMPANY_INFO.feesDescription;
-        const conditionsText = doc.splitTextToSize(conditions, CONTENT_WIDTH - 23);
-        doc.text(conditionsText, MARGIN + 20, y);
-        
-        // Calculer la hauteur du texte des conditions
-        const conditionsHeight = conditionsText.length * 3; // Réduit de 3.5 à 3
-        y += Math.max(4, conditionsHeight); // Réduit de 5 à 4
-
-        // Puce pour Paiement
-        doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
-        doc.circle(MARGIN + 1, y - 1, 0.7, 'F');
-        setFont('bold');
-        doc.setFontSize(7.5); // Réduit de 8 à 7.5
-        doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
-        doc.text("Paiement par Mobile Money:", MARGIN + 3, y);
-        
-        setFont('normal');
-        doc.setFontSize(7); // Réduit de 7.5 à 7
-        doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
-        doc.text(COMPANY_INFO.paymentMethods, MARGIN + 42, y);
-        y += 6; // Réduit de 8 à 6
-
         // Ligne de séparation avec accent de couleur
         doc.setDrawColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
         doc.setLineWidth(1.2);
@@ -650,7 +647,7 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         doc.setLineWidth(0.5);
         doc.line(MARGIN, y + 0.5, PAGE_WIDTH - MARGIN, y + 0.5);
         doc.setLineWidth(0.2);
-        y += 5; // Réduit de 6 à 5
+        y += 5;
 
         // ========================================
         // FOOTER EN BAS DE PAGE (position dynamique)

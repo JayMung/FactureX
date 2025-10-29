@@ -493,7 +493,8 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
                         }
                     }
                 },
-                margin: { left: MARGIN, right: MARGIN },
+                margin: { left: MARGIN, right: MARGIN, bottom: 50 }, // Marge en bas pour le footer
+                showHead: 'everyPage', // Répéter l'en-tête sur chaque page
             });
             y = (doc as any).lastAutoTable.finalY + 12; // Plus d'espacement après le tableau
         }
@@ -581,6 +582,16 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         // 5. PIED DE PAGE (DESIGN MODERNE)
         // ========================================
         
+        // Vérifier s'il y a assez d'espace pour les conditions et le footer (environ 45mm nécessaires)
+        const footerHeight = 45;
+        const pageHeight = 297; // A4 height
+        
+        if (y + footerHeight > pageHeight - 10) {
+            // Pas assez d'espace, créer une nouvelle page
+            doc.addPage();
+            y = MARGIN + 10;
+        }
+        
         // Ligne de séparation élégante
         doc.setDrawColor(COLORS.border[0], COLORS.border[1], COLORS.border[2]);
         doc.setLineWidth(0.3);
@@ -605,7 +616,10 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         const conditions = facture.conditions_vente || COMPANY_INFO.feesDescription;
         const conditionsText = doc.splitTextToSize(conditions, CONTENT_WIDTH - 23);
         doc.text(conditionsText, MARGIN + 20, y);
-        y += 5;
+        
+        // Calculer la hauteur du texte des conditions
+        const conditionsHeight = conditionsText.length * 3.5;
+        y += Math.max(5, conditionsHeight);
 
         // Puce pour Paiement
         doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
@@ -632,18 +646,17 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         y += 6;
 
         // ========================================
-        // FOOTER EN BAS DE PAGE (position fixe)
+        // FOOTER EN BAS DE PAGE (position dynamique)
         // ========================================
-        const footerStartY = 258; // Position fixe pour footer
         
         // Section informations bancaires avec encadré
         setFont('bold');
         doc.setFontSize(9);
         doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
-        doc.text("INFORMATIONS BANCAIRES ET LÉGALES:", PAGE_WIDTH / 2, footerStartY, { align: 'center' });
+        doc.text("INFORMATIONS BANCAIRES ET LÉGALES:", PAGE_WIDTH / 2, y, { align: 'center' });
 
         // Informations bancaires avec style moderne
-        let footerY = footerStartY + 5;
+        y += 5;
         setFont('normal');
         doc.setFontSize(8);
         COMPANY_INFO.banks.forEach(bank => {
@@ -653,25 +666,26 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
             
             setFont('bold');
             doc.setTextColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
-            doc.text(bank.name, startX, footerY);
+            doc.text(bank.name, startX, y);
             
             setFont('normal');
             doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
             const nameWidth = doc.getTextWidth(bank.name);
-            doc.text(` ${bank.details}`, startX + nameWidth, footerY); // Espace avant les détails
-            footerY += 4;
+            doc.text(` ${bank.details}`, startX + nameWidth, y); // Espace avant les détails
+            y += 4;
         });
-        footerY += 2;
+        y += 2;
 
         // Informations légales en bas (plus visibles)
         doc.setFontSize(7.5);
         doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
         const legalInfo = `RCCM: ${COMPANY_INFO.rccm} | ID.NAT: ${COMPANY_INFO.idnat} | IMPOT: ${COMPANY_INFO.impot}`;
-        doc.text(legalInfo, PAGE_WIDTH / 2, footerY, { align: 'center' });
+        doc.text(legalInfo, PAGE_WIDTH / 2, y, { align: 'center' });
         
-        // Barre de couleur en bas de page (miroir du haut)
+        // Barre de couleur en bas de page (miroir du haut) - position dynamique
+        y += 5;
         doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
-        doc.rect(0, 293, PAGE_WIDTH, 4, 'F');
+        doc.rect(0, y, PAGE_WIDTH, 4, 'F');
 
         // --- SAUVEGARDE DU FICHIER ---
         const fileName = `${facture.type}_${facture.facture_number}.pdf`;

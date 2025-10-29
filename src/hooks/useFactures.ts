@@ -205,7 +205,22 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       if (data.total_poids !== undefined) updateData.total_poids = data.total_poids;
       if (data.total_general !== undefined) updateData.total_general = data.total_general;
 
-      // Si on met à jour les items ET qu'aucun total n'est fourni, recalculer automatiquement
+      // Si on met à jour les items, toujours les mettre à jour dans la DB
+      if (data.items && data.items.length > 0) {
+        // Supprimer les anciens items
+        await supabase.from('facture_items').delete().eq('facture_id', id);
+
+        // Insérer les nouveaux items
+        const itemsToInsert = data.items.map((item, index) => ({
+          facture_id: id,
+          numero_ligne: index + 1,
+          ...item
+        }));
+
+        await supabase.from('facture_items').insert(itemsToInsert);
+      }
+
+      // Si on met à jour les items SANS fournir de totaux, recalculer automatiquement
       if (data.items && data.subtotal === undefined) {
         const { data: shippingSettings } = await supabase
           .from('settings')
@@ -252,18 +267,6 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
         updateData.frais = fraisCommission;
         updateData.frais_transport_douane = fraisTransportDouane;
         updateData.total_general = totalGeneral;
-
-        // Supprimer les anciens items
-        await supabase.from('facture_items').delete().eq('facture_id', id);
-
-        // Insérer les nouveaux items
-        const itemsToInsert = data.items.map((item, index) => ({
-          facture_id: id,
-          numero_ligne: index + 1,
-          ...item
-        }));
-
-        await supabase.from('facture_items').insert(itemsToInsert);
       }
 
       const { error } = await supabase

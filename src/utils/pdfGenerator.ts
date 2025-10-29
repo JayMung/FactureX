@@ -550,7 +550,7 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         setFont('bold');
         doc.setFontSize(10);
         doc.setTextColor(COLORS.textDark[0], COLORS.textDark[1], COLORS.textDark[2]);
-        doc.text(formatCurrency(facture.shipping_fee, facture.devise), valueX, y, { align: 'right' });
+        doc.text(formatCurrency(facture.frais_transport_douane, facture.devise), valueX, y, { align: 'right' });
         y += 8;
 
         // Total général avec fond vert

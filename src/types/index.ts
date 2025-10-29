@@ -346,6 +346,7 @@ export interface Colis {
   fournisseur: string;
   tracking_chine?: string;
   numero_commande?: string;
+  quantite: number; // Nombre de colis
   poids: number;
   contenu_description?: string;
   tarif_kg: number;

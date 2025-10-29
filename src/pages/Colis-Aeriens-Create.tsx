@@ -41,6 +41,7 @@ const ColisAeriensCreate: React.FC = () => {
     fournisseur: '',
     tracking_chine: '',
     numero_commande: '',
+    quantite: '1',
     poids: '',
     tarif_kg: '',
     type_tarif: 'regulier', // Nouveau champ pour le type de tarif
@@ -136,8 +137,10 @@ const ColisAeriensCreate: React.FC = () => {
             fournisseur: colisData.fournisseur,
             tracking_chine: colisData.tracking_chine || '',
             numero_commande: colisData.numero_commande || '',
+            quantite: colisData.quantite?.toString() || '1',
             poids: colisData.poids.toString(),
             tarif_kg: colisData.tarif_kg.toString(),
+            type_tarif: 'regulier',
             transitaire_id: colisData.transitaire_id || '',
             date_expedition: colisData.date_expedition || '',
             date_arrivee_agence: colisData.date_arrivee_agence || '',
@@ -216,6 +219,7 @@ const ColisAeriensCreate: React.FC = () => {
         fournisseur: formData.fournisseur,
         tracking_chine: formData.tracking_chine || null,
         numero_commande: formData.numero_commande || null,
+        quantite: parseInt(formData.quantite),
         poids: parseFloat(formData.poids),
         tarif_kg: parseFloat(formData.tarif_kg),
         transitaire_id: formData.transitaire_id || null,
@@ -381,7 +385,20 @@ const ColisAeriensCreate: React.FC = () => {
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Calcul des Frais</h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="quantite">Quantité *</Label>
+                      <Input
+                        id="quantite"
+                        type="number"
+                        min="1"
+                        value={formData.quantite}
+                        onChange={(e) => handleChange('quantite', e.target.value)}
+                        placeholder="Ex: 1"
+                        required
+                      />
+                    </div>
+
                     <div>
                       <Label htmlFor="poids">Poids (kg) *</Label>
                       <Input

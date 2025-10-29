@@ -280,6 +280,7 @@ const ColisAeriens: React.FC = () => {
                         <th className="text-left py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Client</th>
                         <th className="hidden md:table-cell py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Fournisseur</th>
                         <th className="hidden lg:table-cell py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Tracking</th>
+                        <th className="text-center py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Qté</th>
                         <th className="text-center py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Poids (kg)</th>
                         <th className="hidden md:table-cell py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Tarif/kg</th>
                         <th className="text-right py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Montant</th>
@@ -316,14 +317,17 @@ const ColisAeriens: React.FC = () => {
                           </td>
                           <td className="hidden lg:table-cell py-3 px-2 md:px-4">
                             <div className="text-sm">
-                              <p className="font-mono text-xs text-gray-600">{c.tracking_chine || '-'}</p>
+                              <p className="text-sm text-gray-600">{c.tracking_chine || '-'}</p>
                               {c.numero_commande && (
-                                <p className="text-xs text-gray-400">Cmd: {c.numero_commande}</p>
+                                <p className="text-xs text-gray-500">Cmd: {c.numero_commande}</p>
                               )}
                             </div>
                           </td>
                           <td className="py-3 px-2 md:px-4 text-center">
-                            <span className="font-semibold">{c.poids}</span>
+                            <span className="font-semibold text-gray-900">{c.quantite || 1}</span>
+                          </td>
+                          <td className="py-3 px-2 md:px-4 text-center">
+                            <span className="font-semibold text-gray-900">{c.poids}</span>
                           </td>
                           <td className="hidden md:table-cell py-3 px-2 md:px-4 text-center">
                             <span className="text-sm">${c.tarif_kg}</span>
@@ -489,11 +493,11 @@ const ColisAeriens: React.FC = () => {
                       </div>
                       <div>
                         <span className="text-sm text-gray-500">Tracking Chine:</span>
-                        <p className="font-mono">{selectedColis.tracking_chine || '-'}</p>
+                        <p className="font-medium">{selectedColis.tracking_chine || '-'}</p>
                       </div>
                       <div>
                         <span className="text-sm text-gray-500">N° Commande:</span>
-                        <p className="font-mono">{selectedColis.numero_commande || '-'}</p>
+                        <p className="font-medium">{selectedColis.numero_commande || '-'}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -506,6 +510,10 @@ const ColisAeriens: React.FC = () => {
                       <CardTitle className="text-lg">Calcul des Frais</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
+                      <div>
+                        <span className="text-sm text-gray-500">Quantité:</span>
+                        <p className="font-medium">{selectedColis.quantite || 1} colis</p>
+                      </div>
                       <div>
                         <span className="text-sm text-gray-500">Poids:</span>
                         <p className="font-medium">{selectedColis.poids} kg</p>

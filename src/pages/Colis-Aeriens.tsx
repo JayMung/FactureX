@@ -49,6 +49,8 @@ const ColisAeriens: React.FC = () => {
   const [statutFilter, setStatutFilter] = useState<string>('tous');
   const [selectedColis, setSelectedColis] = useState<Colis | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [colisToDelete, setColisToDelete] = useState<{ id: string; name: string } | null>(null);
 
   usePageSetup({
     title: 'Colis Aériens',
@@ -148,21 +150,27 @@ const ColisAeriens: React.FC = () => {
     setIsDetailModalOpen(true);
   };
 
-  // Supprimer un colis
-  const handleDelete = async (colisId: string, colisName: string) => {
-    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer le colis ${colisName} ?\n\nCette action est irréversible.`)) {
-      return;
-    }
+  // Ouvrir le dialogue de suppression
+  const handleDelete = (colisId: string, colisName: string) => {
+    setColisToDelete({ id: colisId, name: colisName });
+    setDeleteDialogOpen(true);
+  };
+
+  // Confirmer la suppression
+  const handleConfirmDelete = async () => {
+    if (!colisToDelete) return;
 
     try {
       const { error } = await supabase
         .from('colis')
         .delete()
-        .eq('id', colisId);
+        .eq('id', colisToDelete.id);
 
       if (error) throw error;
 
       showSuccess('Colis supprimé avec succès');
+      setDeleteDialogOpen(false);
+      setColisToDelete(null);
       loadColis(); // Recharger la liste
     } catch (error) {
       console.error('Error deleting colis:', error);
@@ -665,6 +673,41 @@ const ColisAeriens: React.FC = () => {
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialogue de confirmation de suppression */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-red-600">Confirmer la suppression</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Êtes-vous sûr de vouloir supprimer le colis <strong>{colisToDelete?.name}</strong> ?
+              </p>
+              <p className="text-sm text-red-600 font-medium">
+                ⚠️ Cette action est irréversible.
+              </p>
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDeleteDialogOpen(false);
+                    setColisToDelete(null);
+                  }}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleConfirmDelete}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Supprimer
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </Layout>

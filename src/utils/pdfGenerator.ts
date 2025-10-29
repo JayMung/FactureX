@@ -501,49 +501,51 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         }
 
         // ========================================
-        // 4. CONDITIONS ET PAIEMENT (AVANT LES TOTAUX)
+        // 4. SECTION CONDITIONS (GAUCHE) + TOTAUX (DROITE)
         // ========================================
         
-        // Section conditions avec icônes simulées
-        setFont('bold');
-        doc.setFontSize(7.5);
-        doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+        // Sauvegarder la position Y de départ pour les deux colonnes
+        const startY = y;
         
-        // Puce pour Conditions
-        doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
-        doc.circle(MARGIN + 1, y - 1, 0.7, 'F');
-        doc.text("Conditions:", MARGIN + 3, y);
+        // COLONNE GAUCHE : CONDITIONS ET PAIEMENT
+        const leftColumnX = MARGIN;
+        const leftColumnWidth = 100; // Largeur de la colonne gauche
+        let leftY = startY;
         
+        // Conditions
         setFont('normal');
         doc.setFontSize(7);
         doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
-        // Utiliser les conditions de la facture si disponibles, sinon utiliser celles par défaut
         const conditions = facture.conditions_vente || COMPANY_INFO.feesDescription;
-        const conditionsText = doc.splitTextToSize(conditions, CONTENT_WIDTH - 23);
-        doc.text(conditionsText, MARGIN + 20, y);
+        const conditionsText = doc.splitTextToSize(conditions, leftColumnWidth - 5);
+        doc.text(conditionsText, leftColumnX, leftY);
+        leftY += conditionsText.length * 3;
         
-        // Calculer la hauteur du texte des conditions
-        const conditionsHeight = conditionsText.length * 3;
-        y += Math.max(4, conditionsHeight);
-
-        // Puce pour Paiement
-        doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
-        doc.circle(MARGIN + 1, y - 1, 0.7, 'F');
+        // Délais de livraison
+        leftY += 3;
         setFont('bold');
-        doc.setFontSize(7.5);
-        doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
-        doc.text("Paiement par Mobile Money:", MARGIN + 3, y);
-        
-        setFont('normal');
         doc.setFontSize(7);
+        doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+        doc.text("Delais de livraison :", leftColumnX, leftY);
+        setFont('normal');
         doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
-        doc.text(COMPANY_INFO.paymentMethods, MARGIN + 42, y);
-        y += 10; // Espace avant les totaux
+        leftY += 3;
+        doc.text(COMPANY_INFO.deliveryTime, leftColumnX, leftY);
+        
+        // Paiement Mobile Money
+        leftY += 5;
+        setFont('bold');
+        doc.setFontSize(7);
+        doc.setTextColor(COLORS.textBody[0], COLORS.textBody[1], COLORS.textBody[2]);
+        doc.text("Paiement par Mobile Money :", leftColumnX, leftY);
+        setFont('normal');
+        doc.setTextColor(COLORS.textMedium[0], COLORS.textMedium[1], COLORS.textMedium[2]);
+        leftY += 3;
+        const paymentText = doc.splitTextToSize(COMPANY_INFO.paymentMethods, leftColumnWidth - 5);
+        doc.text(paymentText, leftColumnX, leftY);
 
-        // ========================================
-        // 5. SECTION TOTAUX (DESIGN MODERNE AVEC CARTE)
-        // ========================================
-        const totalsStartX = 105;
+        // COLONNE DROITE : TOTAUX
+        const totalsStartX = 110; // Position X des totaux (à droite)
         const totalsWidth = PAGE_WIDTH - totalsStartX - MARGIN;
         const valueX = PAGE_WIDTH - MARGIN - 3;
         
@@ -617,7 +619,9 @@ export const generateFacturePDF = async (facture: Facture, previewMode: boolean 
         doc.setTextColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
         doc.text(formatCurrency(grandTotal, facture.devise), valueX - 2, y + 4, { align: 'right' });
 
-        y = totalsCardY + totalsCardHeight + 10; // Espace après les totaux
+        // Calculer la position Y finale (la plus basse des deux colonnes)
+        const rightColumnEndY = totalsCardY + totalsCardHeight;
+        y = Math.max(leftY, rightColumnEndY) + 10; // Prendre la plus haute + espace
 
         // ========================================
         // 6. FOOTER - INFORMATIONS BANCAIRES (EN BAS DE PAGE)

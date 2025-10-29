@@ -833,9 +833,9 @@ const FacturesCreate: React.FC = () => {
                         {formData.devise === 'CDF' ? ' CDF' : ''}
                       </span>
                     </div>
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span>Poids total:</span>
-                      <span className="font-medium">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Poids total:</span>
+                      <span className="font-medium text-green-600">
                         {totals.totalPoids.toFixed(2)} {formData.mode_livraison === 'aerien' ? 'Kg' : 'CBM'}
                       </span>
                     </div>

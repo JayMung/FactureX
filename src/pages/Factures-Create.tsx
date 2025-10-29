@@ -322,18 +322,20 @@ const FacturesCreate: React.FC = () => {
     const fraisAerien = 16; // Default value
     const fraisMaritime = 450; // Default value
     
+    // Appliquer la conversion si la devise est CDF
+    const tauxUSDtoCDF = rates?.usdToCdf || 2100;
+    const conversionRate = formData.devise === 'CDF' ? tauxUSDtoCDF : 1;
+    
     // Use custom transport fee if set, otherwise calculate normally
+    // IMPORTANT: customTransportFee is already in the current currency (USD or CDF)
+    // so we need to convert it back to USD for the calculation
     const fraisTransportDouaneUSD = customTransportFee !== null 
-      ? customTransportFee 
+      ? customTransportFee / conversionRate  // Convert back to USD if in CDF
       : (formData.mode_livraison === 'aerien' 
         ? totalPoids * fraisAerien 
         : totalPoids * fraisMaritime);
     
     const totalGeneralUSD = subtotalUSD + fraisUSD + fraisTransportDouaneUSD;
-
-    // Appliquer la conversion si la devise est CDF
-    const tauxUSDtoCDF = rates?.usdToCdf || 2100;
-    const conversionRate = formData.devise === 'CDF' ? tauxUSDtoCDF : 1;
     
     return {
       subtotal: subtotalUSD * conversionRate,

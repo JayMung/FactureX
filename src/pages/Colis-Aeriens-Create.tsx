@@ -38,6 +38,7 @@ const ColisAeriensCreate: React.FC = () => {
     numero_commande: '',
     poids: '',
     tarif_kg: '',
+    type_tarif: 'regulier', // Nouveau champ pour le type de tarif
     transitaire_id: '',
     date_expedition: '',
     date_arrivee_agence: '',
@@ -86,16 +87,26 @@ const ColisAeriensCreate: React.FC = () => {
       if (settingsError) throw settingsError;
 
       // Parser les paramètres
+      let regulier = 16;
+      let express = 25;
+      
       settingsData?.forEach(setting => {
         if (setting.cle === 'fournisseurs') {
           // Nettoyer les espaces et filtrer les valeurs vides
           setFournisseurs(setting.valeur.split(',').map(f => f.trim()).filter(f => f));
         } else if (setting.cle === 'tarif_aerien_regulier') {
-          setTarifRegulier(parseFloat(setting.valeur));
+          regulier = parseFloat(setting.valeur);
+          setTarifRegulier(regulier);
         } else if (setting.cle === 'tarif_aerien_express') {
-          setTarifExpress(parseFloat(setting.valeur));
+          express = parseFloat(setting.valeur);
+          setTarifExpress(express);
         }
       });
+
+      // Initialiser le tarif par défaut (régulier) si pas en mode édition
+      if (!isEditMode) {
+        setFormData(prev => ({ ...prev, tarif_kg: regulier.toString() }));
+      }
 
       // Si mode édition, charger le colis
       if (isEditMode && id) {
@@ -140,10 +151,14 @@ const ColisAeriensCreate: React.FC = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Sélectionner un tarif prédéfini
-  const selectTarif = (type: 'regulier' | 'express') => {
+  // Gérer le changement de type de tarif
+  const handleTypeTarifChange = (type: 'regulier' | 'express') => {
     const tarif = type === 'regulier' ? tarifRegulier : tarifExpress;
-    handleChange('tarif_kg', tarif.toString());
+    setFormData(prev => ({ 
+      ...prev, 
+      type_tarif: type,
+      tarif_kg: tarif.toString() 
+    }));
   };
 
   // Soumettre le formulaire
@@ -357,6 +372,20 @@ const ColisAeriensCreate: React.FC = () => {
                     </div>
 
                     <div>
+                      <Label htmlFor="type_tarif">Type de Tarif *</Label>
+                      <select
+                        id="type_tarif"
+                        value={formData.type_tarif}
+                        onChange={(e) => handleTypeTarifChange(e.target.value as 'regulier' | 'express')}
+                        className="w-full px-3 py-2 border rounded-md"
+                        required
+                      >
+                        <option value="regulier">Régulier (${tarifRegulier}/kg)</option>
+                        <option value="express">Express (${tarifExpress}/kg)</option>
+                      </select>
+                    </div>
+
+                    <div>
                       <Label htmlFor="tarif_kg">Tarif/kg (USD) *</Label>
                       <Input
                         id="tarif_kg"
@@ -367,28 +396,8 @@ const ColisAeriensCreate: React.FC = () => {
                         onChange={(e) => handleChange('tarif_kg', e.target.value)}
                         placeholder="Ex: 16"
                         required
+                        className="bg-gray-50"
                       />
-                    </div>
-
-                    <div className="flex items-end gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => selectTarif('regulier')}
-                        className="flex-1"
-                      >
-                        Régulier ${tarifRegulier}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => selectTarif('express')}
-                        className="flex-1"
-                      >
-                        Express ${tarifExpress}
-                      </Button>
                     </div>
                   </div>
 

@@ -12,6 +12,7 @@ import FacturesProtected from "./pages/Factures-Protected";
 import FacturesCreate from "./pages/Factures-Create";
 import FacturesView from "./pages/Factures-View";
 import FacturesPreview from "./pages/Factures-Preview";
+import ColisAeriens from "./pages/Colis-Aeriens";
 import SettingsWithPermissions from "./pages/Settings-Permissions";
 import ActivityLogs from "./pages/ActivityLogs";
 import SecurityDashboard from "./pages/SecurityDashboard";
@@ -74,6 +75,11 @@ const App = () => (
               <Route path="/factures/preview/:id" element={
                 <ProtectedRouteEnhanced>
                   <FacturesPreview />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/colis/aeriens" element={
+                <ProtectedRouteEnhanced>
+                  <ColisAeriens />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/settings" element={

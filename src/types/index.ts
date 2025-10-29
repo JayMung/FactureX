@@ -260,7 +260,7 @@ export interface UserPermission {
   updated_at: string;
 }
 
-export type ModuleType = 'clients' | 'transactions' | 'settings' | 'payment_methods' | 'activity_logs' | 'factures' | 'exchange_rates' | 'transaction_fees';
+export type ModuleType = 'clients' | 'transactions' | 'settings' | 'payment_methods' | 'activity_logs' | 'factures' | 'exchange_rates' | 'transaction_fees' | 'colis';
 
 export interface ModuleInfo {
   id: ModuleType;
@@ -338,6 +338,81 @@ export const PREDEFINED_ROLES: PermissionRole[] = [
   }
 ];
 
+// Types pour les Colis
+export interface Colis {
+  id: string;
+  client_id: string;
+  type_livraison: 'aerien' | 'maritime';
+  fournisseur: string;
+  tracking_chine?: string;
+  numero_commande?: string;
+  poids: number;
+  contenu_description?: string;
+  tarif_kg: number;
+  montant_a_payer: number; // Calculé automatiquement
+  transitaire_id?: string;
+  date_expedition?: string;
+  date_arrivee_agence?: string;
+  statut: 'en_preparation' | 'expedie_chine' | 'en_transit' | 'arrive_congo' | 'recupere_client' | 'livre';
+  statut_paiement: 'non_paye' | 'partiellement_paye' | 'paye';
+  notes?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  // Relations
+  client?: Client;
+  transitaire?: Transitaire;
+}
+
+export interface Transitaire {
+  id: string;
+  nom: string;
+  nom_contact?: string;
+  telephone?: string;
+  ville?: string;
+  services_offerts?: string[];
+  specialisation_chine: boolean;
+  specialisation_congo: boolean;
+  delai_moyen_livraison?: number;
+  tarif_base?: number;
+  actif: boolean;
+  note_interne?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TarifColis {
+  id: string;
+  type_livraison: 'aerien' | 'maritime';
+  categorie: string;
+  poids_min: number;
+  poids_max: number;
+  tarif_par_kg: number;
+  devise: 'USD' | 'CDF';
+  description?: string;
+  conditions?: string;
+  actif: boolean;
+  date_debut?: string;
+  date_fin?: string;
+  created_at: string;
+}
+
+export interface PaiementColis {
+  id: string;
+  colis_id: string;
+  client_id: string;
+  montant_paye: number;
+  devise: 'USD' | 'CDF';
+  mode_paiement: string;
+  reference_paiement?: string;
+  date_paiement: string;
+  statut: 'en_attente' | 'confirme' | 'annule';
+  recu_url?: string;
+  notes?: string;
+  created_by: string;
+  created_at: string;
+}
+
 // Informations sur les modules
 export const MODULES_INFO: ModuleInfo[] = [
   { id: 'clients', name: 'Clients', description: 'Gestion des clients', icon: 'Users', adminOnly: false },
@@ -347,5 +422,6 @@ export const MODULES_INFO: ModuleInfo[] = [
   { id: 'activity_logs', name: 'Logs d\'activité', description: 'Historique des actions', icon: 'FileText', adminOnly: true },
   { id: 'factures', name: 'Factures', description: 'Gestion des factures et devis', icon: 'FileText', adminOnly: false },
   { id: 'exchange_rates', name: 'Taux de change', description: 'Configuration des taux', icon: 'DollarSign', adminOnly: true },
-  { id: 'transaction_fees', name: 'Frais de transaction', description: 'Configuration des frais', icon: 'Settings', adminOnly: true }
+  { id: 'transaction_fees', name: 'Frais de transaction', description: 'Configuration des frais', icon: 'Settings', adminOnly: true },
+  { id: 'colis', name: 'Colis', description: 'Gestion des colis aériens et maritimes', icon: 'Package', adminOnly: false }
 ];

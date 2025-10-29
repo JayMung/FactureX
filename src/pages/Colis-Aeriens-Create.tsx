@@ -237,52 +237,66 @@ const ColisAeriensCreate: React.FC = () => {
 
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Section Client */}
+                {/* Informations Principales - 3 colonnes */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Informations Client</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Informations Principales</h3>
                   
-                  <div>
-                    <Label htmlFor="client_id">Client *</Label>
-                    <select
-                      id="client_id"
-                      value={formData.client_id}
-                      onChange={(e) => handleChange('client_id', e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md"
-                      required
-                    >
-                      <option value="">Sélectionner un client</option>
-                      {clients.map(client => (
-                        <option key={client.id} value={client.id}>
-                          {client.nom} - {client.telephone}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="client_id">Client *</Label>
+                      <select
+                        id="client_id"
+                        value={formData.client_id}
+                        onChange={(e) => handleChange('client_id', e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md"
+                        required
+                      >
+                        <option value="">Sélectionner un client</option>
+                        {clients.map(client => (
+                          <option key={client.id} value={client.id}>
+                            {client.nom} - {client.telephone}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                {/* Section Fournisseur */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Informations Fournisseur</h3>
-                  
-                  <div>
-                    <Label htmlFor="fournisseur">Fournisseur *</Label>
-                    <select
-                      id="fournisseur"
-                      value={formData.fournisseur}
-                      onChange={(e) => handleChange('fournisseur', e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md"
-                      required
-                    >
-                      <option value="">Sélectionner un fournisseur</option>
-                      {fournisseurs.map(fournisseur => (
-                        <option key={fournisseur} value={fournisseur}>
-                          {fournisseur}
-                        </option>
-                      ))}
-                    </select>
+                    <div>
+                      <Label htmlFor="fournisseur">Fournisseur *</Label>
+                      <select
+                        id="fournisseur"
+                        value={formData.fournisseur}
+                        onChange={(e) => handleChange('fournisseur', e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md"
+                        required
+                      >
+                        <option value="">Sélectionner un fournisseur</option>
+                        {fournisseurs.map(fournisseur => (
+                          <option key={fournisseur} value={fournisseur}>
+                            {fournisseur}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="transitaire_id">Transitaire</Label>
+                      <select
+                        id="transitaire_id"
+                        value={formData.transitaire_id}
+                        onChange={(e) => handleChange('transitaire_id', e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md"
+                      >
+                        <option value="">Aucun transitaire</option>
+                        {transitaires.map(transitaire => (
+                          <option key={transitaire.id} value={transitaire.id}>
+                            {transitaire.nom}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <Label htmlFor="tracking_chine">Tracking Chine</Label>
                       <Input
@@ -302,14 +316,31 @@ const ColisAeriensCreate: React.FC = () => {
                         placeholder="Ex: 2024123456789"
                       />
                     </div>
+
+                    <div>
+                      <Label htmlFor="statut">Statut</Label>
+                      <select
+                        id="statut"
+                        value={formData.statut}
+                        onChange={(e) => handleChange('statut', e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md"
+                      >
+                        <option value="en_preparation">En préparation</option>
+                        <option value="expedie_chine">Expédié Chine</option>
+                        <option value="en_transit">En transit</option>
+                        <option value="arrive_congo">Arrivé Congo</option>
+                        <option value="recupere_client">Récupéré client</option>
+                        <option value="livre">Livré</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
-                {/* Section Poids et Tarif */}
+                {/* Calcul des Frais - 3 colonnes */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Calcul des Frais</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Calcul des Frais</h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <Label htmlFor="poids">Poids (kg) *</Label>
                       <Input
@@ -325,35 +356,38 @@ const ColisAeriensCreate: React.FC = () => {
                     </div>
 
                     <div>
-                      <Label htmlFor="tarif_kg">Tarif par kg (USD) *</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="tarif_kg"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formData.tarif_kg}
-                          onChange={(e) => handleChange('tarif_kg', e.target.value)}
-                          placeholder="Ex: 16"
-                          required
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => selectTarif('regulier')}
-                        >
-                          Régulier (${tarifRegulier})
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => selectTarif('express')}
-                        >
-                          Express (${tarifExpress})
-                        </Button>
-                      </div>
+                      <Label htmlFor="tarif_kg">Tarif/kg (USD) *</Label>
+                      <Input
+                        id="tarif_kg"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.tarif_kg}
+                        onChange={(e) => handleChange('tarif_kg', e.target.value)}
+                        placeholder="Ex: 16"
+                        required
+                      />
+                    </div>
+
+                    <div className="flex items-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => selectTarif('regulier')}
+                        className="flex-1"
+                      >
+                        Régulier ${tarifRegulier}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => selectTarif('express')}
+                        className="flex-1"
+                      >
+                        Express ${tarifExpress}
+                      </Button>
                     </div>
                   </div>
 
@@ -373,27 +407,10 @@ const ColisAeriensCreate: React.FC = () => {
                   )}
                 </div>
 
-                {/* Section Logistique */}
+                {/* Dates - 2 colonnes */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Informations Logistiques</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Dates</h3>
                   
-                  <div>
-                    <Label htmlFor="transitaire_id">Transitaire</Label>
-                    <select
-                      id="transitaire_id"
-                      value={formData.transitaire_id}
-                      onChange={(e) => handleChange('transitaire_id', e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md"
-                    >
-                      <option value="">Aucun transitaire</option>
-                      {transitaires.map(transitaire => (
-                        <option key={transitaire.id} value={transitaire.id}>
-                          {transitaire.nom}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="date_expedition">Date Expédition</Label>
@@ -415,49 +432,34 @@ const ColisAeriensCreate: React.FC = () => {
                       />
                     </div>
                   </div>
-
-                  <div>
-                    <Label htmlFor="statut">Statut</Label>
-                    <select
-                      id="statut"
-                      value={formData.statut}
-                      onChange={(e) => handleChange('statut', e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md"
-                    >
-                      <option value="en_preparation">En préparation</option>
-                      <option value="expedie_chine">Expédié Chine</option>
-                      <option value="en_transit">En transit</option>
-                      <option value="arrive_congo">Arrivé Congo</option>
-                      <option value="recupere_client">Récupéré client</option>
-                      <option value="livre">Livré</option>
-                    </select>
-                  </div>
                 </div>
 
-                {/* Section Détails */}
+                {/* Détails - 2 colonnes */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Détails Supplémentaires</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Détails Supplémentaires</h3>
                   
-                  <div>
-                    <Label htmlFor="contenu_description">Description du Contenu</Label>
-                    <Textarea
-                      id="contenu_description"
-                      value={formData.contenu_description}
-                      onChange={(e) => handleChange('contenu_description', e.target.value)}
-                      placeholder="Ex: Vêtements, électronique, etc."
-                      rows={3}
-                    />
-                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="contenu_description">Description du Contenu</Label>
+                      <Textarea
+                        id="contenu_description"
+                        value={formData.contenu_description}
+                        onChange={(e) => handleChange('contenu_description', e.target.value)}
+                        placeholder="Ex: Vêtements, électronique, etc."
+                        rows={3}
+                      />
+                    </div>
 
-                  <div>
-                    <Label htmlFor="notes">Notes</Label>
-                    <Textarea
-                      id="notes"
-                      value={formData.notes}
-                      onChange={(e) => handleChange('notes', e.target.value)}
-                      placeholder="Notes internes..."
-                      rows={3}
-                    />
+                    <div>
+                      <Label htmlFor="notes">Notes Internes</Label>
+                      <Textarea
+                        id="notes"
+                        value={formData.notes}
+                        onChange={(e) => handleChange('notes', e.target.value)}
+                        placeholder="Notes internes..."
+                        rows={3}
+                      />
+                    </div>
                   </div>
                 </div>
 

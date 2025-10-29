@@ -29,7 +29,8 @@ import {
   Save,
   Receipt,
   History,
-  Package
+  Package,
+  Truck
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -58,6 +59,7 @@ import PermissionsManager from '../components/permissions/PermissionsManager';
 import { SettingsFacture } from './Settings-Facture';
 import { CompanySettings } from '../components/settings/CompanySettings';
 import { SettingsColis } from '../components/settings/SettingsColis';
+import { SettingsTransitaires } from '../components/settings/SettingsTransitaires';
 import {
   Dialog,
   DialogContent,
@@ -566,6 +568,13 @@ const SettingsWithPermissions = () => {
       adminOnly: false
     },
     {
+      id: 'transitaires',
+      label: 'Transitaires',
+      icon: <Truck className="h-5 w-5" />,
+      description: 'Gestion des transitaires et partenaires logistiques',
+      adminOnly: false
+    },
+    {
       id: 'exchange-rates',
       label: 'Taux de change',
       icon: <DollarSign className="h-5 w-5" />,
@@ -598,7 +607,8 @@ const SettingsWithPermissions = () => {
     'transaction-fees': 'transaction_fees',
     'activity-logs': 'activity_logs',
     'factures': 'factures',
-    'colis': 'colis'
+    'colis': 'colis',
+    'transitaires': 'colis'
   };
 
   const filteredOptions = settingsOptions.filter(option => {
@@ -1189,6 +1199,9 @@ const SettingsWithPermissions = () => {
 
             {/* Colis Settings Tab */}
             {activeTab === 'colis' && <SettingsColis />}
+
+            {/* Transitaires Settings Tab */}
+            {activeTab === 'transitaires' && <SettingsTransitaires />}
 
           </div>
         </div>

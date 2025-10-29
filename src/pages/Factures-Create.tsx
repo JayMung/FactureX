@@ -327,10 +327,9 @@ const FacturesCreate: React.FC = () => {
     const conversionRate = formData.devise === 'CDF' ? tauxUSDtoCDF : 1;
     
     // Use custom transport fee if set, otherwise calculate normally
-    // IMPORTANT: customTransportFee is already in the current currency (USD or CDF)
-    // so we need to convert it back to USD for the calculation
+    // IMPORTANT: customTransportFee is always stored in USD
     const fraisTransportDouaneUSD = customTransportFee !== null 
-      ? customTransportFee / conversionRate  // Convert back to USD if in CDF
+      ? customTransportFee  // Already in USD
       : (formData.mode_livraison === 'aerien' 
         ? totalPoids * fraisAerien 
         : totalPoids * fraisMaritime);
@@ -811,8 +810,12 @@ const FacturesCreate: React.FC = () => {
                           <span className="text-gray-600">Frais transport & douane:</span>
                           <Input
                             type="number"
-                            value={customTransportFee !== null ? customTransportFee : totals.fraisTransportDouane}
-                            onChange={(e) => setCustomTransportFee(parseFloat(e.target.value) || 0)}
+                            value={customTransportFee !== null ? (customTransportFee * totals.tauxConversion).toFixed(2) : totals.fraisTransportDouane.toFixed(2)}
+                            onChange={(e) => {
+                              const valueInCurrentCurrency = parseFloat(e.target.value) || 0;
+                              const valueInUSD = valueInCurrentCurrency / totals.tauxConversion;
+                              setCustomTransportFee(valueInUSD);
+                            }}
                             onBlur={() => setIsEditingTransport(false)}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') setIsEditingTransport(false);

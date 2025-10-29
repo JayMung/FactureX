@@ -15,6 +15,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Plane,
   Plus,
   Search,
@@ -24,7 +31,8 @@ import {
   Package,
   Filter,
   Download,
-  X
+  X,
+  MoreVertical
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { showSuccess, showError } from '@/utils/toast';
@@ -151,7 +159,7 @@ const ColisAeriens: React.FC = () => {
       <Layout>
         <div className="space-y-6">
           {/* En-tête avec statistiques */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
@@ -263,27 +271,27 @@ const ColisAeriens: React.FC = () => {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full min-w-[800px]">
                     <thead>
                       <tr className="bg-gray-50 border-b">
-                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">ID Colis</th>
-                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Client</th>
-                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Fournisseur</th>
-                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Tracking</th>
-                        <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">Poids (kg)</th>
-                        <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">Tarif/kg</th>
-                        <th className="text-right py-3 px-4 font-semibold text-sm text-gray-700">Montant</th>
-                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Transitaire</th>
-                        <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">Statut</th>
-                        <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">Paiement</th>
-                        <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">Date Arrivée</th>
-                        <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">Actions</th>
+                        <th className="text-left py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">ID Colis</th>
+                        <th className="text-left py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Client</th>
+                        <th className="hidden md:table-cell py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Fournisseur</th>
+                        <th className="hidden lg:table-cell py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Tracking</th>
+                        <th className="text-center py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Poids (kg)</th>
+                        <th className="hidden md:table-cell py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Tarif/kg</th>
+                        <th className="text-right py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Montant</th>
+                        <th className="hidden lg:table-cell py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Transitaire</th>
+                        <th className="text-center py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Statut</th>
+                        <th className="text-center py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Paiement</th>
+                        <th className="hidden md:table-cell py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Date Arrivée</th>
+                        <th className="text-center py-3 px-2 md:px-4 font-semibold text-sm text-gray-700 w-12"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredColis.map((c) => (
                         <tr key={c.id} className="border-b hover:bg-gray-50 transition-colors">
-                          <td className="py-3 px-4">
+                          <td className="py-3 px-2 md:px-4">
                             <button
                               onClick={() => handleViewDetails(c)}
                               className="text-blue-600 hover:text-blue-800 font-mono text-sm font-medium hover:underline"
@@ -291,18 +299,18 @@ const ColisAeriens: React.FC = () => {
                               {generateColisId(c)}
                             </button>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="py-3 px-2 md:px-4">
                             <div>
                               <p className="font-medium text-gray-900">{c.client?.nom}</p>
-                              <p className="text-xs text-gray-500">{c.client?.telephone}</p>
+                              <p className="hidden md:block text-xs text-gray-500">{c.client?.telephone}</p>
                             </div>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="hidden md:table-cell py-3 px-2 md:px-4">
                             <Badge variant="outline" className="text-xs">
                               {c.fournisseur}
                             </Badge>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="hidden lg:table-cell py-3 px-2 md:px-4">
                             <div className="text-sm">
                               <p className="font-mono text-xs text-gray-600">{c.tracking_chine || '-'}</p>
                               {c.numero_commande && (
@@ -310,64 +318,117 @@ const ColisAeriens: React.FC = () => {
                               )}
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-center">
+                          <td className="py-3 px-2 md:px-4 text-center">
                             <span className="font-semibold">{c.poids}</span>
                           </td>
-                          <td className="py-3 px-4 text-center">
+                          <td className="hidden md:table-cell py-3 px-2 md:px-4 text-center">
                             <span className="text-sm">${c.tarif_kg}</span>
                           </td>
-                          <td className="py-3 px-4 text-right">
+                          <td className="py-3 px-2 md:px-4 text-right">
                             <span className="font-bold text-green-600">
                               {formatCurrency(c.montant_a_payer, 'USD')}
                             </span>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="hidden lg:table-cell py-3 px-2 md:px-4">
                             <span className="text-sm text-gray-600">
                               {c.transitaire?.nom || '-'}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-center">
+                          <td className="py-3 px-2 md:px-4 text-center">
                             {getStatutBadge(c.statut)}
                           </td>
-                          <td className="py-3 px-4 text-center">
+                          <td className="py-3 px-2 md:px-4 text-center">
                             {getStatutPaiementBadge(c.statut_paiement)}
                           </td>
-                          <td className="py-3 px-4 text-center text-sm text-gray-600">
-                            {c.date_arrivee_agence 
-                              ? new Date(c.date_arrivee_agence).toLocaleDateString('fr-FR')
-                              : '-'
-                            }
+                          <td className="hidden md:table-cell py-3 px-2 md:px-4 text-center text-sm text-gray-600">
+                            <div className="flex items-center justify-between">
+                              <span>
+                                {c.date_arrivee_agence 
+                                  ? new Date(c.date_arrivee_agence).toLocaleDateString('fr-FR')
+                                  : '-'
+                                }
+                              </span>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => handleViewDetails(c)}
+                                    className="cursor-pointer"
+                                  >
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    Voir détails
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => navigate(`/colis/aeriens/${c.id}/modifier`)}
+                                    className="cursor-pointer"
+                                  >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Modifier
+                                  </DropdownMenuItem>
+                                  {c.statut_paiement !== 'paye' && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={() => navigate(`/colis/aeriens/${c.id}/payer`)}
+                                        className="cursor-pointer text-green-600"
+                                      >
+                                        <DollarSign className="h-4 w-4 mr-2" />
+                                        Enregistrer paiement
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center justify-center gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => navigate(`/colis/aeriens/${c.id}`)}
-                                title="Voir détails"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => navigate(`/colis/aeriens/${c.id}/modifier`)}
-                                title="Modifier"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              {c.statut_paiement !== 'paye' && (
+                          <td className="md:hidden py-3 px-2 md:px-4 text-center">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="text-green-600 hover:text-green-700"
-                                  onClick={() => navigate(`/colis/aeriens/${c.id}/payer`)}
-                                  title="Enregistrer paiement"
+                                  className="h-8 w-8 p-0"
                                 >
-                                  <DollarSign className="h-4 w-4" />
+                                  <MoreVertical className="h-4 w-4" />
                                 </Button>
-                              )}
-                            </div>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleViewDetails(c)}
+                                  className="cursor-pointer"
+                                >
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Voir détails
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => navigate(`/colis/aeriens/${c.id}/modifier`)}
+                                  className="cursor-pointer"
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Modifier
+                                </DropdownMenuItem>
+                                {c.statut_paiement !== 'paye' && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => navigate(`/colis/aeriens/${c.id}/payer`)}
+                                      className="cursor-pointer text-green-600"
+                                    >
+                                      <DollarSign className="h-4 w-4 mr-2" />
+                                      Enregistrer paiement
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </td>
                         </tr>
                       ))}

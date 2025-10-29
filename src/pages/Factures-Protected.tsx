@@ -372,16 +372,6 @@ const FacturesProtected: React.FC = () => {
             );
           })()}
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end">
-            <PermissionGuard module="factures" permission="create">
-              <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddNew}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nouvelle Facture/Devis
-              </Button>
-            </PermissionGuard>
-          </div>
-
           {/* Stats Cards - Design System */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             <Card className="card-base transition-shadow-hover">
@@ -500,9 +490,15 @@ const FacturesProtected: React.FC = () => {
           {/* Factures Table */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Liste des Factures et Devis</span>
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Liste des Factures et Devis</CardTitle>
+                <PermissionGuard module="factures" permission="create">
+                  <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddNew}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nouvelle Facture/Devis
+                  </Button>
+                </PermissionGuard>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">

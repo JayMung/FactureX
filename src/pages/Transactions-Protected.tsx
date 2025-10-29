@@ -240,8 +240,10 @@ const TransactionsProtected: React.FC = () => {
   };
 
   const handleFormSuccess = () => {
-    // Les mutations dans useTransactions gèrent déjà l'actualisation automatique
-    // Pas besoin de refetch manuel
+    // Forcer le rafraîchissement après création/modification
+    setTimeout(() => {
+      refetch();
+    }, 100);
   };
 
   const handleStatusChange = async (transaction: Transaction, newStatus: string) => {

@@ -9,6 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Plane,
   Plus,
   Search,
@@ -17,7 +23,8 @@ import {
   DollarSign,
   Package,
   Filter,
-  Download
+  Download,
+  X
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { showSuccess, showError } from '@/utils/toast';
@@ -31,6 +38,8 @@ const ColisAeriens: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statutFilter, setStatutFilter] = useState<string>('tous');
+  const [selectedColis, setSelectedColis] = useState<Colis | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   usePageSetup({
     title: 'Colis Aériens',
@@ -111,6 +120,21 @@ const ColisAeriens: React.FC = () => {
         {variant.label}
       </Badge>
     );
+  };
+
+  // Générer un ID de colis lisible
+  const generateColisId = (colis: Colis) => {
+    const date = new Date(colis.created_at || '');
+    const year = date.getFullYear().toString().slice(-2);
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const shortId = colis.id.slice(0, 6).toUpperCase();
+    return `CA-${year}${month}-${shortId}`;
+  };
+
+  // Ouvrir le modal de détails
+  const handleViewDetails = (colis: Colis) => {
+    setSelectedColis(colis);
+    setIsDetailModalOpen(true);
   };
 
   // Statistiques rapides
@@ -242,6 +266,7 @@ const ColisAeriens: React.FC = () => {
                   <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50 border-b">
+                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">ID Colis</th>
                         <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Client</th>
                         <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Fournisseur</th>
                         <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Tracking</th>
@@ -258,6 +283,14 @@ const ColisAeriens: React.FC = () => {
                     <tbody>
                       {filteredColis.map((c) => (
                         <tr key={c.id} className="border-b hover:bg-gray-50 transition-colors">
+                          <td className="py-3 px-4">
+                            <button
+                              onClick={() => handleViewDetails(c)}
+                              className="text-blue-600 hover:text-blue-800 font-mono text-sm font-medium hover:underline"
+                            >
+                              {generateColisId(c)}
+                            </button>
+                          </td>
                           <td className="py-3 px-4">
                             <div>
                               <p className="font-medium text-gray-900">{c.client?.nom}</p>
@@ -345,6 +378,183 @@ const ColisAeriens: React.FC = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Modal de détails du colis */}
+        <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-blue-500" />
+                Détails du Colis - {selectedColis ? generateColisId(selectedColis) : ''}
+              </DialogTitle>
+            </DialogHeader>
+            
+            {selectedColis && (
+              <div className="space-y-6">
+                {/* Informations principales */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Informations Client</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <span className="text-sm text-gray-500">Nom du client:</span>
+                        <p className="font-medium">{selectedColis.client?.nom}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500">Téléphone:</span>
+                        <p className="font-medium">{selectedColis.client?.telephone}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500">Email:</span>
+                        <p className="font-medium">{selectedColis.client?.email || '-'}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Informations Fournisseur</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <span className="text-sm text-gray-500">Fournisseur:</span>
+                        <p className="font-medium">{selectedColis.fournisseur}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500">Tracking Chine:</span>
+                        <p className="font-mono">{selectedColis.tracking_chine || '-'}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500">N° Commande:</span>
+                        <p className="font-mono">{selectedColis.numero_commande || '-'}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Calcul et logistique */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Calcul des Frais</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <span className="text-sm text-gray-500">Poids:</span>
+                        <p className="font-medium">{selectedColis.poids} kg</p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500">Tarif/kg:</span>
+                        <p className="font-medium">${selectedColis.tarif_kg}</p>
+                      </div>
+                      <div className="pt-3 border-t">
+                        <span className="text-sm text-gray-500">Montant Total:</span>
+                        <p className="text-2xl font-bold text-green-600">
+                          {formatCurrency(selectedColis.montant_a_payer, 'USD')}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Logistique</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <span className="text-sm text-gray-500">Transitaire:</span>
+                        <p className="font-medium">{selectedColis.transitaire?.nom || 'Aucun'}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500">Date Expédition:</span>
+                        <p className="font-medium">
+                          {selectedColis.date_expedition 
+                            ? new Date(selectedColis.date_expedition).toLocaleDateString('fr-FR')
+                            : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500">Date Arrivée:</span>
+                        <p className="font-medium">
+                          {selectedColis.date_arrivee_agence 
+                            ? new Date(selectedColis.date_arrivee_agence).toLocaleDateString('fr-FR')
+                            : '-'}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Statuts</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <span className="text-sm text-gray-500">Statut livraison:</span>
+                        <div className="mt-1">{getStatutBadge(selectedColis.statut)}</div>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500">Statut paiement:</span>
+                        <div className="mt-1">{getStatutPaiementBadge(selectedColis.statut_paiement)}</div>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500">Créé le:</span>
+                        <p className="font-medium">
+                          {new Date(selectedColis.created_at || '').toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Détails supplémentaires */}
+                {(selectedColis.contenu_description || selectedColis.notes) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Détails Supplémentaires</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {selectedColis.contenu_description && (
+                        <div>
+                          <span className="text-sm text-gray-500">Description du contenu:</span>
+                          <p className="mt-1 text-gray-700">{selectedColis.contenu_description}</p>
+                        </div>
+                      )}
+                      {selectedColis.notes && (
+                        <div>
+                          <span className="text-sm text-gray-500">Notes internes:</span>
+                          <p className="mt-1 text-gray-700">{selectedColis.notes}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Actions */}
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsDetailModalOpen(false)}
+                  >
+                    Fermer
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setIsDetailModalOpen(false);
+                      navigate(`/colis/aeriens/${selectedColis.id}/modifier`);
+                    }}
+                    className="bg-green-500 hover:bg-green-600"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Modifier le colis
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </Layout>
     </ProtectedRouteEnhanced>
   );

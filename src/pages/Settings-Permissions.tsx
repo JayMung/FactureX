@@ -28,7 +28,8 @@ import {
   Lock,
   Save,
   Receipt,
-  History
+  History,
+  Package
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -56,6 +57,7 @@ import ConfirmDialog from '@/components/ui/confirm-dialog';
 import PermissionsManager from '../components/permissions/PermissionsManager';
 import { SettingsFacture } from './Settings-Facture';
 import { CompanySettings } from '../components/settings/CompanySettings';
+import { SettingsColis } from '../components/settings/SettingsColis';
 import {
   Dialog,
   DialogContent,
@@ -557,6 +559,13 @@ const SettingsWithPermissions = () => {
       adminOnly: false
     },
     {
+      id: 'colis',
+      label: 'Colis',
+      icon: <Package className="h-5 w-5" />,
+      description: 'Fournisseurs et tarifs pour colis aériens/maritimes',
+      adminOnly: false
+    },
+    {
       id: 'exchange-rates',
       label: 'Taux de change',
       icon: <DollarSign className="h-5 w-5" />,
@@ -588,7 +597,8 @@ const SettingsWithPermissions = () => {
     'exchange-rates': 'exchange_rates',
     'transaction-fees': 'transaction_fees',
     'activity-logs': 'activity_logs',
-    'factures': 'factures'
+    'factures': 'factures',
+    'colis': 'colis'
   };
 
   const filteredOptions = settingsOptions.filter(option => {
@@ -1176,6 +1186,10 @@ const SettingsWithPermissions = () => {
 
             {/* Factures Settings Tab */}
             {activeTab === 'factures' && <SettingsFacture />}
+
+            {/* Colis Settings Tab */}
+            {activeTab === 'colis' && <SettingsColis />}
+
           </div>
         </div>
       </div>

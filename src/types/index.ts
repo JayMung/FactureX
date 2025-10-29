@@ -212,6 +212,11 @@ export interface CreateFactureData {
   conditions_vente?: string;
   notes?: string;
   informations_bancaires?: string;
+  subtotal?: number;
+  frais?: number;
+  frais_transport_douane?: number;
+  total_poids?: number;
+  total_general?: number;
   items: Omit<FactureItem, 'id' | 'facture_id' | 'created_at'>[];
   created_by?: string;
 }
@@ -225,6 +230,11 @@ export interface UpdateFactureData {
   conditions_vente?: string;
   notes?: string;
   informations_bancaires?: string;
+  subtotal?: number;
+  frais?: number;
+  frais_transport_douane?: number;
+  total_poids?: number;
+  total_general?: number;
   items?: Omit<FactureItem, 'id' | 'facture_id' | 'created_at'>[];
 }
 

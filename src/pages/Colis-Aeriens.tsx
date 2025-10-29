@@ -65,6 +65,7 @@ const ColisAeriens: React.FC = () => {
   const loadColis = async () => {
     setLoading(true);
     try {
+      console.log('🔄 Chargement des colis...');
       const { data, error } = await supabase
         .from('colis')
         .select(`
@@ -76,9 +77,13 @@ const ColisAeriens: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      
+      console.log('📦 Colis chargés:', data?.length || 0, 'éléments');
+      console.log('📋 Liste des colis:', data);
+      
       setColis(data || []);
     } catch (error) {
-      console.error('Error loading colis:', error);
+      console.error('❌ Error loading colis:', error);
       showError('Erreur lors du chargement des colis');
     } finally {
       setLoading(false);
@@ -160,20 +165,48 @@ const ColisAeriens: React.FC = () => {
   const handleConfirmDelete = async () => {
     if (!colisToDelete) return;
 
+    console.log('🗑️ Tentative de suppression du colis:', colisToDelete);
+
     try {
-      const { error } = await supabase
+      // Vérifier d'abord si le colis existe
+      const { data: checkData, error: checkError } = await supabase
+        .from('colis')
+        .select('id')
+        .eq('id', colisToDelete.id)
+        .single();
+
+      if (checkError) {
+        console.error('❌ Erreur vérification colis:', checkError);
+        throw checkError;
+      }
+
+      console.log('✅ Colis trouvé avant suppression:', checkData);
+
+      // Supprimer le colis
+      const { error, data } = await supabase
         .from('colis')
         .delete()
-        .eq('id', colisToDelete.id);
+        .eq('id', colisToDelete.id)
+        .select(); // Ajouter .select() pour voir ce qui a été supprimé
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erreur suppression:', error);
+        throw error;
+      }
+
+      console.log('✅ Colis supprimé avec succès:', data);
 
       showSuccess('Colis supprimé avec succès');
       setDeleteDialogOpen(false);
       setColisToDelete(null);
-      loadColis(); // Recharger la liste
+      
+      // Attendre un peu avant de recharger
+      setTimeout(() => {
+        console.log('🔄 Rechargement de la liste...');
+        loadColis();
+      }, 500);
     } catch (error) {
-      console.error('Error deleting colis:', error);
+      console.error('❌ Error deleting colis:', error);
       showError('Erreur lors de la suppression du colis');
     }
   };

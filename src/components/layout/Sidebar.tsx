@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
@@ -10,7 +10,11 @@ import {
   Settings,
   Package, 
   FileText,
-  LogOut
+  LogOut,
+  Plane,
+  Ship,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -28,12 +32,19 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user } = useAuth();
   const { getAccessibleModules } = usePermissions();
+  const [colisMenuOpen, setColisMenuOpen] = useState(false);
 
   // Obtenir les modules accessibles selon les permissions
   const accessibleModules = getAccessibleModules();
 
   // Menu items avec vérification des permissions
-  const menuItems = [
+  const menuItems: Array<{
+    icon: any;
+    label: string;
+    path: string;
+    module: string | null;
+    disabled?: boolean;
+  }> = [
     { 
       icon: LayoutDashboard, 
       label: 'Tableau de bord', 
@@ -59,18 +70,34 @@ const Sidebar: React.FC<SidebarProps> = ({
       module: 'settings'
     },
     { 
-      icon: Package, 
-      label: 'Colis', 
-      path: '/packages', 
-      module: null,
-      disabled: true
-    },
-    { 
       icon: FileText, 
       label: 'Factures', 
       path: '/factures',
       module: 'factures'
     },
+  ];
+
+  // Sous-menus pour Colis
+  const colisSubMenuItems: Array<{
+    icon: any;
+    label: string;
+    path: string;
+    module: string;
+    disabled?: boolean;
+  }> = [
+    {
+      icon: Plane,
+      label: 'Colis Aériens',
+      path: '/colis/aeriens',
+      module: 'colis'
+    },
+    {
+      icon: Ship,
+      label: 'Colis Maritimes',
+      path: '/colis/maritimes',
+      module: 'colis',
+      disabled: true // Désactivé pour l'instant
+    }
   ];
 
   // Filtrer les items du menu selon les permissions
@@ -122,8 +149,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4">
-        <ul className="space-y-3">
+      <nav className="flex-1 px-3 py-4 overflow-y-auto">
+        <ul className="space-y-2">
           {mainNavItems.map((item) => (
             <li key={item.path}>
               <Button
@@ -141,6 +168,49 @@ const Sidebar: React.FC<SidebarProps> = ({
               </Button>
             </li>
           ))}
+
+          {/* Menu Colis avec sous-menus */}
+          <li>
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 rounded-lg h-11 px-4",
+                (currentPath?.startsWith('/colis')) && "bg-green-600 dark:bg-green-700"
+              )}
+              onClick={() => setColisMenuOpen(!colisMenuOpen)}
+            >
+              <Package className="h-5 w-5 flex-shrink-0" />
+              <span className="ml-3 truncate text-base font-medium flex-1 text-left">Colis</span>
+              {colisMenuOpen ? (
+                <ChevronDown className="h-4 w-4 flex-shrink-0" />
+              ) : (
+                <ChevronRight className="h-4 w-4 flex-shrink-0" />
+              )}
+            </Button>
+
+            {/* Sous-menus Colis */}
+            {colisMenuOpen && (
+              <ul className="mt-2 ml-4 space-y-1">
+                {colisSubMenuItems.filter(subItem => !subItem.disabled).map((subItem) => (
+                  <li key={subItem.path}>
+                    <Button
+                      variant="ghost"
+                      asChild
+                      className={cn(
+                        "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 rounded-lg h-10 px-3 text-sm",
+                        currentPath === subItem.path && "bg-white dark:bg-white text-green-600 dark:text-green-600 shadow-md font-semibold hover:bg-white hover:text-green-600"
+                      )}
+                    >
+                      <Link to={subItem.path}>
+                        <subItem.icon className="h-4 w-4 flex-shrink-0" />
+                        <span className="ml-2 truncate">{subItem.label}</span>
+                      </Link>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
         </ul>
       </nav>
 

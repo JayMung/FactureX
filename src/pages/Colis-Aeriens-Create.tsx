@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Plane, Save, ArrowLeft } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { showSuccess, showError } from '@/utils/toast';
@@ -29,6 +30,10 @@ const ColisAeriensCreate: React.FC = () => {
   const [fournisseurs, setFournisseurs] = useState<string[]>([]);
   const [tarifRegulier, setTarifRegulier] = useState(16);
   const [tarifExpress, setTarifExpress] = useState(25);
+
+  // États pour les dates (objets Date pour le DatePicker)
+  const [dateExpedition, setDateExpedition] = useState<Date | undefined>();
+  const [dateArriveeAgence, setDateArriveeAgence] = useState<Date | undefined>();
 
   // État du formulaire
   const [formData, setFormData] = useState({
@@ -119,6 +124,13 @@ const ColisAeriensCreate: React.FC = () => {
         if (colisError) throw colisError;
         
         if (colisData) {
+          // Convertir les dates en objets Date pour le DatePicker
+          const expeditionDate = colisData.date_expedition ? new Date(colisData.date_expedition) : undefined;
+          const arriveeDate = colisData.date_arrivee_agence ? new Date(colisData.date_arrivee_agence) : undefined;
+          
+          setDateExpedition(expeditionDate);
+          setDateArriveeAgence(arriveeDate);
+          
           setFormData({
             client_id: colisData.client_id,
             fournisseur: colisData.fournisseur,
@@ -159,6 +171,19 @@ const ColisAeriensCreate: React.FC = () => {
       type_tarif: type,
       tarif_kg: tarif.toString() 
     }));
+  };
+
+  // Gérer les changements de dates
+  const handleDateExpeditionChange = (date: Date | undefined) => {
+    setDateExpedition(date);
+    const dateString = date ? date.toISOString().split('T')[0] : '';
+    handleChange('date_expedition', dateString);
+  };
+
+  const handleDateArriveeChange = (date: Date | undefined) => {
+    setDateArriveeAgence(date);
+    const dateString = date ? date.toISOString().split('T')[0] : '';
+    handleChange('date_arrivee_agence', dateString);
   };
 
   // Soumettre le formulaire
@@ -424,21 +449,19 @@ const ColisAeriensCreate: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="date_expedition">Date Expédition</Label>
-                      <Input
-                        id="date_expedition"
-                        type="date"
-                        value={formData.date_expedition}
-                        onChange={(e) => handleChange('date_expedition', e.target.value)}
+                      <DatePicker
+                        date={dateExpedition}
+                        onDateChange={handleDateExpeditionChange}
+                        placeholder="Sélectionner la date d'expédition"
                       />
                     </div>
 
                     <div>
                       <Label htmlFor="date_arrivee_agence">Date Arrivée Congo</Label>
-                      <Input
-                        id="date_arrivee_agence"
-                        type="date"
-                        value={formData.date_arrivee_agence}
-                        onChange={(e) => handleChange('date_arrivee_agence', e.target.value)}
+                      <DatePicker
+                        date={dateArriveeAgence}
+                        onDateChange={handleDateArriveeChange}
+                        placeholder="Sélectionner la date d'arrivée"
                       />
                     </div>
                   </div>

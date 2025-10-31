@@ -33,7 +33,13 @@ import {
   Download,
   X,
   MoreVertical,
-  Trash2
+  Trash2,
+  ChevronDown,
+  CheckCircle,
+  Clock,
+  Truck,
+  MapPin,
+  PackageCheck
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { showSuccess, showError } from '@/utils/toast';
@@ -155,6 +161,42 @@ const ColisAeriens: React.FC = () => {
   const handleDelete = (colisId: string, colisName: string) => {
     setColisToDelete({ id: colisId, name: colisName });
     setDeleteDialogOpen(true);
+  };
+
+  // Changer le statut d'un colis
+  const handleStatutChange = async (colisId: string, newStatut: string) => {
+    try {
+      const { error } = await supabase
+        .from('colis')
+        .update({ statut: newStatut })
+        .eq('id', colisId);
+
+      if (error) throw error;
+
+      showSuccess('Statut mis à jour avec succès');
+      loadColis();
+    } catch (error) {
+      console.error('Error updating statut:', error);
+      showError('Erreur lors de la mise à jour du statut');
+    }
+  };
+
+  // Changer le statut de paiement d'un colis
+  const handleStatutPaiementChange = async (colisId: string, newStatut: string) => {
+    try {
+      const { error } = await supabase
+        .from('colis')
+        .update({ statut_paiement: newStatut })
+        .eq('id', colisId);
+
+      if (error) throw error;
+
+      showSuccess('Statut de paiement mis à jour avec succès');
+      loadColis();
+    } catch (error) {
+      console.error('Error updating statut paiement:', error);
+      showError('Erreur lors de la mise à jour du statut de paiement');
+    }
   };
 
   // Confirmer la suppression
@@ -388,10 +430,100 @@ const ColisAeriens: React.FC = () => {
                             </span>
                           </td>
                           <td className="py-3 px-2 md:px-4 text-center">
-                            {getStatutBadge(c.statut)}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 flex items-center gap-2 hover:bg-gray-50"
+                                >
+                                  {getStatutBadge(c.statut)}
+                                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="center" className="w-48">
+                                <DropdownMenuItem
+                                  onClick={() => handleStatutChange(c.id, 'en_preparation')}
+                                  className="cursor-pointer"
+                                >
+                                  <Clock className="h-4 w-4 text-gray-600 mr-2" />
+                                  En préparation
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleStatutChange(c.id, 'expedie_chine')}
+                                  className="cursor-pointer"
+                                >
+                                  <Plane className="h-4 w-4 text-blue-600 mr-2" />
+                                  Expédié Chine
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleStatutChange(c.id, 'en_transit')}
+                                  className="cursor-pointer"
+                                >
+                                  <Truck className="h-4 w-4 text-yellow-600 mr-2" />
+                                  En transit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleStatutChange(c.id, 'arrive_congo')}
+                                  className="cursor-pointer"
+                                >
+                                  <MapPin className="h-4 w-4 text-green-600 mr-2" />
+                                  Arrivé Congo
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleStatutChange(c.id, 'recupere_client')}
+                                  className="cursor-pointer"
+                                >
+                                  <PackageCheck className="h-4 w-4 text-purple-600 mr-2" />
+                                  Récupéré
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleStatutChange(c.id, 'livre')}
+                                  className="cursor-pointer"
+                                >
+                                  <CheckCircle className="h-4 w-4 text-emerald-600 mr-2" />
+                                  Livré
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </td>
                           <td className="py-3 px-2 md:px-4 text-center">
-                            {getStatutPaiementBadge(c.statut_paiement)}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 flex items-center gap-2 hover:bg-gray-50"
+                                >
+                                  {getStatutPaiementBadge(c.statut_paiement)}
+                                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="center" className="w-48">
+                                <DropdownMenuItem
+                                  onClick={() => handleStatutPaiementChange(c.id, 'non_paye')}
+                                  className="cursor-pointer"
+                                >
+                                  <X className="h-4 w-4 text-red-600 mr-2" />
+                                  Non payé
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleStatutPaiementChange(c.id, 'partiellement_paye')}
+                                  className="cursor-pointer"
+                                >
+                                  <Clock className="h-4 w-4 text-orange-600 mr-2" />
+                                  Partiellement payé
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleStatutPaiementChange(c.id, 'paye')}
+                                  className="cursor-pointer"
+                                >
+                                  <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                                  Payé
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </td>
                           <td className="hidden md:table-cell py-3 px-2 md:px-4 text-center text-sm text-gray-600">
                             <div className="flex items-center justify-between">

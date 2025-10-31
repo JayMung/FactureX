@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { permissionConsolidationService } from '@/lib/security/permission-consolidation';
 
 export interface AdminRole {
   id: string;
@@ -72,18 +73,30 @@ export class AdminService {
   }
 
   // Grant admin role to a user (admin only)
+  // SECURITY: Now uses atomic operations
   async grantAdminRole(email: string, role: 'admin' | 'super_admin' = 'admin'): Promise<void> {
     try {
-      const { data, error } = await supabase.rpc('grant_admin_role', {
-        target_email: email,
-        role_name: role
-      });
+      // Get current user for audit trail
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
-      if (error) throw error;
-      
-      if (!data) {
-        throw new Error('Failed to grant admin role');
+      // Get target user ID from email
+      const { data: targetUser, error: userError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .single();
+
+      if (userError || !targetUser) {
+        throw new Error('User not found with this email');
       }
+
+      // Use atomic role application
+      await permissionConsolidationService.applyRoleAtomic(
+        targetUser.id, 
+        role, 
+        user.id
+      );
     } catch (error: any) {
       console.error('Error granting admin role:', error);
       throw error;
@@ -91,17 +104,15 @@ export class AdminService {
   }
 
   // Revoke admin role from a user (admin only)
+  // SECURITY: Now uses atomic operations
   async revokeAdminRole(userId: string): Promise<void> {
     try {
-      const { data, error } = await supabase.rpc('revoke_admin_role', {
-        target_user_id: userId
-      });
+      // Get current user for audit trail
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
-      if (error) throw error;
-      
-      if (!data) {
-        throw new Error('Failed to revoke admin role');
-      }
+      // Use atomic role revocation
+      await permissionConsolidationService.revokeRoleAtomic(userId, user.id);
     } catch (error: any) {
       console.error('Error revoking admin role:', error);
       throw error;

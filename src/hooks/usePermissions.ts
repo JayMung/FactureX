@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { permissionsService } from '@/services/permissionsService';
 import { adminService } from '@/services/adminService';
+import { permissionConsolidationService } from '@/lib/security/permission-consolidation';
 import type { UserPermissionsMap, ModuleType, PermissionRole } from '@/types';
 import { PREDEFINED_ROLES, MODULES_INFO } from '@/types';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -24,31 +25,40 @@ export const usePermissions = () => {
       try {
         setLoading(true);
         
-        // Check admin status using secure service, with fallback to AuthProvider
-        let adminStatus = false;
-        try {
-          adminStatus = await adminService.isCurrentUserAdmin();
-        } catch (adminError) {
-          console.warn('Admin service check failed, using AuthProvider fallback:', adminError);
-          adminStatus = authIsAdmin;
-        }
-        setIsAdmin(adminStatus);
+        // SECURITY: Use consolidated permission service for single source of truth
+        const consolidatedPerms = await permissionConsolidationService.getUserPermissions(user.id);
         
-        const userPermissions = await permissionsService.getUserPermissions(user.id);
-        setPermissions(userPermissions);
+        // Validate permission consistency
+        const { isConsistent, issues } = await permissionConsolidationService.validatePermissionConsistency(user.id);
+        
+        if (!isConsistent) {
+          console.warn('Permission inconsistency detected:', issues);
+          // Auto-sync permissions to fix inconsistency
+          await permissionConsolidationService.syncPermissions(user.id);
+          
+          // Reload permissions after sync
+          const syncedPerms = await permissionConsolidationService.getUserPermissions(user.id);
+          setPermissions(syncedPerms.permissions);
+          setIsAdmin(syncedPerms.is_admin);
+        } else {
+          setPermissions(consolidatedPerms.permissions);
+          setIsAdmin(consolidatedPerms.is_admin);
+        }
+        
         setError(null);
       } catch (err: any) {
         console.error('Error loading permissions:', err);
         setError(err.message);
-        // Fallback to AuthProvider admin status even on error
-        setIsAdmin(authIsAdmin);
+        // SECURITY: Fail secure - deny admin access on error
+        setIsAdmin(false);
+        setPermissions({});
       } finally {
         setLoading(false);
       }
     };
 
     loadPermissions();
-  }, [user?.id, authIsAdmin]);
+  }, [user?.id]);
 
   // Vérifier une permission spécifique
   const checkPermission = useCallback((

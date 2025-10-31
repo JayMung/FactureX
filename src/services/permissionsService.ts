@@ -1,30 +1,17 @@
 import { supabase } from '@/integrations/supabase/client';
 import { adminService } from '@/services/adminService';
+import { permissionConsolidationService } from '@/lib/security/permission-consolidation';
 import type { UserPermission, UserPermissionsMap, ModuleType, PermissionRole } from '@/types';
 import { PREDEFINED_ROLES } from '@/types';
 
 export class PermissionsService {
   // Récupérer toutes les permissions d'un utilisateur
+  // SECURITY: Now uses single source of truth
   async getUserPermissions(userId: string): Promise<UserPermissionsMap> {
     try {
-      const { data, error } = await supabase
-        .from('user_permissions')
-        .select('*')
-        .eq('user_id', userId);
-
-      if (error) throw error;
-
-      const permissions: UserPermissionsMap = {};
-      data?.forEach(permission => {
-        permissions[permission.module] = {
-          can_read: permission.can_read,
-          can_create: permission.can_create,
-          can_update: permission.can_update,
-          can_delete: permission.can_delete
-        };
-      });
-
-      return permissions;
+      // Use consolidated permission service for security
+      const consolidatedPerms = await permissionConsolidationService.getUserPermissions(userId);
+      return consolidatedPerms.permissions;
     } catch (error: any) {
       console.error('Error fetching user permissions:', error);
       throw error;
@@ -64,39 +51,15 @@ export class PermissionsService {
   }
 
   // Appliquer un rôle prédéfini à un utilisateur
+  // SECURITY: Now uses atomic operations to prevent race conditions
   async applyRole(userId: string, roleName: string): Promise<void> {
     try {
-      const role = PREDEFINED_ROLES.find(r => r.name === roleName);
-      if (!role) throw new Error(`Rôle ${roleName} non trouvé`);
+      // Get current user for audit trail
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
-      // 1. Mettre à jour le rôle dans la table profiles
-      const { error: updateRoleError } = await supabase
-        .from('profiles')
-        .update({ role: roleName })
-        .eq('id', userId);
-
-      if (updateRoleError) throw updateRoleError;
-
-      // 2. Supprimer toutes les permissions existantes pour cet utilisateur
-      const { error: deleteError } = await supabase
-        .from('user_permissions')
-        .delete()
-        .eq('user_id', userId);
-
-      if (deleteError) throw deleteError;
-
-      // 3. Appliquer les nouvelles permissions
-      const permissions = Object.entries(role.permissions).map(([module, perms]) => ({
-        user_id: userId,
-        module,
-        ...perms
-      }));
-
-      const { error: insertError } = await supabase
-        .from('user_permissions')
-        .insert(permissions);
-
-      if (insertError) throw insertError;
+      // Use atomic role application to prevent race conditions
+      await permissionConsolidationService.applyRoleAtomic(userId, roleName, user.id);
     } catch (error: any) {
       console.error('Error applying role:', error);
       throw error;
@@ -104,44 +67,20 @@ export class PermissionsService {
   }
 
   // Vérifier si un utilisateur a une permission spécifique
+  // SECURITY: Now uses single source of truth, no fallback to insecure profiles.role
   async checkPermission(
     userId: string, 
     module: ModuleType, 
     action: 'read' | 'create' | 'update' | 'delete'
   ): Promise<boolean> {
     try {
-      // First check if user is admin using secure admin_roles table
-      const { data: adminRole, error: adminError } = await supabase
-        .from('admin_roles')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .single();
-
-      // If user is admin, grant all permissions
-      if (adminRole) return true;
-
-      const { data, error } = await supabase
-        .from('user_permissions')
-        .select(`can_${action}`)
-        .eq('user_id', userId)
-        .eq('module', module)
-        .single();
-
-      if (error) {
-        // If no specific permission, check fallback role in profiles
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', userId)
-          .single();
-        
-        return profile?.role === 'admin';
-      }
-
-      return data?.[`can_${action}`] || false;
+      // Use consolidated permission service for security
+      return await permissionConsolidationService.checkPermission(userId, module, action);
     } catch (error: any) {
       console.error('Error checking permission:', error);
+      
+      // SECURITY: Fail secure - deny access on error
+      // No fallback to insecure profiles.role
       return false;
     }
   }

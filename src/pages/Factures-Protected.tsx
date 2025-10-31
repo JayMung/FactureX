@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
@@ -82,7 +82,27 @@ const FacturesProtected: React.FC = () => {
     statut: statutFilter === 'all' ? undefined : statutFilter
   });
 
-  const { sortedData, sortConfig, handleSort } = useSorting(factures, { key: 'statut', direction: 'asc' });
+  const { sortedData: initialSortedData, sortConfig, handleSort } = useSorting(factures, { key: 'statut', direction: 'asc' });
+
+  // Tri personnalisé pour mettre "payee" en premier
+  const sortedData = useMemo(() => {
+    if (sortConfig?.key === 'statut') {
+      const statusOrder: Record<string, number> = {
+        'payee': 1,
+        'validee': 2,
+        'en_attente': 3,
+        'brouillon': 4,
+        'annulee': 5
+      };
+      
+      return [...initialSortedData].sort((a, b) => {
+        const orderA = statusOrder[a.statut] || 999;
+        const orderB = statusOrder[b.statut] || 999;
+        return sortConfig.direction === 'asc' ? orderA - orderB : orderB - orderA;
+      });
+    }
+    return initialSortedData;
+  }, [initialSortedData, sortConfig]);
 
   const formatCurrency = (amount: number, devise: string) => {
     const formatted = amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

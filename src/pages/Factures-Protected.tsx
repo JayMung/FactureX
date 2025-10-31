@@ -82,7 +82,7 @@ const FacturesProtected: React.FC = () => {
     statut: statutFilter === 'all' ? undefined : statutFilter
   });
 
-  const { sortedData, sortConfig, handleSort } = useSorting(factures);
+  const { sortedData, sortConfig, handleSort } = useSorting(factures, { key: 'statut', direction: 'asc' });
 
   const formatCurrency = (amount: number, devise: string) => {
     const formatted = amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

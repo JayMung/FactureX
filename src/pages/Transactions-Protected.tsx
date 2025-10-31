@@ -49,6 +49,13 @@ import type { Transaction } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { formatCurrency } from '../utils/formatCurrency';
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  sanitizeUserContent, 
+  validateContentSecurity,
+  sanitizeTransactionMotif,
+  sanitizePaymentMethod,
+  sanitizeCSV
+} from '@/lib/security/content-sanitization';
 
 const TransactionsProtected: React.FC = () => {
   usePageSetup({
@@ -784,7 +791,7 @@ const TransactionsProtected: React.FC = () => {
                           <td className="py-3 px-4 font-medium min-w-[120px]">
                             {generateReadableId(transaction.id, index)}
                           </td>
-                          <td className="py-3 px-4">{transaction.client?.nom || 'Client inconnu'}</td>
+                          <td className="py-3 px-4">{sanitizeUserContent(transaction.client?.nom || 'Client inconnu', 'client-name')}</td>
                           <td className="py-3 px-4 text-sm text-gray-600">
                             {new Date(transaction.date_paiement).toLocaleDateString('fr-FR')}
                           </td>
@@ -795,7 +802,7 @@ const TransactionsProtected: React.FC = () => {
                           </td>
                           <td className="py-3 px-4">
                             <Badge variant={transaction.motif === 'Commande' ? 'default' : 'secondary'}>
-                              {transaction.motif}
+                              {sanitizeTransactionMotif(transaction.motif || '')}
                             </Badge>
                           </td>
                           <td className="py-3 px-4">
@@ -864,7 +871,7 @@ const TransactionsProtected: React.FC = () => {
                           <td className="py-3 px-4 text-sm font-medium text-blue-600">
                             {transaction.montant_cny ? formatCurrencyValue(transaction.montant_cny, 'CNY') : '-'}
                           </td>
-                          <td className="py-3 px-4 text-sm">{transaction.mode_paiement}</td>
+                          <td className="py-3 px-4 text-sm">{sanitizePaymentMethod(transaction.mode_paiement || '')}</td>
                           <td className="py-3 px-4">
                             <div className="flex items-center space-x-2">
                               <Button 

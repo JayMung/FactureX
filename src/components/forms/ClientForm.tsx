@@ -11,6 +11,13 @@ import type { Client, CreateClientData } from '@/types';
 import { useClients } from '@/hooks/useClients';
 import { showSuccess, showError } from '@/utils/toast';
 import { capitalizeWords } from '@/utils/textFormat';
+import { 
+  sanitizeUserContent, 
+  validateContentSecurity,
+  sanitizeClientName,
+  sanitizePhoneNumber,
+  sanitizeCityName
+} from '@/lib/security/content-sanitization';
 
 interface ClientFormProps {
   client?: Client;
@@ -60,16 +67,34 @@ const ClientForm: React.FC<ClientFormProps> = ({
 
     if (!formData.nom.trim()) {
       newErrors.nom = 'Le nom est requis';
+    } else {
+      // XSS validation for client name
+      const nameValidation = validateContentSecurity(formData.nom);
+      if (!nameValidation.isValid) {
+        newErrors.nom = 'Le nom contient des caractères non autorisés';
+      }
     }
 
     if (!formData.telephone.trim()) {
       newErrors.telephone = 'Le téléphone est requis';
     } else if (!/^[+]?[\d\s-()]{10,}$/.test(formData.telephone)) {
       newErrors.telephone = 'Format de téléphone invalide';
+    } else {
+      // XSS validation for phone number
+      const phoneValidation = validateContentSecurity(formData.telephone);
+      if (!phoneValidation.isValid) {
+        newErrors.telephone = 'Le téléphone contient des caractères non autorisés';
+      }
     }
 
     if (!formData.ville.trim()) {
       newErrors.ville = 'La ville est requise';
+    } else {
+      // XSS validation for city name
+      const cityValidation = validateContentSecurity(formData.ville);
+      if (!cityValidation.isValid) {
+        newErrors.ville = 'La ville contient des caractères non autorisés';
+      }
     }
 
     setErrors(newErrors);
@@ -82,10 +107,11 @@ const ClientForm: React.FC<ClientFormProps> = ({
     if (!validateForm()) return;
 
     try {
-      // Capitaliser chaque mot du nom (Jean Mukendi)
+      // Sanitize and capitalize each word of the name (Jean Mukendi)
       const dataToSave = {
-        ...formData,
-        nom: capitalizeWords(formData.nom.trim())
+        nom: sanitizeClientName(capitalizeWords(formData.nom.trim())),
+        telephone: sanitizePhoneNumber(formData.telephone.trim()),
+        ville: sanitizeCityName(formData.ville.trim())
       };
 
       if (isEditing && client) {

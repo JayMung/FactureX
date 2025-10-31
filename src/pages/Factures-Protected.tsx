@@ -48,6 +48,11 @@ import ConfirmDialog from '@/components/ui/confirm-dialog';
 import type { Facture } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { cn } from '@/lib/utils';
+import { 
+  sanitizeUserContent, 
+  validateContentSecurity,
+  sanitizeCSV
+} from '@/lib/security/content-sanitization';
 
 const FacturesProtected: React.FC = () => {
   usePageSetup({

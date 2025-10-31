@@ -36,6 +36,14 @@ import Pagination from '../components/ui/pagination-custom';
 import type { Client } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { cn } from '@/lib/utils';
+import { 
+  sanitizeUserContent, 
+  validateContentSecurity,
+  sanitizeClientName,
+  sanitizePhoneNumber,
+  sanitizeCityName,
+  sanitizeCSV
+} from '@/lib/security/content-sanitization';
 
 const ClientsProtected: React.FC = () => {
   usePageSetup({
@@ -177,11 +185,11 @@ const ClientsProtected: React.FC = () => {
     const csv = [
       ['nom', 'telephone', 'ville', 'total_paye', 'created_at'],
       ...dataToExport.map((client: Client) => [
-        client.nom,
-        client.telephone,
-        client.ville,
-        client.total_paye?.toString() || '0',
-        client.created_at
+        sanitizeCSV(client.nom || ''),
+        sanitizeCSV(client.telephone || ''),
+        sanitizeCSV(client.ville || ''),
+        sanitizeCSV(client.total_paye?.toString() || '0'),
+        sanitizeCSV(client.created_at || '')
       ])
     ].map(row => row.join(',')).join('\n');
 
@@ -321,7 +329,7 @@ const ClientsProtected: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Toutes les villes</SelectItem>
-                {Array.from(new Set(sortedData.map((c: Client) => c.ville))).map((city: string) => (
+                {Array.from(new Set(sortedData.map((c: Client) => sanitizeCityName(c.ville || '')))).map((city: string) => (
                   <SelectItem key={city} value={city}>{city}</SelectItem>
                 ))}
               </SelectContent>
@@ -475,8 +483,9 @@ const ClientsProtected: React.FC = () => {
                             <button
                               onClick={() => handleViewClientHistory(client)}
                               className="text-left hover:text-green-500 hover:underline transition-colors cursor-pointer"
+                              title={sanitizeClientName(client.nom || '')}
                             >
-                              {client.nom.split(' ').map(word => 
+                              {sanitizeClientName(client.nom || '').split(' ').map(word => 
                                 word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
                               ).join(' ')}
                             </button>
@@ -484,13 +493,13 @@ const ClientsProtected: React.FC = () => {
                           <td className="py-3 px-4">
                             <div className="flex items-center space-x-1">
                               <span className="text-gray-400">📞</span>
-                              <span>{client.telephone}</span>
+                              <span>{sanitizePhoneNumber(client.telephone || '')}</span>
                             </div>
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center space-x-1">
                               <span className="text-gray-400">📍</span>
-                              <span>{client.ville}</span>
+                              <span>{sanitizeCityName(client.ville || '')}</span>
                             </div>
                           </td>
                           <td className="py-3 px-4 font-medium text-green-500">
@@ -597,7 +606,7 @@ const ClientsProtected: React.FC = () => {
             open={deleteDialogOpen}
             onOpenChange={setDeleteDialogOpen}
             title="Supprimer le client"
-            description={`Êtes-vous sûr de vouloir supprimer le client "${clientToDelete?.nom}" ? Cette action est irréversible et supprimera également toutes ses transactions associées.`}
+            description={`Êtes-vous sûr de vouloir supprimer le client "${sanitizeClientName(clientToDelete?.nom || '')}" ? Cette action est irréversible et supprimera également toutes ses transactions associées.`}
             confirmText="Supprimer"
             cancelText="Annuler"
             onConfirm={confirmDeleteClient}

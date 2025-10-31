@@ -134,7 +134,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // SECURITY: Check for both admin and super_admin roles in app_metadata
-  const isAdmin = user?.app_metadata?.role === 'admin' || user?.app_metadata?.role === 'super_admin';
+  // Note: Supabase exposes app_metadata differently in the client
+  const isAdmin = user?.user_metadata?.role === 'admin' || 
+                  user?.user_metadata?.role === 'super_admin' ||
+                  user?.app_metadata?.role === 'admin' || 
+                  user?.app_metadata?.role === 'super_admin';
 
   const value = {
     user,

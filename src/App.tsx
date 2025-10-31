@@ -18,6 +18,7 @@ import SettingsWithPermissions from "./pages/Settings-Permissions";
 import ActivityLogs from "./pages/ActivityLogs";
 import SecurityDashboard from "./pages/SecurityDashboard";
 import SecurityAudit from "./pages/SecurityAudit";
+import PermissionDiagnosticPage from "./pages/Permission-Diagnostic";
 import Login from "./pages/Login";
 import AdminSetup from "./pages/AdminSetup";
 import AdminInvitation from "./pages/AdminInvitation";
@@ -108,6 +109,11 @@ const App = () => (
               <Route path="/security-dashboard" element={
                 <ProtectedRouteEnhanced>
                   <SecurityDashboard />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/permission-diagnostic" element={
+                <ProtectedRouteEnhanced>
+                  <PermissionDiagnosticPage />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="*" element={<NotFound />} />

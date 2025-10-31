@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
 import { activityLogger } from '@/services/activityLogger';
 import { getFriendlyErrorMessage } from '@/utils/errorHandler';
+import { validateTransactionInput } from '@/lib/security/input-validation';
+import { detectAttackPatterns } from '@/lib/security/validation';
+import { logSecurityEvent } from '@/lib/security/error-handling';
 import type { Transaction, UpdateTransactionData, CreateTransactionData, TransactionFilters } from '@/types';
 
 export const useTransactions = (page: number = 1, filters: TransactionFilters = {}) => {
@@ -88,6 +91,54 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     setError(null);
 
     try {
+      // SECURITY: Validate and sanitize input data
+      const validation = validateTransactionInput(transactionData);
+      if (!validation.isValid) {
+        const errorMsg = `Validation error: ${validation.error}`;
+        setError(errorMsg);
+        showError(errorMsg);
+        
+        // Log security event
+        logSecurityEvent(
+          'INVALID_TRANSACTION_INPUT',
+          errorMsg,
+          'medium',
+          { inputData: transactionData }
+        );
+        
+        throw new Error(errorMsg);
+      }
+
+      // SECURITY: Check for attack patterns
+      const suspiciousFields = ['mode_paiement'];
+      for (const field of suspiciousFields) {
+        if (transactionData[field as keyof CreateTransactionData]) {
+          const attackCheck = detectAttackPatterns(transactionData[field as keyof CreateTransactionData] as string);
+          if (attackCheck.isAttack) {
+            const errorMsg = `Suspicious input detected in ${field}`;
+            setError(errorMsg);
+            showError(errorMsg);
+            
+            // Log security event
+            logSecurityEvent(
+              'SUSPICIOUS_INPUT_DETECTED',
+              errorMsg,
+              'high',
+              { 
+                field, 
+            inputData: transactionData[field as keyof CreateTransactionData],
+            attackType: attackCheck.attackType 
+              }
+            );
+            
+            throw new Error(errorMsg);
+          }
+        }
+      }
+
+      // Use sanitized data
+      const sanitizedData = validation.sanitizedValue;
+
       // Obtenir les taux et frais
       const { data: settings } = await supabase
         .from('settings')
@@ -114,24 +165,24 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
         }
       });
 
-      const tauxUSD = transactionData.devise === 'USD' ? 1 : rates.usdToCdf;
-      const fraisUSD = transactionData.montant * (fees[transactionData.motif.toLowerCase() as keyof typeof fees] / 100);
-      const montantNet = transactionData.montant - fraisUSD; // Montant après déduction des frais
-      const montantCNY = transactionData.devise === 'USD' 
+      const tauxUSD = sanitizedData.devise === 'USD' ? 1 : rates.usdToCdf;
+      const fraisUSD = sanitizedData.montant * (fees[sanitizedData.motif.toLowerCase() as keyof typeof fees] / 100);
+      const montantNet = sanitizedData.montant - fraisUSD; // Montant après déduction des frais
+      const montantCNY = sanitizedData.devise === 'USD' 
         ? montantNet * rates.usdToCny 
         : (montantNet / tauxUSD) * rates.usdToCny;
-      const commissionPartenaire = transactionData.montant * (fees.partenaire / 100);
+      const commissionPartenaire = sanitizedData.montant * (fees.partenaire / 100);
       const benefice = fraisUSD - commissionPartenaire;
 
       const fullTransactionData = {
-        ...transactionData,
+        ...sanitizedData,
         taux_usd_cny: rates.usdToCny,
         taux_usd_cdf: rates.usdToCdf,
         montant_cny: montantCNY,
         frais: fraisUSD,
         benefice: benefice,
-        date_paiement: transactionData.date_paiement || new Date().toISOString(),
-        statut: transactionData.statut || 'En attente'
+        date_paiement: sanitizedData.date_paiement || new Date().toISOString(),
+        statut: sanitizedData.statut || 'En attente'
       };
 
       const { data, error } = await supabase

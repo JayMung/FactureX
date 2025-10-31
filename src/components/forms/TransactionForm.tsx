@@ -8,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ClientCombobox } from '@/components/ui/client-combobox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Save, X, DollarSign, Calculator } from 'lucide-react';
+import { Loader2, Save, X, DollarSign, Calculator, AlertTriangle } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
+import { validateTransactionInput } from '@/lib/security/input-validation';
+import { detectAttackPatterns } from '@/lib/security/validation';
 import type { Transaction, Client, PaymentMethod } from '@/types';
 import { useAllClients } from '@/hooks/useClients';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
@@ -121,6 +123,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    // Basic validation
     if (!formData.client_id) {
       newErrors.client_id = 'Le client est requis';
     }
@@ -143,6 +146,43 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
     if (!formData.date_paiement) {
       newErrors.date_paiement = 'La date est requise';
+    }
+
+    // Security validation
+    const transactionData = {
+      client_id: formData.client_id,
+      montant: parseFloat(formData.montant),
+      devise: formData.devise,
+      motif: formData.motif,
+      mode_paiement: formData.mode_paiement,
+      date_paiement: formData.date_paiement,
+      statut: 'En attente'
+    };
+
+    // Validate with security layer
+    const validation = validateTransactionInput(transactionData);
+    if (!validation.isValid) {
+      // Add specific security errors
+      const securityErrors = validation.error?.split('; ') || [];
+      securityErrors.forEach(error => {
+        if (error.includes('client_id')) newErrors.client_id = error;
+        if (error.includes('montant')) newErrors.montant = error;
+        if (error.includes('devise')) newErrors.devise = error;
+        if (error.includes('motif')) newErrors.motif = error;
+        if (error.includes('mode_paiement')) newErrors.mode_paiement = error;
+        if (error.includes('date')) newErrors.date_paiement = error;
+      });
+    }
+
+    // Check for attack patterns in text fields
+    const suspiciousFields = ['mode_paiement'];
+    for (const field of suspiciousFields) {
+      if (formData[field as keyof typeof formData]) {
+        const attackCheck = detectAttackPatterns(formData[field as keyof typeof formData] as string);
+        if (attackCheck.isAttack) {
+          newErrors[field] = `Contenu suspect détecté: ${attackCheck.attackType}`;
+        }
+      }
     }
 
     setErrors(newErrors);

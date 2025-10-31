@@ -11,6 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Plane, Save, ArrowLeft } from 'lucide-react';
+import { ClientCombobox } from '@/components/ui/client-combobox';
+import { useAllClients } from '@/hooks/useClients';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { showSuccess, showError } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,7 +27,7 @@ const ColisAeriensCreate: React.FC = () => {
   const isEditMode = !!id;
 
   const [loading, setLoading] = useState(false);
-  const [clients, setClients] = useState<Client[]>([]);
+  const { clients } = useAllClients();
   const [transitaires, setTransitaires] = useState<Transitaire[]>([]);
   const [fournisseurs, setFournisseurs] = useState<string[]>([]);
   const [tarifRegulier, setTarifRegulier] = useState(16);
@@ -65,15 +67,6 @@ const ColisAeriensCreate: React.FC = () => {
 
   const loadInitialData = async () => {
     try {
-      // Charger les clients
-      const { data: clientsData, error: clientsError } = await supabase
-        .from('clients')
-        .select('*')
-        .order('nom');
-      
-      if (clientsError) throw clientsError;
-      setClients(clientsData || []);
-
       // Charger les transitaires actifs
       const { data: transitairesData, error: transitairesError } = await supabase
         .from('transitaires')
@@ -291,20 +284,12 @@ const ColisAeriensCreate: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <Label htmlFor="client_id">Client *</Label>
-                      <select
-                        id="client_id"
+                      <ClientCombobox
+                        clients={clients}
                         value={formData.client_id}
-                        onChange={(e) => handleChange('client_id', e.target.value)}
-                        className="w-full px-3 py-2 border rounded-md"
-                        required
-                      >
-                        <option value="">Sélectionner un client</option>
-                        {clients.map(client => (
-                          <option key={client.id} value={client.id}>
-                            {client.nom}
-                          </option>
-                        ))}
-                      </select>
+                        onValueChange={(value) => handleChange('client_id', value)}
+                        placeholder="Sélectionner un client"
+                      />
                     </div>
 
                     <div>

@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ClientCombobox } from '@/components/ui/client-combobox';
 import { Badge } from '@/components/ui/badge';
 import { 
   Plus, 
@@ -22,7 +23,7 @@ import {
   RotateCcw,
   Clock
 } from 'lucide-react';
-import { useClients } from '../hooks/useClients';
+import { useAllClients } from '../hooks/useClients';
 import { useFactures } from '../hooks/useFactures';
 import { useFees, useExchangeRates } from '../hooks/useSettings';
 import { useAutoSave } from '../hooks/useAutoSave';
@@ -41,7 +42,7 @@ const FacturesCreate: React.FC = () => {
   });
 
   const navigate = useNavigate();
-  const { clients } = useClients(1, {});
+  const { clients } = useAllClients();
   const { fees } = useFees();
   const { rates } = useExchangeRates();
   const { createFacture, updateFacture, getFactureWithItems } = useFactures();
@@ -543,21 +544,12 @@ const FacturesCreate: React.FC = () => {
 
                   <div>
                     <Label htmlFor="client_id">Client</Label>
-                    <Select
+                    <ClientCombobox
+                      clients={clients}
                       value={formData.client_id}
                       onValueChange={(value) => setFormData({ ...formData, client_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un client" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.nom}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Sélectionner un client"
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

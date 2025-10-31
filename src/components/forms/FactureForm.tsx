@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ClientCombobox } from '@/components/ui/client-combobox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -315,18 +316,12 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Client</Label>
-              <select
+              <ClientCombobox
+                clients={clients}
                 value={formData.client_id}
-                onChange={(e) => handleClientChange(e.target.value)}
-                className="w-full p-2 border rounded"
-              >
-                <option value="">Sélectionner un client</option>
-                {clients.map(client => (
-                  <option key={client.id} value={client.id}>
-                    {client.nom}
-                  </option>
-                ))}
-              </select>
+                onValueChange={handleClientChange}
+                placeholder="Sélectionner un client"
+              />
             </div>
             
             <div>

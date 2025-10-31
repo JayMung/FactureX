@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ClientCombobox } from '@/components/ui/client-combobox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Save, X, DollarSign, Calculator } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import type { Transaction, Client, PaymentMethod } from '@/types';
-import { useClients } from '@/hooks/useClients';
+import { useAllClients } from '@/hooks/useClients';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useExchangeRates, useFees } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
@@ -49,7 +50,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     taux_usd_cdf: 0
   });
 
-  const { clients } = useClients(1, {});
+  const { clients } = useAllClients();
   const { paymentMethods } = usePaymentMethods();
   const { rates } = useExchangeRates();
   const { fees } = useFees();
@@ -238,21 +239,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             {/* Client Selection */}
             <div className="space-y-2">
               <Label htmlFor="client_id">Client *</Label>
-              <Select
+              <ClientCombobox
+                clients={clients}
                 value={formData.client_id}
                 onValueChange={(value) => handleChange('client_id', value)}
-              >
-                <SelectTrigger className={errors.client_id ? 'border-red-500' : ''}>
-                  <SelectValue placeholder="Sélectionner un client" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.nom} - {client.telephone}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Sélectionner un client"
+                className={errors.client_id ? 'border-red-500' : ''}
+              />
               {errors.client_id && (
                 <p className="text-sm text-red-600">{errors.client_id}</p>
               )}

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabaseService } from '@/services/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { activityLogger } from '@/services/activityLogger';
 import type { Client, ClientFilters, CreateClientData, ApiResponse } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
@@ -132,6 +133,35 @@ export const useClient = (id: string) => {
     client: data?.data,
     isLoading,
     error: error?.message || data?.error,
+    refetch
+  };
+};
+
+// Hook pour récupérer TOUS les clients (sans pagination) - utilisé dans les combobox
+export const useAllClients = () => {
+  const {
+    data,
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ['clients', 'all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .order('nom');
+      
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  return {
+    clients: data || [],
+    isLoading,
+    error: error?.message,
     refetch
   };
 };

@@ -46,6 +46,8 @@ import { showSuccess, showError } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { Colis } from '@/types';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
+import { useSorting } from '../hooks/useSorting';
+import SortableHeader from '../components/ui/sortable-header';
 
 const ColisAeriens: React.FC = () => {
   const navigate = useNavigate();
@@ -92,8 +94,11 @@ const ColisAeriens: React.FC = () => {
     }
   };
 
+  // Tri des colis
+  const { sortedData, sortConfig, handleSort } = useSorting(colis, { key: 'created_at', direction: 'desc' });
+
   // Filtrer les colis
-  const filteredColis = colis.filter(c => {
+  const filteredColis = sortedData.filter(c => {
     const matchesSearch = 
       c.client?.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.tracking_chine?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -363,18 +368,90 @@ const ColisAeriens: React.FC = () => {
                   <table className="w-full min-w-[800px]">
                     <thead>
                       <tr className="bg-gray-50 border-b">
-                        <th className="text-left py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">ID Colis</th>
-                        <th className="text-left py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Client</th>
-                        <th className="hidden md:table-cell py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Fournisseur</th>
-                        <th className="hidden lg:table-cell py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Tracking</th>
-                        <th className="text-center py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Qté</th>
-                        <th className="text-center py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Poids (kg)</th>
-                        <th className="hidden md:table-cell py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Tarif/kg</th>
-                        <th className="text-right py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Montant</th>
-                        <th className="hidden lg:table-cell py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Transitaire</th>
-                        <th className="text-center py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Statut</th>
-                        <th className="text-center py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Paiement</th>
-                        <th className="hidden md:table-cell py-3 px-2 md:px-4 font-semibold text-sm text-gray-700">Date Arrivée</th>
+                        <SortableHeader
+                          title="ID Colis"
+                          sortKey="id"
+                          currentSort={sortConfig}
+                          onSort={handleSort}
+                          className="text-left py-3 px-2 md:px-4"
+                        />
+                        <SortableHeader
+                          title="Client"
+                          sortKey="client.nom"
+                          currentSort={sortConfig}
+                          onSort={handleSort}
+                          className="text-left py-3 px-2 md:px-4"
+                        />
+                        <SortableHeader
+                          title="Fournisseur"
+                          sortKey="fournisseur"
+                          currentSort={sortConfig}
+                          onSort={handleSort}
+                          className="hidden md:table-cell py-3 px-2 md:px-4"
+                        />
+                        <SortableHeader
+                          title="Tracking"
+                          sortKey="tracking_chine"
+                          currentSort={sortConfig}
+                          onSort={handleSort}
+                          className="hidden lg:table-cell py-3 px-2 md:px-4"
+                        />
+                        <SortableHeader
+                          title="Qté"
+                          sortKey="quantite"
+                          currentSort={sortConfig}
+                          onSort={handleSort}
+                          className="text-center py-3 px-2 md:px-4"
+                        />
+                        <SortableHeader
+                          title="Poids (kg)"
+                          sortKey="poids"
+                          currentSort={sortConfig}
+                          onSort={handleSort}
+                          className="text-center py-3 px-2 md:px-4"
+                        />
+                        <SortableHeader
+                          title="Tarif/kg"
+                          sortKey="tarif_kg"
+                          currentSort={sortConfig}
+                          onSort={handleSort}
+                          className="hidden md:table-cell py-3 px-2 md:px-4"
+                        />
+                        <SortableHeader
+                          title="Montant"
+                          sortKey="montant_a_payer"
+                          currentSort={sortConfig}
+                          onSort={handleSort}
+                          className="text-right py-3 px-2 md:px-4"
+                        />
+                        <SortableHeader
+                          title="Transitaire"
+                          sortKey="transitaire.nom"
+                          currentSort={sortConfig}
+                          onSort={handleSort}
+                          className="hidden lg:table-cell py-3 px-2 md:px-4"
+                        />
+                        <SortableHeader
+                          title="Statut"
+                          sortKey="statut"
+                          currentSort={sortConfig}
+                          onSort={handleSort}
+                          className="text-center py-3 px-2 md:px-4"
+                        />
+                        <SortableHeader
+                          title="Paiement"
+                          sortKey="statut_paiement"
+                          currentSort={sortConfig}
+                          onSort={handleSort}
+                          className="text-center py-3 px-2 md:px-4"
+                        />
+                        <SortableHeader
+                          title="Date Arrivée"
+                          sortKey="date_arrivee_agence"
+                          currentSort={sortConfig}
+                          onSort={handleSort}
+                          className="hidden md:table-cell py-3 px-2 md:px-4"
+                        />
                         <th className="text-center py-3 px-2 md:px-4 font-semibold text-sm text-gray-700 w-12"></th>
                       </tr>
                     </thead>

@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { adminService } from '@/services/adminService';
 import type { UserPermission, UserPermissionsMap, ModuleType, PermissionRole } from '@/types';
 import { PREDEFINED_ROLES } from '@/types';
 
@@ -109,6 +110,17 @@ export class PermissionsService {
     action: 'read' | 'create' | 'update' | 'delete'
   ): Promise<boolean> {
     try {
+      // First check if user is admin using secure admin_roles table
+      const { data: adminRole, error: adminError } = await supabase
+        .from('admin_roles')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .single();
+
+      // If user is admin, grant all permissions
+      if (adminRole) return true;
+
       const { data, error } = await supabase
         .from('user_permissions')
         .select(`can_${action}`)
@@ -117,7 +129,7 @@ export class PermissionsService {
         .single();
 
       if (error) {
-        // Si la permission n'existe pas, vérifier si c'est un admin
+        // If no specific permission, check fallback role in profiles
         const { data: profile } = await supabase
           .from('profiles')
           .select('role')

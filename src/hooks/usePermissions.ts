@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { permissionsService } from '@/services/permissionsService';
+import { adminService } from '@/services/adminService';
 import type { UserPermissionsMap, ModuleType, PermissionRole } from '@/types';
 import { PREDEFINED_ROLES, MODULES_INFO } from '@/types';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { showSuccess, showError } from '@/utils/toast';
 
 export const usePermissions = () => {
-  const { user } = useAuth();
+  const { user, isAdmin: authIsAdmin } = useAuth();
   const [permissions, setPermissions] = useState<UserPermissionsMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Charger les permissions de l'utilisateur actuel
   useEffect(() => {
@@ -21,27 +23,40 @@ export const usePermissions = () => {
       
       try {
         setLoading(true);
+        
+        // Check admin status using secure service, with fallback to AuthProvider
+        let adminStatus = false;
+        try {
+          adminStatus = await adminService.isCurrentUserAdmin();
+        } catch (adminError) {
+          console.warn('Admin service check failed, using AuthProvider fallback:', adminError);
+          adminStatus = authIsAdmin;
+        }
+        setIsAdmin(adminStatus);
+        
         const userPermissions = await permissionsService.getUserPermissions(user.id);
         setPermissions(userPermissions);
         setError(null);
       } catch (err: any) {
         console.error('Error loading permissions:', err);
         setError(err.message);
+        // Fallback to AuthProvider admin status even on error
+        setIsAdmin(authIsAdmin);
       } finally {
         setLoading(false);
       }
     };
 
     loadPermissions();
-  }, [user?.id]);
+  }, [user?.id, authIsAdmin]);
 
   // Vérifier une permission spécifique
   const checkPermission = useCallback((
     module: ModuleType, 
     action: 'read' | 'create' | 'update' | 'delete'
   ): boolean => {
-    // Les admins ont toutes les permissions (vérifier app_metadata, pas user_metadata)
-    if (user?.app_metadata?.role === 'admin') return true;
+    // Les admins ont toutes les permissions (vérification sécurisée via adminService)
+    if (isAdmin) return true;
     
     // SECURITY: Si les permissions ne sont pas encore chargées, refuser l'accès aux actions sensibles
     // Seule la lecture peut être autorisée pendant le chargement
@@ -51,18 +66,18 @@ export const usePermissions = () => {
     
     const modulePermissions = permissions[module];
     return modulePermissions?.[`can_${action}`] || false;
-  }, [permissions, loading, user?.app_metadata?.role]);
+  }, [permissions, loading, isAdmin]);
 
   // Vérifier si l'utilisateur peut accéder à un module
   const canAccessModule = useCallback((module: ModuleType): boolean => {
-    // Les admins ont tous les accès (vérifier app_metadata)
-    if (user?.app_metadata?.role === 'admin') return true;
+    // Les admins ont tous les accès (vérification sécurisée)
+    if (isAdmin) return true;
     
     // Pendant le chargement, autoriser uniquement la lecture
     if (loading) return true;
     
     return checkPermission(module, 'read');
-  }, [checkPermission, loading, user?.app_metadata?.role]);
+  }, [checkPermission, loading, isAdmin]);
 
   // Mettre à jour une permission
   const updatePermission = useCallback(async (
@@ -109,27 +124,28 @@ export const usePermissions = () => {
 
   // Obtenir les modules accessibles pour le menu
   const getAccessibleModules = useCallback(() => {
-    // Les admins ont tous les accès (vérifier app_metadata)
-    if (user?.app_metadata?.role === 'admin') return MODULES_INFO;
+    // Les admins ont tous les accès (vérification sécurisée)
+    if (isAdmin) return MODULES_INFO;
     
     // Si les permissions ne sont pas encore chargées, retourner tous les modules pour éviter les flashs
     if (loading) return MODULES_INFO;
     
     return MODULES_INFO.filter(module => {
       // Si le module est admin-only et l'utilisateur n'est pas admin
-      if (module.adminOnly && user?.app_metadata?.role !== 'admin') {
+      if (module.adminOnly && !isAdmin) {
         return false;
       }
       
       // Vérifier la permission de lecture
       return canAccessModule(module.id);
     });
-  }, [canAccessModule, loading, user?.app_metadata?.role]);
+  }, [canAccessModule, loading, isAdmin]);
 
   return {
     permissions,
     loading,
     error,
+    isAdmin,
     checkPermission,
     canAccessModule,
     updatePermission,

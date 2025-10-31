@@ -20,6 +20,7 @@ import SecurityDashboard from "./pages/SecurityDashboard";
 import SecurityAudit from "./pages/SecurityAudit";
 import Login from "./pages/Login";
 import AdminSetup from "./pages/AdminSetup";
+import AdminInvitation from "./pages/AdminInvitation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
                 <Route path="/admin-setup" element={<AdminSetup />} />
               )}
               <Route path="/login" element={<Login />} />
+              <Route path="/admin-invitation" element={<AdminInvitation />} />
               <Route path="/security_audit" element={<SecurityAudit />} />
               <Route path="/" element={
                 <ProtectedRouteEnhanced>

@@ -118,12 +118,9 @@ const SettingsWithPermissions = () => {
 
   // Hook d'authentification
   const { user: authUser } = useAuth();
-  
-  // Vérifier si l'utilisateur est admin
-  const isAdmin = authUser?.app_metadata?.role === 'admin';
 
-  // Hook des permissions
-  const { checkPermission, canAccessModule, getAccessibleModules } = usePermissions();
+  // Hook des permissions (includes admin status)
+  const { checkPermission, canAccessModule, getAccessibleModules, isAdmin, loading: permissionsLoading } = usePermissions();
 
   // États pour les formulaires
   const [profileForm, setProfileForm] = useState({
@@ -612,8 +609,30 @@ const SettingsWithPermissions = () => {
   };
 
   const filteredOptions = settingsOptions.filter(option => {
+    // While loading permissions, show all tabs to avoid flash
+    if (permissionsLoading) return true;
+    
+    // Admins see everything
+    if (isAdmin) return true;
+    
+    // If adminOnly and not admin, hide
+    if (option.adminOnly) return false;
+    
+    // Check module access for non-admin users
     const moduleId = sectionToModuleMap[option.id];
-    return moduleId ? canAccessModule(moduleId as any) : false;
+    return moduleId ? canAccessModule(moduleId as any) : true;
+  });
+
+  // Debug logging
+  console.log('Settings Debug:', {
+    isAdmin,
+    permissionsLoading,
+    loading,
+    filteredOptionsCount: filteredOptions.length,
+    allOptionsCount: settingsOptions.length,
+    authUser: authUser?.email,
+    authUserRole: authUser?.app_metadata?.role,
+    authUserMetadata: authUser?.app_metadata
   });
 
   return (

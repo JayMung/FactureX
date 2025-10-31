@@ -110,7 +110,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     
     // Vérifier si le module est accessible ou si l'utilisateur est admin
     return accessibleModules.some(module => module.id === item.module) || 
-           (user?.user_metadata?.role === 'admin');
+           (user?.app_metadata?.role === 'admin' || user?.app_metadata?.role === 'super_admin');
   });
 
   // Séparer Paramètres pour l'afficher en bas, et réordonner le menu principal
@@ -249,7 +249,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               }
             </p>
             <p className="text-xs text-green-100 dark:text-green-200 truncate">
-              {user?.user_metadata?.role === 'admin' ? 'Admin' : 'Opérateur'}
+              {user?.app_metadata?.role === 'admin' || user?.app_metadata?.role === 'super_admin' ? 'Admin' : 'Opérateur'}
             </p>
           </div>
         </div>

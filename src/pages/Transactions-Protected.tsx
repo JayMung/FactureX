@@ -105,7 +105,7 @@ const TransactionsProtected: React.FC = () => {
     refetch
   } = useTransactions(currentPage, memoFilters);
 
-  const { sortedData, sortConfig, handleSort } = useSorting(transactions);
+  const { sortedData, sortConfig, handleSort } = useSorting(transactions, { key: 'statut', direction: 'asc' });
 
   const formatCurrencyValue = (amount: number, currency: string) => {
     if (currency === 'USD') {
@@ -704,6 +704,12 @@ const TransactionsProtected: React.FC = () => {
                         onSort={handleSort}
                       />
                       <SortableHeader
+                        title="Statut"
+                        sortKey="statut"
+                        currentSort={sortConfig}
+                        onSort={handleSort}
+                      />
+                      <SortableHeader
                         title="Frais"
                         sortKey="frais"
                         currentSort={sortConfig}
@@ -724,12 +730,6 @@ const TransactionsProtected: React.FC = () => {
                       <SortableHeader
                         title="Mode"
                         sortKey="mode_paiement"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="Statut"
-                        sortKey="statut"
                         currentSort={sortConfig}
                         onSort={handleSort}
                       />
@@ -798,16 +798,6 @@ const TransactionsProtected: React.FC = () => {
                               {transaction.motif}
                             </Badge>
                           </td>
-                          <td className="py-3 px-4 text-sm">
-                            {formatCurrencyValue(transaction.frais, 'USD')}
-                          </td>
-                          <td className="py-3 px-4 text-sm font-medium text-green-600">
-                            {formatCurrencyValue(transaction.benefice, 'USD')}
-                          </td>
-                          <td className="py-3 px-4 text-sm font-medium text-blue-600">
-                            {transaction.montant_cny ? formatCurrencyValue(transaction.montant_cny, 'CNY') : '-'}
-                          </td>
-                          <td className="py-3 px-4 text-sm">{transaction.mode_paiement}</td>
                           <td className="py-3 px-4">
                             {checkPermission('transactions', 'update') ? (
                               <DropdownMenu>
@@ -865,6 +855,16 @@ const TransactionsProtected: React.FC = () => {
                               getStatusBadge(transaction.statut)
                             )}
                           </td>
+                          <td className="py-3 px-4 text-sm">
+                            {formatCurrencyValue(transaction.frais, 'USD')}
+                          </td>
+                          <td className="py-3 px-4 text-sm font-medium text-green-600">
+                            {formatCurrencyValue(transaction.benefice, 'USD')}
+                          </td>
+                          <td className="py-3 px-4 text-sm font-medium text-blue-600">
+                            {transaction.montant_cny ? formatCurrencyValue(transaction.montant_cny, 'CNY') : '-'}
+                          </td>
+                          <td className="py-3 px-4 text-sm">{transaction.mode_paiement}</td>
                           <td className="py-3 px-4">
                             <div className="flex items-center space-x-2">
                               <Button 

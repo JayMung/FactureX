@@ -107,3 +107,13 @@ export const applySecurityHeaders = (options: RequestInit = {}): RequestInit => 
     headers
   };
 };
+
+/**
+ * Get CSRF protection headers
+ */
+export const getCSRFHeaders = (): Record<string, string> => {
+  return {
+    'X-Requested-With': 'XMLHttpRequest',
+    'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 'no-token'
+  };
+};

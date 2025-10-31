@@ -92,9 +92,6 @@ export const secureSupabase = {
   }
 };
 
-// Export both the original and secure versions
-export { secureSupabase as default };
-
 // Security validation helpers
 export const validateSupabaseConnection = async (): Promise<boolean> => {
   try {
@@ -114,4 +111,4 @@ export const validateSupabaseConnection = async (): Promise<boolean> => {
 };
 
 // Export the secure supabase client as the default
-export default secureSupabase;
+export { secureSupabase as default };

@@ -573,6 +573,10 @@ export class SupabaseService {
       await this.logActivity(`${isActive ? 'Activation' : 'Désactivation'} mode de paiement`, 'PaymentMethod', id);
 
       return { message: `Mode de paiement ${isActive ? 'activé' : 'désactivé'} avec succès` };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  }
 
   // User Profiles
   async getUserProfiles(): Promise<ApiResponse<(UserProfile & { user: { email: string } })[]>> {

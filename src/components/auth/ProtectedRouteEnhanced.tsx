@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from 'react';
 import { Navigate } from 'react-router-dom';
@@ -27,6 +27,10 @@ const ProtectedRouteEnhanced: React.FC<ProtectedRouteEnhancedProps> = ({
   // Combiner les deux loading en un seul
   const isLoading = authLoading || permissionsLoading;
 
+  // Fallback: Check metadata role if isAdmin is false
+  const userRole = user?.user_metadata?.role || user?.app_metadata?.role;
+  const isUserAdmin = isAdmin || userRole === 'super_admin' || userRole === 'admin';
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -42,8 +46,8 @@ const ProtectedRouteEnhanced: React.FC<ProtectedRouteEnhancedProps> = ({
     return <Navigate to={fallbackPath} replace />;
   }
 
-  // Vérification du rôle admin
-  if (adminOnly && !isAdmin) {
+  // Vérification du rôle admin avec fallback
+  if (adminOnly && !isUserAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -60,8 +64,8 @@ const ProtectedRouteEnhanced: React.FC<ProtectedRouteEnhancedProps> = ({
     );
   }
 
-  // Vérification du module requis
-  if (requiredModule && !checkPermission(requiredModule as any, requiredPermission)) {
+  // Vérification du module requis (les admins ont tout accès)
+  if (requiredModule && !isUserAdmin && !checkPermission(requiredModule as any, requiredPermission)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

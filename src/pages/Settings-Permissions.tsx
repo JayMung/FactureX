@@ -615,6 +615,10 @@ const SettingsWithPermissions = () => {
     // Admins see everything
     if (isAdmin) return true;
     
+    // Fallback: Check if user has super_admin role in metadata
+    const userRole = authUser?.user_metadata?.role || authUser?.app_metadata?.role;
+    if (userRole === 'super_admin' || userRole === 'admin') return true;
+    
     // If adminOnly and not admin, hide
     if (option.adminOnly) return false;
     
@@ -631,8 +635,9 @@ const SettingsWithPermissions = () => {
     filteredOptionsCount: filteredOptions.length,
     allOptionsCount: settingsOptions.length,
     authUser: authUser?.email,
-    authUserRole: authUser?.app_metadata?.role,
-    authUserMetadata: authUser?.app_metadata
+    authUserRole: authUser?.user_metadata?.role || authUser?.app_metadata?.role,
+    authUserMetadata: authUser?.user_metadata,
+    authAppMetadata: authUser?.app_metadata
   });
 
   return (

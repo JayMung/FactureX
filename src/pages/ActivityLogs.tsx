@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
+import { usePermissions } from '../hooks/usePermissions';
+import { useActivityLogs } from '../hooks/useActivityLogs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -21,10 +24,11 @@ import {
   Edit,
   Trash2,
   Key,
-  AlertCircle,
+  AlertTriangle,
   CheckCircle,
   Clock,
-  Eye
+  Eye,
+  Shield
 } from 'lucide-react';
 import { useRealTimeActivity } from '../hooks/useRealTimeActivity';
 import { supabase } from '@/integrations/supabase/client';
@@ -58,46 +62,103 @@ const ActivityLogs: React.FC = () => {
     subtitle: 'Historique complet de toutes les actions dans l\'application'
   });
 
-  const [activities, setActivities] = useState<ActivityLog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { isAdmin, checkPermission } = usePermissions();
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
   const [userFilter, setUserFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
   const [selectedActivity, setSelectedActivity] = useState<ActivityLog | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   const pageSize = 50;
 
-  // Charger les activités initiales
-  const fetchActivities = async (page: number = 1, filters: any = {}) => {
-    setLoading(true);
+  // Use secure hook for activity logs
+  const { logs, isLoading, error, refetch, hasAccess } = useActivityLogs(currentPage, pageSize);
+
+  // Fetch users for filter dropdown (admin only)
+  const [users, setUsers] = useState<Array<{ id: string; email: string; first_name: string; last_name: string }>>([]);
+  
+  const fetchUsers = async () => {
+    if (!hasAccess) return;
+    
     try {
-      // Build query for activity_logs only
-      let query = supabase
-        .from('activity_logs')
-        .select('*', { count: 'exact' });
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, first_name, last_name')
+        .order('email');
 
-      // Apply basic filters (action, user, date)
-      if (filters.action && filters.action !== 'all') {
-        query = query.ilike('action', `%${filters.action}%`);
-      }
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
 
-      if (filters.user && filters.user !== 'all') {
-        query = query.eq('user_id', filters.user);
-      }
+  useEffect(() => {
+    if (hasAccess) {
+      fetchUsers();
+    }
+  }, [hasAccess]);
 
-      if (filters.date && filters.date !== 'all') {
-        const today = new Date().toISOString().split('T')[0];
-        if (filters.date === 'today') {
-          query = query.gte('date', today);
-        } else if (filters.date === 'week') {
-          const weekAgo = new Date();
-          weekAgo.setDate(weekAgo.getDate() - 7);
-          query = query.gte('date', weekAgo.toISOString());
+  const handleRefresh = () => {
+    const filters = {
+      action: actionFilter !== 'all' ? actionFilter : undefined,
+      user: userFilter !== 'all' ? userFilter : undefined,
+      date: dateFilter !== 'all' ? dateFilter : undefined
+    };
+    refetch(currentPage, pageSize, filters);
+  };
+
+  useEffect(() => {
+    if (hasAccess) {
+      handleRefresh();
+    }
+  }, [currentPage, actionFilter, userFilter, dateFilter, hasAccess]);
+
+  const handleExport = async () => {
+    if (!hasAccess) {
+      showError('Permissions insuffisantes pour exporter les logs');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('get_activity_logs_secure', {
+        page_num: 1,
+        page_size: 10000, // Export all logs
+        filter_action: actionFilter !== 'all' ? actionFilter : null,
+        filter_user_id: userFilter !== 'all' ? userFilter : null,
+        filter_date_range: dateFilter !== 'all' ? dateFilter : null
+      });
+
+      if (error) throw error;
+
+      const csv = [
+        ['Date', 'Utilisateur', 'Action', 'Cible', 'Détails'].join(','),
+        ...(data || []).map(log => [
+          new Date(log.date).toLocaleString('fr-FR'),
+          `"${log.user_email}"`,
+          `"${log.action}"`,
+          `"${log.cible || ''}"`,
+          `"${JSON.stringify(log.details || {})}"`
+        ].join(','))
+      ].join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const fileName = `activites-${actionFilter !== 'all' ? actionFilter.toLowerCase() + '-' : ''}${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = fileName;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      showSuccess('Export CSV généré avec succès');
+    } catch (error: any) {
+      console.error('Export error:', error);
+      showError('Erreur lors de l\'export des logs');
+    }
+  };
         } else if (filters.date === 'month') {
           const monthAgo = new Date();
           monthAgo.setMonth(monthAgo.getMonth() - 1);
@@ -575,17 +636,153 @@ const ActivityLogs: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-6">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
-          </div>
+        {/* Show access denied UI if user doesn't have permissions */}
+        {!hasAccess && (
+          <Alert className="border-red-200 bg-red-50">
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-800">
+              <div className="flex items-center gap-2 mb-2">
+                <Shield className="h-5 w-5" />
+                <span className="font-semibold">Accès Restreint</span>
+              </div>
+              <p className="text-sm">
+                Vous n'avez pas les permissions administrateur requises pour consulter les logs d'activité.
+                Cette fonctionnalité est réservée aux administrateurs pour des raisons de sécurité.
+              </p>
+            </AlertDescription>
+          </Alert>
         )}
-        
+
+        {/* Activity Logs Table - Only show if has access */}
+        {hasAccess && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Logs d'activité ({logs.count} total)
+                </span>
+                <Badge variant="secondary">
+                  Page {currentPage} sur {logs.totalPages || 1}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-gray-50">
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Type</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Action</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Utilisateur</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Cible</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Détails</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      Array.from({ length: 10 }).map((_, index) => (
+                        <tr key={index} className="border-b">
+                          <td className="py-3 px-4"><Skeleton className="h-4 w-32" /></td>
+                          <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
+                          <td className="py-3 px-4"><Skeleton className="h-4 w-48" /></td>
+                          <td className="py-3 px-4"><Skeleton className="h-4 w-32" /></td>
+                          <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
+                          <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
+                          <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
+                        </tr>
+                      ))
+                    ) : logs.data.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center">
+                          <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                          <p className="text-gray-500 text-lg">Aucune activité trouvée</p>
+                          <p className="text-gray-400 text-sm mt-2">
+                            Essayez d'ajuster les filtres ou effectuez des actions dans l'application
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      logs.data.map((activity) => (
+                        <tr key={activity.id} className="border-b hover:bg-gray-50 transition-colors">
+                          <td className="py-3 px-4 text-sm text-gray-600">
+                            {new Date(activity.date).toLocaleString('fr-FR')}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className={cn("inline-flex p-2 rounded-full", getActivityColor(activity.action))}>
+                              {getActivityIcon(activity.action)}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <p className="font-medium text-gray-900">
+                              {activity.action}
+                            </p>
+                            {activity.cible && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                {activity.cible}
+                              </p>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {activity.user?.first_name} {activity.user?.last_name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {activity.user?.email}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">
+                            {activity.cible_id || '-'}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">
+                            {activity.details ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedActivity(activity)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              '-'
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedActivity(activity);
+                                setIsDetailsModalOpen(true);
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {logs.totalPages > 1 && (
+                <div className="mt-6">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={logs.totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Modal de détails */}
         <ActivityDetailsModal
           activity={selectedActivity}
@@ -595,6 +792,34 @@ const ActivityLogs: React.FC = () => {
       </div>
     </Layout>
   );
+};
+};
+
+// Helper functions
+const getActivityColor = (action: string): string => {
+  const colors: { [key: string]: string } = {
+    'CREATE': 'bg-green-100 text-green-600',
+    'UPDATE': 'bg-blue-100 text-blue-600',
+    'DELETE': 'bg-red-100 text-red-600',
+    'LOGIN': 'bg-purple-100 text-purple-600',
+    'LOGOUT': 'bg-gray-100 text-gray-600',
+    'VIEW': 'bg-yellow-100 text-yellow-600',
+    'EXPORT': 'bg-indigo-100 text-indigo-600'
+  };
+  return colors[action] || 'bg-gray-100 text-gray-600';
+};
+
+const getActivityIcon = (action: string) => {
+  const icons: { [key: string]: React.ReactNode } = {
+    'CREATE': <Plus className="h-4 w-4" />,
+    'UPDATE': <Edit className="h-4 w-4" />,
+    'DELETE': <Trash2 className="h-4 w-4" />,
+    'LOGIN': <Key className="h-4 w-4" />,
+    'LOGOUT': <Key className="h-4 w-4" />,
+    'VIEW': <Eye className="h-4 w-4" />,
+    'EXPORT': <Download className="h-4 w-4" />
+  };
+  return icons[action] || <Activity className="h-4 w-4" />;
 };
 
 export default ActivityLogs;

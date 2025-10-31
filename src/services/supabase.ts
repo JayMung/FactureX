@@ -709,60 +709,38 @@ export class SupabaseService {
     }
   }
 
-  // Activity Logs
-  async getActivityLogs(page: number = 1, pageSize: number = 10): Promise<ApiResponse<PaginatedResponse<ActivityLog & { user: { email: string } }>>> {
+  // Activity Logs - SECURE VERSION
+  async getActivityLogs(page: number = 1, pageSize: number = 10): Promise<ApiResponse<PaginatedResponse<ActivityLog & { user: { email: string; first_name: string; last_name: string } }>>> {
     try {
-      const { data, error, count } = await supabase
-        .from('activity_logs')
-        .select('*', { count: 'exact' })
-        .range((page - 1) * pageSize, page * pageSize - 1)
-        .order('date', { ascending: false });
+      // Use secure RPC function instead of direct table access
+      const { data, error } = await supabase.rpc('get_activity_logs_secure', {
+        page_num: page,
+        page_size: pageSize
+      });
 
       if (error) throw error;
 
-      const logs = data || [];
-      const userIds = [...new Set(logs.map(l => l.user_id).filter(Boolean))];
-      
-      if (userIds.length === 0) {
-        const result: PaginatedResponse<ActivityLog & { user: { email: string } }> = {
-          data: logs.map(l => ({ ...l, user: { email: '' } })),
-          count: count || 0,
-          page,
-          pageSize,
-          totalPages: Math.ceil((count || 0) / pageSize)
-        };
-        return { data: result };
+      // Get total count for pagination
+      const { data: countData, error: countError } = await supabase.rpc('count_activity_logs_secure');
+
+      if (countError) {
+        console.warn('Failed to get log count:', countError);
       }
 
-      // Fetch user data from profiles table instead of auth.admin
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, email, first_name, last_name')
-        .in('id', userIds);
-
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
-      }
-
-      const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
-
-      const logsWithEmail = logs.map(log => ({
-        ...log,
-        user: { 
-          email: profilesMap.get(log.user_id)?.email || 'Utilisateur inconnu'
-        }
-      }));
-
-      const result: PaginatedResponse<ActivityLog & { user: { email: string } }> = {
-        data: logsWithEmail,
-        count: count || 0,
+      const result: PaginatedResponse<ActivityLog & { user: { email: string; first_name: string; last_name: string } }> = {
+        data: data || [],
+        count: countData || 0,
         page,
         pageSize,
-        totalPages: Math.ceil((count || 0) / pageSize)
+        totalPages: Math.ceil((countData || 0) / pageSize)
       };
 
       return { data: result };
     } catch (error: any) {
+      // Handle permission errors specifically
+      if (error.message.includes('Access denied')) {
+        return { error: 'Accès refusé: Permissions administrateur requises pour consulter les logs d\'activité' };
+      }
       return { error: error.message };
     }
   }

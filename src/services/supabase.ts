@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { fieldLevelSecurityService } from '@/lib/security/field-level-security';
 import type { 
   Client, 
   Transaction, 
@@ -21,14 +22,24 @@ export class SupabaseService {
   // Clients
   async getClients(page: number = 1, pageSize: number = 10, filters: ClientFilters = {}): Promise<ApiResponse<PaginatedResponse<Client>>> {
     try {
+      // SECURITY: Use field-level security to prevent sensitive data exposure
+      const secureSelect = await fieldLevelSecurityService.buildSecureSelect('clients');
+      
       let query = supabase
         .from('clients')
-        .select('*', { count: 'exact' })
+        .select(secureSelect, { count: 'exact' })
         .range((page - 1) * pageSize, page * pageSize - 1)
         .order('created_at', { ascending: false });
 
       if (filters.search) {
-        query = query.or(`nom.ilike.%${filters.search}%,telephone.ilike.%${filters.search}%`);
+        // SECURITY: Only search in allowed fields
+        const allowedFields = await fieldLevelSecurityService.getFilteredFields('clients');
+        const searchFields = allowedFields.filter(field => ['nom', 'telephone'].includes(field));
+        
+        if (searchFields.length > 0) {
+          const searchConditions = searchFields.map(field => `${field}.ilike.%${filters.search}%`).join(',');
+          query = query.or(searchConditions);
+        }
       }
 
       if (filters.ville) {
@@ -39,11 +50,15 @@ export class SupabaseService {
 
       if (error) throw error;
 
-      const clients = data || [];
+      // SECURITY: Filter response data to ensure no sensitive information leaks
+      const filteredClients = await fieldLevelSecurityService.filterResponseData('clients', data || []);
 
       // Compute total_paye per client from transactions (USD only, exclude canceled)
-      if (clients.length > 0) {
-        const clientIds = clients.map(c => c.id);
+      // SECURITY: Only add financial data if user has permission
+      const canSeeFinancialData = await fieldLevelSecurityService.isFieldAllowed('clients', 'total_paye');
+      
+      if (filteredClients.length > 0 && canSeeFinancialData) {
+        const clientIds = filteredClients.map(c => c.id);
         const { data: txData, error: txError } = await supabase
           .from('transactions')
           .select('client_id, montant, devise, statut')
@@ -56,14 +71,14 @@ export class SupabaseService {
               totalsMap.set(t.client_id, (totalsMap.get(t.client_id) || 0) + (t.montant || 0));
             }
           });
-          clients.forEach(c => {
+          filteredClients.forEach(c => {
             (c as any).total_paye = totalsMap.get(c.id) || 0;
           });
         }
       }
 
       const result: PaginatedResponse<Client> = {
-        data: clients,
+        data: filteredClients,
         count: count || 0,
         page,
         pageSize,
@@ -166,11 +181,15 @@ export class SupabaseService {
   // Transactions
   async getTransactions(page: number = 1, pageSize: number = 10, filters: TransactionFilters = {}): Promise<ApiResponse<PaginatedResponse<Transaction & { client: Client }>>> {
     try {
+      // SECURITY: Use field-level security for both transactions and client data
+      const secureTransactionSelect = await fieldLevelSecurityService.buildSecureSelect('transactions');
+      const secureClientSelect = await fieldLevelSecurityService.buildSecureSelect('clients');
+      
       let query = supabase
         .from('transactions')
         .select(`
-          *,
-          client:clients(*)
+          ${secureTransactionSelect},
+          client:clients(${secureClientSelect})
         `, { count: 'exact' })
         .range((page - 1) * pageSize, page * pageSize - 1)
         .order('created_at', { ascending: false });
@@ -199,11 +218,14 @@ export class SupabaseService {
         query = query.lte('created_at', filters.dateTo);
       }
 
-      if (filters.minAmount) {
+      // SECURITY: Only allow amount filtering if user can see sensitive financial data
+      const canSeeFinancialData = await fieldLevelSecurityService.isFieldAllowed('transactions', 'montant');
+      
+      if (filters.minAmount && canSeeFinancialData) {
         query = query.gte('montant', parseFloat(filters.minAmount));
       }
 
-      if (filters.maxAmount) {
+      if (filters.maxAmount && canSeeFinancialData) {
         query = query.lte('montant', parseFloat(filters.maxAmount));
       }
 
@@ -211,8 +233,11 @@ export class SupabaseService {
 
       if (error) throw error;
 
+      // SECURITY: Additional filtering to ensure no sensitive data leaks
+      const filteredData = await fieldLevelSecurityService.filterResponseData('transactions', data || []);
+
       const result: PaginatedResponse<Transaction & { client: Client }> = {
-        data: data || [],
+        data: filteredData,
         count: count || 0,
         page,
         pageSize,
@@ -548,28 +573,33 @@ export class SupabaseService {
       await this.logActivity(`${isActive ? 'Activation' : 'Désactivation'} mode de paiement`, 'PaymentMethod', id);
 
       return { message: `Mode de paiement ${isActive ? 'activé' : 'désactivé'} avec succès` };
-    } catch (error: any) {
-      return { error: error.message };
-    }
-  }
 
   // User Profiles
   async getUserProfiles(): Promise<ApiResponse<(UserProfile & { user: { email: string } })[]>> {
     try {
+      // SECURITY: Use field-level security to prevent sensitive data exposure
+      const secureSelect = await fieldLevelSecurityService.buildSecureSelect('profiles');
+      
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(secureSelect)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       const profiles = data || [];
       
+      // SECURITY: Filter response data to ensure no sensitive information leaks
+      const filteredProfiles = await fieldLevelSecurityService.filterResponseData('profiles', profiles);
+      
       // Pour la table profiles, l'email est directement dans la table
-      const profilesWithEmail = profiles.map(profile => ({
+      // SECURITY: Only include email if user has permission
+      const canSeeEmail = await fieldLevelSecurityService.isFieldAllowed('profiles', 'email');
+      
+      const profilesWithEmail = filteredProfiles.map(profile => ({
         ...profile,
         user: { 
-          email: profile.email || ''
+          email: canSeeEmail && profile.email ? profile.email : '[MASQUÉ]'
         }
       }));
 

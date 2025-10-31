@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { supabaseService } from './supabase';
+import { fieldLevelSecurityService } from '@/lib/security/field-level-security';
 import type { Client, Transaction, ApiResponse } from '@/types';
 
 export class SupabaseExtendedService {
@@ -141,21 +142,33 @@ export class SupabaseExtendedService {
   // Exporter plusieurs clients
   async exportMultipleClients(clientIds: string[]): Promise<ApiResponse<Client[]>> {
     try {
+      // SECURITY: Validate export permissions and apply field-level security
+      const validation = await fieldLevelSecurityService.validateExportSecurity('clients', ['*']);
+      
+      if (!validation.isValid) {
+        throw new Error(`Export denied: Access to restricted fields blocked: ${validation.blockedFields.join(', ')}`);
+      }
+
+      const secureSelect = await fieldLevelSecurityService.buildSecureSelect('clients');
+      
       const { data, error } = await supabase
         .from('clients')
-        .select('*')
+        .select(secureSelect)
         .in('id', clientIds)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
+      // SECURITY: Additional response filtering
+      const filteredData = await fieldLevelSecurityService.filterResponseData('clients', data || []);
+
       // Journaliser l'activité
       await supabaseService.logActivity(
-        `Export multiple clients: ${data?.length || 0} clients`,
+        `Export multiple clients: ${filteredData?.length || 0} clients`,
         'Client'
       );
 
-      return { data: data || [] };
+      return { data: filteredData };
     } catch (error: any) {
       return { error: error.message };
     }
@@ -164,24 +177,37 @@ export class SupabaseExtendedService {
   // Exporter plusieurs transactions
   async exportMultipleTransactions(transactionIds: string[]): Promise<ApiResponse<any[]>> {
     try {
+      // SECURITY: Validate export permissions and apply field-level security
+      const validation = await fieldLevelSecurityService.validateExportSecurity('transactions', ['*']);
+      
+      if (!validation.isValid) {
+        throw new Error(`Export denied: Access to restricted fields blocked: ${validation.blockedFields.join(', ')}`);
+      }
+
+      const secureTransactionSelect = await fieldLevelSecurityService.buildSecureSelect('transactions');
+      const secureClientSelect = await fieldLevelSecurityService.buildSecureSelect('clients');
+      
       const { data, error } = await supabase
         .from('transactions')
         .select(`
-          *,
-          client:clients(*)
+          ${secureTransactionSelect},
+          client:clients(${secureClientSelect})
         `)
         .in('id', transactionIds)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
+      // SECURITY: Additional response filtering
+      const filteredData = await fieldLevelSecurityService.filterResponseData('transactions', data || []);
+
       // Journaliser l'activité
       await supabaseService.logActivity(
-        `Export multiple transactions: ${data?.length || 0} transactions`,
+        `Export multiple transactions: ${filteredData?.length || 0} transactions`,
         'Transaction'
       );
 
-      return { data: data || [] };
+      return { data: filteredData };
     } catch (error: any) {
       return { error: error.message };
     }

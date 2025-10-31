@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabaseService } from '@/services/supabase';
 import { supabase } from '@/integrations/supabase/client';
 import { activityLogger } from '@/services/activityLogger';
+import { fieldLevelSecurityService } from '@/lib/security/field-level-security';
 import type { Client, ClientFilters, CreateClientData, ApiResponse } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 
@@ -147,13 +148,19 @@ export const useAllClients = () => {
   } = useQuery({
     queryKey: ['clients', 'all'],
     queryFn: async () => {
+      // SECURITY: Use field-level security for combobox data
+      const secureSelect = await fieldLevelSecurityService.buildSecureSelect('clients');
+      
       const { data, error } = await supabase
         .from('clients')
-        .select('*')
+        .select(secureSelect)
         .order('nom');
       
       if (error) throw error;
-      return data || [];
+      
+      // SECURITY: Filter response data
+      const filteredData = await fieldLevelSecurityService.filterResponseData('clients', data || []);
+      return filteredData;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
   });

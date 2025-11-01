@@ -44,6 +44,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
 }) => {
   const { permissions, loading, updatePermission, applyRole } = useUserPermissions(user.id);
   const [isSaving, setIsSaving] = useState(false);
+  const [savingRole, setSavingRole] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('modules');
 
   const handlePermissionChange = async (
@@ -63,16 +64,29 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
     }
   };
 
-  const handleRoleApply = async (roleName: string) => {
+  const handleRoleApply = async (roleName: string, event?: React.MouseEvent) => {
+    // Empêcher la propagation de l'événement
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    // Empêcher les clics multiples
+    if (isSaving || savingRole) return;
+    
     setIsSaving(true);
+    setSavingRole(roleName);
+    
     try {
       await applyRole(roleName);
+      showSuccess(`Rôle ${roleName} appliqué avec succès`);
       onSuccess?.();
     } catch (error: any) {
       console.error('Error applying role:', error);
       showError(error.message || 'Erreur lors de l\'application du rôle');
     } finally {
       setIsSaving(false);
+      setSavingRole(null);
     }
   };
 
@@ -256,7 +270,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
                         {role.name === 'super_admin' && <Crown className="h-4 w-4 text-yellow-500" />}
                         {role.name === 'admin' && <Crown className="h-4 w-4 text-orange-500" />}
                         {role.name === 'operateur' && <UserCheck className="h-4 w-4 text-blue-500" />}
-                        <span>{role.name === 'super_admin' ? 'Administrateur' : 
+                        <span>{role.name === 'super_admin' ? 'Super Administrateur' : 
                               role.name === 'admin' ? 'Administrateur' :
                               role.name === 'operateur' ? 'Opérateur' : role.name}</span>
                         {getCurrentRole() === role.name && (
@@ -290,12 +304,13 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
                       </div>
 
                       <Button
-                        onClick={() => handleRoleApply(role.name)}
+                        onClick={(e) => handleRoleApply(role.name, e)}
                         disabled={isSaving || getCurrentRole() === role.name}
                         className="w-full"
                         variant={getCurrentRole() === role.name ? 'outline' : 'default'}
+                        type="button"
                       >
-                        {isSaving ? (
+                        {savingRole === role.name ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             Application...

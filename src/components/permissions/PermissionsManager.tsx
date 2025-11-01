@@ -305,7 +305,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
 
                       <Button
                         onClick={(e) => handleRoleApply(role.name, e)}
-                        disabled={isSaving || getCurrentRole() === role.name}
+                        disabled={savingRole !== null || getCurrentRole() === role.name}
                         className="w-full"
                         variant={getCurrentRole() === role.name ? 'outline' : 'default'}
                         type="button"

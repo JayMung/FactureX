@@ -123,6 +123,7 @@ const SettingsWithPermissions = () => {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string>('operateur');
   const [loading, setLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -185,16 +186,28 @@ const SettingsWithPermissions = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          // Récupérer le rôle depuis admin_roles
+          const { data: adminRole } = await supabase
+            .from('admin_roles')
+            .select('role')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .single();
+
+          const actualRole = adminRole?.role || user.user_metadata?.role || 'operateur';
+          
           setUser({
             id: user.id,
             email: user.email || '',
             first_name: user.user_metadata?.first_name || '',
             last_name: user.user_metadata?.last_name || '',
-            role: user.user_metadata?.role || 'operateur',
+            role: actualRole,
             phone: user.user_metadata?.phone || '',
             avatar_url: user.user_metadata?.avatar_url || '',
             is_active: true
           });
+          
+          setCurrentUserRole(actualRole);
           
           const { data: profileData } = await supabase
             .from('profiles')
@@ -852,7 +865,8 @@ const SettingsWithPermissions = () => {
                       <div className="flex-1">
                         <h3 className="font-semibold text-lg">{profileForm.first_name} {profileForm.last_name}</h3>
                         <p className="text-sm text-gray-600 mt-1">
-                          {profile?.role === 'admin' ? '👑 Administrateur' : '👤 Opérateur'}
+                          {currentUserRole === 'super_admin' ? '👑 Super Administrateur' : 
+                           currentUserRole === 'admin' ? '👑 Administrateur' : '👤 Opérateur'}
                         </p>
                         <p className="text-xs text-gray-500 mt-2">
                           Membre depuis {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' }) : 'N/A'}

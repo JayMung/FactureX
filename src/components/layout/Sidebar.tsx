@@ -249,7 +249,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               }
             </p>
             <p className="text-xs text-green-100 dark:text-green-200 truncate">
-              {user?.app_metadata?.role === 'admin' || user?.app_metadata?.role === 'super_admin' ? 'Admin' : 'Opérateur'}
+              {user?.app_metadata?.role === 'super_admin' ? '👑 Super Admin' : 
+               user?.app_metadata?.role === 'admin' ? '👑 Admin' : 'Opérateur'}
             </p>
           </div>
         </div>

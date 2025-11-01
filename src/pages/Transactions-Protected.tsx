@@ -40,7 +40,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useSorting } from '../hooks/useSorting';
 import Pagination from '../components/ui/pagination-custom';
 import SortableHeader from '../components/ui/sortable-header';
-import TransactionForm from '../components/forms/TransactionForm';
+import TransactionFormFinancial from '@/components/forms/TransactionFormFinancial';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
 import TransactionDetailsModal from '../components/modals/TransactionDetailsModal';
 import PermissionGuard from '../components/auth/PermissionGuard';
@@ -950,7 +950,7 @@ const TransactionsProtected: React.FC = () => {
           </Card>
 
           {/* Transaction Form Modal */}
-          <TransactionForm
+          <TransactionFormFinancial
             isOpen={isFormOpen}
             onClose={() => setIsFormOpen(false)}
             onSuccess={handleFormSuccess}

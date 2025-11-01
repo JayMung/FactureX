@@ -1,0 +1,13 @@
+feat: Implement comprehensive financial management system
+
+- Create comptes_financiers table with RLS policies
+- Enhance transactions table for revenue/expense/transfer support  
+- Add account balance auto-update triggers
+- Create default accounts (Airtel, Orange, M-Pesa, Bank, Cash)
+- Add CompteFinancier interface and financial transaction types
+- Create useComptesFinanciers hook with CRUD operations
+- Create Comptes.tsx page for account management
+- Add account creation/editing dialogs with responsive UI
+- Add /comptes route with protection and sidebar navigation
+- Support USD/CDF currencies with real-time balance tracking
+- Organization-based isolation with full security

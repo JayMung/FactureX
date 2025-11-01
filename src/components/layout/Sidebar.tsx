@@ -13,6 +13,7 @@ import {
   LogOut,
   Plane,
   Ship,
+  Wallet,
   ChevronDown,
   ChevronRight
 } from 'lucide-react';
@@ -62,6 +63,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       label: 'Transactions', 
       path: '/transactions',
       module: 'transactions'
+    },
+    { 
+      icon: Wallet, 
+      label: 'Comptes Financiers', 
+      path: '/comptes',
+      module: 'comptes'
     },
     { 
       icon: Settings, 
@@ -121,7 +128,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         'Tableau de bord': 1,
         'Clients': 2,
         'Transactions': 3,
-        'Factures': 4,
+        'Comptes Financiers': 4,
+        'Factures': 5,
       };
       return (order[a.label] ?? 99) - (order[b.label] ?? 99);
     });

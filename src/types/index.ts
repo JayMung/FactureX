@@ -12,7 +12,7 @@ export interface Client {
 
 export interface Transaction {
   id: string;
-  client_id: string;
+  client_id?: string; // Optional for internal expenses
   date_paiement: string;
   montant: number;
   devise: string;
@@ -30,6 +30,35 @@ export interface Transaction {
   updated_at?: string;
   created_by?: string;
   client?: Client;
+  
+  // New financial fields
+  type_transaction: 'revenue' | 'depense' | 'transfert';
+  categorie?: string;
+  compte_source_id?: string;
+  compte_destination_id?: string;
+  colis_id?: string;
+  notes?: string;
+  organization_id: string;
+  
+  // Related objects
+  compte_source?: CompteFinancier;
+  compte_destination?: CompteFinancier;
+  colis?: any; // Will be typed when colis interface is created
+}
+
+export interface CompteFinancier {
+  id: string;
+  nom: string;
+  type_compte: 'mobile_money' | 'banque' | 'cash';
+  numero_compte?: string;
+  solde_actuel: number;
+  devise: 'USD' | 'CDF';
+  is_active: boolean;
+  description?: string;
+  organization_id: string;
+  created_at: string;
+  updated_at?: string;
+  created_by?: string;
 }
 
 export interface Setting {
@@ -107,6 +136,10 @@ export interface TransactionFilters {
   currency?: string;
   clientId?: string;
   modePaiement?: string;
+  type_transaction?: 'revenue' | 'depense' | 'transfert';
+  categorie?: string;
+  compte_source_id?: string;
+  compte_destination_id?: string;
   dateFrom?: string;
   dateTo?: string;
   minAmount?: string;
@@ -120,16 +153,28 @@ export interface CreateClientData {
 }
 
 export interface CreateTransactionData {
-  client_id: string;
+  type_transaction: 'revenue' | 'depense' | 'transfert';
+  motif: string;
+  client_id?: string;
   montant: number;
   devise: string;
-  motif: string;
-  mode_paiement: string;
+  mode_paiement?: string;
   date_paiement?: string;
   statut?: string;
+  categorie?: string;
+  compte_source_id?: string;
+  compte_destination_id?: string;
+  colis_id?: string;
+  notes?: string;
+  frais?: number;
+  taux_usd_cny?: number;
+  taux_usd_cdf?: number;
+  montant_cny?: number;
+  benefice?: number;
 }
 
 export interface UpdateTransactionData {
+  type_transaction?: 'revenue' | 'depense' | 'transfert';
   client_id?: string;
   montant?: number;
   devise?: string;
@@ -137,6 +182,11 @@ export interface UpdateTransactionData {
   mode_paiement?: string;
   date_paiement?: string;
   statut?: string;
+  categorie?: string;
+  compte_source_id?: string;
+  compte_destination_id?: string;
+  colis_id?: string;
+  notes?: string;
   valide_par?: string;
   date_validation?: string;
   taux_usd_cny?: number;

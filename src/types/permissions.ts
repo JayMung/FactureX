@@ -45,14 +45,41 @@ export interface PermissionRole {
 // Rôles prédéfinis
 export const PREDEFINED_ROLES: PermissionRole[] = [
   {
-    name: 'admin',
+    name: 'super_admin',
     description: 'Administrateur - Accès complet à tout',
     permissions: {
       clients: { can_read: true, can_create: true, can_update: true, can_delete: true },
       transactions: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      factures: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      colis: { can_read: true, can_create: true, can_update: true, can_delete: true },
       settings: { can_read: true, can_create: true, can_update: true, can_delete: true },
       payment_methods: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      activity_logs: { can_read: true, can_create: false, can_update: false, can_delete: false }
+      exchange_rates: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      transaction_fees: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      activity_logs: { can_read: true, can_create: false, can_update: false, can_delete: false },
+      users: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      profile: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      reports: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      security_logs: { can_read: true, can_create: false, can_update: false, can_delete: false }
+    }
+  },
+  {
+    name: 'admin',
+    description: 'Administrateur - Gestion complète limitée',
+    permissions: {
+      clients: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      transactions: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      factures: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      colis: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      settings: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      payment_methods: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      exchange_rates: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      transaction_fees: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      activity_logs: { can_read: true, can_create: false, can_update: false, can_delete: false },
+      users: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      profile: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      reports: { can_read: true, can_create: true, can_update: false, can_delete: false },
+      security_logs: { can_read: false, can_create: false, can_update: false, can_delete: false }
     }
   },
   {
@@ -61,20 +88,17 @@ export const PREDEFINED_ROLES: PermissionRole[] = [
     permissions: {
       clients: { can_read: true, can_create: true, can_update: true, can_delete: false },
       transactions: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      factures: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      colis: { can_read: true, can_create: true, can_update: false, can_delete: false },
       settings: { can_read: false, can_create: false, can_update: false, can_delete: false },
       payment_methods: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      activity_logs: { can_read: false, can_create: false, can_update: false, can_delete: false }
-    }
-  },
-  {
-    name: 'lecteur',
-    description: 'Lecteur - Accès en lecture seule',
-    permissions: {
-      clients: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      transactions: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      settings: { can_read: false, can_create: false, can_update: false, can_delete: false },
-      payment_methods: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      activity_logs: { can_read: true, can_create: false, can_update: false, can_delete: false }
+      exchange_rates: { can_read: true, can_create: false, can_update: false, can_delete: false },
+      transaction_fees: { can_read: true, can_create: false, can_update: false, can_delete: false },
+      activity_logs: { can_read: false, can_create: false, can_update: false, can_delete: false },
+      users: { can_read: false, can_create: false, can_update: false, can_delete: false },
+      profile: { can_read: true, can_create: false, can_update: true, can_delete: false },
+      reports: { can_read: true, can_create: false, can_update: false, can_delete: false },
+      security_logs: { can_read: false, can_create: false, can_update: false, can_delete: false }
     }
   }
 ];

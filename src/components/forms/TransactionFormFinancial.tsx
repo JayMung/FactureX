@@ -16,6 +16,7 @@ import { useAllClients } from '@/hooks/useClients';
 import { useExchangeRates } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { toast } from 'sonner';
 
 interface TransactionFormProps {
@@ -59,6 +60,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
     montant: '',
     devise: 'USD' as 'USD' | 'CDF',
     categorie: 'Commande',
+    mode_paiement: '',
     date_paiement: new Date().toISOString().split('T')[0],
     compte_source_id: '',
     compte_destination_id: '',
@@ -73,6 +75,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   const { rates } = useExchangeRates();
   const { createTransaction, updateTransaction, isCreating, isUpdating } = useTransactions();
   const { comptes } = useComptesFinanciers();
+  const { paymentMethods } = usePaymentMethods();
 
   const isEditing = !!transaction;
   const isLoading = isCreating || isUpdating;
@@ -86,6 +89,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
         montant: transaction.montant.toString(),
         devise: transaction.devise as 'USD' | 'CDF',
         categorie: transaction.categorie || transaction.motif || 'Commande',
+        mode_paiement: transaction.mode_paiement || '',
         date_paiement: transaction.date_paiement?.split('T')[0] || new Date().toISOString().split('T')[0],
         compte_source_id: transaction.compte_source_id || '',
         compte_destination_id: transaction.compte_destination_id || '',
@@ -102,11 +106,11 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   // Reset catégorie when type changes
   useEffect(() => {
     if (formData.type_transaction === 'revenue') {
-      setFormData(prev => ({ ...prev, categorie: 'Commande', client_id: prev.client_id || '' }));
+      setFormData(prev => ({ ...prev, categorie: 'Commande', client_id: prev.client_id || '', mode_paiement: prev.mode_paiement || '' }));
     } else if (formData.type_transaction === 'depense') {
-      setFormData(prev => ({ ...prev, categorie: 'Paiement Fournisseur', client_id: '' }));
+      setFormData(prev => ({ ...prev, categorie: 'Paiement Fournisseur', client_id: '', mode_paiement: prev.mode_paiement || '' }));
     } else if (formData.type_transaction === 'transfert') {
-      setFormData(prev => ({ ...prev, categorie: 'Transfert', client_id: '' }));
+      setFormData(prev => ({ ...prev, categorie: 'Transfert', client_id: '', mode_paiement: '' }));
     }
   }, [formData.type_transaction]);
 
@@ -116,6 +120,11 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
     // Validation client (requis seulement pour revenue)
     if (formData.type_transaction === 'revenue' && !formData.client_id) {
       newErrors.client_id = 'Le client est requis pour un revenue';
+    }
+
+    // Validation mode de paiement (requis pour revenue)
+    if (formData.type_transaction === 'revenue' && !formData.mode_paiement) {
+      newErrors.mode_paiement = 'Le mode de paiement est requis pour un revenue';
     }
 
     // Validation montant
@@ -191,6 +200,10 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
         transactionData.client_id = formData.client_id;
       }
 
+      if (formData.mode_paiement) {
+        transactionData.mode_paiement = formData.mode_paiement;
+      }
+
       if (formData.compte_source_id) {
         transactionData.compte_source_id = formData.compte_source_id;
       }
@@ -210,10 +223,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
 
       if (isEditing && transaction) {
         await updateTransaction(transaction.id, transactionData);
-        toast.success('Transaction mise à jour avec succès');
       } else {
         await createTransaction(transactionData);
-        toast.success('Transaction créée avec succès');
       }
       
       onSuccess?.();
@@ -226,6 +237,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
         montant: '',
         devise: 'USD',
         categorie: 'Commande',
+        mode_paiement: '',
         date_paiement: new Date().toISOString().split('T')[0],
         compte_source_id: '',
         compte_destination_id: '',
@@ -249,6 +261,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   if (!isOpen) return null;
 
   const activeComptes = comptes.filter(c => c.is_active);
+  const activePaymentMethods = paymentMethods.filter(method => method.is_active);
   const categories = formData.type_transaction === 'revenue' 
     ? REVENUE_CATEGORIES 
     : formData.type_transaction === 'depense'
@@ -358,6 +371,33 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
                 <p className="text-sm text-red-600">{errors.categorie}</p>
               )}
             </div>
+
+            {/* Mode de paiement (pour revenue et depense) */}
+            {formData.type_transaction !== 'transfert' && (
+              <div className="space-y-2">
+                <Label htmlFor="mode_paiement">
+                  Mode de paiement {formData.type_transaction === 'revenue' ? '*' : '(optionnel)'}
+                </Label>
+                <Select
+                  value={formData.mode_paiement}
+                  onValueChange={(value) => handleChange('mode_paiement', value)}
+                >
+                  <SelectTrigger className={errors.mode_paiement ? 'border-red-500' : ''}>
+                    <SelectValue placeholder="Sélectionner un mode" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activePaymentMethods.map((method) => (
+                      <SelectItem key={method.id} value={method.name}>
+                        {method.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.mode_paiement && (
+                  <p className="text-sm text-red-600">{errors.mode_paiement}</p>
+                )}
+              </div>
+            )}
 
             {/* Montant et Devise */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

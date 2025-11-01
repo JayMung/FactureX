@@ -20,6 +20,8 @@ import SecurityDashboard from "./pages/SecurityDashboard";
 import SecurityAudit from "./pages/SecurityAudit";
 import PermissionDiagnosticPage from "./pages/Permission-Diagnostic";
 import Comptes from "./pages/Comptes";
+import MouvementsComptes from "./pages/Mouvements-Comptes";
+import OperationsFinancieres from "./pages/Operations-Financieres";
 import Login from "./pages/Login";
 import AdminSetup from "./pages/AdminSetup";
 import AdminInvitation from "./pages/AdminInvitation";
@@ -115,6 +117,16 @@ const App = () => (
               <Route path="/comptes" element={
                 <ProtectedRouteEnhanced>
                   <Comptes />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/comptes/mouvements" element={
+                <ProtectedRouteEnhanced>
+                  <MouvementsComptes />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/operations-financieres" element={
+                <ProtectedRouteEnhanced>
+                  <OperationsFinancieres />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/permission-diagnostic" element={

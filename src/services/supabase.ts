@@ -91,6 +91,37 @@ export class SupabaseService {
     }
   }
 
+  async getClientsGlobalTotals(filters: ClientFilters = {}): Promise<ApiResponse<{ totalPaye: number }>> {
+    try {
+      let query = supabase
+        .from('transactions')
+        .select('montant, devise, statut, clients!inner(id)');
+
+      // Appliquer les filtres de recherche sur les clients
+      if (filters.search) {
+        query = query.or(`clients.nom.ilike.%${filters.search}%,clients.telephone.ilike.%${filters.search}%`);
+      }
+
+      if (filters.ville) {
+        query = query.eq('clients.ville', filters.ville);
+      }
+
+      // Filtrer pour exclure les transactions annulées et ne compter que USD
+      query = query.neq('statut', 'Annulé').eq('devise', 'USD');
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      // Calculer le total payé
+      const totalPaye = (data || []).reduce((sum, t) => sum + (t.montant || 0), 0);
+
+      return { data: { totalPaye } };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  }
+
   async getClientById(id: string): Promise<ApiResponse<Client>> {
     try {
       const { data, error } = await supabase

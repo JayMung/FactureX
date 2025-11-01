@@ -20,6 +20,15 @@ export const useClients = (page: number = 1, filters: ClientFilters = {}) => {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
+  const {
+    data: globalTotalsData,
+    isLoading: isGlobalTotalsLoading
+  } = useQuery({
+    queryKey: ['clientsGlobalTotals', filters],
+    queryFn: () => supabaseService.getClientsGlobalTotals(filters),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
   const createMutation = useMutation({
     mutationFn: (data: CreateClientData) => supabaseService.createClient(data),
     onSuccess: (response: ApiResponse<Client>) => {
@@ -106,7 +115,11 @@ export const useClients = (page: number = 1, filters: ClientFilters = {}) => {
       pageSize: data.data.pageSize,
       totalPages: data.data.totalPages
     } : null,
+    globalTotals: {
+      totalPaye: globalTotalsData?.data?.totalPaye || 0
+    },
     isLoading,
+    isGlobalTotalsLoading,
     error: error?.message || data?.error,
     refetch,
     createClient: createMutation.mutate,

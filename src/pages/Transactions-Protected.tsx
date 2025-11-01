@@ -102,17 +102,24 @@ const TransactionsProtected: React.FC = () => {
 
   const {
     transactions,
-    pagination,
     loading,
     isCreating,
     isUpdating,
     error,
+    pagination,
+    globalTotals,
     updateTransaction,
     deleteTransaction,
     refetch
   } = useTransactions(currentPage, memoFilters);
 
-  const { sortedData, sortConfig, handleSort } = useSorting(transactions, { key: 'statut', direction: 'asc' });
+  // Filter to show only Commandes (motif: Commande) and Transferts (motif: Transfert)
+  // Exclude internal operations (depense, revenue)
+  const commercialTransactions = transactions.filter(t => 
+    t.motif === 'Commande' || t.motif === 'Transfert'
+  );
+
+  const { sortedData, sortConfig, handleSort } = useSorting(commercialTransactions, { key: 'statut', direction: 'asc' });
 
   const formatCurrencyValue = (amount: number, currency: string) => {
     if (currency === 'USD') {
@@ -351,19 +358,7 @@ const TransactionsProtected: React.FC = () => {
     return { totalUSD, totalCDF, totalCNY, totalFrais, totalBenefice };
   };
 
-  const calculateStats = () => {
-    const totalUSD = transactions
-      .filter(t => t.devise === 'USD')
-      .reduce((sum, t) => sum + t.montant, 0);
-    
-    const totalFrais = transactions.reduce((sum, t) => sum + t.frais, 0);
-
-    const totalBenefice = transactions.reduce((sum, t) => sum + t.benefice, 0);
-
-    return { totalUSD, totalFrais, totalBenefice };
-  };
-
-  const { totalUSD, totalFrais, totalBenefice } = calculateStats();
+  const { totalUSD, totalFrais, totalBenefice } = globalTotals;
 
   const generateReadableId = (transactionId: string, index: number) => {
     // Utiliser les derniers caractères de l'ID UUID pour garantir l'unicité
@@ -735,7 +730,7 @@ const TransactionsProtected: React.FC = () => {
                         onSort={handleSort}
                       />
                       <SortableHeader
-                        title="Mode"
+                        title="Compte"
                         sortKey="mode_paiement"
                         currentSort={sortConfig}
                         onSort={handleSort}
@@ -871,7 +866,9 @@ const TransactionsProtected: React.FC = () => {
                           <td className="py-3 px-4 text-sm font-medium text-blue-600">
                             {transaction.montant_cny ? formatCurrencyValue(transaction.montant_cny, 'CNY') : '-'}
                           </td>
-                          <td className="py-3 px-4 text-sm">{sanitizePaymentMethod(transaction.mode_paiement || '')}</td>
+                          <td className="py-3 px-4 text-sm">
+                            <span className="font-medium">{sanitizePaymentMethod(transaction.mode_paiement || '-')}</span>
+                          </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center space-x-2">
                               <Button 

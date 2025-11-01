@@ -10,7 +10,13 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
   const [factures, setFactures] = useState<Facture[]>([]);
   const [pagination, setPagination] = useState<PaginatedResponse<Facture> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingTotals, setIsLoadingTotals] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [globalTotals, setGlobalTotals] = useState({
+    totalUSD: 0,
+    totalCDF: 0,
+    totalFrais: 0
+  });
 
   const fetchFactures = async () => {
     try {
@@ -72,6 +78,67 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       showError('Erreur lors du chargement des factures');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Fonction pour calculer les totaux globaux (toutes pages confondues)
+  // IMPORTANT: Ne compte QUE les factures payées (statut = 'payee')
+  const fetchGlobalTotals = async () => {
+    try {
+      setIsLoadingTotals(true);
+      let query = supabase
+        .from('factures')
+        .select('total_general, devise, frais')
+        .eq('statut', 'payee'); // UNIQUEMENT les factures payées
+
+      // Appliquer les mêmes filtres que fetchFactures (sauf statut qui est forcé à 'payee')
+      if (filters?.type) {
+        query = query.eq('type', filters.type);
+      }
+      // Ne pas appliquer filters.statut car on force 'payee'
+      if (filters?.clientId) {
+        query = query.eq('client_id', filters.clientId);
+      }
+      if (filters?.modeLivraison) {
+        query = query.eq('mode_livraison', filters.modeLivraison);
+      }
+      if (filters?.dateFrom) {
+        query = query.gte('date_emission', filters.dateFrom);
+      }
+      if (filters?.dateTo) {
+        query = query.lte('date_emission', filters.dateTo);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      // Calculer les totaux globaux (uniquement factures payées)
+      const totals = (data || []).reduce((acc, facture) => {
+        if (facture.devise === 'USD') {
+          acc.totalUSD += facture.total_general || 0;
+        } else if (facture.devise === 'CDF') {
+          acc.totalCDF += facture.total_general || 0;
+        }
+        acc.totalFrais += facture.frais || 0;
+        return acc;
+      }, {
+        totalUSD: 0,
+        totalCDF: 0,
+        totalFrais: 0
+      });
+
+      setGlobalTotals(totals);
+    } catch (err: any) {
+      console.error('Error fetching global totals:', err);
+      // En cas d'erreur, mettre à zéro
+      setGlobalTotals({
+        totalUSD: 0,
+        totalCDF: 0,
+        totalFrais: 0
+      });
+    } finally {
+      setIsLoadingTotals(false);
     }
   };
 
@@ -379,13 +446,16 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
 
   useEffect(() => {
     fetchFactures();
-  }, [page, filters?.type, filters?.statut, filters?.clientId, filters?.modeLivraison]);
+    // Charger les totaux de manière asynchrone (non bloquant)
+    setTimeout(() => fetchGlobalTotals(), 0);
+  }, [page, filters]);
 
   return {
     factures,
     pagination,
     isLoading,
     error,
+    globalTotals,
     createFacture,
     updateFacture,
     deleteFacture,

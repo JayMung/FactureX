@@ -59,6 +59,12 @@ const ColisAeriens: React.FC = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [colisToDelete, setColisToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [globalTotals, setGlobalTotals] = useState({
+    total: 0,
+    enTransit: 0,
+    arrives: 0,
+    montantTotal: 0
+  });
 
   usePageSetup({
     title: 'Colis Aériens',
@@ -86,6 +92,16 @@ const ColisAeriens: React.FC = () => {
       if (error) throw error;
       
       setColis(data || []);
+
+      // Calculer les totaux globaux (tous les colis aériens, non filtrés)
+      const allColis = data || [];
+      const totals = {
+        total: allColis.length,
+        enTransit: allColis.filter(c => c.statut === 'en_transit').length,
+        arrives: allColis.filter(c => c.statut === 'arrive_congo').length,
+        montantTotal: allColis.reduce((sum, c) => sum + (c.montant_a_payer || 0), 0)
+      };
+      setGlobalTotals(totals);
     } catch (error) {
       console.error('Error loading colis:', error);
       showError('Erreur lors du chargement des colis');
@@ -241,10 +257,10 @@ const ColisAeriens: React.FC = () => {
 
   // Statistiques rapides
   const stats = {
-    total: filteredColis.length,
-    enTransit: filteredColis.filter(c => c.statut === 'en_transit').length,
-    arrives: filteredColis.filter(c => c.statut === 'arrive_congo').length,
-    montantTotal: filteredColis.reduce((sum, c) => sum + c.montant_a_payer, 0),
+    total: globalTotals.total,
+    enTransit: globalTotals.enTransit,
+    arrives: globalTotals.arrives,
+    montantTotal: globalTotals.montantTotal,
     nonPayes: filteredColis.filter(c => c.statut_paiement === 'non_paye').length
   };
 

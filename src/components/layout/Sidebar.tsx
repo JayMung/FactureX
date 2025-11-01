@@ -15,7 +15,9 @@ import {
   Ship,
   Wallet,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  ArrowLeftRight,
+  DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -34,6 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const { user } = useAuth();
   const { getAccessibleModules } = usePermissions();
   const [colisMenuOpen, setColisMenuOpen] = useState(false);
+  const [comptesMenuOpen, setComptesMenuOpen] = useState(false);
 
   // Obtenir les modules accessibles selon les permissions
   const accessibleModules = getAccessibleModules();
@@ -69,6 +72,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       label: 'Comptes Financiers', 
       path: '/comptes',
       module: 'comptes'
+    },
+    { 
+      icon: DollarSign, 
+      label: 'Opérations Financières', 
+      path: '/operations-financieres',
+      module: 'transactions'
     },
     { 
       icon: Settings, 
@@ -107,6 +116,27 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   ];
 
+  // Sous-menus pour Comptes Financiers
+  const comptesSubMenuItems: Array<{
+    icon: any;
+    label: string;
+    path: string;
+    module: string;
+  }> = [
+    {
+      icon: Wallet,
+      label: 'Vue d\'ensemble',
+      path: '/comptes',
+      module: 'comptes'
+    },
+    {
+      icon: ArrowLeftRight,
+      label: 'Mouvements',
+      path: '/comptes/mouvements',
+      module: 'comptes'
+    }
+  ];
+
   // Filtrer les items du menu selon les permissions
   const filteredMenuItems = menuItems.filter(item => {
     // Si l'item est désactivé, le masquer
@@ -128,8 +158,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         'Tableau de bord': 1,
         'Clients': 2,
         'Transactions': 3,
-        'Comptes Financiers': 4,
-        'Factures': 5,
+        'Opérations Financières': 4,
+        'Comptes Financiers': 5,
+        'Factures': 6,
       };
       return (order[a.label] ?? 99) - (order[b.label] ?? 99);
     });
@@ -159,23 +190,73 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
         <ul className="space-y-2">
-          {mainNavItems.map((item) => (
-            <li key={item.path}>
-              <Button
-                variant="ghost"
-                asChild
-                className={cn(
-                  "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-lg h-11 px-4",
-                  currentPath === item.path && "bg-white dark:bg-white text-green-600 dark:text-green-600 shadow-lg font-semibold hover:bg-white hover:text-green-600"
-                )}
-              >
-                <Link to={item.path}>
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
-                  <span className="ml-3 truncate text-base font-medium">{item.label}</span>
-                </Link>
-              </Button>
-            </li>
-          ))}
+          {mainNavItems.map((item) => {
+            // Cas spécial pour Comptes Financiers : menu déroulant
+            if (item.label === 'Comptes Financiers') {
+              return (
+                <li key={item.path}>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 rounded-lg h-11 px-4",
+                      (currentPath?.startsWith('/comptes')) && "bg-green-600 dark:bg-green-700"
+                    )}
+                    onClick={() => setComptesMenuOpen(!comptesMenuOpen)}
+                  >
+                    <item.icon className="h-5 w-5 flex-shrink-0" />
+                    <span className="ml-3 truncate text-base font-medium flex-1 text-left">{item.label}</span>
+                    {comptesMenuOpen ? (
+                      <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                    )}
+                  </Button>
+
+                  {/* Sous-menus Comptes */}
+                  {comptesMenuOpen && (
+                    <ul className="mt-2 ml-4 space-y-1">
+                      {comptesSubMenuItems.map((subItem) => (
+                        <li key={subItem.path}>
+                          <Button
+                            variant="ghost"
+                            asChild
+                            className={cn(
+                              "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 rounded-lg h-10 px-3 text-sm",
+                              currentPath === subItem.path && "bg-white dark:bg-white text-green-600 dark:text-green-600 shadow-md font-semibold hover:bg-white hover:text-green-600"
+                            )}
+                          >
+                            <Link to={subItem.path}>
+                              <subItem.icon className="h-4 w-4 flex-shrink-0" />
+                              <span className="ml-2 truncate">{subItem.label}</span>
+                            </Link>
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            }
+
+            // Autres items du menu
+            return (
+              <li key={item.path}>
+                <Button
+                  variant="ghost"
+                  asChild
+                  className={cn(
+                    "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-lg h-11 px-4",
+                    currentPath === item.path && "bg-white dark:bg-white text-green-600 dark:text-green-600 shadow-lg font-semibold hover:bg-white hover:text-green-600"
+                  )}
+                >
+                  <Link to={item.path}>
+                    <item.icon className="h-5 w-5 flex-shrink-0" />
+                    <span className="ml-3 truncate text-base font-medium">{item.label}</span>
+                  </Link>
+                </Button>
+              </li>
+            );
+          })}
 
           {/* Menu Colis avec sous-menus */}
           <li>

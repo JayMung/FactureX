@@ -9,9 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Edit2, Trash2, Wallet, Building, DollarSign } from 'lucide-react';
+import { Plus, Edit2, Trash2, Wallet, Building, DollarSign, Grid3x3, List, Smartphone, CreditCard, Banknote, Eye } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import type { CompteFinancier, CreateCompteFinancierData, UpdateCompteFinancierData } from '@/types';
+import { cn } from '@/lib/utils';
+import CompteDetailModal from '@/components/comptes/CompteDetailModal';
 
 const Comptes: React.FC = () => {
   const { 
@@ -29,6 +31,9 @@ const Comptes: React.FC = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedCompte, setSelectedCompte] = useState<CompteFinancier | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [compteForDetail, setCompteForDetail] = useState<CompteFinancier | null>(null);
   const [formData, setFormData] = useState<CreateCompteFinancierData>({
     nom: '',
     type_compte: 'mobile_money',
@@ -94,14 +99,19 @@ const Comptes: React.FC = () => {
     }
   };
 
+  const handleViewDetail = (compte: CompteFinancier) => {
+    setCompteForDetail(compte);
+    setIsDetailModalOpen(true);
+  };
+
   const getAccountIcon = (type: string) => {
     switch (type) {
       case 'mobile_money':
-        return <Wallet className="h-5 w-5" />;
+        return <Smartphone className="h-5 w-5" />;
       case 'banque':
         return <Building className="h-5 w-5" />;
       case 'cash':
-        return <DollarSign className="h-5 w-5" />;
+        return <Banknote className="h-5 w-5" />;
       default:
         return <Wallet className="h-5 w-5" />;
     }
@@ -117,6 +127,67 @@ const Comptes: React.FC = () => {
         return 'Cash';
       default:
         return type;
+    }
+  };
+
+  const getAccountColor = (nom: string, type: string) => {
+    const nomLower = nom.toLowerCase();
+    
+    // Couleurs spécifiques par opérateur
+    if (nomLower.includes('airtel')) {
+      return {
+        bg: 'bg-red-50 dark:bg-red-950/20',
+        border: 'border-red-200 dark:border-red-800',
+        icon: 'bg-red-500',
+        text: 'text-red-700 dark:text-red-300',
+        badge: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+      };
+    }
+    if (nomLower.includes('orange')) {
+      return {
+        bg: 'bg-orange-50 dark:bg-orange-950/20',
+        border: 'border-orange-200 dark:border-orange-800',
+        icon: 'bg-orange-500',
+        text: 'text-orange-700 dark:text-orange-300',
+        badge: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+      };
+    }
+    if (nomLower.includes('m-pesa') || nomLower.includes('mpesa')) {
+      return {
+        bg: 'bg-green-50 dark:bg-green-950/20',
+        border: 'border-green-200 dark:border-green-800',
+        icon: 'bg-green-600',
+        text: 'text-green-700 dark:text-green-300',
+        badge: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+      };
+    }
+    
+    // Couleurs par type de compte
+    switch (type) {
+      case 'banque':
+        return {
+          bg: 'bg-blue-50 dark:bg-blue-950/20',
+          border: 'border-blue-200 dark:border-blue-800',
+          icon: 'bg-blue-500',
+          text: 'text-blue-700 dark:text-blue-300',
+          badge: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+        };
+      case 'cash':
+        return {
+          bg: 'bg-emerald-50 dark:bg-emerald-950/20',
+          border: 'border-emerald-200 dark:border-emerald-800',
+          icon: 'bg-emerald-500',
+          text: 'text-emerald-700 dark:text-emerald-300',
+          badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
+        };
+      default:
+        return {
+          bg: 'bg-purple-50 dark:bg-purple-950/20',
+          border: 'border-purple-200 dark:border-purple-800',
+          icon: 'bg-purple-500',
+          text: 'text-purple-700 dark:text-purple-300',
+          badge: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+        };
     }
   };
 
@@ -150,19 +221,46 @@ const Comptes: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+        {/* Header */}
+        <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Comptes Financiers</h1>
           <p className="text-gray-600">Gérez vos comptes Airtel, Orange, M-Pesa, Banque, Cash</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Nouveau Compte
+        <div className="flex items-center gap-3">
+          {/* View Toggle */}
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              className={cn(
+                'h-8 w-8 p-0',
+                viewMode === 'grid' && 'bg-white dark:bg-gray-700 shadow-sm'
+              )}
+            >
+              <Grid3x3 className="h-4 w-4" />
             </Button>
-          </DialogTrigger>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className={cn(
+                'h-8 w-8 p-0',
+                viewMode === 'list' && 'bg-white dark:bg-gray-700 shadow-sm'
+              )}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Nouveau Compte
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Créer un nouveau compte</DialogTitle>
@@ -256,6 +354,7 @@ const Comptes: React.FC = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -303,65 +402,177 @@ const Comptes: React.FC = () => {
       </div>
 
       {/* Accounts List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {comptes.map((compte) => (
-          <Card key={compte.id} className={`${!compte.is_active ? 'opacity-50' : ''}`}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <div className="flex items-center space-x-2">
-                {getAccountIcon(compte.type_compte)}
-                <CardTitle className="text-lg">{compte.nom}</CardTitle>
-              </div>
-              <div className="flex space-x-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEdit(compte)}
-                >
-                  <Edit2 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(compte)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Type:</span>
-                  <Badge variant="secondary">
-                    {getAccountTypeLabel(compte.type_compte)}
-                  </Badge>
-                </div>
-                {compte.numero_compte && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Numéro:</span>
-                    <span className="text-sm font-mono">{compte.numero_compte}</span>
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {comptes.map((compte) => {
+            const colors = getAccountColor(compte.nom, compte.type_compte);
+            return (
+              <Card 
+                key={compte.id} 
+                className={cn(
+                  'border-2 transition-all hover:shadow-lg',
+                  colors.bg,
+                  colors.border,
+                  !compte.is_active && 'opacity-50'
+                )}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={cn('p-2 rounded-lg', colors.icon)}>
+                        {React.cloneElement(getAccountIcon(compte.type_compte) as React.ReactElement, {
+                          className: 'h-5 w-5 text-white'
+                        })}
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg font-bold">{compte.nom}</CardTitle>
+                        <Badge className={cn('mt-1', colors.badge)}>
+                          {getAccountTypeLabel(compte.type_compte)}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewDetail(compte)}
+                        className="h-8 w-8 p-0"
+                        title="Voir détails"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(compte)}
+                        className="h-8 w-8 p-0"
+                        title="Modifier"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(compte)}
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {compte.numero_compte && (
+                    <div className="flex items-center justify-between p-2 bg-white/50 dark:bg-gray-900/50 rounded">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Numéro:</span>
+                      <span className="text-sm font-mono font-medium">{compte.numero_compte}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-900 rounded-lg border">
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Solde:</span>
+                    <span className={cn('text-2xl font-bold', colors.text)}>
+                      {compte.devise === 'USD' ? '$' : ''}{compte.solde_actuel.toFixed(2)} {compte.devise === 'CDF' ? 'FC' : ''}
+                    </span>
+                  </div>
+                  {!compte.is_active && (
+                    <Badge variant="destructive" className="w-full justify-center">
+                      Inactif
+                    </Badge>
+                  )}
+                  {compte.description && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 italic">{compte.description}</p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {comptes.map((compte) => {
+            const colors = getAccountColor(compte.nom, compte.type_compte);
+            return (
+              <Card 
+                key={compte.id}
+                className={cn(
+                  'border-l-4 transition-all hover:shadow-md',
+                  colors.border,
+                  !compte.is_active && 'opacity-50'
                 )}
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Solde:</span>
-                  <span className="text-lg font-bold">
-                    {compte.devise === 'USD' ? '$' : ''}{compte.solde_actuel.toFixed(2)} {compte.devise === 'CDF' ? 'CDF' : ''}
-                  </span>
-                </div>
-                {!compte.is_active && (
-                  <Badge variant="destructive" className="w-full justify-center">
-                    Inactif
-                  </Badge>
-                )}
-                {compte.description && (
-                  <p className="text-sm text-gray-600 mt-2">{compte.description}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className={cn('p-3 rounded-lg', colors.icon)}>
+                        {React.cloneElement(getAccountIcon(compte.type_compte) as React.ReactElement, {
+                          className: 'h-6 w-6 text-white'
+                        })}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-lg font-bold">{compte.nom}</h3>
+                          <Badge className={cn(colors.badge)}>
+                            {getAccountTypeLabel(compte.type_compte)}
+                          </Badge>
+                          {!compte.is_active && (
+                            <Badge variant="destructive">Inactif</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-6 mt-2 text-sm text-gray-600 dark:text-gray-400">
+                          {compte.numero_compte && (
+                            <span className="font-mono">{compte.numero_compte}</span>
+                          )}
+                          {compte.description && (
+                            <span className="italic">{compte.description}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div className="text-right">
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Solde</div>
+                        <div className={cn('text-2xl font-bold', colors.text)}>
+                          {compte.devise === 'USD' ? '$' : ''}{compte.solde_actuel.toFixed(2)} {compte.devise === 'CDF' ? 'FC' : ''}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewDetail(compte)}
+                          className="h-9 w-9 p-0"
+                          title="Voir détails"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(compte)}
+                          className="h-9 w-9 p-0"
+                          title="Modifier"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(compte)}
+                          className="h-9 w-9 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -455,6 +666,16 @@ const Comptes: React.FC = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de détail du compte */}
+      <CompteDetailModal
+        compte={compteForDetail}
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setCompteForDetail(null);
+        }}
+      />
       </div>
     </Layout>
   );

@@ -72,11 +72,12 @@ const FacturesProtected: React.FC = () => {
   const navigate = useNavigate();
   const { checkPermission } = usePermissions();
 
-  const {
-    factures,
-    pagination,
-    isLoading,
+  const { 
+    factures, 
+    pagination, 
+    isLoading, 
     error,
+    globalTotals,
     deleteFacture,
     updateFacture,
     getFactureWithItems,
@@ -399,6 +400,41 @@ const FacturesProtected: React.FC = () => {
 
           {/* Stats Cards - Design System */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {/* Total USD */}
+            <Card className="card-base transition-shadow-hover">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total USD</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+                      {formatCurrency(globalTotals.totalUSD, 'USD')}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-full bg-green-500 flex-shrink-0">
+                    <DollarSign className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Total CDF */}
+            <Card className="card-base transition-shadow-hover">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total CDF</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+                      {formatCurrency(globalTotals.totalCDF, 'CDF')}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-full bg-blue-500 flex-shrink-0">
+                    <TrendingUp className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Total Factures */}
             <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -408,55 +444,21 @@ const FacturesProtected: React.FC = () => {
                       {pagination?.count || 0}
                     </p>
                   </div>
-                  <div className="p-3 rounded-full bg-green-500 flex-shrink-0">
+                  <div className="p-3 rounded-full bg-purple-500 flex-shrink-0">
                     <FileText className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
+            {/* Frais */}
             <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Montant Total</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Frais Totals</p>
                     <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {formatCurrency(
-                        factures.filter(f => f.statut !== 'brouillon').reduce((sum, f) => sum + f.total_general, 0),
-                        'USD'
-                      )}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-full bg-blue-500 flex-shrink-0">
-                    <DollarSign className="h-6 w-6 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="card-base transition-shadow-hover">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Validées</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {factures.filter(f => f.statut === 'validee').length}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-full bg-purple-500 flex-shrink-0">
-                    <CheckCircle className="h-6 w-6 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="card-base transition-shadow-hover">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">En attente</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {factures.filter(f => f.statut === 'en_attente').length}
+                      {formatCurrency(globalTotals.totalFrais, 'USD')}
                     </p>
                   </div>
                   <div className="p-3 rounded-full bg-orange-500 flex-shrink-0">

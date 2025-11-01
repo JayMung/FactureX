@@ -61,6 +61,51 @@ export interface CompteFinancier {
   created_by?: string;
 }
 
+export interface CreateCompteFinancierData {
+  nom: string;
+  type_compte: 'mobile_money' | 'banque' | 'cash';
+  numero_compte?: string;
+  solde_actuel: number;
+  devise: 'USD' | 'CDF';
+  description?: string;
+}
+
+export interface UpdateCompteFinancierData {
+  nom?: string;
+  type_compte?: 'mobile_money' | 'banque' | 'cash';
+  numero_compte?: string;
+  solde_actuel?: number;
+  devise?: 'USD' | 'CDF';
+  is_active?: boolean;
+  description?: string;
+}
+
+export interface MouvementCompte {
+  id: string;
+  compte_id: string;
+  transaction_id?: string;
+  type_mouvement: 'debit' | 'credit';
+  montant: number;
+  solde_avant: number;
+  solde_apres: number;
+  description?: string;
+  date_mouvement: string;
+  organization_id: string;
+  created_at: string;
+  updated_at?: string;
+  
+  // Relations
+  compte?: CompteFinancier;
+  transaction?: Transaction;
+}
+
+export interface MouvementFilters {
+  compte_id?: string;
+  type_mouvement?: 'debit' | 'credit';
+  dateFrom?: string;
+  dateTo?: string;
+}
+
 export interface Setting {
   id: string;
   categorie: string;

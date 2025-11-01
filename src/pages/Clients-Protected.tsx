@@ -71,6 +71,7 @@ const ClientsProtected: React.FC = () => {
     pagination,
     isLoading,
     error,
+    globalTotals,
     createClient,
     updateClient,
     deleteClient,
@@ -249,9 +250,7 @@ const ClientsProtected: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Payé</p>
                     <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {formatCurrency(
-                        clients.reduce((sum, client: Client) => sum + (client.total_paye || 0), 0)
-                      )}
+                      {formatCurrency(globalTotals.totalPaye)}
                     </p>
                   </div>
                   <div className="p-3 rounded-full bg-blue-500 flex-shrink-0">

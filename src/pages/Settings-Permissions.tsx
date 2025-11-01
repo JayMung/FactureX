@@ -60,8 +60,6 @@ import { SettingsFacture } from './Settings-Facture';
 import { CompanySettings } from '../components/settings/CompanySettings';
 import { SettingsColis } from '../components/settings/SettingsColis';
 import { SettingsTransitaires } from '../components/settings/SettingsTransitaires';
-import { PREDEFINED_ROLES } from '@/types/permissions';
-import { useUserPermissions } from '@/hooks/usePermissions';
 import {
   Dialog,
   DialogContent,
@@ -99,61 +97,18 @@ interface SettingsOption {
   adminOnly?: boolean;
 }
 
-// Fonction pour détecter le rôle d'un utilisateur depuis ses permissions
-const detectUserRole = (userId: string, permissions: any) => {
-  if (!permissions || Object.keys(permissions).length === 0) {
-    return 'operateur'; // Par défaut
+// Fonction pour obtenir l'affichage du rôle
+const getRoleDisplay = (role: string) => {
+  switch (role) {
+    case 'super_admin':
+      return { text: 'Super Admin', icon: Crown, color: 'bg-yellow-500 hover:bg-yellow-600' };
+    case 'admin':
+      return { text: 'Admin', icon: Crown, color: 'bg-green-500 hover:bg-green-600' };
+    case 'operateur':
+      return { text: 'Opérateur', icon: UserCheck, color: 'bg-blue-500 hover:bg-blue-600' };
+    default:
+      return { text: 'Opérateur', icon: UserCheck, color: 'bg-blue-500 hover:bg-blue-600' };
   }
-
-  for (const role of PREDEFINED_ROLES) {
-    let matches = true;
-    for (const [moduleId, modulePerms] of Object.entries(role.permissions)) {
-      const userModulePerms = permissions[moduleId];
-      if (!userModulePerms || 
-          userModulePerms.can_read !== modulePerms.can_read ||
-          userModulePerms.can_create !== modulePerms.can_create ||
-          userModulePerms.can_update !== modulePerms.can_update ||
-          userModulePerms.can_delete !== modulePerms.can_delete) {
-        matches = false;
-        break;
-      }
-    }
-    if (matches) return role.name;
-  }
-  
-  return 'custom';
-};
-
-// Composant pour afficher le badge de rôle avec détection automatique
-const RoleBadge: React.FC<{ userId: string }> = ({ userId }) => {
-  const { permissions } = useUserPermissions(userId);
-  const actualRole = detectUserRole(userId, permissions);
-
-  const getRoleDisplay = (role: string) => {
-    switch (role) {
-      case 'super_admin':
-        return { text: 'Super Admin', icon: Crown, color: 'bg-yellow-500 hover:bg-yellow-600' };
-      case 'admin':
-        return { text: 'Admin', icon: Crown, color: 'bg-green-500 hover:bg-green-600' };
-      case 'operateur':
-        return { text: 'Opérateur', icon: UserCheck, color: 'bg-blue-500 hover:bg-blue-600' };
-      default:
-        return { text: 'Custom', icon: Settings, color: 'bg-gray-500 hover:bg-gray-600' };
-    }
-  };
-
-  const roleDisplay = getRoleDisplay(actualRole);
-  const Icon = roleDisplay.icon;
-
-  return (
-    <Badge 
-      variant={actualRole === 'super_admin' || actualRole === 'admin' ? 'default' : 'secondary'}
-      className={roleDisplay.color}
-    >
-      <Icon className="mr-1 h-3 w-3" />
-      {roleDisplay.text}
-    </Badge>
-  );
 };
 
 const SettingsWithPermissions = () => {
@@ -284,7 +239,7 @@ const SettingsWithPermissions = () => {
   const fetchUsers = async () => {
     setUsersLoading(true);
     try {
-      const { data: users, error } = await supabase
+      const { data: profiles, error } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
@@ -295,7 +250,22 @@ const SettingsWithPermissions = () => {
         return;
       }
 
-      setUsers(users || []);
+      // Récupérer les rôles depuis admin_roles pour les admins
+      const { data: adminRoles } = await supabase
+        .from('admin_roles')
+        .select('user_id, role')
+        .eq('is_active', true);
+
+      // Fusionner les données
+      const usersWithRoles = (profiles || []).map(profile => {
+        const adminRole = adminRoles?.find(ar => ar.user_id === profile.id);
+        return {
+          ...profile,
+          role: adminRole?.role || profile.role || 'operateur'
+        };
+      });
+
+      setUsers(usersWithRoles);
     } catch (error: any) {
       console.error('Error fetching users:', error);
       showError(error.message || 'Erreur lors du chargement des utilisateurs');
@@ -775,7 +745,19 @@ const SettingsWithPermissions = () => {
                               <p className="font-medium">{user.first_name} {user.last_name}</p>
                               <p className="text-sm text-gray-500">{user.email}</p>
                               <div className="flex items-center space-x-2 mt-1">
-                                <RoleBadge userId={user.id} />
+                                {(() => {
+                                  const roleDisplay = getRoleDisplay(user.role || 'operateur');
+                                  const Icon = roleDisplay.icon;
+                                  return (
+                                    <Badge 
+                                      variant={user.role === 'super_admin' || user.role === 'admin' ? 'default' : 'secondary'}
+                                      className={roleDisplay.color}
+                                    >
+                                      <Icon className="mr-1 h-3 w-3" />
+                                      {roleDisplay.text}
+                                    </Badge>
+                                  );
+                                })()}
                                 <Badge 
                                   variant={user.is_active ? 'default' : 'secondary'}
                                   className={user.is_active ? 'bg-green-500 hover:bg-green-600' : ''}

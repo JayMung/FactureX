@@ -30,20 +30,18 @@ export class PermissionsService {
     }
   ): Promise<void> {
     try {
-      // Utiliser upsert pour mettre à jour ou insérer (pas d'erreur de duplicate)
-      const { error } = await supabase
-        .from('user_permissions')
-        .upsert({
-          user_id: userId,
-          module,
-          ...permissions,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id,module', // Spécifier les colonnes pour la contrainte unique
-          ignoreDuplicates: false // Mettre à jour les lignes existantes
-        });
+      // Use SECURITY DEFINER function to bypass RLS
+      const { data, error } = await supabase.rpc('update_user_permission', {
+        p_user_id: userId,
+        p_module: module,
+        p_can_read: permissions.can_read,
+        p_can_create: permissions.can_create,
+        p_can_update: permissions.can_update,
+        p_can_delete: permissions.can_delete
+      });
 
       if (error) throw error;
+      if (!data) throw new Error('Failed to update permission');
     } catch (error: any) {
       console.error('Error updating permission:', error);
       throw error;

@@ -39,6 +39,8 @@ import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { permissionConsolidationService } from '@/lib/security/permission-consolidation';
+import { adminService } from '@/services/adminService';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu,
@@ -413,7 +415,6 @@ const SettingsWithPermissions = () => {
     } catch (error: any) {
       console.error('Error deleting user:', error);
       showError(error.message || 'Erreur lors de la suppression de l\'utilisateur');
-    } finally {
       setIsUserDeleting(false);
     }
   };
@@ -426,17 +427,47 @@ const SettingsWithPermissions = () => {
       }
 
       if (selectedUser) {
-        const { error } = await supabase
+        // Get current user for audit trail
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (!currentUser) throw new Error('Utilisateur non authentifié');
+
+        const previousRole = selectedUser.role;
+        
+        // Update basic profile info
+        const { error: profileError } = await supabase
           .from('profiles')
           .update({
             first_name: userForm.first_name,
             last_name: userForm.last_name,
-            role: userForm.role,
             phone: userForm.phone
           })
           .eq('id', selectedUser.id);
 
-        if (error) throw error;
+        if (profileError) throw profileError;
+
+        // Handle role changes with atomic operations
+        if (previousRole !== userForm.role) {
+          if (userForm.role === 'admin' || userForm.role === 'super_admin') {
+            // Grant admin role
+            await permissionConsolidationService.applyRoleAtomic(
+              selectedUser.id,
+              userForm.role,
+              currentUser.id
+            );
+          } else if (previousRole === 'admin' || previousRole === 'super_admin') {
+            // Revoke admin role
+            await permissionConsolidationService.revokeRoleAtomic(
+              selectedUser.id,
+              currentUser.id
+            );
+          }
+
+          // Force session refresh for the target user if they're the current user
+          if (selectedUser.id === currentUser.id) {
+            await supabase.auth.refreshSession();
+          }
+        }
+
         showSuccess('Utilisateur mis à jour avec succès');
         await fetchUsers();
       } else {
@@ -462,13 +493,24 @@ const SettingsWithPermissions = () => {
           .single();
         
         if (profile) {
+          // If creating admin/super_admin, apply role atomically
+          if (userForm.role === 'admin' || userForm.role === 'super_admin') {
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (currentUser) {
+              await permissionConsolidationService.applyRoleAtomic(
+                profile.id,
+                userForm.role,
+                currentUser.id
+              );
+            }
+          }
+
           showSuccess('Utilisateur créé avec succès');
           await fetchUsers();
         } else {
           const { data: manualProfile, error: manualError } = await supabase
             .from('profiles')
             .insert([{
-              id: authData.user?.id,
               email: userForm.email,
               first_name: userForm.first_name,
               last_name: userForm.last_name,
@@ -486,11 +528,8 @@ const SettingsWithPermissions = () => {
             await fetchUsers();
           }
         }
-        
-        setIsUserFormOpen(false);
-        return;
       }
-
+      
       setIsUserFormOpen(false);
     } catch (error: any) {
       console.error('Error saving user:', error);
@@ -523,17 +562,46 @@ const SettingsWithPermissions = () => {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
+      if (!user) throw new Error('Utilisateur non connecté');
+
+      // Get current user for audit trail
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) throw new Error('Utilisateur non authentifié');
+
+      const previousRole = user.role;
+      
+      // Update basic profile info
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
           first_name: profileForm.first_name,
           last_name: profileForm.last_name,
-          role: profileForm.role,
           phone: profileForm.phone
         })
-        .eq('id', user?.id);
+        .eq('id', user.id);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
+
+      // Handle role changes with atomic operations
+      if (previousRole !== profileForm.role) {
+        if (profileForm.role === 'admin' || profileForm.role === 'super_admin') {
+          // Grant admin role
+          await permissionConsolidationService.applyRoleAtomic(
+            user.id,
+            profileForm.role,
+            currentUser.id
+          );
+        } else if (previousRole === 'admin' || previousRole === 'super_admin') {
+          // Revoke admin role
+          await permissionConsolidationService.revokeRoleAtomic(
+            user.id,
+            currentUser.id
+          );
+        }
+
+        // Force session refresh for current user
+        await supabase.auth.refreshSession();
+      }
 
       setProfile(prev => prev ? { ...prev, ...profileForm } : null);
       showSuccess('Profil mis à jour avec succès');

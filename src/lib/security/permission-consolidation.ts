@@ -132,11 +132,12 @@ export class PermissionConsolidationService {
    */
   async applyRoleAtomic(userId: string, roleName: string, grantedBy: string): Promise<void> {
     try {
-      // SECURITY: Use database function for atomic operation
+      // SECURITY: Use database function for atomic operation with session refresh
       const { data, error } = await supabase.rpc('apply_role_atomic', {
         target_user_id: userId,
         role_name: roleName,
-        granted_by_user_id: grantedBy
+        granted_by_user_id: grantedBy,
+        force_session_refresh: true
       });
 
       if (error) throw error;
@@ -144,6 +145,9 @@ export class PermissionConsolidationService {
       if (!data) {
         throw new Error('Failed to apply role atomically');
       }
+
+      // Force session refresh for the target user to prevent stale JWT
+      await this.forceSessionRefresh(userId);
 
       // Log security event
       logSecurityEvent(
@@ -171,10 +175,11 @@ export class PermissionConsolidationService {
    */
   async revokeRoleAtomic(userId: string, revokedBy: string): Promise<void> {
     try {
-      // SECURITY: Use database function for atomic operation
+      // SECURITY: Use database function for atomic operation with session refresh
       const { data, error } = await supabase.rpc('revoke_role_atomic', {
         target_user_id: userId,
-        revoked_by_user_id: revokedBy
+        revoked_by_user_id: revokedBy,
+        force_session_refresh: true
       });
 
       if (error) throw error;
@@ -182,6 +187,9 @@ export class PermissionConsolidationService {
       if (!data) {
         throw new Error('Failed to revoke role atomically');
       }
+
+      // Force session refresh for the target user to prevent stale JWT
+      await this.forceSessionRefresh(userId);
 
       // Log security event
       logSecurityEvent(
@@ -320,6 +328,26 @@ export class PermissionConsolidationService {
       );
       
       throw error;
+    }
+  }
+
+  /**
+   * Force session refresh for a user to prevent stale JWT issues
+   */
+  async forceSessionRefresh(userId: string): Promise<void> {
+    try {
+      // Call the RPC function to update app_metadata and trigger refresh
+      const { error } = await supabase.rpc('force_session_refresh', {
+        target_user_id: userId
+      });
+
+      if (error) {
+        console.warn('Failed to force session refresh:', error);
+        // Don't throw error - this is a best-effort operation
+      }
+    } catch (error: any) {
+      console.warn('Error forcing session refresh:', error);
+      // Don't throw error - this is a best-effort operation
     }
   }
 }

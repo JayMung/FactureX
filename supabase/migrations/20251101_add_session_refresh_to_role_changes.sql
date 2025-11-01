@@ -76,7 +76,7 @@ BEGIN
     action,
     cible,
     details,
-    created_at
+    date
   ) VALUES (
     granted_by_user_id,
     'Modification de rôle',
@@ -138,7 +138,7 @@ BEGIN
     action,
     cible,
     details,
-    created_at
+    date
   ) VALUES (
     revoked_by_user_id,
     'Révocation de rôle',

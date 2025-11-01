@@ -7,6 +7,10 @@ import { PREDEFINED_ROLES, MODULES_INFO } from '@/types';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { showSuccess, showError } from '@/utils/toast';
 
+// Cache global pour les permissions (évite les rechargements inutiles)
+const permissionsCache = new Map<string, { permissions: UserPermissionsMap; isAdmin: boolean; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 export const usePermissions = () => {
   const { user, isAdmin: authIsAdmin } = useAuth();
   const [permissions, setPermissions] = useState<UserPermissionsMap>({});
@@ -22,28 +26,42 @@ export const usePermissions = () => {
         return;
       }
       
+      // Vérifier le cache d'abord
+      const cached = permissionsCache.get(user.id);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        setPermissions(cached.permissions);
+        setIsAdmin(cached.isAdmin);
+        setLoading(false);
+        return;
+      }
+      
       try {
         setLoading(true);
         
         // SECURITY: Use consolidated permission service for single source of truth
         const consolidatedPerms = await permissionConsolidationService.getUserPermissions(user.id);
         
-        // Validate permission consistency
-        const { isConsistent, issues } = await permissionConsolidationService.validatePermissionConsistency(user.id);
+        setPermissions(consolidatedPerms.permissions);
+        setIsAdmin(consolidatedPerms.is_admin);
         
-        if (!isConsistent) {
-          console.warn('Permission inconsistency detected:', issues);
-          // Auto-sync permissions to fix inconsistency
-          await permissionConsolidationService.syncPermissions(user.id);
-          
-          // Reload permissions after sync
-          const syncedPerms = await permissionConsolidationService.getUserPermissions(user.id);
-          setPermissions(syncedPerms.permissions);
-          setIsAdmin(syncedPerms.is_admin);
-        } else {
-          setPermissions(consolidatedPerms.permissions);
-          setIsAdmin(consolidatedPerms.is_admin);
-        }
+        // Mettre en cache
+        permissionsCache.set(user.id, {
+          permissions: consolidatedPerms.permissions,
+          isAdmin: consolidatedPerms.is_admin,
+          timestamp: Date.now()
+        });
+        
+        // Validation en arrière-plan (ne bloque pas l'UI)
+        permissionConsolidationService.validatePermissionConsistency(user.id).then(({ isConsistent, issues }) => {
+          if (!isConsistent) {
+            console.warn('Permission inconsistency detected:', issues);
+            // Auto-sync en arrière-plan
+            permissionConsolidationService.syncPermissions(user.id).then(() => {
+              // Invalider le cache pour forcer un rechargement au prochain accès
+              permissionsCache.delete(user.id);
+            });
+          }
+        });
         
         setError(null);
       } catch (err: any) {
@@ -104,6 +122,9 @@ export const usePermissions = () => {
       await permissionsService.updatePermission(userId, module, newPermissions);
       showSuccess('Permission mise à jour avec succès');
       
+      // Invalider le cache pour cet utilisateur
+      permissionsCache.delete(userId);
+      
       // Si c'est l'utilisateur actuel, recharger ses permissions
       if (userId === user?.id) {
         const updatedPermissions = await permissionsService.getUserPermissions(userId);
@@ -112,6 +133,7 @@ export const usePermissions = () => {
     } catch (error: any) {
       console.error('Error updating permission:', error);
       showError(error.message || 'Erreur lors de la mise à jour de la permission');
+      throw error;
     }
   }, [user?.id]);
 
@@ -204,6 +226,8 @@ export const useUserPermissions = (userId: string) => {
         ...prev,
         [module]: newPermissions
       }));
+      // Invalider le cache
+      permissionsCache.delete(userId);
     } catch (error: any) {
       throw error;
     }

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { FieldLevelSecurityService } from '@/lib/security/field-level-security';
+import { usePermissions } from './usePermissions';
 
 interface AnalyticsData {
   totalRevenue: number;
@@ -46,6 +48,7 @@ export const useDashboardAnalytics = (period: string = '7d') => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { permissions, loading: permissionsLoading } = usePermissions();
 
   const getPeriodDates = (period: string) => {
     const now = new Date();
@@ -79,94 +82,35 @@ export const useDashboardAnalytics = (period: string = '7d') => {
     setError(null);
 
     try {
-      const { startDate, endDate } = getPeriodDates(period);
+      // Wait for permissions to load
+      if (permissionsLoading) return;
+      
+      // Use secure RPC function instead of direct table access
+      const userRole = permissions?.role || 'operateur';
+      
+      const { data: analyticsData, error: rpcError } = await supabase
+        .rpc('get_dashboard_analytics_secure', {
+          p_period: period,
+          p_user_role: userRole
+        });
 
-      // Récupérer les transactions de la période
-      const { data: transactions, error: transactionsError } = await supabase
-        .from('transactions')
-        .select(`
-          *,
-          client:clients(nom)
-        `)
-        .gte('created_at', startDate)
-        .lte('created_at', endDate)
-        .order('created_at', { ascending: false });
+      if (rpcError) throw rpcError;
 
-      if (transactionsError) throw transactionsError;
-
-      // Récupérer les clients actifs
-      const { data: clients, error: clientsError } = await supabase
-        .from('clients')
-        .select('created_at')
-        .gte('created_at', startDate);
-
-      if (clientsError) throw clientsError;
-
-      // Calculer les statistiques
-      const totalRevenue = transactions?.reduce((sum, t) => {
-        return sum + (t.devise === 'USD' ? t.montant : t.montant / 2850); // Conversion approximative
-      }, 0) || 0;
-
-      const totalTransactions = transactions?.length || 0;
-      const activeClients = clients?.length || 0;
-      const netProfit = transactions?.reduce((sum, t) => sum + (t.benefice || 0), 0) || 0;
-
-      // Répartition par devise
-      const currencyBreakdown = transactions?.reduce((acc, t) => {
-        if (t.devise === 'USD') {
-          acc.USD += t.montant;
-        } else {
-          acc.CDF += t.montant;
-        }
-        return acc;
-      }, { USD: 0, CDF: 0 }) || { USD: 0, CDF: 0 };
-
-      // Top transactions
-      const topTransactions = transactions?.slice(0, 10).map(t => ({
-        clientName: t.client?.nom || 'Client inconnu',
-        amount: t.montant,
-        currency: t.devise,
-        date: new Date(t.created_at).toLocaleDateString('fr-FR'),
-        status: t.statut
-      })) || [];
-
-      // Statistiques quotidiennes (simplifié)
-      const dailyStats = transactions?.reduce((acc, t) => {
-        const date = new Date(t.created_at).toLocaleDateString('fr-FR');
-        const existing = acc.find(s => s.date === date);
-        
-        if (existing) {
-          existing.transactions++;
-          if (t.devise === 'USD') {
-            existing.revenueUSD += t.montant;
-          } else {
-            existing.revenueCDF += t.montant;
-          }
-        } else {
-          acc.push({
-            date,
-            revenueUSD: t.devise === 'USD' ? t.montant : 0,
-            revenueCDF: t.devise === 'CDF' ? t.montant : 0,
-            transactions: 1,
-            newClients: 0
-          });
-        }
-        
-        return acc;
-      }, [] as AnalyticsData['dailyStats']) || [];
-
+      // Parse the JSON response
+      const parsedData = analyticsData as any;
+      
       setAnalytics({
-        totalRevenue,
-        totalTransactions,
-        activeClients,
-        netProfit,
-        revenueChange: { value: 12, isPositive: true }, // Simulé
-        transactionChange: { value: 8, isPositive: true }, // Simulé
-        clientChange: { value: 15, isPositive: true }, // Simulé
-        profitChange: { value: 10, isPositive: true }, // Simulé
-        currencyBreakdown,
-        dailyStats,
-        topTransactions
+        totalRevenue: parsedData.totalRevenue || 0,
+        totalTransactions: parsedData.totalTransactions || 0,
+        activeClients: parsedData.activeClients || 0,
+        netProfit: parsedData.netProfit || 0,
+        revenueChange: parsedData.revenueChange || { value: 0, isPositive: true },
+        transactionChange: parsedData.transactionChange || { value: 0, isPositive: true },
+        clientChange: parsedData.clientChange || { value: 0, isPositive: true },
+        profitChange: parsedData.profitChange || { value: 0, isPositive: true },
+        currencyBreakdown: parsedData.currencyBreakdown || { USD: 0, CDF: 0 },
+        dailyStats: parsedData.dailyStats || [],
+        topTransactions: parsedData.topTransactions || []
       });
 
     } catch (err: any) {
@@ -174,7 +118,7 @@ export const useDashboardAnalytics = (period: string = '7d') => {
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [period, permissions, permissionsLoading]);
 
   useEffect(() => {
     fetchAnalytics();

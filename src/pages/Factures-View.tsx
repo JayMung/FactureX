@@ -40,6 +40,7 @@ import { useFactures } from '../hooks/useFactures';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import { supabase } from '@/integrations/supabase/client';
+import { encodeHtml } from '@/lib/xss-protection';
 import type { Facture } from '@/types';
 
 const FacturesView: React.FC = () => {
@@ -471,7 +472,7 @@ const FacturesView: React.FC = () => {
                             </td>
                             <td className="py-3 px-3 max-w-xs text-center">
                               <div className="line-clamp-2 inline-block" title={item.description}>
-                                {item.description || '-'}
+                                {encodeHtml(item.description || '-')}
                               </div>
                             </td>
                             <td className="py-3 px-3 text-center font-semibold">{item.quantite}</td>
@@ -532,7 +533,7 @@ const FacturesView: React.FC = () => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 line-clamp-3" title={item.description}>
-                              {item.description || '-'}
+                              {encodeHtml(item.description || '-')}
                             </p>
                           </div>
                           {item.product_url && (

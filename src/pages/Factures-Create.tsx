@@ -30,6 +30,7 @@ import { useAutoSave } from '../hooks/useAutoSave';
 import { showSuccess, showError } from '@/utils/toast';
 import ImagePreview from '@/components/ui/ImagePreview';
 import { supabase } from '@/integrations/supabase/client';
+import { sanitizeHtml, sanitizeUrl } from '@/lib/xss-protection';
 import type { Client, CreateFactureData, FactureItem } from '@/types';
 
 const FacturesCreate: React.FC = () => {
@@ -308,7 +309,16 @@ const FacturesCreate: React.FC = () => {
   const updateItem = (tempId: string, field: keyof FactureItem, value: any) => {
     setItems(items.map(item => {
       if (item.tempId === tempId) {
-        const updatedItem = { ...item, [field]: value };
+        let sanitizedValue = value;
+        
+        // Sanitize text fields to prevent XSS
+        if (field === 'description') {
+          sanitizedValue = sanitizeHtml(value);
+        } else if (field === 'image_url' || field === 'product_url') {
+          sanitizedValue = sanitizeUrl(value);
+        }
+        
+        const updatedItem = { ...item, [field]: sanitizedValue };
         
         // Recalculate montant_total if quantite or prix_unitaire changes
         if (field === 'quantite' || field === 'prix_unitaire') {

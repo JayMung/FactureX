@@ -18,11 +18,11 @@ import {
 import { 
   diagnoseCurrentUser, 
   fixCurrentUserPermissions,
-  type PermissionDiagnostic 
+  type PermissionDiagnostic as PermissionDiagnosticType
 } from '@/utils/permission-diagnostic';
 
 export const PermissionDiagnostic: React.FC = () => {
-  const [diagnostic, setDiagnostic] = useState<PermissionDiagnostic | null>(null);
+  const [diagnostic, setDiagnostic] = useState<PermissionDiagnosticType | null>(null);
   const [loading, setLoading] = useState(false);
   const [fixing, setFixing] = useState(false);
   const [error, setError] = useState<string | null>(null);

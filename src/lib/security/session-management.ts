@@ -415,7 +415,7 @@ export const getSessionAge = (session: Session | null): number => {
   if (!session) return 0;
   
   const now = Date.now();
-  const createdAt = new Date(session.created_at || 0).getTime();
+  const createdAt = new Date((session as any).created_at || 0).getTime();
   
   return now - createdAt;
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import PermissionDiagnostic from '@/components/admin/PermissionDiagnostic';
+import { PermissionDiagnostic } from '@/components/admin/PermissionDiagnostic';
 
 const PermissionDiagnosticPage: React.FC = () => {
   return (

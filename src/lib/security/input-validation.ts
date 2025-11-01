@@ -146,15 +146,15 @@ export class InputValidator {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     
     if (!value || typeof value !== 'string') {
-      return { isValid: false, error: `${fieldName} is required` };
+      return { isValid: false, error: `${fieldName} is required`, sanitizedValue: '' };
     }
 
     if (value.length > this.MAX_LENGTHS[fieldName as keyof typeof this.MAX_LENGTHS]) {
-      return { isValid: false, error: `${fieldName} is too long` };
+      return { isValid: false, error: `${fieldName} is too long`, sanitizedValue: '' };
     }
 
     if (!uuidRegex.test(value)) {
-      return { isValid: false, error: `Invalid ${fieldName} format` };
+      return { isValid: false, error: `Invalid ${fieldName} format`, sanitizedValue: '' };
     }
 
     return { isValid: true, sanitizedValue: value.toLowerCase() };
@@ -171,13 +171,14 @@ export class InputValidator {
     const numValue = parseFloat(value);
     
     if (isNaN(numValue)) {
-      return { isValid: false, error: `${fieldName} must be a number` };
+      return { isValid: false, error: `${fieldName} must be a number`, sanitizedValue: '' };
     }
 
     if (numValue < constraints.min || numValue > constraints.max) {
       return { 
         isValid: false, 
-        error: `${fieldName} must be between ${constraints.min} and ${constraints.max}` 
+        error: `${fieldName} must be between ${constraints.min} and ${constraints.max}`,
+        sanitizedValue: '' 
       };
     }
 
@@ -192,17 +193,18 @@ export class InputValidator {
    */
   private static validateEnum(value: string, fieldName: string, allowedValues: string[]): ValidationResult {
     if (!value || typeof value !== 'string') {
-      return { isValid: false, error: `${fieldName} is required` };
+      return { isValid: false, error: `${fieldName} is required`, sanitizedValue: '' };
     }
 
     if (value.length > this.MAX_LENGTHS[fieldName as keyof typeof this.MAX_LENGTHS]) {
-      return { isValid: false, error: `${fieldName} is too long` };
+      return { isValid: false, error: `${fieldName} is too long`, sanitizedValue: '' };
     }
 
     if (!allowedValues.includes(value)) {
       return { 
         isValid: false, 
-        error: `${fieldName} must be one of: ${allowedValues.join(', ')}` 
+        error: `${fieldName} must be one of: ${allowedValues.join(', ')}`,
+        sanitizedValue: '' 
       };
     }
 
@@ -214,7 +216,7 @@ export class InputValidator {
    */
   private static validateText(value: string, fieldName: string, maxLength: number): ValidationResult {
     if (!value || typeof value !== 'string') {
-      return { isValid: false, error: `${fieldName} is required` };
+      return { isValid: false, error: `${fieldName} is required`, sanitizedValue: '' };
     }
 
     // Remove potentially dangerous characters
@@ -226,7 +228,7 @@ export class InputValidator {
       .substring(0, maxLength);
 
     if (sanitized.length === 0) {
-      return { isValid: false, error: `${fieldName} cannot be empty` };
+      return { isValid: false, error: `${fieldName} cannot be empty`, sanitizedValue: '' };
     }
 
     return { isValid: true, sanitizedValue: sanitized };
@@ -237,24 +239,24 @@ export class InputValidator {
    */
   private static validateDate(value: string): ValidationResult {
     if (!value || typeof value !== 'string') {
-      return { isValid: false, error: 'Date is required' };
+      return { isValid: false, error: 'Date is required', sanitizedValue: '' };
     }
 
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(value)) {
-      return { isValid: false, error: 'Invalid date format (YYYY-MM-DD)' };
+      return { isValid: false, error: 'Invalid date format (YYYY-MM-DD)', sanitizedValue: '' };
     }
 
     const date = new Date(value);
     if (isNaN(date.getTime())) {
-      return { isValid: false, error: 'Invalid date' };
+      return { isValid: false, error: 'Invalid date', sanitizedValue: '' };
     }
 
     // Don't allow future dates for payment dates
     const today = new Date();
     today.setHours(23, 59, 59, 999);
     if (date > today) {
-      return { isValid: false, error: 'Payment date cannot be in the future' };
+      return { isValid: false, error: 'Payment date cannot be in the future', sanitizedValue: '' };
     }
 
     return { isValid: true, sanitizedValue: value };

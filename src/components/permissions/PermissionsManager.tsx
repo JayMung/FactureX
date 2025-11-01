@@ -253,11 +253,12 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
                   <Card key={role.name} className={getCurrentRole() === role.name ? 'border-green-500' : ''}>
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center space-x-2 text-base">
-                        {role.name === 'admin' && <Crown className="h-4 w-4 text-yellow-500" />}
+                        {role.name === 'super_admin' && <Crown className="h-4 w-4 text-yellow-500" />}
+                        {role.name === 'admin' && <Crown className="h-4 w-4 text-orange-500" />}
                         {role.name === 'operateur' && <UserCheck className="h-4 w-4 text-blue-500" />}
-                        {role.name === 'lecteur' && <BookOpen className="h-4 w-4 text-green-500" />}
-                        <span>{role.name === 'admin' ? 'Administrateur' : 
-                              role.name === 'operateur' ? 'Opérateur' : 'Lecteur'}</span>
+                        <span>{role.name === 'super_admin' ? 'Administrateur' : 
+                              role.name === 'admin' ? 'Administrateur' :
+                              role.name === 'operateur' ? 'Opérateur' : role.name}</span>
                         {getCurrentRole() === role.name && (
                           <CheckCircle className="h-4 w-4 text-green-500" />
                         )}

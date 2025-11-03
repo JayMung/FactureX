@@ -32,7 +32,7 @@ import {
 import { usePaiements, useCreatePaiement, useDeletePaiement, usePaiementStats, CreatePaiementData } from '@/hooks/usePaiements';
 import { useAllClients } from '@/hooks/useClients';
 import { useFactures } from '@/hooks/useFactures';
-import { useComptes } from '@/hooks/useComptes';
+import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -53,7 +53,7 @@ export default function Encaissements() {
   const { data: stats } = usePaiementStats(filters);
   const { clients } = useAllClients();
   const { data: facturesData } = useFactures(1, { statut_paiement: 'partiel,non_paye' });
-  const { data: comptesData } = useComptes();
+  const { comptes: comptesData } = useComptesFinanciers();
 
   const createPaiement = useCreatePaiement();
   const deletePaiement = useDeletePaiement();
@@ -235,8 +235,8 @@ export default function Encaissements() {
                       <SelectValue placeholder="Sélectionner" />
                     </SelectTrigger>
                     <SelectContent>
-                      {comptesData?.comptes
-                        .filter((c) => c.is_active)
+                      {comptesData
+                        ?.filter((c) => c.is_active)
                         .map((compte) => (
                           <SelectItem key={compte.id} value={compte.id}>
                             {compte.nom} ({compte.type_compte})
@@ -422,7 +422,7 @@ export default function Encaissements() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Tous</SelectItem>
-                  {comptesData?.comptes.map((compte) => (
+                  {comptesData?.map((compte) => (
                     <SelectItem key={compte.id} value={compte.id}>
                       {compte.nom}
                     </SelectItem>

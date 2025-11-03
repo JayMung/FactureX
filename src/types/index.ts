@@ -336,6 +336,7 @@ export interface UpdateFactureData {
 export interface FactureFilters {
   type?: 'devis' | 'facture';
   statut?: string;
+  statut_paiement?: string;
   clientId?: string;
   dateFrom?: string;
   dateTo?: string;

@@ -38,8 +38,14 @@ import { fr } from 'date-fns/locale';
 
 export default function Encaissements() {
   const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState({
-    type_paiement: '',
+  const [filters, setFilters] = useState<{
+    type_paiement?: 'facture' | 'colis';
+    client_id?: string;
+    compte_id?: string;
+    date_debut?: string;
+    date_fin?: string;
+    search?: string;
+  }>({
     client_id: '',
     compte_id: '',
     date_debut: '',
@@ -52,7 +58,7 @@ export default function Encaissements() {
   const { data, isLoading } = usePaiements(page, filters);
   const { data: stats } = usePaiementStats(filters);
   const { clients } = useAllClients();
-  const { data: facturesData } = useFactures(1, { statut_paiement: 'partiel,non_paye' });
+  const { factures: facturesData } = useFactures(1, { statut_paiement: 'non_paye,partiel' });
   const { comptes: comptesData } = useComptesFinanciers();
 
   const createPaiement = useCreatePaiement();
@@ -114,10 +120,21 @@ export default function Encaissements() {
     a.click();
   };
 
-  // Filter factures by selected client
+  // Filter factures by selected client and ensure valid data
   const filteredFactures = formData.client_id
-    ? facturesData?.factures.filter(f => f.client_id === formData.client_id)
-    : facturesData?.factures;
+    ? facturesData?.filter(f => 
+        f.client_id === formData.client_id && 
+        f.id && 
+        f.facture_number && 
+        f.total_general !== null && 
+        f.total_general !== undefined
+      )
+    : facturesData?.filter(f => 
+        f.id && 
+        f.facture_number && 
+        f.total_general !== null && 
+        f.total_general !== undefined
+      );
 
   return (
     <div className="space-y-6 p-6">
@@ -211,8 +228,7 @@ export default function Encaissements() {
                             .filter((facture) => !!facture?.id)
                             .map((facture) => (
                             <SelectItem key={String(facture.id)} value={String(facture.id)}>
-                              {facture.numero_facture} - {facture.montant_total} USD
-                              {facture.solde_restant && ` (Reste: ${facture.solde_restant} USD)`}
+                              {facture.facture_number || 'N/A'} - {facture.total_general || 0} {facture.devise || 'USD'}
                             </SelectItem>
                           ))
                         ) : (
@@ -393,9 +409,9 @@ export default function Encaissements() {
             <div className="space-y-2">
               <Label>Type</Label>
               <Select
-                value={filters.type_paiement}
+                value={filters.type_paiement || ''}
                 onValueChange={(value) =>
-                  setFilters({ ...filters, type_paiement: value })
+                  setFilters({ ...filters, type_paiement: value === '' ? undefined : value as 'facture' | 'colis' })
                 }
               >
                 <SelectTrigger>
@@ -485,7 +501,6 @@ export default function Encaissements() {
               variant="outline"
               onClick={() =>
                 setFilters({
-                  type_paiement: '',
                   client_id: '',
                   compte_id: '',
                   date_debut: '',

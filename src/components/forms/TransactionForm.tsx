@@ -61,6 +61,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     montant: '',
     devise: 'USD',
     categorie: 'Commande',
+    motif: 'Commande',
     mode_paiement: '',
     date_paiement: new Date().toISOString().split('T')[0],
     compte_source_id: '',
@@ -100,6 +101,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         montant: transaction.montant.toString(),
         devise: transaction.devise,
         categorie: transaction.categorie || transaction.motif || 'Commande',
+        motif: transaction.motif || 'Commande',
         mode_paiement: transaction.mode_paiement || '',
         date_paiement: transaction.date_paiement?.split('T')[0] || new Date().toISOString().split('T')[0],
         compte_source_id: transaction.compte_source_id || '',
@@ -268,12 +270,18 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
     try {
       const transactionData = {
+        type_transaction: formData.type_transaction,
         client_id: formData.client_id,
         montant: parseFloat(formData.montant),
         devise: formData.devise,
         motif: formData.motif,
+        categorie: formData.categorie,
         mode_paiement: formData.mode_paiement,
         date_paiement: formData.date_paiement,
+        compte_source_id: formData.compte_source_id,
+        compte_destination_id: formData.compte_destination_id,
+        notes: formData.notes,
+        frais: parseFloat(formData.frais) || 0,
         statut: 'En attente'
       };
 
@@ -287,12 +295,18 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       onClose();
       // Reset form
       setFormData({
+        type_transaction: 'revenue',
         client_id: '',
         montant: '',
         devise: 'USD',
+        categorie: 'Commande',
         motif: 'Commande',
         mode_paiement: '',
-        date_paiement: new Date().toISOString().split('T')[0]
+        date_paiement: new Date().toISOString().split('T')[0],
+        compte_source_id: '',
+        compte_destination_id: '',
+        notes: '',
+        frais: '0'
       });
       setErrors({});
     } catch (error: any) {

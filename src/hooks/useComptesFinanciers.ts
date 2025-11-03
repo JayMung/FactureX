@@ -3,25 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from './useOrganization';
 import type { CompteFinancier, CreateCompteFinancierData, UpdateCompteFinancierData } from '@/types';
 
-export interface CreateCompteFinancierData {
-  nom: string;
-  type_compte: 'mobile_money' | 'banque' | 'cash';
-  numero_compte?: string;
-  solde_actuel: number;
-  devise: 'USD' | 'CDF';
-  description?: string;
-}
-
-export interface UpdateCompteFinancierData {
-  nom?: string;
-  type_compte?: 'mobile_money' | 'banque' | 'cash';
-  numero_compte?: string;
-  solde_actuel?: number;
-  devise?: 'USD' | 'CDF';
-  is_active?: boolean;
-  description?: string;
-}
-
 export const useComptesFinanciers = () => {
   const [comptes, setComptes] = useState<CompteFinancier[]>([]);
   const [loading, setLoading] = useState(true);

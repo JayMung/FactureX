@@ -79,6 +79,7 @@ const TransactionsImporter: React.FC<TransactionsImporterProps> = ({ isOpen, onC
         }
 
         const transactionData = {
+          type_transaction: 'revenue' as 'revenue' | 'depense' | 'transfert',
           client_id: clientId,
           montant: parseFloat(row.montant || row.amount || '0'),
           devise: row.devise || row.currency || 'USD',

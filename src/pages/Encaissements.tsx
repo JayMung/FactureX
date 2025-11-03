@@ -176,8 +176,10 @@ export default function Encaissements() {
                     </SelectTrigger>
                     <SelectContent>
                       {clients && clients.length > 0 ? (
-                        clients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
+                        clients
+                          .filter((client) => !!client?.id)
+                          .map((client) => (
+                          <SelectItem key={String(client.id)} value={String(client.id)}>
                             {client.nom} - {client.telephone}
                           </SelectItem>
                         ))
@@ -205,8 +207,10 @@ export default function Encaissements() {
                       </SelectTrigger>
                       <SelectContent>
                         {filteredFactures && filteredFactures.length > 0 ? (
-                          filteredFactures.map((facture) => (
-                            <SelectItem key={facture.id} value={facture.id}>
+                          filteredFactures
+                            .filter((facture) => !!facture?.id)
+                            .map((facture) => (
+                            <SelectItem key={String(facture.id)} value={String(facture.id)}>
                               {facture.numero_facture} - {facture.montant_total} USD
                               {facture.solde_restant && ` (Reste: ${facture.solde_restant} USD)`}
                             </SelectItem>
@@ -249,9 +253,9 @@ export default function Encaissements() {
                     <SelectContent>
                       {comptesData && comptesData.length > 0 ? (
                         comptesData
-                          .filter((c) => c.is_active)
+                          .filter((c) => c.is_active && !!c?.id)
                           .map((compte) => (
-                            <SelectItem key={compte.id} value={compte.id}>
+                            <SelectItem key={String(compte.id)} value={String(compte.id)}>
                               {compte.nom} ({compte.type_compte})
                             </SelectItem>
                           ))
@@ -418,8 +422,10 @@ export default function Encaissements() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Tous</SelectItem>
-                  {clients && clients.length > 0 && clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
+                  {clients && clients.length > 0 && clients
+                    .filter((client) => !!client?.id)
+                    .map((client) => (
+                    <SelectItem key={String(client.id)} value={String(client.id)}>
                       {client.nom}
                     </SelectItem>
                   ))}
@@ -440,8 +446,10 @@ export default function Encaissements() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Tous</SelectItem>
-                  {comptesData && comptesData.length > 0 && comptesData.map((compte) => (
-                    <SelectItem key={compte.id} value={compte.id}>
+                  {comptesData && comptesData.length > 0 && comptesData
+                    .filter((compte) => !!compte?.id)
+                    .map((compte) => (
+                    <SelectItem key={String(compte.id)} value={String(compte.id)}>
                       {compte.nom}
                     </SelectItem>
                   ))}

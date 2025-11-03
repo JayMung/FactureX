@@ -175,11 +175,17 @@ export default function Encaissements() {
                       <SelectValue placeholder="Sélectionner" />
                     </SelectTrigger>
                     <SelectContent>
-                      {clients?.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.nom} - {client.telephone}
+                      {clients && clients.length > 0 ? (
+                        clients.map((client) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.nom} - {client.telephone}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>
+                          Aucun client disponible
                         </SelectItem>
-                      ))}
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -198,12 +204,18 @@ export default function Encaissements() {
                         <SelectValue placeholder="Sélectionner" />
                       </SelectTrigger>
                       <SelectContent>
-                        {filteredFactures?.map((facture) => (
-                          <SelectItem key={facture.id} value={facture.id}>
-                            {facture.numero_facture} - {facture.montant_total} USD
-                            {facture.solde_restant && ` (Reste: ${facture.solde_restant} USD)`}
+                        {filteredFactures && filteredFactures.length > 0 ? (
+                          filteredFactures.map((facture) => (
+                            <SelectItem key={facture.id} value={facture.id}>
+                              {facture.numero_facture} - {facture.montant_total} USD
+                              {facture.solde_restant && ` (Reste: ${facture.solde_restant} USD)`}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="" disabled>
+                            {formData.client_id ? 'Aucune facture impayée' : 'Sélectionnez un client d\'abord'}
                           </SelectItem>
-                        ))}
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -235,13 +247,19 @@ export default function Encaissements() {
                       <SelectValue placeholder="Sélectionner" />
                     </SelectTrigger>
                     <SelectContent>
-                      {comptesData
-                        ?.filter((c) => c.is_active)
-                        .map((compte) => (
-                          <SelectItem key={compte.id} value={compte.id}>
-                            {compte.nom} ({compte.type_compte})
-                          </SelectItem>
-                        ))}
+                      {comptesData && comptesData.length > 0 ? (
+                        comptesData
+                          .filter((c) => c.is_active)
+                          .map((compte) => (
+                            <SelectItem key={compte.id} value={compte.id}>
+                              {compte.nom} ({compte.type_compte})
+                            </SelectItem>
+                          ))
+                      ) : (
+                        <SelectItem value="" disabled>
+                          Aucun compte disponible
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -400,7 +418,7 @@ export default function Encaissements() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Tous</SelectItem>
-                  {clients?.map((client) => (
+                  {clients && clients.length > 0 && clients.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
                       {client.nom}
                     </SelectItem>
@@ -422,7 +440,7 @@ export default function Encaissements() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Tous</SelectItem>
-                  {comptesData?.map((compte) => (
+                  {comptesData && comptesData.length > 0 && comptesData.map((compte) => (
                     <SelectItem key={compte.id} value={compte.id}>
                       {compte.nom}
                     </SelectItem>

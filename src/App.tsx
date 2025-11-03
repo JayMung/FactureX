@@ -19,8 +19,7 @@ import ActivityLogs from "./pages/ActivityLogs";
 import SecurityDashboard from "./pages/SecurityDashboard";
 import SecurityAudit from "./pages/SecurityAudit";
 import PermissionDiagnosticPage from "./pages/Permission-Diagnostic";
-import Comptes from "./pages/Comptes";
-import MouvementsComptes from "./pages/Mouvements-Comptes";
+import ComptesFinances from "./pages/Comptes-Finances";
 import OperationsFinancieres from "./pages/Operations-Financieres";
 import Encaissements from "./pages/Encaissements";
 import Login from "./pages/Login";
@@ -117,12 +116,7 @@ const App = () => (
               } />
               <Route path="/comptes" element={
                 <ProtectedRouteEnhanced>
-                  <Comptes />
-                </ProtectedRouteEnhanced>
-              } />
-              <Route path="/comptes/mouvements" element={
-                <ProtectedRouteEnhanced>
-                  <MouvementsComptes />
+                  <ComptesFinances />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/operations-financieres" element={

@@ -1,0 +1,34 @@
+import { useState } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import Comptes from './Comptes';
+import MouvementsComptes from './Mouvements-Comptes';
+
+export default function ComptesFinances() {
+  const [activeTab, setActiveTab] = useState('comptes');
+
+  return (
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 className="text-3xl font-bold">Comptes Financiers</h1>
+        <p className="text-muted-foreground">
+          Gérez vos comptes et consultez l'historique des mouvements
+        </p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="comptes">Vue d'ensemble</TabsTrigger>
+          <TabsTrigger value="mouvements">Mouvements</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="comptes" className="mt-6">
+          <Comptes />
+        </TabsContent>
+
+        <TabsContent value="mouvements" className="mt-6">
+          <MouvementsComptes />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

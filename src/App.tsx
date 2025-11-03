@@ -22,6 +22,7 @@ import PermissionDiagnosticPage from "./pages/Permission-Diagnostic";
 import Comptes from "./pages/Comptes";
 import MouvementsComptes from "./pages/Mouvements-Comptes";
 import OperationsFinancieres from "./pages/Operations-Financieres";
+import Encaissements from "./pages/Encaissements";
 import Login from "./pages/Login";
 import AdminSetup from "./pages/AdminSetup";
 import AdminInvitation from "./pages/AdminInvitation";
@@ -127,6 +128,11 @@ const App = () => (
               <Route path="/operations-financieres" element={
                 <ProtectedRouteEnhanced>
                   <OperationsFinancieres />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/finances/encaissements" element={
+                <ProtectedRouteEnhanced requiredModule="finances">
+                  <Encaissements />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/permission-diagnostic" element={

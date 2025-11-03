@@ -5,3 +5,4 @@ export { useSettings, useExchangeRates, useFees } from './useSettings';
 export { usePaymentMethods } from './usePaymentMethods';
 export { useActivityLogs } from './useActivityLogs';
 export { useUserProfiles } from './useUserProfiles';
+export { usePaiements, useCreatePaiement, useDeletePaiement, usePaiementStats } from './usePaiements';

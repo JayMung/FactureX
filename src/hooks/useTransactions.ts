@@ -27,7 +27,8 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     totalCDF: 0,
     totalCNY: 0,
     totalFrais: 0,
-    totalBenefice: 0
+    totalBenefice: 0,
+    totalDepenses: 0
   });
 
   const fetchTransactions = useCallback(async () => {
@@ -129,7 +130,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       if (error) throw error;
 
       // Calculer les totaux globaux
-      const totals = (data || []).reduce((acc, transaction) => {
+      const totals = (data || []).reduce((acc, transaction: any) => {
         if (transaction.devise === 'USD') {
           acc.totalUSD += transaction.montant || 0;
         } else if (transaction.devise === 'CDF') {
@@ -137,14 +138,26 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
         }
         acc.totalCNY += transaction.montant_cny || 0;
         acc.totalFrais += transaction.frais || 0;
-        acc.totalBenefice += transaction.benefice || 0;
+        
+        // Le bénéfice ne compte QUE pour les transactions commerciales (Commande, Transfert)
+        // PAS pour les dépenses/revenus internes
+        if (transaction.motif === 'Commande' || transaction.motif === 'Transfert') {
+          acc.totalBenefice += transaction.benefice || 0;
+        }
+        
+        // Calculer les dépenses séparément
+        if (transaction.type_transaction === 'depense') {
+          acc.totalDepenses += transaction.montant || 0;
+        }
+        
         return acc;
       }, {
         totalUSD: 0,
         totalCDF: 0,
         totalCNY: 0,
         totalFrais: 0,
-        totalBenefice: 0
+        totalBenefice: 0,
+        totalDepenses: 0
       });
 
       setGlobalTotals(totals);
@@ -156,7 +169,8 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
         totalCDF: 0,
         totalCNY: 0,
         totalFrais: 0,
-        totalBenefice: 0
+        totalBenefice: 0,
+        totalDepenses: 0
       });
     } finally {
       setIsLoadingTotals(false);
@@ -261,15 +275,15 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       let benefice = 0;
       
       if (sanitizedData.type_transaction === 'revenue') {
-        // Pour les revenus, calculer les frais selon le motif (commande, transfert, partenaire)
+        // Pour les revenus (Commande, Transfert), calculer les frais selon le motif
         const fraisRate = fees[sanitizedData.motif.toLowerCase() as keyof typeof fees] || 0;
         fraisUSD = sanitizedData.montant * (fraisRate / 100);
         const commissionPartenaire = sanitizedData.montant * (fees.partenaire / 100);
         benefice = fraisUSD - commissionPartenaire;
       } else if (sanitizedData.type_transaction === 'depense') {
-        // Pour les dépenses, pas de frais et bénéfice négatif
+        // Pour les dépenses, pas de frais ni de bénéfice (c'est une sortie d'argent)
         fraisUSD = 0;
-        benefice = -sanitizedData.montant;
+        benefice = 0;
       }
       
       const montantNet = sanitizedData.montant - fraisUSD; // Montant après déduction des frais

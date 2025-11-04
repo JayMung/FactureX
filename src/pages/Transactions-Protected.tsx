@@ -30,6 +30,7 @@ import {
   Download,
   DollarSign,
   TrendingUp,
+  TrendingDown,
   Receipt,
   Wallet,
   ChevronDown
@@ -358,7 +359,7 @@ const TransactionsProtected: React.FC = () => {
     return { totalUSD, totalCDF, totalCNY, totalFrais, totalBenefice };
   };
 
-  const { totalUSD, totalFrais, totalBenefice } = globalTotals;
+  const { totalUSD, totalFrais, totalBenefice, totalDepenses } = globalTotals;
 
   const generateReadableId = (transactionId: string, index: number) => {
     // Utiliser les derniers caractères de l'ID UUID pour garantir l'unicité
@@ -521,7 +522,7 @@ const TransactionsProtected: React.FC = () => {
           })()}
 
           {/* Stats Cards - Design System */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
             {/* Total USD Card */}
             <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
@@ -568,6 +569,23 @@ const TransactionsProtected: React.FC = () => {
                   </div>
                   <div className="p-3 rounded-full bg-purple-500 flex-shrink-0">
                     <TrendingUp className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Total Dépenses Card */}
+            <Card className="card-base transition-shadow-hover">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Dépenses</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+                      {formatCurrencyValue(totalDepenses, 'USD')}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-full bg-red-500 flex-shrink-0">
+                    <TrendingDown className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>

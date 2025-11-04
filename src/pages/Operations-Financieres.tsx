@@ -43,7 +43,7 @@ const OperationsFinancieres: React.FC = () => {
 
   const [formData, setFormData] = useState({
     type_transaction: 'depense' as 'depense' | 'revenue',
-    montant: 0,
+    montant: '' as string | number,
     devise: 'USD' as 'USD' | 'CDF',
     compte_source_id: '',
     compte_destination_id: '',
@@ -89,7 +89,7 @@ const OperationsFinancieres: React.FC = () => {
     setOperationType(type);
     setFormData({
       type_transaction: type,
-      montant: 0,
+      montant: '',
       devise: 'USD',
       compte_source_id: type === 'depense' ? '' : '',
       compte_destination_id: type === 'revenue' ? '' : '',
@@ -102,12 +102,25 @@ const OperationsFinancieres: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validation
+    const montant = typeof formData.montant === 'string' ? parseFloat(formData.montant) : formData.montant;
+    
+    if (!montant || isNaN(montant) || montant <= 0) {
+      showError('Veuillez entrer un montant valide');
+      return;
+    }
+
+    if (!formData.motif || formData.motif.trim() === '') {
+      showError('Veuillez entrer une description');
+      return;
+    }
+
     try {
       const data: any = {
         type_transaction: formData.type_transaction,
-        montant: formData.montant,
+        montant: montant,
         devise: formData.devise,
-        motif: formData.motif,
+        motif: formData.motif.trim(),
         date_paiement: formData.date_paiement,
         statut: 'en_attente'
       };
@@ -361,8 +374,9 @@ const OperationsFinancieres: React.FC = () => {
                     id="montant"
                     type="number"
                     step="0.01"
+                    min="0.01"
                     value={formData.montant}
-                    onChange={(e) => setFormData({ ...formData, montant: parseFloat(e.target.value) })}
+                    onChange={(e) => setFormData({ ...formData, montant: e.target.value })}
                     required
                   />
                 </div>
@@ -422,12 +436,13 @@ const OperationsFinancieres: React.FC = () => {
               </div>
 
               <div>
-                <Label htmlFor="motif">Description</Label>
+                <Label htmlFor="motif">Description *</Label>
                 <Textarea
                   id="motif"
                   value={formData.motif}
                   onChange={(e) => setFormData({ ...formData, motif: e.target.value })}
                   placeholder="Détails de l'opération..."
+                  required
                 />
               </div>
 

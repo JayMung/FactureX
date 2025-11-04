@@ -259,7 +259,7 @@ const MouvementsComptes: React.FC = () => {
                       Crédit
                     </th>
                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Solde après
+                      {compteFilter === 'all' ? 'Solde Global' : 'Solde Compte'}
                     </th>
                   </tr>
                 </thead>
@@ -302,7 +302,12 @@ const MouvementsComptes: React.FC = () => {
                             : '-'}
                         </td>
                         <td className="px-4 py-3 text-right text-sm font-bold">
-                          {formatCurrency(mouvement.solde_apres, mouvement.compte?.devise || 'USD')}
+                          {formatCurrency(
+                            compteFilter === 'all' && (mouvement as any).solde_global !== undefined
+                              ? (mouvement as any).solde_global
+                              : mouvement.solde_apres,
+                            'USD'
+                          )}
                         </td>
                       </tr>
                     ))

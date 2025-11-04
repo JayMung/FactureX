@@ -28,6 +28,7 @@ export const useMouvementsComptes = (page: number = 1, filters: MouvementFilters
           transaction:transactions(id, motif, type_transaction)
         `, { count: 'exact' })
         .order('date_mouvement', { ascending: false })
+        .order('created_at', { ascending: false })
         .range(from, to);
 
       // Apply filters
@@ -48,11 +49,44 @@ export const useMouvementsComptes = (page: number = 1, filters: MouvementFilters
 
       if (fetchError) throw fetchError;
 
-      setMouvements(data || []);
+      // Si pas de filtre de compte, calculer le solde global cumulé
+      let mouvementsWithGlobalSolde = data || [];
+      
+      if (!filters.compte_id && data && data.length > 0) {
+        // Récupérer TOUS les mouvements pour calculer le solde global
+        const { data: allMouvements } = await supabase
+          .from('mouvements_comptes')
+          .select('id, date_mouvement, created_at, type_mouvement, montant')
+          .order('date_mouvement', { ascending: true })
+          .order('created_at', { ascending: true });
+
+        if (allMouvements) {
+          // Calculer le solde global cumulé pour chaque mouvement
+          let soldeGlobal = 0;
+          const soldesMap = new Map<string, number>();
+
+          allMouvements.forEach(m => {
+            if (m.type_mouvement === 'credit') {
+              soldeGlobal += m.montant;
+            } else {
+              soldeGlobal -= m.montant;
+            }
+            soldesMap.set(m.id, soldeGlobal);
+          });
+
+          // Appliquer le solde global aux mouvements paginés
+          mouvementsWithGlobalSolde = data.map(m => ({
+            ...m,
+            solde_global: soldesMap.get(m.id) || m.solde_apres
+          }));
+        }
+      }
+
+      setMouvements(mouvementsWithGlobalSolde);
 
       if (count !== null) {
         setPagination({
-          data: data || [],
+          data: mouvementsWithGlobalSolde,
           count,
           page,
           pageSize: PAGE_SIZE,

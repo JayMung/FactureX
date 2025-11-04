@@ -147,19 +147,24 @@ export const useCompteStats = (compteId: string) => {
         // Get all mouvements for this compte
         const { data: mouvements } = await supabase
           .from('mouvements_comptes')
-          .select('type_mouvement, montant, solde_apres')
-          .eq('compte_id', compteId);
+          .select('type_mouvement, montant, solde_apres, date_mouvement, created_at')
+          .eq('compte_id', compteId)
+          .order('date_mouvement', { ascending: false })
+          .order('created_at', { ascending: false });
 
         if (mouvements) {
           const debits = mouvements.filter(m => m.type_mouvement === 'debit');
           const credits = mouvements.filter(m => m.type_mouvement === 'credit');
+
+          // Get the most recent solde_apres (first element after sorting)
+          const dernierSolde = mouvements.length > 0 ? mouvements[0].solde_apres : 0;
 
           setStats({
             totalDebits: debits.reduce((sum, m) => sum + m.montant, 0),
             totalCredits: credits.reduce((sum, m) => sum + m.montant, 0),
             nombreDebits: debits.length,
             nombreCredits: credits.length,
-            soldeActuel: mouvements.length > 0 ? mouvements[0].solde_apres : 0
+            soldeActuel: dernierSolde
           });
         }
       } catch (err) {

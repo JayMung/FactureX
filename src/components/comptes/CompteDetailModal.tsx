@@ -277,14 +277,14 @@ const CompteDetailModal: React.FC<CompteDetailModalProps> = ({ compte, isOpen, o
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Solde Net</CardTitle>
+                    <CardTitle>Solde Actuel</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-4xl font-bold text-blue-600">
-                      {formatCurrency(stats.totalCredits - stats.totalDebits, compte.devise)}
+                      {formatCurrency(stats.soldeActuel, compte.devise)}
                     </div>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                      Différence entre les crédits et les débits
+                      Solde après le dernier mouvement
                     </p>
                   </CardContent>
                 </Card>

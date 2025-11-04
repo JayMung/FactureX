@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Layout from '@/components/layout/Layout';
 import { useMouvementsComptes } from '@/hooks/useMouvementsComptes';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -104,23 +103,14 @@ const MouvementsComptes: React.FC = () => {
 
   if (error) {
     return (
-      <Layout>
-        <div className="text-center text-red-600 p-4">
-          Erreur: {error}
-        </div>
-      </Layout>
+      <div className="text-center text-red-600 p-4">
+        Erreur: {error}
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold">Mouvements de Comptes</h1>
-          <p className="text-gray-600">Historique des débits et crédits de tous vos comptes</p>
-        </div>
-
+    <div className="space-y-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
@@ -331,8 +321,7 @@ const MouvementsComptes: React.FC = () => {
             onPageChange={setCurrentPage}
           />
         )}
-      </div>
-    </Layout>
+    </div>
   );
 };
 

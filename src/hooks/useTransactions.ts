@@ -97,7 +97,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       setIsLoadingTotals(true);
       let query = supabase
         .from('transactions')
-        .select('montant, devise, montant_cny, frais, benefice');
+        .select('montant, devise, montant_cny, frais, benefice, motif, type_transaction');
 
       // Appliquer les mêmes filtres que fetchTransactions
       if (filters.status) {

@@ -54,8 +54,14 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
   } = useDashboardAnalytics(period);
 
   // Charger les données des modules Colis et Finance
-  const { globalTotals: financeStats } = useTransactions(1, {});
-  const { stats: colisStats } = useColis(1, {});
+  const { globalTotals: financeStats, loading: financeLoading } = useTransactions(1, {});
+  const { stats: colisStats, loading: colisLoading } = useColis(1, {});
+
+  // Debug logs
+  useEffect(() => {
+    console.log('📊 Finance Stats:', financeStats);
+    console.log('📦 Colis Stats:', colisStats);
+  }, [financeStats, colisStats]);
 
   const handleExport = () => {
     // Export des données analytics en CSV
@@ -365,29 +371,35 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-600">Total Colis</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {colisStats?.totalCount || 0}
-              </p>
-              <p className="text-xs text-gray-500">Tous statuts confondus</p>
+          {colisLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-600">En Transit</p>
-              <p className="text-3xl font-bold text-blue-600">
-                {colisStats?.enTransit || 0}
-              </p>
-              <p className="text-xs text-gray-500">Colis en cours de livraison</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-600">Total Colis</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {colisStats?.totalCount || 0}
+                </p>
+                <p className="text-xs text-gray-500">Tous statuts confondus</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-600">En Transit</p>
+                <p className="text-3xl font-bold text-blue-600">
+                  {colisStats?.enTransit || 0}
+                </p>
+                <p className="text-xs text-gray-500">Colis en cours de livraison</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-600">Livrés</p>
+                <p className="text-3xl font-bold text-green-600">
+                  {colisStats?.livres || 0}
+                </p>
+                <p className="text-xs text-gray-500">Colis livrés avec succès</p>
+              </div>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-600">Livrés</p>
-              <p className="text-3xl font-bold text-green-600">
-                {colisStats?.livres || 0}
-              </p>
-              <p className="text-xs text-gray-500">Colis livrés avec succès</p>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -400,36 +412,42 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-600">Total USD</p>
-              <p className="text-3xl font-bold text-green-600">
-                {formatCurrency(financeStats?.totalUSD || 0, 'USD')}
-              </p>
-              <p className="text-xs text-gray-500">Transactions en USD</p>
+          {financeLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-600">Total Frais</p>
-              <p className="text-3xl font-bold text-blue-600">
-                {formatCurrency(financeStats?.totalFrais || 0, 'USD')}
-              </p>
-              <p className="text-xs text-gray-500">Frais perçus</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-600">Total USD</p>
+                <p className="text-3xl font-bold text-green-600">
+                  {formatCurrency(financeStats?.totalUSD || 0, 'USD')}
+                </p>
+                <p className="text-xs text-gray-500">Transactions commerciales</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-600">Total Frais</p>
+                <p className="text-3xl font-bold text-blue-600">
+                  {formatCurrency(financeStats?.totalFrais || 0, 'USD')}
+                </p>
+                <p className="text-xs text-gray-500">Frais perçus</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-600">Bénéfice Total</p>
+                <p className="text-3xl font-bold text-purple-600">
+                  {formatCurrency(financeStats?.totalBenefice || 0, 'USD')}
+                </p>
+                <p className="text-xs text-gray-500">Commande + Transfert</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-600">Total Dépenses</p>
+                <p className="text-3xl font-bold text-red-600">
+                  {formatCurrency(financeStats?.totalDepenses || 0, 'USD')}
+                </p>
+                <p className="text-xs text-gray-500">Sorties d'argent</p>
+              </div>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-600">Bénéfice Total</p>
-              <p className="text-3xl font-bold text-purple-600">
-                {formatCurrency(financeStats?.totalBenefice || 0, 'USD')}
-              </p>
-              <p className="text-xs text-gray-500">Revenus - Commissions</p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-600">Total Dépenses</p>
-              <p className="text-3xl font-bold text-red-600">
-                {formatCurrency(financeStats?.totalDepenses || 0, 'USD')}
-              </p>
-              <p className="text-xs text-gray-500">Sorties d'argent</p>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

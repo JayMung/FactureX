@@ -255,13 +255,27 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       });
 
       const tauxUSD = sanitizedData.devise === 'USD' ? 1 : rates.usdToCdf;
-      const fraisUSD = sanitizedData.montant * (fees[sanitizedData.motif.toLowerCase() as keyof typeof fees] / 100);
+      
+      // Pour les dépenses et revenus (opérations financières), utiliser des frais fixes de 0%
+      let fraisUSD = 0;
+      let benefice = 0;
+      
+      if (sanitizedData.type_transaction === 'revenue') {
+        // Pour les revenus, calculer les frais selon le motif (commande, transfert, partenaire)
+        const fraisRate = fees[sanitizedData.motif.toLowerCase() as keyof typeof fees] || 0;
+        fraisUSD = sanitizedData.montant * (fraisRate / 100);
+        const commissionPartenaire = sanitizedData.montant * (fees.partenaire / 100);
+        benefice = fraisUSD - commissionPartenaire;
+      } else if (sanitizedData.type_transaction === 'depense') {
+        // Pour les dépenses, pas de frais et bénéfice négatif
+        fraisUSD = 0;
+        benefice = -sanitizedData.montant;
+      }
+      
       const montantNet = sanitizedData.montant - fraisUSD; // Montant après déduction des frais
       const montantCNY = sanitizedData.devise === 'USD' 
         ? montantNet * rates.usdToCny 
         : (montantNet / tauxUSD) * rates.usdToCny;
-      const commissionPartenaire = sanitizedData.montant * (fees.partenaire / 100);
-      const benefice = fraisUSD - commissionPartenaire;
 
       const fullTransactionData = {
         ...sanitizedData,

@@ -131,21 +131,20 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
 
       // Calculer les totaux globaux
       const totals = (data || []).reduce((acc, transaction: any) => {
-        if (transaction.devise === 'USD') {
-          acc.totalUSD += transaction.montant || 0;
-        } else if (transaction.devise === 'CDF') {
-          acc.totalCDF += transaction.montant || 0;
-        }
-        acc.totalCNY += transaction.montant_cny || 0;
-        acc.totalFrais += transaction.frais || 0;
-        
-        // Le bénéfice ne compte QUE pour les transactions commerciales (Commande, Transfert)
-        // PAS pour les dépenses/revenus internes
+        // Total USD/CDF ne compte QUE les transactions commerciales (Commande, Transfert)
+        // PAS les dépenses/revenus internes
         if (transaction.motif === 'Commande' || transaction.motif === 'Transfert') {
+          if (transaction.devise === 'USD') {
+            acc.totalUSD += transaction.montant || 0;
+          } else if (transaction.devise === 'CDF') {
+            acc.totalCDF += transaction.montant || 0;
+          }
+          acc.totalCNY += transaction.montant_cny || 0;
+          acc.totalFrais += transaction.frais || 0;
           acc.totalBenefice += transaction.benefice || 0;
         }
         
-        // Calculer les dépenses séparément
+        // Calculer les dépenses séparément (toutes devises)
         if (transaction.type_transaction === 'depense') {
           acc.totalDepenses += transaction.montant || 0;
         }

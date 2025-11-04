@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Layout from '@/components/layout/Layout';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -200,33 +199,24 @@ const Comptes: React.FC = () => {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Layout>
-        <div className="text-red-600 text-center p-4">
-          Erreur: {error}
-        </div>
-      </Layout>
+      <div className="text-red-600 text-center p-4">
+        Erreur: {error}
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Comptes Financiers</h1>
-          <p className="text-gray-600">Gérez vos comptes Airtel, Orange, M-Pesa, Banque, Cash</p>
-        </div>
+    <div className="space-y-6">
+        {/* Actions */}
+        <div className="flex justify-end items-center">
         <div className="flex items-center gap-3">
           {/* View Toggle */}
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
@@ -676,8 +666,7 @@ const Comptes: React.FC = () => {
           setCompteForDetail(null);
         }}
       />
-      </div>
-    </Layout>
+    </div>
   );
 };
 

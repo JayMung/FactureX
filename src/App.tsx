@@ -19,7 +19,7 @@ import ActivityLogs from "./pages/ActivityLogs";
 import SecurityDashboard from "./pages/SecurityDashboard";
 import SecurityAudit from "./pages/SecurityAudit";
 import PermissionDiagnosticPage from "./pages/Permission-Diagnostic";
-import ComptesFinances from "./pages/Comptes-Finances";
+import ComptesFinancesProtected from "./pages/Comptes-Finances-Protected";
 import OperationsFinancieres from "./pages/Operations-Financieres";
 import EncaissementsProtected from "./pages/Encaissements-Protected";
 import Login from "./pages/Login";
@@ -116,7 +116,7 @@ const App = () => (
               } />
               <Route path="/comptes" element={
                 <ProtectedRouteEnhanced>
-                  <ComptesFinances />
+                  <ComptesFinancesProtected />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/operations-financieres" element={

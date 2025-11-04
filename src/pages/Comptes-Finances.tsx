@@ -7,14 +7,7 @@ export default function ComptesFinances() {
   const [activeTab, setActiveTab] = useState('comptes');
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-3xl font-bold">Comptes Financiers</h1>
-        <p className="text-muted-foreground">
-          Gérez vos comptes et consultez l'historique des mouvements
-        </p>
-      </div>
-
+    <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="comptes">Vue d'ensemble</TabsTrigger>

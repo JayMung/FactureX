@@ -174,10 +174,16 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     setError(null);
 
     try {
+      // Log input data for debugging
+      console.log('🔍 Creating transaction with data:', transactionData);
+      
       // SECURITY: Validate and sanitize input data
       const validation = validateTransactionInput(transactionData);
+      console.log('✅ Validation result:', validation);
+      
       if (!validation.isValid) {
         const errorMsg = `Validation error: ${validation.error}`;
+        console.error('❌ Validation failed:', errorMsg);
         setError(errorMsg);
         showError(errorMsg);
         
@@ -302,6 +308,14 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       
       return data;
     } catch (err: any) {
+      console.error('❌ Error creating operation:', err);
+      console.error('Error details:', {
+        message: err?.message,
+        code: err?.code,
+        details: err?.details,
+        hint: err?.hint,
+        stack: err?.stack
+      });
       const friendlyMessage = getFriendlyErrorMessage(err, 'Erreur de création');
       setError(friendlyMessage);
       showError(friendlyMessage);

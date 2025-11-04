@@ -194,14 +194,14 @@ export default function Encaissements() {
                     <SelectContent>
                       {clients && clients.length > 0 ? (
                         clients
-                          .filter((client) => !!client?.id)
+                          .filter((client) => typeof client?.id === 'string' && client.id.trim().length > 0)
                           .map((client) => (
                           <SelectItem key={String(client.id)} value={String(client.id)}>
                             {client.nom} - {client.telephone}
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="" disabled>
+                        <SelectItem value="__no_client__" disabled>
                           Aucun client disponible
                         </SelectItem>
                       )}
@@ -225,14 +225,14 @@ export default function Encaissements() {
                       <SelectContent>
                         {filteredFactures && filteredFactures.length > 0 ? (
                           filteredFactures
-                            .filter((facture) => !!facture?.id)
+                            .filter((facture) => typeof facture?.id === 'string' && facture.id.trim().length > 0)
                             .map((facture) => (
                             <SelectItem key={String(facture.id)} value={String(facture.id)}>
                               {facture.facture_number || 'N/A'} - {facture.total_general || 0} {facture.devise || 'USD'}
                             </SelectItem>
                           ))
                         ) : (
-                          <SelectItem value="" disabled>
+                          <SelectItem value="__no_facture__" disabled>
                             {formData.client_id ? 'Aucune facture impayée' : 'Sélectionnez un client d\'abord'}
                           </SelectItem>
                         )}
@@ -269,14 +269,14 @@ export default function Encaissements() {
                     <SelectContent>
                       {comptesData && comptesData.length > 0 ? (
                         comptesData
-                          .filter((c) => c.is_active && !!c?.id)
+                          .filter((c) => c.is_active && typeof c?.id === 'string' && c.id.trim().length > 0)
                           .map((compte) => (
                             <SelectItem key={String(compte.id)} value={String(compte.id)}>
                               {compte.nom} ({compte.type_compte})
                             </SelectItem>
                           ))
                       ) : (
-                        <SelectItem value="" disabled>
+                        <SelectItem value="__no_compte__" disabled>
                           Aucun compte disponible
                         </SelectItem>
                       )}
@@ -409,16 +409,16 @@ export default function Encaissements() {
             <div className="space-y-2">
               <Label>Type</Label>
               <Select
-                value={filters.type_paiement || ''}
+                value={filters.type_paiement || 'all'}
                 onValueChange={(value) =>
-                  setFilters({ ...filters, type_paiement: value === '' ? undefined : value as 'facture' | 'colis' })
+                  setFilters({ ...filters, type_paiement: value === 'all' ? undefined : value as 'facture' | 'colis' })
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Tous" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous</SelectItem>
+                  <SelectItem value="all">Tous</SelectItem>
                   <SelectItem value="facture">Facture</SelectItem>
                   <SelectItem value="colis">Colis</SelectItem>
                 </SelectContent>
@@ -428,18 +428,18 @@ export default function Encaissements() {
             <div className="space-y-2">
               <Label>Client</Label>
               <Select
-                value={filters.client_id}
+                value={filters.client_id || 'all'}
                 onValueChange={(value) =>
-                  setFilters({ ...filters, client_id: value })
+                  setFilters({ ...filters, client_id: value === 'all' ? '' : value })
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Tous" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous</SelectItem>
+                  <SelectItem value="all">Tous</SelectItem>
                   {clients && clients.length > 0 && clients
-                    .filter((client) => !!client?.id)
+                    .filter((client) => typeof client?.id === 'string' && client.id.trim().length > 0)
                     .map((client) => (
                     <SelectItem key={String(client.id)} value={String(client.id)}>
                       {client.nom}
@@ -452,18 +452,18 @@ export default function Encaissements() {
             <div className="space-y-2">
               <Label>Compte</Label>
               <Select
-                value={filters.compte_id}
+                value={filters.compte_id || 'all'}
                 onValueChange={(value) =>
-                  setFilters({ ...filters, compte_id: value })
+                  setFilters({ ...filters, compte_id: value === 'all' ? '' : value })
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Tous" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous</SelectItem>
+                  <SelectItem value="all">Tous</SelectItem>
                   {comptesData && comptesData.length > 0 && comptesData
-                    .filter((compte) => !!compte?.id)
+                    .filter((compte) => typeof compte?.id === 'string' && compte.id.trim().length > 0)
                     .map((compte) => (
                     <SelectItem key={String(compte.id)} value={String(compte.id)}>
                       {compte.nom}
@@ -501,6 +501,7 @@ export default function Encaissements() {
               variant="outline"
               onClick={() =>
                 setFilters({
+                  type_paiement: undefined,
                   client_id: '',
                   compte_id: '',
                   date_debut: '',

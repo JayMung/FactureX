@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
+import { useGlobalBalance } from '@/hooks/useMouvementsComptes';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +41,9 @@ const OperationsFinancieres: React.FC = () => {
     createTransaction,
     refetch 
   } = useTransactions(currentPage);
+  
+  // Récupérer le solde global de tous les comptes
+  const { balance: globalBalance, isLoading: balanceLoading } = useGlobalBalance();
 
   const [formData, setFormData] = useState({
     type_transaction: 'depense' as 'depense' | 'revenue',
@@ -228,14 +232,22 @@ const OperationsFinancieres: React.FC = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Solde Net</CardTitle>
+              <CardTitle className="text-sm font-medium">Solde Global</CardTitle>
               <ArrowUpCircle className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {formatCurrency(stats.totalRevenus - stats.totalDepenses, 'USD')}
-              </div>
-              <p className="text-xs text-muted-foreground">Revenus - Dépenses</p>
+              {balanceLoading ? (
+                <div className="text-2xl font-bold text-gray-400">Chargement...</div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {formatCurrency(globalBalance.soldeNet, 'USD')}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Tous comptes confondus ({globalBalance.nombreComptes} comptes)
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
 

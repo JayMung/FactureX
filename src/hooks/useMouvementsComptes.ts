@@ -174,3 +174,67 @@ export const useCompteStats = (compteId: string) => {
 
   return { stats, isLoading };
 };
+
+// Hook to get global balance across all comptes
+export const useGlobalBalance = () => {
+  const [balance, setBalance] = useState({
+    totalCredits: 0,
+    totalDebits: 0,
+    soldeNet: 0,
+    nombreComptes: 0
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchGlobalBalance = async () => {
+      try {
+        setIsLoading(true);
+
+        // Get all comptes with their current balance
+        const { data: comptes } = await supabase
+          .from('comptes_financiers')
+          .select('id, nom, solde_actuel, devise');
+
+        if (comptes) {
+          // Sum all balances (convert to USD if needed)
+          const totalSolde = comptes.reduce((sum, compte) => {
+            return sum + (compte.solde_actuel || 0);
+          }, 0);
+
+          // Get total credits and debits from mouvements
+          const { data: mouvements } = await supabase
+            .from('mouvements_comptes')
+            .select('type_mouvement, montant');
+
+          let totalCredits = 0;
+          let totalDebits = 0;
+
+          if (mouvements) {
+            totalCredits = mouvements
+              .filter(m => m.type_mouvement === 'credit')
+              .reduce((sum, m) => sum + m.montant, 0);
+            
+            totalDebits = mouvements
+              .filter(m => m.type_mouvement === 'debit')
+              .reduce((sum, m) => sum + m.montant, 0);
+          }
+
+          setBalance({
+            totalCredits,
+            totalDebits,
+            soldeNet: totalSolde,
+            nombreComptes: comptes.length
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching global balance:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchGlobalBalance();
+  }, []);
+
+  return { balance, isLoading };
+};

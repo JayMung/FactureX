@@ -122,7 +122,7 @@ const OperationsFinancieres: React.FC = () => {
         devise: formData.devise,
         motif: formData.motif.trim(),
         date_paiement: formData.date_paiement,
-        statut: 'en_attente'
+        statut: 'En attente'
       };
 
       if (formData.type_transaction === 'depense') {

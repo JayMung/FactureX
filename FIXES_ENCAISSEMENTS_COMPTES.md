@@ -115,6 +115,7 @@ App.tsx
 1. `fix: correction SelectItem value vide interdit par Radix UI` (10f50f8)
 2. `feat: ajout Layout (sidebar + header) a la page Encaissements` (70f2c2c)
 3. `fix: correction double Layout sur page Comptes` (7c7c25a)
+4. `fix: retrait Layout nested dans onglet Mouvements` (707ba13)
 
 ---
 

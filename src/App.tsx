@@ -21,7 +21,7 @@ import SecurityAudit from "./pages/SecurityAudit";
 import PermissionDiagnosticPage from "./pages/Permission-Diagnostic";
 import ComptesFinances from "./pages/Comptes-Finances";
 import OperationsFinancieres from "./pages/Operations-Financieres";
-import Encaissements from "./pages/Encaissements";
+import EncaissementsProtected from "./pages/Encaissements-Protected";
 import Login from "./pages/Login";
 import AdminSetup from "./pages/AdminSetup";
 import AdminInvitation from "./pages/AdminInvitation";
@@ -126,7 +126,7 @@ const App = () => (
               } />
               <Route path="/finances/encaissements" element={
                 <ProtectedRouteEnhanced requiredModule="finances">
-                  <Encaissements />
+                  <EncaissementsProtected />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/permission-diagnostic" element={

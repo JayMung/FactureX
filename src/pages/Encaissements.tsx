@@ -137,15 +137,9 @@ export default function Encaissements() {
       );
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Encaissements</h1>
-          <p className="text-muted-foreground">
-            Enregistrez les paiements des factures et colis
-          </p>
-        </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>

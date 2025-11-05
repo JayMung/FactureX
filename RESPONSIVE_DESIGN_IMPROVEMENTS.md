@@ -203,7 +203,63 @@ Rendre les pages Encaissements, Transactions, Opérations Financières et Compte
 <div className="flex flex-col sm:flex-row justify-end gap-2">
 ```
 
-### 4. ⏳ Comptes (EN COURS)
+### 4. ✅ Comptes (TERMINÉ)
+
+#### Améliorations Appliquées
+
+**Actions Bar**
+```typescript
+// Mobile: Actions en colonne, bouton full-width avec texte court
+// Desktop: Actions en ligne
+<div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-3">
+<button className="w-full sm:w-auto">
+  <span className="hidden sm:inline">Nouveau Compte</span>
+  <span className="sm:hidden">Nouveau</span>
+</button>
+```
+
+**Stats Cards**
+```typescript
+// Mobile: 1 colonne
+// Tablette: 2 colonnes
+// Desktop: 4 colonnes
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+<div className="text-xl sm:text-2xl font-bold">
+```
+
+**Vue Grid (Cartes)**
+```typescript
+// Mobile: 1 colonne
+// Tablette: 2 colonnes
+// Desktop: 3 colonnes
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+<CardContent className="space-y-2 sm:space-y-3">
+<span className="text-xl sm:text-2xl font-bold">
+```
+
+**Vue Liste**
+```typescript
+// Mobile: Layout en colonne, solde et actions séparés
+// Desktop: Layout en ligne, tout aligné
+<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+<CardContent className="p-3 sm:p-4">
+<div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-6">
+```
+
+**Formulaires Modaux**
+```typescript
+// Mobile: Boutons full-width en colonne
+// Desktop: Boutons auto-width en ligne
+<div className="flex flex-col sm:flex-row justify-end gap-2">
+<button className="w-full sm:w-auto">
+```
+
+**Tabs Navigation**
+```typescript
+// Mobile: Full-width
+// Desktop: Max-width
+<TabsList className="grid w-full max-w-full sm:max-w-md grid-cols-2">
+```
 
 ## Patterns Responsive Utilisés
 
@@ -328,12 +384,15 @@ w-full sm:w-auto
 - [x] Boutons full-width sur mobile
 - [x] Pagination (déjà responsive)
 
-#### Comptes ⏳
-- [ ] Header responsive
-- [ ] Cards de comptes adaptatives
-- [ ] Formulaire modal scrollable
-- [ ] Vue mobile optimisée
-- [ ] Vue desktop complète
+#### Comptes ✅
+- [x] Actions bar responsive
+- [x] Stats cards adaptatives (4 cards)
+- [x] Vue Grid responsive (1/2/3 colonnes)
+- [x] Vue Liste responsive
+- [x] Formulaires modaux responsive
+- [x] Boutons full-width sur mobile
+- [x] Texte adaptatif (court/long)
+- [x] Tabs navigation responsive
 
 ## Avantages
 
@@ -394,11 +453,12 @@ w-full sm:w-auto
 5. **Documentation** : Screenshots des différentes vues
 
 ## Statut
-🚧 **EN COURS** - 3/4 pages terminées (75%)
+✅ **TERMINÉ** - 4/4 pages terminées (100%)
 
 - ✅ Encaissements
 - ✅ Transactions  
 - ✅ Opérations Financières
-- ⏳ Comptes (dernière page)
+- ✅ Comptes
 
-Date : 05/11/2025
+Date de début : 05/11/2025
+Date de fin : 05/11/2025

@@ -214,9 +214,9 @@ const Comptes: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
         {/* Actions */}
-        <div className="flex justify-end items-center">
+        <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-3">
         <div className="flex items-center gap-3">
           {/* View Toggle */}
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
@@ -250,10 +250,11 @@ const Comptes: React.FC = () => {
             <DialogTrigger asChild>
               <button
                 type="button"
-                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full sm:w-auto"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Nouveau Compte
+                <span className="hidden sm:inline">Nouveau Compte</span>
+                <span className="sm:hidden">Nouveau</span>
               </button>
             </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
@@ -340,17 +341,17 @@ const Comptes: React.FC = () => {
                   placeholder="Description optionnelle du compte"
                 />
               </div>
-              <div className="flex justify-end space-x-2">
+              <div className="flex flex-col sm:flex-row justify-end gap-2">
                 <button 
                   type="button" 
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full sm:w-auto"
                   onClick={() => setIsCreateDialogOpen(false)}
                 >
                   Annuler
                 </button>
                 <button 
                   type="submit" 
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full sm:w-auto"
                 >
                   Créer
                 </button>
@@ -362,14 +363,14 @@ const Comptes: React.FC = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Comptes</CardTitle>
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{activeComptes.length}</div>
+            <div className="text-xl sm:text-2xl font-bold">{activeComptes.length}</div>
             <p className="text-xs text-muted-foreground">Comptes actifs</p>
           </CardContent>
         </Card>
@@ -379,7 +380,7 @@ const Comptes: React.FC = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalUSD.toFixed(2)}</div>
+            <div className="text-xl sm:text-2xl font-bold">${totalUSD.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">En dollars américains</p>
           </CardContent>
         </Card>
@@ -389,7 +390,7 @@ const Comptes: React.FC = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCDF.toFixed(2)} CDF</div>
+            <div className="text-xl sm:text-2xl font-bold">{totalCDF.toFixed(2)} CDF</div>
             <p className="text-xs text-muted-foreground">En francs congolais</p>
           </CardContent>
         </Card>
@@ -399,7 +400,7 @@ const Comptes: React.FC = () => {
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mobileMoneyComptes.length}</div>
+            <div className="text-xl sm:text-2xl font-bold">{mobileMoneyComptes.length}</div>
             <p className="text-xs text-muted-foreground">Comptes mobile money</p>
           </CardContent>
         </Card>
@@ -407,7 +408,7 @@ const Comptes: React.FC = () => {
 
       {/* Accounts List */}
       {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {comptes.map((compte) => {
             const colors = getAccountColor(compte.nom, compte.type_compte);
             return (
@@ -463,7 +464,7 @@ const Comptes: React.FC = () => {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-2 sm:space-y-3">
                   {compte.numero_compte && (
                     <div className="flex items-center justify-between p-2 bg-white/50 dark:bg-gray-900/50 rounded">
                       <span className="text-sm text-gray-600 dark:text-gray-400">Numéro:</span>
@@ -472,7 +473,7 @@ const Comptes: React.FC = () => {
                   )}
                   <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-900 rounded-lg border">
                     <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Solde:</span>
-                    <span className={cn('text-2xl font-bold', colors.text)}>
+                    <span className={cn('text-xl sm:text-2xl font-bold', colors.text)}>
                       {compte.devise === 'USD' ? '$' : ''}{compte.solde_actuel.toFixed(2)} {compte.devise === 'CDF' ? 'FC' : ''}
                     </span>
                   </div>
@@ -502,9 +503,9 @@ const Comptes: React.FC = () => {
                   !compte.is_active && 'opacity-50'
                 )}
               >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 flex-1">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 sm:gap-4 flex-1">
                       <div className={cn('p-3 rounded-lg', colors.icon)}>
                         {React.cloneElement(getAccountIcon(compte.type_compte) as React.ReactElement, {
                           className: 'h-6 w-6 text-white'
@@ -520,7 +521,7 @@ const Comptes: React.FC = () => {
                             <Badge className="bg-destructive text-destructive-foreground" {...({ variant: 'destructive' } as any)}>Inactif</Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-6 mt-2 text-sm text-gray-600 dark:text-gray-400">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-6 mt-2 text-sm text-gray-600 dark:text-gray-400">
                           {compte.numero_compte && (
                             <span className="font-mono">{compte.numero_compte}</span>
                           )}
@@ -530,10 +531,10 @@ const Comptes: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6">
                       <div className="text-right">
                         <div className="text-sm text-gray-600 dark:text-gray-400">Solde</div>
-                        <div className={cn('text-2xl font-bold', colors.text)}>
+                        <div className={cn('text-xl sm:text-2xl font-bold', colors.text)}>
                           {compte.devise === 'USD' ? '$' : ''}{compte.solde_actuel.toFixed(2)} {compte.devise === 'CDF' ? 'FC' : ''}
                         </div>
                       </div>
@@ -658,14 +659,14 @@ const Comptes: React.FC = () => {
             <div className="flex justify-end space-x-2">
               <button 
                 type="button" 
-                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full sm:w-auto"
                 onClick={() => setIsEditDialogOpen(false)}
               >
                 Annuler
               </button>
               <button 
                 type="submit" 
-                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full sm:w-auto"
               >
                 Mettre à jour
               </button>

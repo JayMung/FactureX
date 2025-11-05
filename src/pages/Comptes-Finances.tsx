@@ -7,9 +7,9 @@ export default function ComptesFinances() {
   const [activeTab, setActiveTab] = useState('comptes');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-full sm:max-w-md grid-cols-2">
           <TabsTrigger value="comptes">Vue d'ensemble</TabsTrigger>
           <TabsTrigger value="mouvements">Mouvements</TabsTrigger>
         </TabsList>

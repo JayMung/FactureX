@@ -2,6 +2,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// Fonction utilitaire pour générer un ID de colis lisible
+export const generateColisId = (colisId: string, createdAt: string): string => {
+  const date = new Date(createdAt);
+  const year = date.getFullYear().toString().slice(-2);
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const shortId = colisId.slice(0, 6).toUpperCase();
+  return `CA-${year}${month}-${shortId}`;
+};
+
 export interface Paiement {
   id: string;
   type_paiement: 'facture' | 'colis';
@@ -22,8 +31,13 @@ export interface Paiement {
     telephone: string;
   };
   facture?: {
-    numero_facture: string;
-    montant_total: number;
+    facture_number: string;
+    total_general: number;
+  };
+  colis?: {
+    id: string;
+    created_at: string;
+    tracking_chine?: string;
   };
   compte?: {
     nom: string;
@@ -66,7 +80,8 @@ export function usePaiements(page = 1, filters?: PaiementFilters) {
         .select(`
           *,
           client:clients(nom, telephone),
-          facture:factures(numero_facture, montant_total),
+          facture:factures(facture_number, total_general),
+          colis:colis(id, created_at, tracking_chine),
           compte:comptes_financiers(nom, type_compte)
         `, { count: 'exact' })
         .order('date_paiement', { ascending: false })
@@ -89,7 +104,7 @@ export function usePaiements(page = 1, filters?: PaiementFilters) {
         query = query.lte('date_paiement', filters.date_fin);
       }
       if (filters?.search) {
-        query = query.or(`facture.numero_facture.ilike.%${filters.search}%,client.nom.ilike.%${filters.search}%`);
+        query = query.or(`facture.facture_number.ilike.%${filters.search}%,client.nom.ilike.%${filters.search}%`);
       }
 
       const { data, error, count } = await query;

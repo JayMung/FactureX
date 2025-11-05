@@ -29,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { usePaiements, useCreatePaiement, useDeletePaiement, usePaiementStats, CreatePaiementData } from '@/hooks/usePaiements';
+import { usePaiements, useCreatePaiement, useDeletePaiement, usePaiementStats, CreatePaiementData, generateColisId } from '@/hooks/usePaiements';
 import { useAllClients } from '@/hooks/useClients';
 import { useFactures } from '@/hooks/useFactures';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
@@ -104,7 +104,11 @@ export default function Encaissements() {
       format(new Date(p.date_paiement), 'dd/MM/yyyy', { locale: fr }),
       p.type_paiement === 'facture' ? 'Facture' : 'Colis',
       p.client?.nom || '',
-      p.facture?.numero_facture || p.colis_id || '',
+      p.type_paiement === 'facture' 
+        ? p.facture?.facture_number || 'N/A'
+        : p.colis && p.colis.id && p.colis.created_at
+          ? generateColisId(p.colis.id, p.colis.created_at)
+          : 'N/A',
       `${p.montant_paye} USD`,
       p.compte?.nom || '',
       p.mode_paiement || '',
@@ -557,7 +561,14 @@ export default function Encaissements() {
                           </span>
                         </td>
                         <td className="p-2">{paiement.client?.nom}</td>
-                        <td className="p-2">{paiement.facture?.numero_facture || paiement.colis_id}</td>
+                        <td className="p-2">
+                          {paiement.type_paiement === 'facture' 
+                            ? paiement.facture?.facture_number || 'N/A'
+                            : paiement.colis && paiement.colis.id && paiement.colis.created_at
+                              ? generateColisId(paiement.colis.id, paiement.colis.created_at)
+                              : 'N/A'
+                          }
+                        </td>
                         <td className="p-2 text-right font-semibold">${paiement.montant_paye}</td>
                         <td className="p-2">{paiement.compte?.nom}</td>
                         <td className="p-2">{paiement.mode_paiement || '-'}</td>

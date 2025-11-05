@@ -33,6 +33,7 @@ import { usePaiements, useCreatePaiement, useDeletePaiement, usePaiementStats, C
 import { useAllClients } from '@/hooks/useClients';
 import { useFactures } from '@/hooks/useFactures';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
+import { useColis } from '@/hooks/useColis';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -61,6 +62,7 @@ export default function Encaissements() {
   const { clients } = useAllClients();
   const { factures: facturesData } = useFactures(1, { statut_paiement: 'non_paye,partiel' });
   const { comptes: comptesData } = useComptesFinanciers();
+  const { colis: colisData } = useColis(1, { clientId: formData.client_id });
 
   const createPaiement = useCreatePaiement();
   const deletePaiement = useDeletePaiement();
@@ -196,7 +198,7 @@ export default function Encaissements() {
                   <Select
                     value={formData.client_id}
                     onValueChange={(value) =>
-                      setFormData({ ...formData, client_id: value, facture_id: undefined })
+                      setFormData({ ...formData, client_id: value, facture_id: undefined, colis_id: undefined })
                     }
                   >
                     <SelectTrigger>
@@ -246,6 +248,39 @@ export default function Encaissements() {
                         ) : (
                           <SelectItem value="__no_facture__" disabled>
                             {formData.client_id ? 'Aucune facture impayée' : 'Sélectionnez un client d\'abord'}
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {formData.type_paiement === 'colis' && (
+                  <div className="space-y-2">
+                    <Label>Colis *</Label>
+                    <Select
+                      value={formData.colis_id}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, colis_id: value })
+                      }
+                      disabled={!formData.client_id}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {colisData && colisData.length > 0 ? (
+                          colisData
+                            .filter((colis) => typeof colis?.id === 'string' && colis.id.trim().length > 0)
+                            .map((colis) => (
+                            <SelectItem key={String(colis.id)} value={String(colis.id)}>
+                              {generateColisId(colis.id, colis.created_at)} - {colis.tracking_chine || 'N/A'}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="__no_colis__" disabled>
+                            {formData.client_id ? 'Aucun colis disponible' : 'Sélectionnez un client d\'abord'}
                           </SelectItem>
                         )}
                       </SelectContent>

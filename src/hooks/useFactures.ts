@@ -91,10 +91,8 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       setError(err.message || 'Erreur lors du chargement des factures');
       setRetryCount(prev => prev + 1);
       
-      // Ne montrer l'erreur que si c'est la première fois
-      if (retryCount === 0) {
-        showError('Erreur lors du chargement des factures');
-      }
+      // Ne pas afficher de toast d'erreur pour éviter de polluer l'UI
+      // L'erreur est déjà loggée dans la console et stockée dans le state
     } finally {
       setIsLoading(false);
     }

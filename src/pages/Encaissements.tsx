@@ -71,7 +71,8 @@ export default function Encaissements() {
   const { data, isLoading } = usePaiements(page, filters);
   const { data: stats } = usePaiementStats(filters);
   const { clients } = useAllClients();
-  const { factures: facturesData } = useFactures(1, { statut_paiement: 'non_paye,partiel' });
+  // Charger toutes les factures sans filtre de statut_paiement (filtre non supporté)
+  const { factures: facturesData } = useFactures(1);
   const { comptes: comptesData } = useComptesFinanciers();
   const { data: colisData } = useColisList({ clientId: formData.client_id });
 

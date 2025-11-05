@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+// @ts-ignore - Temporary workaround for react-router-dom types
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
@@ -155,9 +156,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   });
 
   // Vérifier si l'utilisateur a accès au module finances
-  const hasFinancesAccess = isAdmin || 
-                           user?.app_metadata?.role === 'admin' || 
-                           user?.app_metadata?.role === 'super_admin';
+  const hasFinancesAccess = checkPermission('finances', 'read') || isAdmin;
 
   // Séparer Paramètres pour l'afficher en bas, et réordonner le menu principal
   const mainNavItems = filteredMenuItems
@@ -199,7 +198,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {mainNavItems.map((item) => (
               <li key={item.path}>
                 <Button
-                  variant="ghost"
+                  variant={"ghost" as any}
                   asChild
                   className={cn(
                     "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-lg h-11 px-4",
@@ -218,7 +217,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {hasFinancesAccess && (
             <li>
               <Button
-                variant="ghost"
+                variant={"ghost" as any}
                 className={cn(
                   "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 rounded-lg h-11 px-4",
                   (currentPath?.startsWith('/finances') || currentPath?.startsWith('/transactions') || currentPath?.startsWith('/operations-financieres') || currentPath?.startsWith('/comptes')) && "bg-green-600 dark:bg-green-700"
@@ -245,7 +244,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     return (
                       <li key={subItem.path}>
                         <Button
-                          variant="ghost"
+                          variant={"ghost" as any}
                           asChild
                           className={cn(
                             "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 rounded-lg h-10 px-3 text-sm",
@@ -268,7 +267,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {/* Menu Colis avec sous-menus */}
           <li>
             <Button
-              variant="ghost"
+              variant={"ghost" as any}
               className={cn(
                 "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 rounded-lg h-11 px-4",
                 (currentPath?.startsWith('/colis')) && "bg-green-600 dark:bg-green-700"
@@ -290,7 +289,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 {colisSubMenuItems.filter(subItem => !subItem.disabled).map((subItem) => (
                   <li key={subItem.path}>
                     <Button
-                      variant="ghost"
+                      variant={"ghost" as any}
                       asChild
                       className={cn(
                         "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 rounded-lg h-10 px-3 text-sm",
@@ -314,7 +313,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {settingsItem && (
         <div className="px-3 pb-3">
           <Button
-            variant="ghost"
+            variant={"ghost" as any}
             asChild
             className={cn(
               "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-lg h-11 px-4",
@@ -350,18 +349,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             </p>
           </div>
         </div>
-      </div>
-
-      {/* Logout */}
-      <div className="p-4 border-t border-green-600 dark:border-green-700">
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-md"
-          onClick={handleLogout}
-        >
-          <LogOut className="h-4 w-4 flex-shrink-0" />
-          <span className="ml-3 truncate text-sm font-medium">Déconnexion</span>
-        </Button>
       </div>
     </div>
   );

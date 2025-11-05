@@ -165,10 +165,11 @@ export const usePermissions = () => {
       // Invalider le cache pour cet utilisateur
       permissionsCache.delete(userId);
       
-      // Si c'est l'utilisateur actuel, recharger ses permissions
+      // Si c'est l'utilisateur actuel, recharger ses permissions via le service de consolidation
       if (userId === user?.id) {
-        const updatedPermissions = await permissionsService.getUserPermissions(userId);
-        setPermissions(updatedPermissions);
+        const consolidatedPerms = await permissionConsolidationService.getUserPermissions(userId);
+        setPermissions(consolidatedPerms.permissions);
+        setIsAdmin(consolidatedPerms.is_admin);
       }
     } catch (error: any) {
       console.error('Error updating permission:', error);
@@ -183,10 +184,14 @@ export const usePermissions = () => {
       await permissionsService.applyRole(userId, roleName);
       showSuccess(`Rôle "${roleName}" appliqué avec succès`);
       
-      // Si c'est l'utilisateur actuel, recharger ses permissions
+      // Invalider le cache pour cet utilisateur
+      permissionsCache.delete(userId);
+      
+      // Si c'est l'utilisateur actuel, recharger ses permissions via le service de consolidation
       if (userId === user?.id) {
-        const updatedPermissions = await permissionsService.getUserPermissions(userId);
-        setPermissions(updatedPermissions);
+        const consolidatedPerms = await permissionConsolidationService.getUserPermissions(userId);
+        setPermissions(consolidatedPerms.permissions);
+        setIsAdmin(consolidatedPerms.is_admin);
       }
     } catch (error: any) {
       console.error('Error applying role:', error);

@@ -307,6 +307,7 @@ const ColisAeriens: React.FC = () => {
     enTransit: globalTotals.enTransit,
     arrives: globalTotals.arrives,
     montantTotal: globalTotals.montantTotal,
+    poidsTotal: filteredColis.reduce((total, colis) => total + (colis.poids || 0), 0),
     nonPayes: filteredColis.filter(c => c.statut_paiement === 'non_paye').length
   };
 
@@ -357,10 +358,10 @@ const ColisAeriens: React.FC = () => {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">À Encaisser</p>
-                    <p className="text-2xl font-bold text-red-600">{formatCurrency(stats.montantTotal, 'USD')}</p>
+                    <p className="text-sm text-gray-500">Total Poids</p>
+                    <p className="text-2xl font-bold text-red-600">{stats.poidsTotal ? `${stats.poidsTotal.toFixed(2)} kg` : '0.00 kg'}</p>
                   </div>
-                  <DollarSign className="h-8 w-8 text-red-500" />
+                  <Package className="h-8 w-8 text-red-500" />
                 </div>
               </CardContent>
             </Card>

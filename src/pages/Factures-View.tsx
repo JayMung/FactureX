@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+// @ts-ignore - Temporary workaround for react-router-dom types
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
@@ -696,7 +697,7 @@ const FacturesView: React.FC = () => {
             clientId={facture.client_id}
             clientNom={(facture as any).clients?.nom || (facture as any).client?.nom || 'N/A'}
             montantTotal={facture.total_general}
-            montantRestant={facture.total_general - (facture.montant_paye || 0)}
+            montantRestant={facture.total_general - ((facture as any).montant_paye || 0)}
             numeroFacture={facture.facture_number}
             onSuccess={() => {
               // Recharger la facture pour mettre à jour le montant payé

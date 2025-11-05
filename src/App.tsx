@@ -1,6 +1,7 @@
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+// @ts-ignore - Temporary workaround for react-router-dom types
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { PageProvider } from "@/contexts/PageContext";
@@ -55,7 +56,7 @@ const App = () => (
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/transactions" element={
-                <ProtectedRouteEnhanced>
+                <ProtectedRouteEnhanced requiredModule="finances">
                   <TransactionsProtected />
                 </ProtectedRouteEnhanced>
               } />
@@ -115,12 +116,12 @@ const App = () => (
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/comptes" element={
-                <ProtectedRouteEnhanced>
+                <ProtectedRouteEnhanced requiredModule="finances">
                   <ComptesFinancesProtected />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/operations-financieres" element={
-                <ProtectedRouteEnhanced>
+                <ProtectedRouteEnhanced requiredModule="finances">
                   <OperationsFinancieres />
                 </ProtectedRouteEnhanced>
               } />

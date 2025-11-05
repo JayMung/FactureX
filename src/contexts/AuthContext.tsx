@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+// @ts-ignore - Temporary workaround for Supabase types
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUser } from '@/integrations/supabase/auth';

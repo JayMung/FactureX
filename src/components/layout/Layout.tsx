@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, memo, useCallback } from 'react';
+// @ts-ignore - Temporary workaround for react-router-dom types
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from './Header';

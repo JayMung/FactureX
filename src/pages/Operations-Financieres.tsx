@@ -191,15 +191,15 @@ const OperationsFinancieres: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6 p-2 sm:p-4 md:p-0">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold">Opérations Financières</h1>
-          <p className="text-gray-600">Gestion des dépenses et revenus internes</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">Opérations Financières</h1>
+          <p className="text-sm sm:text-base text-gray-600">Gestion des dépenses et revenus internes</p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Dépenses</CardTitle>
@@ -207,10 +207,10 @@ const OperationsFinancieres: React.FC = () => {
             </CardHeader>
             <CardContent>
               {statsLoading ? (
-                <div className="text-2xl font-bold text-gray-400">Chargement...</div>
+                <div className="text-xl sm:text-2xl font-bold text-gray-400">Chargement...</div>
               ) : (
                 <>
-                  <div className="text-2xl font-bold text-red-600">
+                  <div className="text-xl sm:text-2xl font-bold text-red-600">
                     {formatCurrency(globalStats.totalDepenses, 'USD')}
                   </div>
                   <p className="text-xs text-muted-foreground">{globalStats.nombreDepenses} opération(s)</p>
@@ -226,10 +226,10 @@ const OperationsFinancieres: React.FC = () => {
             </CardHeader>
             <CardContent>
               {statsLoading ? (
-                <div className="text-2xl font-bold text-gray-400">Chargement...</div>
+                <div className="text-xl sm:text-2xl font-bold text-gray-400">Chargement...</div>
               ) : (
                 <>
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="text-xl sm:text-2xl font-bold text-green-600">
                     {formatCurrency(globalStats.totalRevenus, 'USD')}
                   </div>
                   <p className="text-xs text-muted-foreground">{globalStats.nombreRevenus} opération(s)</p>
@@ -245,10 +245,10 @@ const OperationsFinancieres: React.FC = () => {
             </CardHeader>
             <CardContent>
               {balanceLoading ? (
-                <div className="text-2xl font-bold text-gray-400">Chargement...</div>
+                <div className="text-xl sm:text-2xl font-bold text-gray-400">Chargement...</div>
               ) : (
                 <>
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="text-xl sm:text-2xl font-bold text-blue-600">
                     {formatCurrency(globalBalance.soldeNet, 'USD')}
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -265,10 +265,10 @@ const OperationsFinancieres: React.FC = () => {
             </CardHeader>
             <CardContent>
               {statsLoading ? (
-                <div className="text-2xl font-bold text-gray-400">...</div>
+                <div className="text-xl sm:text-2xl font-bold text-gray-400">...</div>
               ) : (
                 <>
-                  <div className="text-2xl font-bold">{globalStats.nombreOperations}</div>
+                  <div className="text-xl sm:text-2xl font-bold">{globalStats.nombreOperations}</div>
                   <p className="text-xs text-muted-foreground">Sur toutes les pages</p>
                 </>
               )}
@@ -277,8 +277,8 @@ const OperationsFinancieres: React.FC = () => {
         </div>
 
         {/* Actions */}
-        <div className="flex justify-between items-center gap-4">
-          <div className="flex gap-2 flex-1">
+        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row gap-2 flex-1">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -289,7 +289,7 @@ const OperationsFinancieres: React.FC = () => {
               />
             </div>
             <Select value={typeFilter} onValueChange={(value: any) => setTypeFilter(value)}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
@@ -300,16 +300,16 @@ const OperationsFinancieres: React.FC = () => {
             </Select>
           </div>
 
-          <div className="flex gap-2">
-            <Button onClick={exportToCSV} variant="outline">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={exportToCSV} variant="outline" className="w-full sm:w-auto">
               <Download className="h-4 w-4 mr-2" />
               Exporter
             </Button>
-            <Button onClick={() => handleOpenDialog('depense')} variant="outline" className="text-red-600 border-red-600 hover:bg-red-50">
+            <Button onClick={() => handleOpenDialog('depense')} variant="outline" className="w-full sm:w-auto text-red-600 border-red-600 hover:bg-red-50">
               <ArrowDownCircle className="h-4 w-4 mr-2" />
               Nouvelle Dépense
             </Button>
-            <Button onClick={() => handleOpenDialog('revenue')} className="bg-green-600 hover:bg-green-700">
+            <Button onClick={() => handleOpenDialog('revenue')} className="w-full sm:w-auto bg-green-600 hover:bg-green-700">
               <ArrowUpCircle className="h-4 w-4 mr-2" />
               Nouveau Revenu
             </Button>
@@ -319,7 +319,50 @@ const OperationsFinancieres: React.FC = () => {
         {/* Table */}
         <Card>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            {/* Mobile Card View */}
+            <div className="block lg:hidden">
+              {loading ? (
+                <div className="p-8 text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+                </div>
+              ) : searchedOperations.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">
+                  Aucune opération trouvée
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {searchedOperations.map((operation) => (
+                    <div key={operation.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          {getTypeBadge(operation.type_transaction)}
+                          <span className="text-sm text-gray-500">
+                            {format(new Date(operation.date_paiement), 'dd/MM/yyyy', { locale: fr })}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{operation.motif || '-'}</p>
+                          <p className="text-xs text-gray-500">
+                            {operation.type_transaction === 'depense' 
+                              ? operation.compte_source?.nom 
+                              : operation.compte_destination?.nom}
+                          </p>
+                        </div>
+                        <div className={`text-right text-lg font-bold ${
+                          operation.type_transaction === 'depense' ? 'text-red-600' : 'text-green-600'
+                        }`}>
+                          {operation.type_transaction === 'depense' ? '-' : '+'}
+                          {formatCurrency(operation.montant, operation.devise)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-800">
                   <tr>
@@ -393,7 +436,7 @@ const OperationsFinancieres: React.FC = () => {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="montant">Montant *</Label>
                   <Input
@@ -472,11 +515,11 @@ const OperationsFinancieres: React.FC = () => {
                 />
               </div>
 
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              <div className="flex flex-col sm:flex-row justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="w-full sm:w-auto">
                   Annuler
                 </Button>
-                <Button type="submit">
+                <Button type="submit" className="w-full sm:w-auto">
                   Créer
                 </Button>
               </div>

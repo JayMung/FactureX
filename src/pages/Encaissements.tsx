@@ -33,7 +33,7 @@ import { usePaiements, useCreatePaiement, useDeletePaiement, usePaiementStats, C
 import { useAllClients } from '@/hooks/useClients';
 import { useFactures } from '@/hooks/useFactures';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
-import { useColis } from '@/hooks/useColis';
+import { useColisList } from '@/hooks/useColisList';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -56,17 +56,8 @@ export default function Encaissements() {
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  const { data, isLoading } = usePaiements(page, filters);
-  const { data: stats } = usePaiementStats(filters);
-  const { clients } = useAllClients();
-  const { factures: facturesData } = useFactures(1, { statut_paiement: 'non_paye,partiel' });
-  const { comptes: comptesData } = useComptesFinanciers();
-  const { colis: colisData } = useColis(1, { clientId: formData.client_id });
-
-  const createPaiement = useCreatePaiement();
-  const deletePaiement = useDeletePaiement();
-
+  
+  // Déclarer formData AVANT de l'utiliser dans les hooks
   const [formData, setFormData] = useState<CreatePaiementData>({
     type_paiement: 'facture',
     client_id: '',
@@ -76,6 +67,16 @@ export default function Encaissements() {
     date_paiement: new Date().toISOString().split('T')[0],
     notes: '',
   });
+
+  const { data, isLoading } = usePaiements(page, filters);
+  const { data: stats } = usePaiementStats(filters);
+  const { clients } = useAllClients();
+  const { factures: facturesData } = useFactures(1, { statut_paiement: 'non_paye,partiel' });
+  const { comptes: comptesData } = useComptesFinanciers();
+  const { data: colisData } = useColisList({ clientId: formData.client_id });
+
+  const createPaiement = useCreatePaiement();
+  const deletePaiement = useDeletePaiement();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

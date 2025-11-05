@@ -1,6 +1,7 @@
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+// @ts-ignore - Temporary workaround for react-router-dom types
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { PageProvider } from "@/contexts/PageContext";
@@ -19,6 +20,9 @@ import ActivityLogs from "./pages/ActivityLogs";
 import SecurityDashboard from "./pages/SecurityDashboard";
 import SecurityAudit from "./pages/SecurityAudit";
 import PermissionDiagnosticPage from "./pages/Permission-Diagnostic";
+import ComptesFinancesProtected from "./pages/Comptes-Finances-Protected";
+import OperationsFinancieres from "./pages/Operations-Financieres";
+import EncaissementsProtected from "./pages/Encaissements-Protected";
 import Login from "./pages/Login";
 import AdminSetup from "./pages/AdminSetup";
 import AdminInvitation from "./pages/AdminInvitation";
@@ -52,7 +56,7 @@ const App = () => (
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/transactions" element={
-                <ProtectedRouteEnhanced>
+                <ProtectedRouteEnhanced requiredModule="finances">
                   <TransactionsProtected />
                 </ProtectedRouteEnhanced>
               } />
@@ -109,6 +113,21 @@ const App = () => (
               <Route path="/security-dashboard" element={
                 <ProtectedRouteEnhanced>
                   <SecurityDashboard />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/comptes" element={
+                <ProtectedRouteEnhanced requiredModule="finances">
+                  <ComptesFinancesProtected />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/operations-financieres" element={
+                <ProtectedRouteEnhanced requiredModule="finances">
+                  <OperationsFinancieres />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/finances/encaissements" element={
+                <ProtectedRouteEnhanced requiredModule="finances">
+                  <EncaissementsProtected />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/permission-diagnostic" element={

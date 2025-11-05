@@ -91,6 +91,56 @@ export class SupabaseService {
     }
   }
 
+  async getClientsGlobalTotals(filters: ClientFilters = {}): Promise<ApiResponse<{ totalPaye: number; totalCount: number }>> {
+    try {
+      // Requête pour le total payé
+      let transQuery = supabase
+        .from('transactions')
+        .select('montant, devise, statut, clients!inner(id)');
+
+      // Appliquer les filtres de recherche sur les clients
+      if (filters.search) {
+        transQuery = transQuery.or(`clients.nom.ilike.%${filters.search}%,clients.telephone.ilike.%${filters.search}%`);
+      }
+
+      if (filters.ville) {
+        transQuery = transQuery.eq('clients.ville', filters.ville);
+      }
+
+      // Filtrer pour exclure les transactions annulées et ne compter que USD
+      transQuery = transQuery.neq('statut', 'Annulé').eq('devise', 'USD');
+
+      const { data: transData, error: transError } = await transQuery;
+
+      if (transError) throw transError;
+
+      // Calculer le total payé
+      const totalPaye = (transData || []).reduce((sum, t) => sum + (t.montant || 0), 0);
+
+      // Requête pour le nombre total de clients
+      let clientQuery = supabase
+        .from('clients')
+        .select('id', { count: 'exact', head: true });
+
+      // Appliquer les mêmes filtres
+      if (filters.search) {
+        clientQuery = clientQuery.or(`nom.ilike.%${filters.search}%,telephone.ilike.%${filters.search}%`);
+      }
+
+      if (filters.ville) {
+        clientQuery = clientQuery.eq('ville', filters.ville);
+      }
+
+      const { count, error: countError } = await clientQuery;
+
+      if (countError) throw countError;
+
+      return { data: { totalPaye, totalCount: count || 0 } };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  }
+
   async getClientById(id: string): Promise<ApiResponse<Client>> {
     try {
       const { data, error } = await supabase

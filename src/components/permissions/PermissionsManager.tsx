@@ -14,7 +14,8 @@ import {
   Loader2,
   Crown,
   UserCheck,
-  BookOpen
+  BookOpen,
+  DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -94,6 +95,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
     switch (iconName) {
       case 'Users': return <Users className="h-4 w-4" />;
       case 'Receipt': return <Shield className="h-4 w-4" />;
+      case 'DollarSign': return <DollarSign className="h-4 w-4" />;
       case 'Settings': return <Settings className="h-4 w-4" />;
       case 'CreditCard': return <Shield className="h-4 w-4" />;
       case 'FileText': return <BookOpen className="h-4 w-4" />;
@@ -140,7 +142,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
                 <p className="font-medium">{user.email}</p>
                 <p className="text-sm text-gray-500">Rôle actuel : {user.role}</p>
               </div>
-              <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+              <Badge {...({ variant: user.role === 'admin' ? 'default' : 'secondary' } as any)}>
                 {user.role === 'admin' ? (
                   <>
                     <Crown className="mr-1 h-3 w-3" />
@@ -184,7 +186,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
                           <CardTitle className="flex items-center space-x-2 text-base">
                             {getModuleIcon(module.icon)}
                             <span>{module.name}</span>
-                            <Badge variant="outline" className="text-xs">
+                            <Badge {...({ variant: "outline" } as any)} className="text-xs">
                               {module.description}
                             </Badge>
                           </CardTitle>
@@ -307,7 +309,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
                         onClick={(e) => handleRoleApply(role.name, e)}
                         disabled={savingRole !== null || getCurrentRole() === role.name}
                         className="w-full"
-                        variant={getCurrentRole() === role.name ? 'outline' : 'default'}
+                        variant={getCurrentRole() === role.name ? 'outline' as any : 'default' as any}
                         type="button"
                       >
                         {savingRole === role.name ? (
@@ -333,7 +335,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
 
           {/* Actions */}
           <div className="flex justify-end space-x-3 pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
+            <Button {...({ variant: "outline" } as any)} onClick={onClose}>
               Fermer
             </Button>
           </div>

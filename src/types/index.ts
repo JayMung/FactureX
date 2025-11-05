@@ -4,6 +4,7 @@ export interface Client {
   nom: string;
   telephone: string;
   ville: string;
+  pays?: string;
   total_paye?: number;
   created_at: string;
   updated_at?: string;
@@ -12,7 +13,7 @@ export interface Client {
 
 export interface Transaction {
   id: string;
-  client_id: string;
+  client_id?: string; // Optional for internal expenses
   date_paiement: string;
   montant: number;
   devise: string;
@@ -30,6 +31,80 @@ export interface Transaction {
   updated_at?: string;
   created_by?: string;
   client?: Client;
+  
+  // New financial fields
+  type_transaction: 'revenue' | 'depense' | 'transfert';
+  categorie?: string;
+  compte_source_id?: string;
+  compte_destination_id?: string;
+  colis_id?: string;
+  notes?: string;
+  organization_id: string;
+  
+  // Related objects
+  compte_source?: CompteFinancier;
+  compte_destination?: CompteFinancier;
+  colis?: any; // Will be typed when colis interface is created
+}
+
+export interface CompteFinancier {
+  id: string;
+  nom: string;
+  type_compte: 'mobile_money' | 'banque' | 'cash';
+  numero_compte?: string;
+  solde_actuel: number;
+  devise: 'USD' | 'CDF';
+  is_active: boolean;
+  description?: string;
+  organization_id: string;
+  created_at: string;
+  updated_at?: string;
+  created_by?: string;
+}
+
+export interface CreateCompteFinancierData {
+  nom: string;
+  type_compte: 'mobile_money' | 'banque' | 'cash';
+  numero_compte?: string;
+  solde_actuel: number;
+  devise: 'USD' | 'CDF';
+  description?: string;
+}
+
+export interface UpdateCompteFinancierData {
+  nom?: string;
+  type_compte?: 'mobile_money' | 'banque' | 'cash';
+  numero_compte?: string;
+  solde_actuel?: number;
+  devise?: 'USD' | 'CDF';
+  is_active?: boolean;
+  description?: string;
+}
+
+export interface MouvementCompte {
+  id: string;
+  compte_id: string;
+  transaction_id?: string;
+  type_mouvement: 'debit' | 'credit';
+  montant: number;
+  solde_avant: number;
+  solde_apres: number;
+  description?: string;
+  date_mouvement: string;
+  organization_id: string;
+  created_at: string;
+  updated_at?: string;
+  
+  // Relations
+  compte?: CompteFinancier;
+  transaction?: Transaction;
+}
+
+export interface MouvementFilters {
+  compte_id?: string;
+  type_mouvement?: 'debit' | 'credit';
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export interface Setting {
@@ -107,6 +182,10 @@ export interface TransactionFilters {
   currency?: string;
   clientId?: string;
   modePaiement?: string;
+  type_transaction?: 'revenue' | 'depense' | 'transfert';
+  categorie?: string;
+  compte_source_id?: string;
+  compte_destination_id?: string;
   dateFrom?: string;
   dateTo?: string;
   minAmount?: string;
@@ -120,16 +199,28 @@ export interface CreateClientData {
 }
 
 export interface CreateTransactionData {
-  client_id: string;
+  type_transaction: 'revenue' | 'depense' | 'transfert';
+  motif: string;
+  client_id?: string;
   montant: number;
   devise: string;
-  motif: string;
-  mode_paiement: string;
+  mode_paiement?: string;
   date_paiement?: string;
   statut?: string;
+  categorie?: string;
+  compte_source_id?: string;
+  compte_destination_id?: string;
+  colis_id?: string;
+  notes?: string;
+  frais?: number;
+  taux_usd_cny?: number;
+  taux_usd_cdf?: number;
+  montant_cny?: number;
+  benefice?: number;
 }
 
 export interface UpdateTransactionData {
+  type_transaction?: 'revenue' | 'depense' | 'transfert';
   client_id?: string;
   montant?: number;
   devise?: string;
@@ -137,6 +228,11 @@ export interface UpdateTransactionData {
   mode_paiement?: string;
   date_paiement?: string;
   statut?: string;
+  categorie?: string;
+  compte_source_id?: string;
+  compte_destination_id?: string;
+  colis_id?: string;
+  notes?: string;
   valide_par?: string;
   date_validation?: string;
   taux_usd_cny?: number;
@@ -241,6 +337,7 @@ export interface UpdateFactureData {
 export interface FactureFilters {
   type?: 'devis' | 'facture';
   statut?: string;
+  statut_paiement?: string;
   clientId?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -260,7 +357,7 @@ export interface UserPermission {
   updated_at: string;
 }
 
-export type ModuleType = 'clients' | 'transactions' | 'settings' | 'payment_methods' | 'activity_logs' | 'factures' | 'exchange_rates' | 'transaction_fees' | 'colis';
+export type ModuleType = 'clients' | 'finances' | 'settings' | 'payment_methods' | 'activity_logs' | 'factures' | 'exchange_rates' | 'transaction_fees' | 'colis';
 
 export interface ModuleInfo {
   id: ModuleType;
@@ -299,7 +396,7 @@ export const PREDEFINED_ROLES: PermissionRole[] = [
     description: 'Administrateur - Accès complet à tout',
     permissions: {
       clients: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      transactions: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      finances: { can_read: true, can_create: true, can_update: true, can_delete: true },
       factures: { can_read: true, can_create: true, can_update: true, can_delete: true },
       colis: { can_read: true, can_create: true, can_update: true, can_delete: true },
       settings: { can_read: true, can_create: true, can_update: true, can_delete: true },
@@ -318,7 +415,7 @@ export const PREDEFINED_ROLES: PermissionRole[] = [
     description: 'Administrateur - Gestion complète limitée',
     permissions: {
       clients: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      transactions: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      finances: { can_read: true, can_create: true, can_update: true, can_delete: true },
       factures: { can_read: true, can_create: true, can_update: true, can_delete: true },
       colis: { can_read: true, can_create: true, can_update: true, can_delete: false },
       settings: { can_read: true, can_create: true, can_update: true, can_delete: false },
@@ -337,7 +434,7 @@ export const PREDEFINED_ROLES: PermissionRole[] = [
     description: 'Opérateur - Gestion quotidienne limitée',
     permissions: {
       clients: { can_read: true, can_create: true, can_update: true, can_delete: false },
-      transactions: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      finances: { can_read: false, can_create: false, can_update: false, can_delete: false },
       factures: { can_read: true, can_create: true, can_update: true, can_delete: false },
       colis: { can_read: true, can_create: true, can_update: false, can_delete: false },
       settings: { can_read: false, can_create: false, can_update: false, can_delete: false },
@@ -432,7 +529,7 @@ export interface PaiementColis {
 // Informations sur les modules
 export const MODULES_INFO: ModuleInfo[] = [
   { id: 'clients', name: 'Clients', description: 'Gestion des clients', icon: 'Users', adminOnly: false },
-  { id: 'transactions', name: 'Transactions', description: 'Gestion des transactions', icon: 'Receipt', adminOnly: false },
+  { id: 'finances', name: 'Finances', description: 'Gestion financière, transactions et comptes', icon: 'DollarSign', adminOnly: true },
   { id: 'settings', name: 'Paramètres', description: 'Configuration système', icon: 'Settings', adminOnly: true },
   { id: 'payment_methods', name: 'Moyens de paiement', description: 'Modes de paiement', icon: 'CreditCard', adminOnly: true },
   { id: 'activity_logs', name: 'Logs d\'activité', description: 'Historique des actions', icon: 'FileText', adminOnly: true },

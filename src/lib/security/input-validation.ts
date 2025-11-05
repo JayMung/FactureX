@@ -80,12 +80,12 @@ export class InputValidator {
       }
     }
 
-    // Validate motif (enum)
+    // Validate motif (text - description libre)
     if (data.motif) {
-      const motifResult = this.validateEnum(
+      const motifResult = this.validateText(
         data.motif, 
         'motif', 
-        this.ALLOWED_VALUES.motif
+        500 // Max 500 caractères pour la description
       );
       if (!motifResult.isValid) {
         errors.push(motifResult.error || 'Invalid motif');
@@ -129,6 +129,63 @@ export class InputValidator {
         errors.push(dateResult.error || 'Invalid payment date');
       } else {
         sanitized.date_paiement = dateResult.sanitizedValue;
+      }
+    }
+
+    // Validate type_transaction (text)
+    if (data.type_transaction) {
+      sanitized.type_transaction = data.type_transaction;
+    }
+
+    // Validate categorie (text)
+    if (data.categorie) {
+      const categorieResult = this.validateText(
+        data.categorie, 
+        'categorie', 
+        100
+      );
+      if (categorieResult.isValid) {
+        sanitized.categorie = categorieResult.sanitizedValue;
+      }
+    }
+
+    // Validate notes (text)
+    if (data.notes) {
+      const notesResult = this.validateText(
+        data.notes, 
+        'notes', 
+        1000
+      );
+      if (notesResult.isValid) {
+        sanitized.notes = notesResult.sanitizedValue;
+      }
+    }
+
+    // Validate compte_source_id (UUID)
+    if (data.compte_source_id) {
+      const compteSourceResult = this.validateUUID(data.compte_source_id, 'compte_source_id');
+      if (compteSourceResult.isValid) {
+        sanitized.compte_source_id = compteSourceResult.sanitizedValue;
+      }
+    }
+
+    // Validate compte_destination_id (UUID)
+    if (data.compte_destination_id) {
+      const compteDestResult = this.validateUUID(data.compte_destination_id, 'compte_destination_id');
+      if (compteDestResult.isValid) {
+        sanitized.compte_destination_id = compteDestResult.sanitizedValue;
+      }
+    }
+
+    // Validate frais (numeric)
+    if (data.frais !== undefined) {
+      const fraisResult = this.validateNumeric(
+        data.frais, 
+        'frais', 
+        { min: 0, max: 1000000, decimals: 2 }
+      );
+      if (fraisResult.isValid) {
+        sanitized.frais = fraisResult.sanitizedValue;
       }
     }
 

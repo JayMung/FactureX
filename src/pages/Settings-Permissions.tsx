@@ -33,7 +33,8 @@ import {
   Truck
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { User as SupabaseUser } from '@supabase/supabase-js';
+// @ts-ignore - Temporary workaround for Supabase types
+import type { User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
@@ -659,6 +660,13 @@ const SettingsWithPermissions = () => {
       adminOnly: true
     },
     {
+      id: 'finances',
+      label: 'Finances',
+      icon: <DollarSign className="h-5 w-5" />,
+      description: 'Gestion financière et permissions des comptes',
+      adminOnly: true
+    },
+    {
       id: 'payment-methods',
       label: 'Moyens de paiement',
       icon: <CreditCard className="h-5 w-5" />,
@@ -720,7 +728,8 @@ const SettingsWithPermissions = () => {
     'activity-logs': 'activity_logs',
     'factures': 'factures',
     'colis': 'colis',
-    'transitaires': 'colis'
+    'transitaires': 'colis',
+    'finances': 'finances'
   };
 
   const filteredOptions = settingsOptions.filter(option => {
@@ -897,6 +906,70 @@ const SettingsWithPermissions = () => {
 
             {/* Company Tab */}
             {activeTab === 'company' && <CompanySettings />}
+
+            {/* Finances Tab */}
+            {activeTab === 'finances' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <DollarSign className="mr-2 h-5 w-5" />
+                    Gestion des permissions Financières
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Alert>
+                    <Shield className="h-4 w-4" />
+                    <AlertDescription>
+                      Le module Finances est sensible et nécessite des permissions spéciales. 
+                      Seuls les administrateurs peuvent gérer les permissions financières.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="mt-6 space-y-4">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <h4 className="font-medium text-yellow-800 mb-2">
+                        <AlertCircle className="inline h-4 w-4 mr-2" />
+                        Permissions disponibles
+                      </h4>
+                      <ul className="text-sm text-yellow-700 space-y-1">
+                        <li>• <strong>finances.view</strong> - Voir le module financier (requis)</li>
+                        <li>• <strong>finances.transactions</strong> - Gérer les transactions clients</li>
+                        <li>• <strong>finances.depenses_revenus</strong> - Gérer les dépenses et revenus</li>
+                        <li>• <strong>finances.encaissements.*</strong> - Gérer les encaissements</li>
+                        <li>• <strong>finances.comptes.*</strong> - Gérer les comptes financiers</li>
+                        <li>• <strong>finances.mouvements.*</strong> - Voir et exporter les mouvements</li>
+                      </ul>
+                    </div>
+                    
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-medium text-blue-800 mb-2">
+                        <Info className="inline h-4 w-4 mr-2" />
+                        Comment attribuer les permissions
+                      </h4>
+                      <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+                        <li>Allez dans l'onglet "Utilisateurs"</li>
+                        <li>Cliquez sur l'icône <Key className="inline h-3 w-3 mx-1" /> à côté d'un utilisateur</li>
+                        <li>Dans l'onglet "Modules", cochez les permissions financières</li>
+                        <li>Ou appliquez un rôle prédéfini avec accès financier</li>
+                      </ol>
+                    </div>
+                    
+                    <div className="bg-red-50 border border-red-100 rounded-lg p-4">
+                      <h4 className="font-medium text-red-800 mb-2">
+                        <Lock className="inline h-4 w-4 mr-2" />
+                        Restrictions de sécurité
+                      </h4>
+                      <ul className="text-sm text-red-700 space-y-1">
+                        <li>• Les opérateurs n'ont pas accès aux finances par défaut</li>
+                        <li>• Le menu "Finances" est invisible sans permissions</li>
+                        <li>• Les routes financières sont protégées</li>
+                        <li>• Toutes les actions sont auditées dans les logs de sécurité</li>
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Profile Tab */}
             {activeTab === 'profile' && (

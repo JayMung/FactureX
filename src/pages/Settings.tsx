@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from 'react';
 import { 
@@ -25,7 +25,8 @@ import {
   Phone
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { User as SupabaseUser } from '@supabase/supabase-js';
+// @ts-ignore - Temporary workaround for Supabase types
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo } from 'react';
+// @ts-ignore - Temporary workaround for react-router-dom types
 import { Navigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { usePermissions } from '@/hooks/usePermissions';

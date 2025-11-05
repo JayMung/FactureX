@@ -288,7 +288,7 @@ export class PermissionConsolidationService {
   private getAllModulePermissions(): Record<string, any> {
     return {
       'clients': { can_read: true, can_create: true, can_update: true, can_delete: true },
-      'transactions': { can_read: true, can_create: true, can_update: true, can_delete: true },
+      'finances': { can_read: true, can_create: true, can_update: true, can_delete: true },
       'factures': { can_read: true, can_create: true, can_update: true, can_delete: true },
       'settings': { can_read: true, can_create: true, can_update: true, can_delete: true },
       'users': { can_read: true, can_create: true, can_update: true, can_delete: true },

@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
 import { permissionsService } from '@/services/permissionsService';
 import { adminService } from '@/services/adminService';
 import { permissionConsolidationService } from '@/lib/security/permission-consolidation';
@@ -9,7 +11,7 @@ import { showSuccess, showError } from '@/utils/toast';
 
 // Cache global pour les permissions (évite les rechargements inutiles)
 const permissionsCache = new Map<string, { permissions: UserPermissionsMap; isAdmin: boolean; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 60 * 1000; // 60s to reduce perceived staleness after role changes
 
 export const usePermissions = () => {
   const { user, isAdmin: authIsAdmin } = useAuth();
@@ -21,6 +23,7 @@ export const usePermissions = () => {
   // Charger les permissions de l'utilisateur actuel
   useEffect(() => {
     const loadPermissions = async () => {
+
       if (!user?.id) {
         setLoading(false);
         return;
@@ -78,6 +81,43 @@ export const usePermissions = () => {
     loadPermissions();
   }, [user?.id]);
 
+  // Realtime: listen to permission changes for current user and invalidate cache + reload
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Subscribe to both admin_roles and user_permissions for this user
+    const channel = supabase
+      .channel(`permissions:${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'admin_roles', filter: `user_id=eq.${user.id}` },
+        () => {
+          permissionsCache.delete(user.id);
+          // Soft reload in background
+          permissionConsolidationService.getUserPermissions(user.id).then((consolidatedPerms) => {
+            setPermissions(consolidatedPerms.permissions);
+            setIsAdmin(consolidatedPerms.is_admin);
+          }).catch(() => {/* ignore */});
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_permissions', filter: `user_id=eq.${user.id}` },
+        () => {
+          permissionsCache.delete(user.id);
+          permissionConsolidationService.getUserPermissions(user.id).then((consolidatedPerms) => {
+            setPermissions(consolidatedPerms.permissions);
+            setIsAdmin(consolidatedPerms.is_admin);
+          }).catch(() => {/* ignore */});
+        }
+      )
+      .subscribe();
+
+    return () => {
+      try { supabase.removeChannel(channel); } catch {}
+    };
+  }, [user?.id]);
+
   // Vérifier une permission spécifique
   const checkPermission = useCallback((
     module: ModuleType, 
@@ -125,10 +165,11 @@ export const usePermissions = () => {
       // Invalider le cache pour cet utilisateur
       permissionsCache.delete(userId);
       
-      // Si c'est l'utilisateur actuel, recharger ses permissions
+      // Si c'est l'utilisateur actuel, recharger ses permissions via le service de consolidation
       if (userId === user?.id) {
-        const updatedPermissions = await permissionsService.getUserPermissions(userId);
-        setPermissions(updatedPermissions);
+        const consolidatedPerms = await permissionConsolidationService.getUserPermissions(userId);
+        setPermissions(consolidatedPerms.permissions);
+        setIsAdmin(consolidatedPerms.is_admin);
       }
     } catch (error: any) {
       console.error('Error updating permission:', error);
@@ -143,10 +184,14 @@ export const usePermissions = () => {
       await permissionsService.applyRole(userId, roleName);
       showSuccess(`Rôle "${roleName}" appliqué avec succès`);
       
-      // Si c'est l'utilisateur actuel, recharger ses permissions
+      // Invalider le cache pour cet utilisateur
+      permissionsCache.delete(userId);
+      
+      // Si c'est l'utilisateur actuel, recharger ses permissions via le service de consolidation
       if (userId === user?.id) {
-        const updatedPermissions = await permissionsService.getUserPermissions(userId);
-        setPermissions(updatedPermissions);
+        const consolidatedPerms = await permissionConsolidationService.getUserPermissions(userId);
+        setPermissions(consolidatedPerms.permissions);
+        setIsAdmin(consolidatedPerms.is_admin);
       }
     } catch (error: any) {
       console.error('Error applying role:', error);

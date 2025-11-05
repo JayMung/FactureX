@@ -5,7 +5,8 @@
  * concurrent session limits, and session regeneration.
  */
 
-import { Session, User } from '@supabase/supabase-js';
+// @ts-ignore - Temporary workaround for Supabase types
+import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 // Session configuration

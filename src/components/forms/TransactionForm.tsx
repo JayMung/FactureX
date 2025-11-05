@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { ClientCombobox } from '@/components/ui/client-combobox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Save, X, DollarSign, Calculator, AlertTriangle } from 'lucide-react';
+import { Loader2, Save, X, DollarSign, Calculator, AlertTriangle, Wallet, TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { validateTransactionInput } from '@/lib/security/input-validation';
 import { detectAttackPatterns } from '@/lib/security/validation';
@@ -17,6 +18,7 @@ import { useAllClients } from '@/hooks/useClients';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useExchangeRates, useFees } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 
 interface TransactionFormProps {
   isOpen: boolean;
@@ -25,6 +27,28 @@ interface TransactionFormProps {
   transaction?: Transaction | undefined;
 }
 
+// Catégories par type de transaction
+const REVENUE_CATEGORIES = [
+  { value: 'Commande', label: 'Commande (Achat client)' },
+  { value: 'Transfert', label: 'Transfert d\'argent' },
+  { value: 'Retrait Colis', label: 'Retrait Colis' },
+  { value: 'Vente', label: 'Vente directe' },
+  { value: 'Autre', label: 'Autre revenue' }
+];
+
+const DEPENSE_CATEGORIES = [
+  { value: 'Paiement Fournisseur', label: 'Paiement Fournisseur' },
+  { value: 'Paiement Shipping', label: 'Paiement Shipping' },
+  { value: 'Loyer', label: 'Loyer' },
+  { value: 'Salaires', label: 'Salaires' },
+  { value: 'Frais Installation', label: 'Frais d\'Installation' },
+  { value: 'Achat Biens', label: 'Achat Biens' },
+  { value: 'Transport', label: 'Transport' },
+  { value: 'Maintenance', label: 'Maintenance' },
+  { value: 'Carburant', label: 'Carburant' },
+  { value: 'Autre', label: 'Autre dépense' }
+];
+
 const TransactionForm: React.FC<TransactionFormProps> = ({ 
   isOpen, 
   onClose, 
@@ -32,12 +56,18 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   transaction 
 }) => {
   const [formData, setFormData] = useState({
+    type_transaction: 'revenue' as 'revenue' | 'depense' | 'transfert',
     client_id: '',
     montant: '',
     devise: 'USD',
+    categorie: 'Commande',
     motif: 'Commande',
     mode_paiement: '',
-    date_paiement: new Date().toISOString().split('T')[0]
+    date_paiement: new Date().toISOString().split('T')[0],
+    compte_source_id: '',
+    compte_destination_id: '',
+    notes: '',
+    frais: '0'
   });
   
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -57,6 +87,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   const { rates } = useExchangeRates();
   const { fees } = useFees();
   const { createTransaction, updateTransaction, isCreating, isUpdating } = useTransactions();
+  const { comptes } = useComptesFinanciers();
 
   const isEditing = !!transaction;
   const isLoading = isCreating || isUpdating || isCalculating;
@@ -65,30 +96,36 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   useEffect(() => {
     if (transaction && isEditing) {
       setFormData({
-        client_id: transaction.client_id,
+        type_transaction: transaction.type_transaction || 'revenue',
+        client_id: transaction.client_id || '',
         montant: transaction.montant.toString(),
         devise: transaction.devise,
-        motif: transaction.motif,
-        mode_paiement: transaction.mode_paiement,
-        date_paiement: transaction.date_paiement?.split('T')[0] || new Date().toISOString().split('T')[0]
+        categorie: transaction.categorie || transaction.motif || 'Commande',
+        motif: transaction.motif || 'Commande',
+        mode_paiement: transaction.mode_paiement || '',
+        date_paiement: transaction.date_paiement?.split('T')[0] || new Date().toISOString().split('T')[0],
+        compte_source_id: transaction.compte_source_id || '',
+        compte_destination_id: transaction.compte_destination_id || '',
+        notes: transaction.notes || '',
+        frais: transaction.frais?.toString() || '0'
       });
       
       setCalculations({
-        frais: transaction.frais,
-        benefice: transaction.benefice,
-        montant_cny: transaction.montant_cny,
-        taux_usd_cny: transaction.taux_usd_cny,
-        taux_usd_cdf: transaction.taux_usd_cdf
+        frais: transaction.frais || 0,
+        benefice: transaction.benefice || 0,
+        montant_cny: transaction.montant_cny || 0,
+        taux_usd_cny: transaction.taux_usd_cny || 0,
+        taux_usd_cdf: transaction.taux_usd_cdf || 0
       });
     }
   }, [transaction, isEditing]);
 
   // Calculer automatiquement lorsque les données changent
   useEffect(() => {
-    if (formData.montant && formData.devise && formData.motif && rates && fees) {
+    if (formData.montant && formData.devise && formData.categorie && rates && fees) {
       calculateAmounts();
     }
-  }, [formData.montant, formData.devise, formData.motif, rates, fees]);
+  }, [formData.montant, formData.devise, formData.categorie, formData.type_transaction, rates, fees]);
 
   const calculateAmounts = () => {
     if (!formData.montant || !rates || !fees) return;
@@ -98,13 +135,33 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     try {
       const montant = parseFloat(formData.montant);
       const tauxUSD = formData.devise === 'USD' ? 1 : rates.usdToCdf;
-      const fraisUSD = montant * (fees[formData.motif.toLowerCase() as keyof typeof fees] / 100);
-      const montantNet = montant - fraisUSD; // Montant après déduction des frais
+      
+      // Pour les transferts, utiliser les frais saisis manuellement
+      let fraisUSD = 0;
+      let benefice = 0;
+      
+      if (formData.type_transaction === 'transfert') {
+        // Frais de transfert saisis manuellement
+        fraisUSD = parseFloat(formData.frais) || 0;
+        benefice = fraisUSD; // Les frais de transfert sont le bénéfice
+      } else if (formData.type_transaction === 'revenue') {
+        // Calcul automatique pour les revenues
+        const categorieLower = formData.categorie.toLowerCase().replace(/ /g, '');
+        const feeKey = categorieLower as keyof typeof fees;
+        const feePercentage = fees[feeKey] || fees.commande || 0;
+        fraisUSD = montant * (feePercentage / 100);
+        const commissionPartenaire = montant * (fees.partenaire / 100);
+        benefice = fraisUSD - commissionPartenaire;
+      } else if (formData.type_transaction === 'depense') {
+        // Les dépenses n'ont pas de frais, le bénéfice est négatif
+        fraisUSD = 0;
+        benefice = -montant; // Dépense = perte
+      }
+      
+      const montantNet = montant - fraisUSD;
       const montantCNY = formData.devise === 'USD' 
         ? montantNet * rates.usdToCny 
         : (montantNet / tauxUSD) * rates.usdToCny;
-      const commissionPartenaire = montant * (fees.partenaire / 100);
-      const benefice = fraisUSD - commissionPartenaire;
 
       setCalculations({
         frais: fraisUSD,
@@ -124,8 +181,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     const newErrors: Record<string, string> = {};
 
     // Basic validation
-    if (!formData.client_id) {
-      newErrors.client_id = 'Le client est requis';
+    if (formData.type_transaction === 'revenue' && !formData.client_id) {
+      newErrors.client_id = 'Le client est requis pour un revenue';
     }
 
     if (!formData.montant || parseFloat(formData.montant) <= 0) {
@@ -136,12 +193,29 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       newErrors.devise = 'La devise est requise';
     }
 
-    if (!formData.motif) {
-      newErrors.motif = 'Le motif est requis';
+    if (!formData.categorie) {
+      newErrors.categorie = 'La catégorie est requise';
     }
 
-    if (!formData.mode_paiement) {
-      newErrors.mode_paiement = 'Le mode de paiement est requis';
+    // Validation des comptes selon le type
+    if (formData.type_transaction === 'revenue' && !formData.compte_destination_id) {
+      newErrors.compte_destination_id = 'Le compte de destination est requis pour un revenue';
+    }
+
+    if (formData.type_transaction === 'depense' && !formData.compte_source_id) {
+      newErrors.compte_source_id = 'Le compte source est requis pour une dépense';
+    }
+
+    if (formData.type_transaction === 'transfert') {
+      if (!formData.compte_source_id) {
+        newErrors.compte_source_id = 'Le compte source est requis';
+      }
+      if (!formData.compte_destination_id) {
+        newErrors.compte_destination_id = 'Le compte de destination est requis';
+      }
+      if (formData.compte_source_id === formData.compte_destination_id) {
+        newErrors.compte_destination_id = 'Les comptes source et destination doivent être différents';
+      }
     }
 
     if (!formData.date_paiement) {
@@ -196,12 +270,18 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
     try {
       const transactionData = {
+        type_transaction: formData.type_transaction,
         client_id: formData.client_id,
         montant: parseFloat(formData.montant),
         devise: formData.devise,
         motif: formData.motif,
+        categorie: formData.categorie,
         mode_paiement: formData.mode_paiement,
         date_paiement: formData.date_paiement,
+        compte_source_id: formData.compte_source_id,
+        compte_destination_id: formData.compte_destination_id,
+        notes: formData.notes,
+        frais: parseFloat(formData.frais) || 0,
         statut: 'En attente'
       };
 
@@ -215,12 +295,18 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       onClose();
       // Reset form
       setFormData({
+        type_transaction: 'revenue',
         client_id: '',
         montant: '',
         devise: 'USD',
+        categorie: 'Commande',
         motif: 'Commande',
         mode_paiement: '',
-        date_paiement: new Date().toISOString().split('T')[0]
+        date_paiement: new Date().toISOString().split('T')[0],
+        compte_source_id: '',
+        compte_destination_id: '',
+        notes: '',
+        frais: '0'
       });
       setErrors({});
     } catch (error: any) {

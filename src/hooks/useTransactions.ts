@@ -13,6 +13,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
   const [loading, setLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isLoadingTotals, setIsLoadingTotals] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [pagination, setPagination] = useState({
@@ -20,6 +21,15 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     page: 1,
     pageSize: 10,
     totalPages: 0
+  });
+  const [globalTotals, setGlobalTotals] = useState({
+    totalUSD: 0,
+    totalCDF: 0,
+    totalCNY: 0,
+    totalFrais: 0,
+    totalBenefice: 0,
+    totalDepenses: 0,
+    totalCount: 0
   });
 
   const fetchTransactions = useCallback(async () => {
@@ -82,19 +92,116 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     }
   }, [page, filters.status, filters.currency, filters.modePaiement, pagination.pageSize, refreshTrigger]);
 
+  // Fonction pour calculer les totaux globaux (toutes pages confondues)
+  const fetchGlobalTotals = useCallback(async () => {
+    try {
+      setIsLoadingTotals(true);
+      let query = supabase
+        .from('transactions')
+        .select('montant, devise, montant_cny, frais, benefice, motif, type_transaction');
+
+      // Appliquer les mêmes filtres que fetchTransactions
+      if (filters.status) {
+        query = query.eq('statut', filters.status);
+      }
+      if (filters.currency) {
+        query = query.eq('devise', filters.currency);
+      }
+      if (filters.clientId) {
+        query = query.eq('client_id', filters.clientId);
+      }
+      if (filters.modePaiement) {
+        query = query.eq('mode_paiement', filters.modePaiement);
+      }
+      if (filters.dateFrom) {
+        query = query.gte('created_at', filters.dateFrom);
+      }
+      if (filters.dateTo) {
+        query = query.lte('created_at', filters.dateTo);
+      }
+      if (filters.minAmount) {
+        query = query.gte('montant', parseFloat(filters.minAmount));
+      }
+      if (filters.maxAmount) {
+        query = query.lte('montant', parseFloat(filters.maxAmount));
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      // Calculer les totaux globaux
+      const totals = (data || []).reduce((acc, transaction: any) => {
+        // Total USD/CDF ne compte QUE les transactions commerciales (Commande, Transfert)
+        // PAS les dépenses/revenus internes
+        if (transaction.motif === 'Commande' || transaction.motif === 'Transfert') {
+          if (transaction.devise === 'USD') {
+            acc.totalUSD += transaction.montant || 0;
+          } else if (transaction.devise === 'CDF') {
+            acc.totalCDF += transaction.montant || 0;
+          }
+          acc.totalCNY += transaction.montant_cny || 0;
+          acc.totalFrais += transaction.frais || 0;
+          acc.totalBenefice += transaction.benefice || 0;
+        }
+        
+        // Calculer les dépenses séparément (toutes devises)
+        if (transaction.type_transaction === 'depense') {
+          acc.totalDepenses += transaction.montant || 0;
+        }
+        
+        return acc;
+      }, {
+        totalUSD: 0,
+        totalCDF: 0,
+        totalCNY: 0,
+        totalFrais: 0,
+        totalBenefice: 0,
+        totalDepenses: 0
+      });
+
+      setGlobalTotals({
+        ...totals,
+        totalCount: data?.length || 0
+      });
+    } catch (err: any) {
+      console.error('Error fetching global totals:', err);
+      // En cas d'erreur, mettre à zéro
+      setGlobalTotals({
+        totalUSD: 0,
+        totalCDF: 0,
+        totalCNY: 0,
+        totalFrais: 0,
+        totalBenefice: 0,
+        totalDepenses: 0,
+        totalCount: 0
+      });
+    } finally {
+      setIsLoadingTotals(false);
+    }
+  }, [filters.status, filters.currency, filters.modePaiement, filters.clientId, filters.dateFrom, filters.dateTo, filters.minAmount, filters.maxAmount]);
+
   useEffect(() => {
     fetchTransactions();
-  }, [fetchTransactions]);
+    // Charger les totaux de manière asynchrone (non bloquant)
+    setTimeout(() => fetchGlobalTotals(), 0);
+  }, [fetchTransactions, fetchGlobalTotals]);
 
   const createTransaction = async (transactionData: CreateTransactionData) => {
     setIsCreating(true);
     setError(null);
 
     try {
+      // Log input data for debugging
+      console.log('🔍 Creating transaction with data:', transactionData);
+      
       // SECURITY: Validate and sanitize input data
       const validation = validateTransactionInput(transactionData);
+      console.log('✅ Validation result:', validation);
+      
       if (!validation.isValid) {
         const errorMsg = `Validation error: ${validation.error}`;
+        console.error('❌ Validation failed:', errorMsg);
         setError(errorMsg);
         showError(errorMsg);
         
@@ -166,13 +273,27 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       });
 
       const tauxUSD = sanitizedData.devise === 'USD' ? 1 : rates.usdToCdf;
-      const fraisUSD = sanitizedData.montant * (fees[sanitizedData.motif.toLowerCase() as keyof typeof fees] / 100);
+      
+      // Pour les dépenses et revenus (opérations financières), utiliser des frais fixes de 0%
+      let fraisUSD = 0;
+      let benefice = 0;
+      
+      if (sanitizedData.type_transaction === 'revenue') {
+        // Pour les revenus (Commande, Transfert), calculer les frais selon le motif
+        const fraisRate = fees[sanitizedData.motif.toLowerCase() as keyof typeof fees] || 0;
+        fraisUSD = sanitizedData.montant * (fraisRate / 100);
+        const commissionPartenaire = sanitizedData.montant * (fees.partenaire / 100);
+        benefice = fraisUSD - commissionPartenaire;
+      } else if (sanitizedData.type_transaction === 'depense') {
+        // Pour les dépenses, pas de frais ni de bénéfice (c'est une sortie d'argent)
+        fraisUSD = 0;
+        benefice = 0;
+      }
+      
       const montantNet = sanitizedData.montant - fraisUSD; // Montant après déduction des frais
       const montantCNY = sanitizedData.devise === 'USD' 
         ? montantNet * rates.usdToCny 
         : (montantNet / tauxUSD) * rates.usdToCny;
-      const commissionPartenaire = sanitizedData.montant * (fees.partenaire / 100);
-      const benefice = fraisUSD - commissionPartenaire;
 
       const fullTransactionData = {
         ...sanitizedData,
@@ -212,10 +333,21 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       // Forcer le refresh immédiatement
       setRefreshTrigger(prev => prev + 1);
       // Appel direct pour refresh immédiat
-      setTimeout(() => fetchTransactions(), 100);
+      setTimeout(() => {
+        fetchTransactions();
+        fetchGlobalTotals(); // Rafraîchir les totaux globaux
+      }, 100);
       
       return data;
     } catch (err: any) {
+      console.error('❌ Error creating operation:', err);
+      console.error('Error details:', {
+        message: err?.message,
+        code: err?.code,
+        details: err?.details,
+        hint: err?.hint,
+        stack: err?.stack
+      });
       const friendlyMessage = getFriendlyErrorMessage(err, 'Erreur de création');
       setError(friendlyMessage);
       showError(friendlyMessage);
@@ -294,17 +426,28 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
         }
       }
 
-      const { data, error } = await supabase
+      const updateResult = await supabase
         .from('transactions')
         .update(updatedData)
         .eq('id', id)
-        .select(`
-          *,
-          client:clients(*)
-        `)
-        .single();
+        .select('*');
 
-      if (error) throw error;
+      let data = Array.isArray(updateResult.data) ? updateResult.data[0] : (updateResult as any).data;
+      const error = (updateResult as any).error;
+
+      // If PostgREST returned 406/PGRST116 (no rows to return with .single semantics),
+      // or no row in the result array, fall back to fetching the row directly.
+      if ((error && (error.code === 'PGRST116' || error.message?.includes('Cannot coerce'))) || !data) {
+        const fetchAfterUpdate = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('id', id)
+          .single();
+        if (fetchAfterUpdate.error) throw fetchAfterUpdate.error;
+        data = fetchAfterUpdate.data as any;
+      } else if (error) {
+        throw error;
+      }
 
       // Logger l'activité
       await activityLogger.logActivityWithChanges(
@@ -321,7 +464,10 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       
       // Forcer le refresh immédiatement
       setRefreshTrigger(prev => prev + 1);
-      setTimeout(() => fetchTransactions(), 100);
+      setTimeout(() => {
+        fetchTransactions();
+        fetchGlobalTotals(); // Rafraîchir les totaux globaux
+      }, 100);
       
       return data;
     } catch (err: any) {
@@ -393,7 +539,10 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       
       // Forcer le refresh immédiatement
       setRefreshTrigger(prev => prev + 1);
-      setTimeout(() => fetchTransactions(), 100);
+      setTimeout(() => {
+        fetchTransactions();
+        fetchGlobalTotals(); // Rafraîchir les totaux globaux
+      }, 100);
       
       return { message: 'Transaction supprimée avec succès' };
     } catch (error: any) {
@@ -409,6 +558,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     isUpdating,
     error,
     pagination,
+    globalTotals,
     createTransaction,
     updateTransaction,
     deleteTransaction,

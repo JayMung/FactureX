@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Supabase Connection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Test de connexion Supabase</h1>
+    <button onclick="testConnection()">Tester la connexion</button>
+    <pre id="result"></pre>
+
+    <script>
+        const SUPABASE_URL = 'https://ddnxtuhswmewoxrwswzg.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkbnh0dWhzd21ld294cndzd3pnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5NjYyMDAsImV4cCI6MjA3NjU0MjIwMH0.8Yz606cdYr3W5vmoRADppwMyAg2dCRglfEtlOVKoGwk';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+            auth: {
+                persistSession: false
+            },
+            global: {
+                headers: {}  // Pas de headers personnalisés
+            }
+        });
+
+        async function testConnection() {
+            const resultEl = document.getElementById('result');
+            resultEl.textContent = 'Test en cours...\n';
+
+            try {
+                // Test 1: Connexion basique
+                resultEl.textContent += '\n1. Test de connexion basique...\n';
+                const { data: settings, error: settingsError } = await supabase
+                    .from('settings')
+                    .select('*')
+                    .limit(1);
+                
+                if (settingsError) {
+                    resultEl.textContent += `❌ Erreur settings: ${JSON.stringify(settingsError, null, 2)}\n`;
+                } else {
+                    resultEl.textContent += `✅ Settings OK: ${settings?.length || 0} résultat(s)\n`;
+                }
+
+                // Test 2: Clients
+                resultEl.textContent += '\n2. Test clients...\n';
+                const { data: clients, error: clientsError } = await supabase
+                    .from('clients')
+                    .select('id, nom')
+                    .limit(5);
+                
+                if (clientsError) {
+                    resultEl.textContent += `❌ Erreur clients: ${JSON.stringify(clientsError, null, 2)}\n`;
+                } else {
+                    resultEl.textContent += `✅ Clients OK: ${clients?.length || 0} résultat(s)\n`;
+                    resultEl.textContent += JSON.stringify(clients, null, 2) + '\n';
+                }
+
+                // Test 3: Factures
+                resultEl.textContent += '\n3. Test factures...\n';
+                const { data: factures, error: facturesError } = await supabase
+                    .from('factures')
+                    .select('id, facture_number')
+                    .limit(5);
+                
+                if (facturesError) {
+                    resultEl.textContent += `❌ Erreur factures: ${JSON.stringify(facturesError, null, 2)}\n`;
+                } else {
+                    resultEl.textContent += `✅ Factures OK: ${factures?.length || 0} résultat(s)\n`;
+                    resultEl.textContent += JSON.stringify(factures, null, 2) + '\n';
+                }
+
+                resultEl.textContent += '\n✅ Tous les tests terminés!\n';
+
+            } catch (error) {
+                resultEl.textContent += `\n❌ ERREUR GLOBALE: ${error.message}\n`;
+                resultEl.textContent += JSON.stringify(error, null, 2);
+            }
+        }
+
+        // Test automatique au chargement
+        window.addEventListener('load', () => {
+            setTimeout(testConnection, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -33,13 +33,15 @@ import {
   Copy,
   ChevronDown,
   XCircle,
-  TrendingUp
+  TrendingUp,
+  Send
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import PermissionGuard from '../components/auth/PermissionGuard';
-import { useFactures } from '../hooks/useFactures';
+import EnhancedTable from '@/components/ui/enhanced-table';
 import { usePermissions } from '../hooks/usePermissions';
+import { useFactures } from '../hooks/useFactures';
 import { useSorting } from '../hooks/useSorting';
 import SortableHeader from '../components/ui/sortable-header';
 import Pagination from '../components/ui/pagination-custom';
@@ -70,13 +72,14 @@ const FacturesProtected: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [factureToDelete, setFactureToDelete] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { checkPermission } = usePermissions();
+  const { checkPermission, isAdmin } = usePermissions();
 
-  const {
-    factures,
-    pagination,
-    isLoading,
+  const { 
+    factures, 
+    pagination, 
+    isLoading, 
     error,
+    globalTotals,
     deleteFacture,
     updateFacture,
     getFactureWithItems,
@@ -221,20 +224,20 @@ const FacturesProtected: React.FC = () => {
   };
 
   // Fonctions de sélection multiple
-  const handleSelectAll = () => {
-    if (selectedFactures.size === factures.length) {
-      setSelectedFactures(new Set());
-    } else {
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
       setSelectedFactures(new Set(factures.map(f => f.id)));
+    } else {
+      setSelectedFactures(new Set());
     }
   };
 
-  const handleSelectFacture = (id: string) => {
+  const handleSelectFacture = (id: string, checked: boolean) => {
     const newSelected = new Set(selectedFactures);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
+    if (checked) {
       newSelected.add(id);
+    } else {
+      newSelected.delete(id);
     }
     setSelectedFactures(newSelected);
   };
@@ -313,11 +316,11 @@ const FacturesProtected: React.FC = () => {
                     {/* Première ligne: Sélection et actions */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
-                        <Badge variant="default" className="bg-blue-600">
+                        <Badge {...({ variant: "default" } as any)} className="bg-blue-600">
                           {selectedFactures.size} sélectionnée(s)
                         </Badge>
                         <Button
-                          variant="outline"
+                          {...({ variant: "outline" } as any)}
                           size="sm"
                           onClick={() => setSelectedFactures(new Set())}
                         >
@@ -327,7 +330,7 @@ const FacturesProtected: React.FC = () => {
                       <div className="flex items-center space-x-2">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm">
+                            <Button {...({ variant: "outline" } as any)} size="sm">
                               <CheckCircle className="mr-2 h-4 w-4" />
                               Changer le statut
                             </Button>
@@ -355,7 +358,7 @@ const FacturesProtected: React.FC = () => {
                         </DropdownMenu>
                         <PermissionGuard module="factures" permission="delete">
                           <Button
-                            variant="destructive"
+                            {...({ variant: "destructive" } as any)}
                             size="sm"
                             onClick={handleBulkDelete}
                           >
@@ -366,31 +369,33 @@ const FacturesProtected: React.FC = () => {
                       </div>
                     </div>
                     
-                    {/* Deuxième ligne: Résumé des montants */}
-                    <div className="flex items-center justify-center space-x-6 text-sm border-t border-blue-200 pt-3">
-                      <div className="flex items-center space-x-2">
-                        <DollarSign className="h-4 w-4 text-green-600" />
-                        <span className="font-medium text-gray-700">Total USD:</span>
-                        <span className="font-bold text-green-600">
-                          {formatCurrency(selectedTotals.totalUSD, 'USD')}
-                        </span>
-                      </div>
-                      {selectedTotals.totalCDF > 0 && (
+                    {/* Deuxième ligne: Résumé des montants (admin uniquement) */}
+                    {isAdmin && (
+                      <div className="flex items-center justify-center space-x-6 text-sm border-t border-blue-200 pt-3">
                         <div className="flex items-center space-x-2">
-                          <span className="font-medium text-gray-700">Total CDF:</span>
-                          <span className="font-bold text-blue-600">
-                            {formatCurrency(selectedTotals.totalCDF, 'CDF')}
+                          <DollarSign className="h-4 w-4 text-green-600" />
+                          <span className="font-medium text-gray-700">Total USD:</span>
+                          <span className="font-bold text-green-600">
+                            {formatCurrency(selectedTotals.totalUSD, 'USD')}
                           </span>
                         </div>
-                      )}
-                      <div className="flex items-center space-x-2">
-                        <TrendingUp className="h-4 w-4 text-orange-600" />
-                        <span className="font-medium text-gray-700">Frais:</span>
-                        <span className="font-bold text-orange-600">
-                          {formatCurrency(selectedTotals.totalFrais, 'USD')}
-                        </span>
+                        {selectedTotals.totalCDF > 0 && (
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium text-gray-700">Total CDF:</span>
+                            <span className="font-bold text-blue-600">
+                              {formatCurrency(selectedTotals.totalCDF, 'CDF')}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center space-x-2">
+                          <TrendingUp className="h-4 w-4 text-orange-600" />
+                          <span className="font-medium text-gray-700">Frais:</span>
+                          <span className="font-bold text-orange-600">
+                            {formatCurrency(selectedTotals.totalFrais, 'USD')}
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -399,64 +404,70 @@ const FacturesProtected: React.FC = () => {
 
           {/* Stats Cards - Design System */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {/* Total USD (admin uniquement) */}
+            {isAdmin && (
+              <Card className="card-base transition-shadow-hover">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total USD</p>
+                      <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+                        {formatCurrency(globalTotals.totalUSD, 'USD')}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-full bg-green-500 flex-shrink-0">
+                      <DollarSign className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Total CDF (admin uniquement) */}
+            {isAdmin && (
+              <Card className="card-base transition-shadow-hover">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total CDF</p>
+                      <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+                        {formatCurrency(globalTotals.totalCDF, 'CDF')}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-full bg-blue-500 flex-shrink-0">
+                      <TrendingUp className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Total Factures */}
             <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Factures</p>
                     <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {pagination?.count || 0}
+                      {globalTotals.totalCount || 0}
                     </p>
+                    <p className="text-xs text-muted-foreground mt-1">Toutes pages confondues</p>
                   </div>
-                  <div className="p-3 rounded-full bg-green-500 flex-shrink-0">
+                  <div className="p-3 rounded-full bg-purple-500 flex-shrink-0">
                     <FileText className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
+            {/* Frais */}
             <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Montant Total</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Frais Totals</p>
                     <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {formatCurrency(
-                        factures.filter(f => f.statut !== 'brouillon').reduce((sum, f) => sum + f.total_general, 0),
-                        'USD'
-                      )}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-full bg-blue-500 flex-shrink-0">
-                    <DollarSign className="h-6 w-6 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="card-base transition-shadow-hover">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Validées</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {factures.filter(f => f.statut === 'validee').length}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-full bg-purple-500 flex-shrink-0">
-                    <CheckCircle className="h-6 w-6 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="card-base transition-shadow-hover">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">En attente</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {factures.filter(f => f.statut === 'en_attente').length}
+                      {formatCurrency(globalTotals.totalFrais, 'USD')}
                     </p>
                   </div>
                   <div className="p-3 rounded-full bg-orange-500 flex-shrink-0">
@@ -526,248 +537,191 @@ const FacturesProtected: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="w-12 py-3 px-4">
-                        <Checkbox
-                          checked={selectedFactures.size === factures.length && factures.length > 0}
-                          onCheckedChange={handleSelectAll}
-                        />
-                      </th>
-                      <SortableHeader
-                        title="Mode"
-                        sortKey="mode_livraison"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="N° Facture"
-                        sortKey="facture_number"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="Client"
-                        sortKey="clients.nom"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="Date"
-                        sortKey="date_emission"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="Montant"
-                        sortKey="total_general"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="Statut"
-                        sortKey="statut"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {isLoading && factures.length === 0 ? (
-                      Array.from({ length: 5 }).map((_, index) => (
-                        <tr key={index} className="border-b">
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-4" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-32" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
-                        </tr>
-                      ))
-                    ) : factures.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="py-16">
-                          <div className="flex flex-col items-center justify-center text-center">
-                            <FileText className="h-16 w-16 text-gray-300 mb-4" />
-                            <p className="text-lg font-medium text-gray-900 mb-2">Aucune facture</p>
-                            <p className="text-sm text-gray-500 mb-4">Commencez par créer votre première facture</p>
-                            <PermissionGuard module="factures" permission="create">
-                              <Button onClick={handleAddNew} className="bg-green-500 hover:bg-green-600">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Nouvelle Facture
-                              </Button>
-                            </PermissionGuard>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      sortedData.map((facture) => (
-                        <tr key={facture.id} className="border-b hover:bg-gray-50">
-                          <td className="py-3 px-4">
-                            <Checkbox
-                              checked={selectedFactures.has(facture.id)}
-                              onCheckedChange={() => handleSelectFacture(facture.id)}
-                            />
-                          </td>
-                          <td className="py-3 px-4">
-                            <Badge variant={facture.mode_livraison === 'aerien' ? 'default' : 'secondary'}>
-                              {facture.mode_livraison === 'aerien' ? '✈️ Aérien' : '🚢 Maritime'}
-                            </Badge>
-                          </td>
-                          <td 
-                            className="py-3 px-4 font-medium text-green-600 hover:text-green-700 cursor-pointer hover:underline transition-colors"
-                            onClick={() => handleViewDetails(facture)}
-                            title="Cliquer pour voir les détails"
-                          >
-                            {facture.facture_number}
-                          </td>
-                          <td className="py-3 px-4">{(facture as any).clients?.nom || 'N/A'}</td>
-                          <td className="py-3 px-4 text-sm">
-                            {new Date(facture.date_emission).toLocaleDateString('fr-FR')}
-                          </td>
-                          <td className="py-3 px-4 font-medium text-green-500">
-                            {formatCurrency(facture.total_general, facture.devise)}
-                          </td>
-                          <td className="py-3 px-4">
-                            {checkPermission('factures', 'update') ? (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    className="h-8 flex items-center gap-2 hover:bg-gray-50"
-                                  >
-                                    {getStatutBadge(facture.statut)}
-                                    <ChevronDown className="h-4 w-4 text-gray-500" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="w-48">
-                                  <DropdownMenuItem 
-                                    onClick={() => handleStatutChange(facture, 'brouillon')}
-                                    className={cn(
-                                      "cursor-pointer",
-                                      facture.statut === 'brouillon' && 'bg-gray-50'
-                                    )}
-                                  >
-                                    <div className="flex items-center">
-                                      <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
-                                      Brouillon
-                                    </div>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleStatutChange(facture, 'en_attente')}
-                                    className={cn(
-                                      "cursor-pointer",
-                                      facture.statut === 'en_attente' && 'bg-yellow-50'
-                                    )}
-                                  >
-                                    <div className="flex items-center">
-                                      <div className="w-2 h-2 bg-yellow-400 rounded-full mr-2"></div>
-                                      En attente
-                                    </div>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleStatutChange(facture, 'validee')}
-                                    className={cn(
-                                      "cursor-pointer",
-                                      facture.statut === 'validee' && 'bg-green-50'
-                                    )}
-                                  >
-                                    <div className="flex items-center">
-                                      <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                                      Validée
-                                    </div>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleStatutChange(facture, 'payee')}
-                                    className={cn(
-                                      "cursor-pointer",
-                                      facture.statut === 'payee' && 'bg-blue-50'
-                                    )}
-                                  >
-                                    <div className="flex items-center">
-                                      <DollarSign className="w-4 h-4 text-blue-500 mr-2" />
-                                      Payée
-                                    </div>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    onClick={() => handleStatutChange(facture, 'annulee')}
-                                    className={cn(
-                                      "cursor-pointer",
-                                      facture.statut === 'annulee' && 'bg-red-50'
-                                    )}
-                                  >
-                                    <div className="flex items-center">
-                                      <AlertCircle className="w-4 h-4 text-red-500 mr-2" />
-                                      Annulée
-                                    </div>
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            ) : (
-                              getStatutBadge(facture.statut)
-                            )}
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center space-x-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewDetails(facture)}
-                                title="Voir les détails"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              
-                              <PermissionGuard module="factures" permission="create">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDuplicate(facture)}
-                                  title="Dupliquer"
-                                  className="text-blue-600 hover:bg-blue-50"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                              </PermissionGuard>
-                              
-                              <PermissionGuard module="factures" permission="update">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEdit(facture)}
-                                  title="Modifier"
-                                  className="hover:bg-green-50"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              </PermissionGuard>
-                              
-                              <PermissionGuard module="factures" permission="delete">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-red-600 hover:bg-red-50"
-                                  onClick={() => handleDelete(facture.id)}
-                                  title="Supprimer"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </PermissionGuard>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <EnhancedTable
+                data={sortedData}
+                loading={isLoading && factures.length === 0}
+                emptyMessage="Aucune facture"
+                emptySubMessage="Commencez par créer votre première facture"
+                onSort={handleSort}
+                sortKey={sortConfig?.key}
+                sortDirection={sortConfig?.direction}
+                bulkSelect={{
+                  selected: Array.from(selectedFactures),
+                  onSelectAll: handleSelectAll,
+                  onSelectItem: (id, checked) => handleSelectFacture(id, checked),
+                  getId: (facture: Facture) => facture.id,
+                  isAllSelected: selectedFactures.size === factures.length && factures.length > 0,
+                  isPartiallySelected: selectedFactures.size > 0 && selectedFactures.size < factures.length
+                }}
+                actionsColumn={{
+                  render: (facture: Facture) => (
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        {...({ variant: "ghost" } as any)}
+                        size="sm"
+                        onClick={() => handleViewDetails(facture)}
+                        title="Voir les détails"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      
+                      <PermissionGuard module="factures" permission="create">
+                        <Button
+                          {...({ variant: "ghost" } as any)}
+                          size="sm"
+                          onClick={() => handleDuplicate(facture)}
+                          title="Dupliquer"
+                          className="text-blue-600 hover:bg-blue-50"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </PermissionGuard>
+                      
+                      <PermissionGuard module="factures" permission="update">
+                        <Button
+                          {...({ variant: "ghost" } as any)}
+                          size="sm"
+                          onClick={() => handleEdit(facture)}
+                          title="Modifier"
+                          className="hover:bg-green-50"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </PermissionGuard>
+                      
+                      <PermissionGuard module="factures" permission="delete">
+                        <Button
+                          {...({ variant: "ghost" } as any)}
+                          size="sm"
+                          className="text-red-600 hover:bg-red-50"
+                          onClick={() => handleDelete(facture.id)}
+                          title="Supprimer"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </PermissionGuard>
+                    </div>
+                  )
+                }}
+                columns={[
+                  {
+                    key: 'mode_livraison',
+                    title: 'Mode',
+                    sortable: true,
+                    render: (value: any) => (
+                      <Badge {...({ variant: (value === 'aerien' ? 'default' : 'secondary') } as any)}>
+                        {value === 'aerien' ? '✈️ Aérien' : '🚢 Maritime'}
+                      </Badge>
+                    )
+                  },
+                  {
+                    key: 'facture_number',
+                    title: 'N° Facture',
+                    sortable: true,
+                    render: (value: any, facture: Facture) => (
+                      <span
+                        className="font-medium text-green-600 hover:text-green-700 cursor-pointer hover:underline transition-colors"
+                        onClick={() => handleViewDetails(facture)}
+                        title="Cliquer pour voir les détails"
+                      >
+                        {value}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'clients',
+                    title: 'Client',
+                    sortable: true,
+                    render: (value: any) => (value?.nom || 'N/A')
+                  },
+                  {
+                    key: 'date_emission',
+                    title: 'Date',
+                    sortable: true,
+                    render: (value: any) => (
+                      <span className="text-sm">
+                        {new Date(value).toLocaleDateString('fr-FR')}
+                      </span>
+                    )
+                  },
+                  ...(isAdmin ? [{
+                    key: 'total_general',
+                    title: 'Montant',
+                    sortable: true,
+                    align: 'right' as const,
+                    render: (value: any, facture: Facture) => (
+                      <span className="font-medium text-green-500">
+                        {formatCurrency(value, facture.devise)}
+                      </span>
+                    )
+                  }] : []),
+                  {
+                    key: 'statut',
+                    title: 'Statut',
+                    sortable: true,
+                    render: (value: any, facture: Facture) => (
+                      checkPermission('factures', 'update') ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              {...({ variant: "outline" } as any)}
+                              size="sm"
+                              className="h-8 flex items-center gap-2 hover:bg-gray-50"
+                            >
+                              {getStatutBadge(value)}
+                              <ChevronDown className="h-4 w-4 text-gray-500" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-48">
+                            <DropdownMenuItem 
+                              onClick={() => handleStatutChange(facture, 'brouillon')}
+                              className={cn(
+                                "cursor-pointer",
+                                value === 'brouillon' && 'bg-gray-50'
+                              )}
+                            >
+                              <FileText className="mr-2 h-4 w-4" />
+                              Brouillon
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleStatutChange(facture, 'envoyee')}
+                              className={cn(
+                                "cursor-pointer",
+                                value === 'envoyee' && 'bg-gray-50'
+                              )}
+                            >
+                              <Send className="mr-2 h-4 w-4" />
+                              Envoyée
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleStatutChange(facture, 'payee')}
+                              className={cn(
+                                "cursor-pointer",
+                                value === 'payee' && 'bg-gray-50'
+                              )}
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Payée
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleStatutChange(facture, 'annulee')}
+                              className={cn(
+                                "cursor-pointer",
+                                value === 'annulee' && 'bg-gray-50'
+                              )}
+                            >
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Annulée
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        getStatutBadge(value)
+                      )
+                    )
+                  }
+                ]}
+              />
 
               {/* Pagination avec sélecteur de taille */}
               {pagination && (

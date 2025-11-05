@@ -25,12 +25,14 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     debug: import.meta.env.DEV,
   },
   global: {
-    headers: {
-      // Add custom headers for CSRF protection
+    headers: import.meta.env.PROD ? {
+      // Add custom headers for CSRF protection only in production
       ...getCSRFHeaders(),
       // Additional security headers
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',
+    } : {
+      // Minimal headers in development to avoid CORS issues
     },
   },
   db: {

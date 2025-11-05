@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+// @ts-ignore - Temporary workaround for react-router-dom types
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
@@ -13,8 +14,11 @@ import {
   LogOut,
   Plane,
   Ship,
+  Wallet,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  ArrowLeftRight,
+  DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -31,8 +35,22 @@ const Sidebar: React.FC<SidebarProps> = ({
   currentPath 
 }) => {
   const { user } = useAuth();
-  const { getAccessibleModules } = usePermissions();
+  const { getAccessibleModules, checkPermission, isAdmin } = usePermissions();
   const [colisMenuOpen, setColisMenuOpen] = useState(false);
+  
+  // Garder le menu Finances ouvert si on est sur une page de finances
+  const isOnFinancesPage = currentPath?.startsWith('/finances') || 
+                           currentPath?.startsWith('/transactions') || 
+                           currentPath?.startsWith('/operations-financieres') || 
+                           currentPath?.startsWith('/comptes');
+  const [financesMenuOpen, setFinancesMenuOpen] = useState(isOnFinancesPage);
+
+  // Synchroniser l'état du menu Finances avec le currentPath
+  useEffect(() => {
+    if (isOnFinancesPage) {
+      setFinancesMenuOpen(true);
+    }
+  }, [isOnFinancesPage]);
 
   // Obtenir les modules accessibles selon les permissions
   const accessibleModules = getAccessibleModules();
@@ -56,12 +74,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       label: 'Clients', 
       path: '/clients',
       module: 'clients'
-    },
-    { 
-      icon: Receipt, 
-      label: 'Transactions', 
-      path: '/transactions',
-      module: 'transactions'
     },
     { 
       icon: Settings, 
@@ -100,6 +112,36 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   ];
 
+  // Sous-menus pour Finances
+  const financesSubMenuItems: Array<{
+    icon: any;
+    label: string;
+    path: string;
+    permission?: string;
+  }> = [
+    {
+      icon: DollarSign,
+      label: 'Encaissements',
+      path: '/finances/encaissements',
+      permission: 'finances.view'
+    },
+    {
+      icon: Receipt,
+      label: 'Transactions Clients',
+      path: '/transactions',
+    },
+    {
+      icon: ArrowLeftRight,
+      label: 'Opérations Internes',
+      path: '/operations-financieres',
+    },
+    {
+      icon: Wallet,
+      label: 'Comptes',
+      path: '/comptes',
+    },
+  ];
+
   // Filtrer les items du menu selon les permissions
   const filteredMenuItems = menuItems.filter(item => {
     // Si l'item est désactivé, le masquer
@@ -113,6 +155,9 @@ const Sidebar: React.FC<SidebarProps> = ({
            (user?.app_metadata?.role === 'admin' || user?.app_metadata?.role === 'super_admin');
   });
 
+  // Vérifier si l'utilisateur a accès au module finances
+  const hasFinancesAccess = checkPermission('finances', 'read') || isAdmin;
+
   // Séparer Paramètres pour l'afficher en bas, et réordonner le menu principal
   const mainNavItems = filteredMenuItems
     .filter(item => item.label !== 'Paramètres')
@@ -120,8 +165,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       const order: Record<string, number> = {
         'Tableau de bord': 1,
         'Clients': 2,
-        'Transactions': 3,
-        'Factures': 4,
+        'Factures': 3,
       };
       return (order[a.label] ?? 99) - (order[b.label] ?? 99);
     });
@@ -152,27 +196,78 @@ const Sidebar: React.FC<SidebarProps> = ({
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
         <ul className="space-y-2">
           {mainNavItems.map((item) => (
-            <li key={item.path}>
+              <li key={item.path}>
+                <Button
+                  variant={"ghost" as any}
+                  asChild
+                  className={cn(
+                    "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-lg h-11 px-4",
+                    currentPath === item.path && "bg-white dark:bg-white text-green-600 dark:text-green-600 shadow-lg font-semibold hover:bg-white hover:text-green-600"
+                  )}
+                >
+                  <Link to={item.path}>
+                    <item.icon className="h-5 w-5 flex-shrink-0" />
+                    <span className="ml-3 truncate text-base font-medium">{item.label}</span>
+                  </Link>
+                </Button>
+              </li>
+            ))}
+
+          {/* Menu Finances avec sous-menus */}
+          {hasFinancesAccess && (
+            <li>
               <Button
-                variant="ghost"
-                asChild
+                variant={"ghost" as any}
                 className={cn(
-                  "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-lg h-11 px-4",
-                  currentPath === item.path && "bg-white dark:bg-white text-green-600 dark:text-green-600 shadow-lg font-semibold hover:bg-white hover:text-green-600"
+                  "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 rounded-lg h-11 px-4",
+                  (currentPath?.startsWith('/finances') || currentPath?.startsWith('/transactions') || currentPath?.startsWith('/operations-financieres') || currentPath?.startsWith('/comptes')) && "bg-green-600 dark:bg-green-700"
                 )}
+                onClick={() => setFinancesMenuOpen(!financesMenuOpen)}
               >
-                <Link to={item.path}>
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
-                  <span className="ml-3 truncate text-base font-medium">{item.label}</span>
-                </Link>
+                <Wallet className="h-5 w-5 flex-shrink-0" />
+                <span className="ml-3 truncate text-base font-medium flex-1 text-left">Finances</span>
+                {financesMenuOpen ? (
+                  <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                )}
               </Button>
+
+              {/* Sous-menus Finances */}
+              {financesMenuOpen && (
+                <ul className="mt-2 ml-4 space-y-1">
+                  {financesSubMenuItems.map((subItem) => {
+                    // Vérifier les permissions pour chaque sous-menu
+                    if (subItem.permission && !isAdmin) {
+                      return null;
+                    }
+                    return (
+                      <li key={subItem.path}>
+                        <Button
+                          variant={"ghost" as any}
+                          asChild
+                          className={cn(
+                            "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 rounded-lg h-10 px-3 text-sm",
+                            currentPath === subItem.path && "bg-white dark:bg-white text-green-600 dark:text-green-600 shadow-md font-semibold hover:bg-white hover:text-green-600"
+                          )}
+                        >
+                          <Link to={subItem.path}>
+                            <subItem.icon className="h-4 w-4 flex-shrink-0" />
+                            <span className="ml-2 truncate">{subItem.label}</span>
+                          </Link>
+                        </Button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </li>
-          ))}
+          )}
 
           {/* Menu Colis avec sous-menus */}
           <li>
             <Button
-              variant="ghost"
+              variant={"ghost" as any}
               className={cn(
                 "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 rounded-lg h-11 px-4",
                 (currentPath?.startsWith('/colis')) && "bg-green-600 dark:bg-green-700"
@@ -194,7 +289,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 {colisSubMenuItems.filter(subItem => !subItem.disabled).map((subItem) => (
                   <li key={subItem.path}>
                     <Button
-                      variant="ghost"
+                      variant={"ghost" as any}
                       asChild
                       className={cn(
                         "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 rounded-lg h-10 px-3 text-sm",
@@ -218,7 +313,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {settingsItem && (
         <div className="px-3 pb-3">
           <Button
-            variant="ghost"
+            variant={"ghost" as any}
             asChild
             className={cn(
               "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-lg h-11 px-4",
@@ -254,18 +349,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             </p>
           </div>
         </div>
-      </div>
-
-      {/* Logout */}
-      <div className="p-4 border-t border-green-600 dark:border-green-700">
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-md"
-          onClick={handleLogout}
-        >
-          <LogOut className="h-4 w-4 flex-shrink-0" />
-          <span className="ml-3 truncate text-sm font-medium">Déconnexion</span>
-        </Button>
       </div>
     </div>
   );

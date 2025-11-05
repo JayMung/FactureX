@@ -468,12 +468,14 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
 
   useEffect(() => {
     fetchFactures();
-  }, [fetchFactures]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filters?.type, filters?.statut, filters?.clientId, filters?.modeLivraison, filters?.dateFrom, filters?.dateTo]);
 
   useEffect(() => {
     // Charger les totaux de manière asynchrone (non bloquant)
     fetchGlobalTotals();
-  }, [fetchGlobalTotals]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters?.type, filters?.clientId, filters?.modeLivraison, filters?.dateFrom, filters?.dateTo]);
 
   return {
     factures,

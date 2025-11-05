@@ -28,7 +28,18 @@ import AdminSetup from "./pages/AdminSetup";
 import AdminInvitation from "./pages/AdminInvitation";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false, // Désactiver le refetch automatique au focus
+      refetchOnMount: false, // Désactiver le refetch automatique au mount
+      refetchOnReconnect: false, // Désactiver le refetch automatique à la reconnexion
+      staleTime: 5 * 60 * 1000, // 5 minutes - les données sont considérées fraîches pendant 5 min
+      retry: 1, // Réessayer seulement 1 fois en cas d'erreur
+      retryDelay: 1000, // Attendre 1 seconde avant de réessayer
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

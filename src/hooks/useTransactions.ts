@@ -186,7 +186,8 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     fetchTransactions();
     // Charger les totaux de manière asynchrone (non bloquant)
     setTimeout(() => fetchGlobalTotals(), 0);
-  }, [fetchTransactions, fetchGlobalTotals]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filters.status, filters.currency, filters.modePaiement, filters.clientId, filters.dateFrom, filters.dateTo, filters.minAmount, filters.maxAmount, pagination.pageSize, refreshTrigger]);
 
   const createTransaction = async (transactionData: CreateTransactionData) => {
     setIsCreating(true);

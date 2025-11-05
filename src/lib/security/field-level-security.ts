@@ -277,7 +277,8 @@ export class FieldLevelSecurityService {
         return sensitivity?.sensitivity === 'sensitive' || sensitivity?.sensitivity === 'restricted';
       });
 
-      if (sensitiveFields.length > 0) {
+      // Only log in development mode to reduce console noise
+      if (sensitiveFields.length > 0 && import.meta.env.DEV && import.meta.env.VITE_DEBUG_SECURITY === 'true') {
         logSecurityEvent(
           'SENSITIVE_FIELD_ACCESS',
           `Access to sensitive fields in ${tableName}`,

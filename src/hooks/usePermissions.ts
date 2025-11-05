@@ -111,10 +111,17 @@ export const usePermissions = () => {
           }).catch(() => {/* ignore */});
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        // Silently handle subscription errors to avoid console noise
+        if (status === 'CHANNEL_ERROR') {
+          // Channel will auto-retry, no action needed
+        }
+      });
 
     return () => {
-      try { supabase.removeChannel(channel); } catch {}
+      try { 
+        supabase.removeChannel(channel).catch(() => {/* ignore */}); 
+      } catch {}
     };
   }, [user?.id]);
 

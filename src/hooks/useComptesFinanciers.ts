@@ -17,8 +17,6 @@ export const useComptesFinanciers = () => {
       setLoading(true);
       setError(null);
 
-      console.log('Fetching comptes for organization:', organizationId);
-
       const { data, error } = await supabase
         .from('comptes_financiers')
         .select('*')
@@ -26,10 +24,8 @@ export const useComptesFinanciers = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Fetch error:', error);
         throw error;
       }
-      console.log('Fetched comptes:', data);
       setComptes(data || []);
     } catch (error: any) {
       console.error('Error fetching comptes:', error);

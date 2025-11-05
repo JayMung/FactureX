@@ -115,10 +115,10 @@ const TransactionsProtected: React.FC = () => {
     refetch
   } = useTransactions(currentPage, memoFilters);
 
-  // Filter to show only Commandes (motif: Commande) and Transferts (motif: Transfert)
-  // Exclude internal operations (depense, revenue)
+  // Filter to show only Commandes (motif: Commande)
+  // Exclude internal operations (depense, revenue) and internal transfers (type_transaction: transfert)
   const commercialTransactions = transactions.filter(t => 
-    t.motif === 'Commande' || t.motif === 'Transfert'
+    t.motif === 'Commande' && t.type_transaction !== 'transfert'
   );
 
   const { sortedData, sortConfig, handleSort } = useSorting(commercialTransactions, { key: 'statut', direction: 'asc' });

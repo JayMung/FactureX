@@ -1,49 +1,114 @@
-# FactureX - Gestion de Factures & Transferts USD/CDF
+# FactureX
 
-## Description
+**Version** : 1.0.3  
+**Status** : ✅ Production Ready
 
-FactureX est une application web moderne de gestion de factures et de transferts de devises (USD/CDF) conçue pour simplifier et automatiser les opérations financières.
+Application de gestion de factures, clients, transactions et colis pour entreprises.
 
-## Fonctionnalités principales
+---
 
-- **Gestion des clients** : Création, modification et suivi des clients
-- **Transactions USD/CDF** : Gestion complète des transferts de devises avec taux de change automatique
-- **Génération de factures** : Création et impression de factures professionnelles
-- **Tableau de bord analytique** : Statistiques en temps réel et visualisation des données
-- **Système de permissions** : Gestion des rôles et permissions utilisateurs (Admin/Opérateur)
-- **Notifications temps réel** : Suivi des activités et alertes instantanées
-- **Logs d'activité** : Historique complet de toutes les opérations
+## 🚀 Quick Start
 
-## Technologies utilisées
-
-- **Frontend** : React 18 + TypeScript + Vite
-- **UI** : Tailwind CSS + shadcn/ui
-- **Backend** : Supabase (Auth + Database + Realtime)
-- **State Management** : TanStack Query (React Query)
-- **Routing** : React Router v6
-
-## Installation
-
+### Installation
 ```bash
 npm install
 ```
 
-## Développement
-
+### Development
 ```bash
 npm run dev
 ```
 
-## Build
-
+### Build
 ```bash
 npm run build
 ```
 
-## Version
+---
 
-**Version actuelle : 1.0.0**
+## 📚 Documentation
+
+Toute la documentation technique se trouve dans le dossier `/docs` :
+
+### Guides Principaux
+- [Release Notes v1.0.3](docs/RELEASE_NOTES_v1.0.3.md)
+- [Release Deployment](docs/RELEASE_v1.0.3_DEPLOYED.md)
+- [Finances Permissions Guide](docs/FINANCES_PERMISSIONS_GUIDE.md)
+
+### Documentation Technique
+- [TypeScript Resolution](docs/TYPESCRIPT_FINAL_FIX.md)
+- [UI Types Solution](docs/UI_TYPES_SOLUTION.md)
+- [Security Audit](docs/RAPPORT_AUDIT_SECURITE_FACTUREX.md)
+
+### Fixes & Improvements
+- Voir le dossier `/docs/fixes/` pour les corrections spécifiques
+- Voir le dossier `/docs/guides/` pour les guides détaillés
 
 ---
 
-Développé avec ♥ pour simplifier la gestion financière
+## 🔧 Technologies
+
+- **Frontend** : React + TypeScript + Vite
+- **UI** : TailwindCSS + shadcn/ui
+- **Backend** : Supabase (PostgreSQL + Auth + Storage)
+- **State Management** : React Query
+- **Routing** : React Router v6
+
+---
+
+## 🔒 Security
+
+- Multi-tenancy avec isolation par organization
+- Row Level Security (RLS) sur toutes les tables
+- Permissions granulaires par module
+- Session management sécurisé
+- Rate limiting sur les endpoints critiques
+
+---
+
+## 📦 Modules
+
+- **Clients** : Gestion des clients
+- **Factures** : Création et gestion de factures/devis
+- **Transactions** : Transactions commerciales
+- **Colis** : Gestion des colis aériens
+- **Finances** : Module sécurisé (Admin uniquement)
+  - Opérations financières
+  - Comptes financiers
+  - Mouvements de comptes
+  - Encaissements
+
+---
+
+## 👥 Roles & Permissions
+
+- **Super Admin** : Accès complet
+- **Admin** : Gestion complète sauf configuration système
+- **Opérateur** : Accès limité (pas de finances)
+- **Comptable** : Lecture seule sur finances (optionnel)
+
+---
+
+## 🚀 Deployment
+
+L'application est configurée pour un déploiement automatique sur :
+- **Vercel** (recommandé)
+- **Netlify**
+
+Le déploiement se déclenche automatiquement sur push vers `main`.
+
+---
+
+## 📝 License
+
+Propriétaire - Tous droits réservés
+
+---
+
+## 🤝 Support
+
+Pour toute question ou problème, consultez la documentation dans `/docs` ou contactez l'équipe de développement.
+
+---
+
+**FactureX v1.0.3** - Gestion d'entreprise simplifiée ✨

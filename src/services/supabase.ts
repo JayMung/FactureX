@@ -91,32 +91,51 @@ export class SupabaseService {
     }
   }
 
-  async getClientsGlobalTotals(filters: ClientFilters = {}): Promise<ApiResponse<{ totalPaye: number }>> {
+  async getClientsGlobalTotals(filters: ClientFilters = {}): Promise<ApiResponse<{ totalPaye: number; totalCount: number }>> {
     try {
-      let query = supabase
+      // Requête pour le total payé
+      let transQuery = supabase
         .from('transactions')
         .select('montant, devise, statut, clients!inner(id)');
 
       // Appliquer les filtres de recherche sur les clients
       if (filters.search) {
-        query = query.or(`clients.nom.ilike.%${filters.search}%,clients.telephone.ilike.%${filters.search}%`);
+        transQuery = transQuery.or(`clients.nom.ilike.%${filters.search}%,clients.telephone.ilike.%${filters.search}%`);
       }
 
       if (filters.ville) {
-        query = query.eq('clients.ville', filters.ville);
+        transQuery = transQuery.eq('clients.ville', filters.ville);
       }
 
       // Filtrer pour exclure les transactions annulées et ne compter que USD
-      query = query.neq('statut', 'Annulé').eq('devise', 'USD');
+      transQuery = transQuery.neq('statut', 'Annulé').eq('devise', 'USD');
 
-      const { data, error } = await query;
+      const { data: transData, error: transError } = await transQuery;
 
-      if (error) throw error;
+      if (transError) throw transError;
 
       // Calculer le total payé
-      const totalPaye = (data || []).reduce((sum, t) => sum + (t.montant || 0), 0);
+      const totalPaye = (transData || []).reduce((sum, t) => sum + (t.montant || 0), 0);
 
-      return { data: { totalPaye } };
+      // Requête pour le nombre total de clients
+      let clientQuery = supabase
+        .from('clients')
+        .select('id', { count: 'exact', head: true });
+
+      // Appliquer les mêmes filtres
+      if (filters.search) {
+        clientQuery = clientQuery.or(`nom.ilike.%${filters.search}%,telephone.ilike.%${filters.search}%`);
+      }
+
+      if (filters.ville) {
+        clientQuery = clientQuery.eq('ville', filters.ville);
+      }
+
+      const { count, error: countError } = await clientQuery;
+
+      if (countError) throw countError;
+
+      return { data: { totalPaye, totalCount: count || 0 } };
     } catch (error: any) {
       return { error: error.message };
     }

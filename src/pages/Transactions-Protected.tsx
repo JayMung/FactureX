@@ -598,8 +598,9 @@ const TransactionsProtected: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Transactions</p>
                     <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {pagination?.count || 0}
+                      {globalTotals.totalCount || 0}
                     </p>
+                    <p className="text-xs text-muted-foreground mt-1">Toutes pages confondues</p>
                   </div>
                   <div className="p-3 rounded-full bg-orange-500 flex-shrink-0">
                     <Receipt className="h-6 w-6 text-white" />

@@ -3,6 +3,7 @@ import Layout from '@/components/layout/Layout';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 import { useGlobalBalance } from '@/hooks/useMouvementsComptes';
+import { useOperationsFinancieres } from '@/hooks/useOperationsFinancieres';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +45,9 @@ const OperationsFinancieres: React.FC = () => {
   
   // Récupérer le solde global de tous les comptes
   const { balance: globalBalance, isLoading: balanceLoading } = useGlobalBalance();
+  
+  // Récupérer les statistiques globales de TOUTES les opérations financières
+  const { stats: globalStats, loading: statsLoading, refetch: refetchStats } = useOperationsFinancieres();
 
   const [formData, setFormData] = useState({
     type_transaction: 'depense' as 'depense' | 'revenue',
@@ -77,17 +81,8 @@ const OperationsFinancieres: React.FC = () => {
     );
   });
 
-  // Calculate statistics
-  const stats = {
-    totalDepenses: operationsFinancieres
-      .filter(op => op.type_transaction === 'depense')
-      .reduce((sum, op) => sum + op.montant, 0),
-    totalRevenus: operationsFinancieres
-      .filter(op => op.type_transaction === 'revenue')
-      .reduce((sum, op) => sum + op.montant, 0),
-    nombreDepenses: operationsFinancieres.filter(op => op.type_transaction === 'depense').length,
-    nombreRevenus: operationsFinancieres.filter(op => op.type_transaction === 'revenue').length
-  };
+  // Les statistiques globales viennent maintenant du hook useOperationsFinancieres
+  // qui récupère TOUTES les opérations sans pagination
 
   const handleOpenDialog = (type: 'depense' | 'revenue') => {
     setOperationType(type);
@@ -146,6 +141,7 @@ const OperationsFinancieres: React.FC = () => {
       await createTransaction(data);
       setIsCreateDialogOpen(false);
       refetch();
+      refetchStats(); // Rafraîchir aussi les statistiques globales
       showSuccess(`${formData.type_transaction === 'depense' ? 'Dépense' : 'Revenu'} créé(e) avec succès`);
     } catch (error: any) {
       console.error('Error creating operation:', error);
@@ -210,10 +206,16 @@ const OperationsFinancieres: React.FC = () => {
               <TrendingDown className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {formatCurrency(stats.totalDepenses, 'USD')}
-              </div>
-              <p className="text-xs text-muted-foreground">{stats.nombreDepenses} opération(s)</p>
+              {statsLoading ? (
+                <div className="text-2xl font-bold text-gray-400">Chargement...</div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-red-600">
+                    {formatCurrency(globalStats.totalDepenses, 'USD')}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{globalStats.nombreDepenses} opération(s)</p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -223,10 +225,16 @@ const OperationsFinancieres: React.FC = () => {
               <TrendingUp className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(stats.totalRevenus, 'USD')}
-              </div>
-              <p className="text-xs text-muted-foreground">{stats.nombreRevenus} opération(s)</p>
+              {statsLoading ? (
+                <div className="text-2xl font-bold text-gray-400">Chargement...</div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatCurrency(globalStats.totalRevenus, 'USD')}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{globalStats.nombreRevenus} opération(s)</p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -256,8 +264,14 @@ const OperationsFinancieres: React.FC = () => {
               <CardTitle className="text-sm font-medium">Total Opérations</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{operationsFinancieres.length}</div>
-              <p className="text-xs text-muted-foreground">Sur toutes les pages</p>
+              {statsLoading ? (
+                <div className="text-2xl font-bold text-gray-400">...</div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{globalStats.nombreOperations}</div>
+                  <p className="text-xs text-muted-foreground">Sur toutes les pages</p>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>

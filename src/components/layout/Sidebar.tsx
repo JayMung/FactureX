@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
@@ -36,7 +36,20 @@ const Sidebar: React.FC<SidebarProps> = ({
   const { user } = useAuth();
   const { getAccessibleModules, checkPermission, isAdmin } = usePermissions();
   const [colisMenuOpen, setColisMenuOpen] = useState(false);
-  const [financesMenuOpen, setFinancesMenuOpen] = useState(false);
+  
+  // Garder le menu Finances ouvert si on est sur une page de finances
+  const isOnFinancesPage = currentPath?.startsWith('/finances') || 
+                           currentPath?.startsWith('/transactions') || 
+                           currentPath?.startsWith('/operations-financieres') || 
+                           currentPath?.startsWith('/comptes');
+  const [financesMenuOpen, setFinancesMenuOpen] = useState(isOnFinancesPage);
+
+  // Synchroniser l'état du menu Finances avec le currentPath
+  useEffect(() => {
+    if (isOnFinancesPage) {
+      setFinancesMenuOpen(true);
+    }
+  }, [isOnFinancesPage]);
 
   // Obtenir les modules accessibles selon les permissions
   const accessibleModules = getAccessibleModules();

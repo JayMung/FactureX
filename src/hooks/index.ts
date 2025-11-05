@@ -7,3 +7,7 @@ export { useActivityLogs } from './useActivityLogs';
 export { useUserProfiles } from './useUserProfiles';
 export { usePaiements, useCreatePaiement, useDeletePaiement, usePaiementStats } from './usePaiements';
 export { useColis } from './useColis';
+export { useDeleteColis } from './useDeleteColis';
+export { useUpdateColisStatut } from './useUpdateColisStatut';
+export { useOperationsFinancieres } from './useOperationsFinancieres';
+export { useMouvementsComptesStats } from './useMouvementsComptesStats';

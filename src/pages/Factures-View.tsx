@@ -30,8 +30,10 @@ import {
   Image as ImageIcon,
   ArrowLeft,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  DollarSign
 } from 'lucide-react';
+import { PaiementDialog } from '@/components/paiements/PaiementDialog';
 import { formatCurrency } from '@/utils/formatCurrency';
 import ImagePreview from '@/components/ui/ImagePreview';
 import { generateFacturePDF } from '@/utils/pdfGenerator';
@@ -55,64 +57,65 @@ const FacturesView: React.FC = () => {
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [paiementDialogOpen, setPaiementDialogOpen] = useState(false);
 
   usePageSetup({
     title: facture ? `${facture.type === 'devis' ? 'Devis' : 'Facture'} #${facture.facture_number}` : 'Détails',
     subtitle: 'Détails complets de la facture ou du devis'
   });
 
-  useEffect(() => {
-    const loadFacture = async () => {
-      if (!id) {
+  const loadFacture = async () => {
+    if (!id) {
+      navigate('/factures');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = await getFactureWithItems(id);
+      if (!data) {
+        showError('Facture introuvable');
         navigate('/factures');
         return;
       }
-
-      setLoading(true);
+      setFacture(data);
+      
+      // Charger le nom du créateur (utiliser l'utilisateur actuel comme fallback)
       try {
-        const data = await getFactureWithItems(id);
-        if (!data) {
-          showError('Facture introuvable');
-          navigate('/factures');
-          return;
-        }
-        setFacture(data);
+        let creatorId = (data as any).created_by;
         
-        // Charger le nom du créateur (utiliser l'utilisateur actuel comme fallback)
-        try {
-          let creatorId = (data as any).created_by;
-          
-          // Si pas de created_by, utiliser l'utilisateur actuel
-          if (!creatorId) {
-            const { data: { user } } = await supabase.auth.getUser();
-            creatorId = user?.id;
-          }
-          
-          if (creatorId) {
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
-              .select('first_name, last_name')
-              .eq('id', creatorId)
-              .single();
-            
-            if (!profileError && profileData) {
-              const fullName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim();
-              setCreatorName(fullName || 'Vendeur');
-            }
-          }
-        } catch (profileError) {
-          console.log('Could not load creator profile, using default');
-          // Silently fail - keep default "Vendeur"
+        // Si pas de created_by, utiliser l'utilisateur actuel
+        if (!creatorId) {
+          const { data: { user } } = await supabase.auth.getUser();
+          creatorId = user?.id;
         }
-      } catch (error) {
-        console.error('Error loading facture:', error);
-        showError('Erreur lors du chargement de la facture');
-        navigate('/factures');
-      } finally {
-        setLoading(false);
+        
+        if (creatorId) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', creatorId)
+            .single();
+          
+          if (!profileError && profileData) {
+            const fullName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim();
+            setCreatorName(fullName || 'Vendeur');
+          }
+        }
+      } catch (profileError) {
+        console.log('Could not load creator profile, using default');
+        // Silently fail - keep default "Vendeur"
       }
-    };
+    } catch (error) {
+      console.error('Error loading facture:', error);
+      showError('Erreur lors du chargement de la facture');
+      navigate('/factures');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadFacture();
   }, [id]);
 
@@ -299,6 +302,13 @@ const FacturesView: React.FC = () => {
                   Modifier
                 </Button>
               </PermissionGuard>
+              <Button
+                onClick={() => setPaiementDialogOpen(true)}
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                <DollarSign className="mr-2 h-4 w-4" />
+                Enregistrer paiement
+              </Button>
               <Button
                 onClick={handleGeneratePDF}
                 disabled={generatingPDF}
@@ -676,6 +686,23 @@ const FacturesView: React.FC = () => {
               </PermissionGuard>
             </div>
           </div>
+
+          {/* Dialogue Paiement */}
+          <PaiementDialog
+            open={paiementDialogOpen}
+            onOpenChange={setPaiementDialogOpen}
+            type="facture"
+            factureId={facture.id}
+            clientId={facture.client_id}
+            clientNom={(facture as any).clients?.nom || (facture as any).client?.nom || 'N/A'}
+            montantTotal={facture.total_general}
+            montantRestant={facture.total_general - (facture.montant_paye || 0)}
+            numeroFacture={facture.facture_number}
+            onSuccess={() => {
+              // Recharger la facture pour mettre à jour le montant payé
+              loadFacture();
+            }}
+          />
 
           {/* Dialogue PDF */}
           <Dialog open={pdfDialogOpen} onOpenChange={handleClosePdfDialog}>

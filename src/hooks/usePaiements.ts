@@ -50,6 +50,7 @@ export interface CreatePaiementData {
   mode_paiement?: string;
   date_paiement?: string;
   notes?: string;
+  organization_id?: string; // Optionnel car sera ajouté automatiquement
 }
 
 export function usePaiements(page = 1, filters?: PaiementFilters) {
@@ -109,9 +110,26 @@ export function useCreatePaiement() {
 
   return useMutation({
     mutationFn: async (data: CreatePaiementData) => {
+      // Récupérer l'organization_id de l'utilisateur actuel
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (profileError) {
+        throw new Error('Impossible de récupérer votre organisation');
+      }
+
+      // Ajouter organization_id aux données
+      const paiementData = {
+        ...data,
+        organization_id: profile.organization_id,
+      };
+
       const { data: paiement, error } = await supabase
         .from('paiements')
-        .insert([data])
+        .insert([paiementData])
         .select()
         .single();
 

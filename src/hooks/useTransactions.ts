@@ -28,7 +28,8 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     totalCNY: 0,
     totalFrais: 0,
     totalBenefice: 0,
-    totalDepenses: 0
+    totalDepenses: 0,
+    totalCount: 0
   });
 
   const fetchTransactions = useCallback(async () => {
@@ -159,7 +160,10 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
         totalDepenses: 0
       });
 
-      setGlobalTotals(totals);
+      setGlobalTotals({
+        ...totals,
+        totalCount: data?.length || 0
+      });
     } catch (err: any) {
       console.error('Error fetching global totals:', err);
       // En cas d'erreur, mettre à zéro
@@ -169,7 +173,8 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
         totalCNY: 0,
         totalFrais: 0,
         totalBenefice: 0,
-        totalDepenses: 0
+        totalDepenses: 0,
+        totalCount: 0
       });
     } finally {
       setIsLoadingTotals(false);

@@ -116,7 +116,8 @@ export const useClients = (page: number = 1, filters: ClientFilters = {}) => {
       totalPages: data.data.totalPages
     } : null,
     globalTotals: {
-      totalPaye: globalTotalsData?.data?.totalPaye || 0
+      totalPaye: globalTotalsData?.data?.totalPaye || 0,
+      totalCount: globalTotalsData?.data?.totalCount || 0
     },
     isLoading,
     isGlobalTotalsLoading,

@@ -15,7 +15,8 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
   const [globalTotals, setGlobalTotals] = useState({
     totalUSD: 0,
     totalCDF: 0,
-    totalFrais: 0
+    totalFrais: 0,
+    totalCount: 0
   });
 
   const fetchFactures = async () => {
@@ -27,12 +28,20 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       const from = (page - 1) * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
 
-      // Construire la requête
+      // Construire la requête optimisée
       let query = supabase
         .from('factures')
         .select(`
-          *,
-          clients!inner(id, nom, telephone, ville)
+          id,
+          facture_number,
+          type,
+          statut,
+          date_emission,
+          total_general,
+          devise,
+          mode_livraison,
+          client_id,
+          clients(id, nom, telephone, ville)
         `, { count: 'exact' })
         .order('date_emission', { ascending: false })
         .range(from, to);
@@ -57,15 +66,21 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
         query = query.lte('date_emission', filters.dateTo);
       }
 
-      const { data, error: fetchError, count } = await query;
+      // Charger factures et totaux en parallèle pour gagner du temps
+      const [facturesResult] = await Promise.all([
+        query,
+        fetchGlobalTotals() // Charger en parallèle
+      ]);
+
+      const { data, error: fetchError, count } = facturesResult;
 
       if (fetchError) throw fetchError;
 
-      setFactures(data || []);
+      setFactures((data || []) as unknown as Facture[]);
       
       if (count !== null) {
         setPagination({
-          data: data || [],
+          data: (data || []) as unknown as Facture[],
           count,
           page,
           pageSize: PAGE_SIZE,
@@ -128,14 +143,18 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
         totalFrais: 0
       });
 
-      setGlobalTotals(totals);
+      setGlobalTotals({
+        ...totals,
+        totalCount: data?.length || 0
+      });
     } catch (err: any) {
       console.error('Error fetching global totals:', err);
       // En cas d'erreur, mettre à zéro
       setGlobalTotals({
         totalUSD: 0,
         totalCDF: 0,
-        totalFrais: 0
+        totalFrais: 0,
+        totalCount: 0
       });
     } finally {
       setIsLoadingTotals(false);

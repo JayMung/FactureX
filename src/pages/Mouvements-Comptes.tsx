@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useMouvementsComptes } from '@/hooks/useMouvementsComptes';
+import { useMouvementsComptesStats } from '@/hooks/useMouvementsComptesStats';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,14 @@ const MouvementsComptes: React.FC = () => {
     dateTo: dateTo || undefined
   });
 
+  // Récupérer les statistiques globales de TOUS les mouvements
+  const { stats: globalStats, loading: statsLoading } = useMouvementsComptesStats({
+    compte_id: compteFilter === 'all' ? undefined : compteFilter,
+    type_mouvement: typeFilter === 'all' ? undefined : (typeFilter as 'debit' | 'credit'),
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined
+  });
+
   // Filter mouvements by search term (client-side)
   const filteredMouvements = mouvements.filter(mouvement => {
     if (!searchTerm) return true;
@@ -50,17 +59,8 @@ const MouvementsComptes: React.FC = () => {
     );
   });
 
-  // Calculate statistics
-  const stats = {
-    totalDebits: filteredMouvements
-      .filter(m => m.type_mouvement === 'debit')
-      .reduce((sum, m) => sum + m.montant, 0),
-    totalCredits: filteredMouvements
-      .filter(m => m.type_mouvement === 'credit')
-      .reduce((sum, m) => sum + m.montant, 0),
-    nombreDebits: filteredMouvements.filter(m => m.type_mouvement === 'debit').length,
-    nombreCredits: filteredMouvements.filter(m => m.type_mouvement === 'credit').length
-  };
+  // Les statistiques globales viennent du hook useMouvementsComptesStats
+  // qui récupère TOUS les mouvements sans pagination
 
   const exportToCSV = () => {
     const headers = ['Date', 'Compte', 'Description', 'Débit', 'Crédit', 'Solde après'];
@@ -119,10 +119,16 @@ const MouvementsComptes: React.FC = () => {
               <TrendingDown className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {formatCurrency(stats.totalDebits, 'USD')}
-              </div>
-              <p className="text-xs text-muted-foreground">{stats.nombreDebits} mouvements</p>
+              {statsLoading ? (
+                <div className="text-2xl font-bold text-gray-400">Chargement...</div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-red-600">
+                    {formatCurrency(globalStats.totalDebits, 'USD')}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{globalStats.nombreDebits} mouvements</p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -132,10 +138,16 @@ const MouvementsComptes: React.FC = () => {
               <TrendingUp className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(stats.totalCredits, 'USD')}
-              </div>
-              <p className="text-xs text-muted-foreground">{stats.nombreCredits} mouvements</p>
+              {statsLoading ? (
+                <div className="text-2xl font-bold text-gray-400">Chargement...</div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatCurrency(globalStats.totalCredits, 'USD')}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{globalStats.nombreCredits} mouvements</p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -145,10 +157,16 @@ const MouvementsComptes: React.FC = () => {
               <ArrowUpCircle className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {formatCurrency(stats.totalCredits - stats.totalDebits, 'USD')}
-              </div>
-              <p className="text-xs text-muted-foreground">Différence crédits - débits</p>
+              {statsLoading ? (
+                <div className="text-2xl font-bold text-gray-400">Chargement...</div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {formatCurrency(globalStats.soldeNet, 'USD')}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Différence crédits - débits</p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -158,8 +176,14 @@ const MouvementsComptes: React.FC = () => {
               <Calendar className="h-4 w-4 text-purple-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{filteredMouvements.length}</div>
-              <p className="text-xs text-muted-foreground">Sur la période sélectionnée</p>
+              {statsLoading ? (
+                <div className="text-2xl font-bold text-gray-400">...</div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{globalStats.nombreMouvements}</div>
+                  <p className="text-xs text-muted-foreground">Toutes pages confondues</p>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>

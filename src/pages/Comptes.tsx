@@ -30,7 +30,7 @@ const Comptes: React.FC = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedCompte, setSelectedCompte] = useState<CompteFinancier | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [compteForDetail, setCompteForDetail] = useState<CompteFinancier | null>(null);
   const [formData, setFormData] = useState<CreateCompteFinancierData>({
@@ -220,36 +220,41 @@ const Comptes: React.FC = () => {
         <div className="flex items-center gap-3">
           {/* View Toggle */}
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-            <Button
-              variant={viewMode === 'grid' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('grid')}
+            <button
+              type="button"
               className={cn(
-                'h-8 w-8 p-0',
-                viewMode === 'grid' && 'bg-white dark:bg-gray-700 shadow-sm'
+                'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0',
+                viewMode === 'grid' 
+                  ? 'bg-primary text-primary-foreground shadow-sm' 
+                  : 'hover:bg-accent hover:text-accent-foreground'
               )}
+              onClick={() => setViewMode('grid')}
             >
               <Grid3x3 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('list')}
+            </button>
+            <button
+              type="button"
               className={cn(
-                'h-8 w-8 p-0',
-                viewMode === 'list' && 'bg-white dark:bg-gray-700 shadow-sm'
+                'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0',
+                viewMode === 'list' 
+                  ? 'bg-primary text-primary-foreground shadow-sm' 
+                  : 'hover:bg-accent hover:text-accent-foreground'
               )}
+              onClick={() => setViewMode('list')}
             >
               <List className="h-4 w-4" />
-            </Button>
+            </button>
           </div>
           
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Nouveau Compte
-              </Button>
+              </button>
             </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
@@ -336,10 +341,19 @@ const Comptes: React.FC = () => {
                 />
               </div>
               <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                <button 
+                  type="button" 
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                  onClick={() => setIsCreateDialogOpen(false)}
+                >
                   Annuler
-                </Button>
-                <Button type="submit">Créer</Button>
+                </button>
+                <button 
+                  type="submit" 
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                >
+                  Créer
+                </button>
               </div>
             </form>
           </DialogContent>
@@ -422,33 +436,30 @@ const Comptes: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground"
                         onClick={() => handleViewDetail(compte)}
-                        className="h-8 w-8 p-0"
                         title="Voir détails"
                       >
                         <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                      </button>
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground"
                         onClick={() => handleEdit(compte)}
-                        className="h-8 w-8 p-0"
                         title="Modifier"
                       >
                         <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                      </button>
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                         onClick={() => handleDelete(compte)}
-                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                         title="Supprimer"
                       >
                         <Trash2 className="h-4 w-4" />
-                      </Button>
+                      </button>
                     </div>
                   </div>
                 </CardHeader>
@@ -466,7 +477,7 @@ const Comptes: React.FC = () => {
                     </span>
                   </div>
                   {!compte.is_active && (
-                    <Badge variant="destructive" className="w-full justify-center">
+                    <Badge className="w-full justify-center bg-destructive text-destructive-foreground" {...({ variant: 'destructive' } as any)}>
                       Inactif
                     </Badge>
                   )}
@@ -506,7 +517,7 @@ const Comptes: React.FC = () => {
                             {getAccountTypeLabel(compte.type_compte)}
                           </Badge>
                           {!compte.is_active && (
-                            <Badge variant="destructive">Inactif</Badge>
+                            <Badge className="bg-destructive text-destructive-foreground" {...({ variant: 'destructive' } as any)}>Inactif</Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-6 mt-2 text-sm text-gray-600 dark:text-gray-400">
@@ -527,33 +538,30 @@ const Comptes: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-9 w-9 p-0 hover:bg-accent hover:text-accent-foreground"
                           onClick={() => handleViewDetail(compte)}
-                          className="h-9 w-9 p-0"
                           title="Voir détails"
                         >
                           <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-9 w-9 p-0 hover:bg-accent hover:text-accent-foreground"
                           onClick={() => handleEdit(compte)}
-                          className="h-9 w-9 p-0"
                           title="Modifier"
                         >
                           <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-9 w-9 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                           onClick={() => handleDelete(compte)}
-                          className="h-9 w-9 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                           title="Supprimer"
                         >
                           <Trash2 className="h-4 w-4" />
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -648,10 +656,19 @@ const Comptes: React.FC = () => {
               />
             </div>
             <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              <button 
+                type="button" 
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                onClick={() => setIsEditDialogOpen(false)}
+              >
                 Annuler
-              </Button>
-              <Button type="submit">Mettre à jour</Button>
+              </button>
+              <button 
+                type="submit" 
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+              >
+                Mettre à jour
+              </button>
             </div>
           </form>
         </DialogContent>

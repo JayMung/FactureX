@@ -55,13 +55,16 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
 
   // Charger les données des modules Colis et Finance
   const { globalTotals: financeStats, loading: financeLoading } = useTransactions(1, {});
-  const { stats: colisStats, loading: colisLoading } = useColis(1, {});
+  const { stats: colisStats, loading: colisLoading, error: colisError } = useColis(1, {});
 
   // Debug logs
   useEffect(() => {
     console.log('📊 Finance Stats:', financeStats);
     console.log('📦 Colis Stats:', colisStats);
-  }, [financeStats, colisStats]);
+    if (colisError) {
+      console.error('❌ Colis Error:', colisError);
+    }
+  }, [financeStats, colisStats, colisError]);
 
   const handleExport = () => {
     // Export des données analytics en CSV
@@ -374,6 +377,12 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
           {colisLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : colisError ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <p className="text-red-600 font-medium mb-2">Erreur de chargement</p>
+              <p className="text-sm text-gray-500">{colisError}</p>
+              <p className="text-xs text-gray-400 mt-2">Vérifiez que la table 'colis' existe et que vous avez les permissions</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

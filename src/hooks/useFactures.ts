@@ -12,6 +12,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingTotals, setIsLoadingTotals] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [globalTotals, setGlobalTotals] = useState({
     totalUSD: 0,
     totalCDF: 0,
@@ -66,13 +67,8 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
         query = query.lte('date_emission', filters.dateTo);
       }
 
-      // Charger factures et totaux en parallèle pour gagner du temps
-      const [facturesResult] = await Promise.all([
-        query,
-        fetchGlobalTotals() // Charger en parallèle
-      ]);
-
-      const { data, error: fetchError, count } = facturesResult;
+      // Charger factures
+      const { data, error: fetchError, count } = await query;
 
       if (fetchError) throw fetchError;
 
@@ -87,10 +83,25 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
           totalPages: Math.ceil(count / PAGE_SIZE)
         });
       }
+
+      // Charger les totaux uniquement si pas trop d'échecs
+      if (retryCount < 3) {
+        fetchGlobalTotals().catch(() => {
+          setRetryCount(prev => prev + 1);
+        });
+      }
+
+      // Reset retry count on success
+      setRetryCount(0);
     } catch (err: any) {
       console.error('Error fetching factures:', err);
       setError(err.message || 'Erreur lors du chargement des factures');
-      showError('Erreur lors du chargement des factures');
+      setRetryCount(prev => prev + 1);
+      
+      // Ne montrer l'erreur que si c'est la première fois
+      if (retryCount === 0) {
+        showError('Erreur lors du chargement des factures');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -101,6 +112,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
   const fetchGlobalTotals = async () => {
     try {
       setIsLoadingTotals(true);
+      
       let query = supabase
         .from('factures')
         .select('total_general, devise, frais')

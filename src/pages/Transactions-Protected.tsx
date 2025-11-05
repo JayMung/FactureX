@@ -30,6 +30,7 @@ import {
   Download,
   DollarSign,
   TrendingUp,
+  TrendingDown,
   Receipt,
   Wallet,
   ChevronDown
@@ -40,15 +41,23 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useSorting } from '../hooks/useSorting';
 import Pagination from '../components/ui/pagination-custom';
 import SortableHeader from '../components/ui/sortable-header';
-import TransactionForm from '../components/forms/TransactionForm';
+import TransactionFormFinancial from '@/components/forms/TransactionFormFinancial';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
 import TransactionDetailsModal from '../components/modals/TransactionDetailsModal';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
+import EnhancedTable from '@/components/ui/enhanced-table';
 import type { Transaction } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { formatCurrency } from '../utils/formatCurrency';
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  sanitizeUserContent, 
+  validateContentSecurity,
+  sanitizeTransactionMotif,
+  sanitizePaymentMethod,
+  sanitizeCSV
+} from '@/lib/security/content-sanitization';
 
 const TransactionsProtected: React.FC = () => {
   usePageSetup({
@@ -95,17 +104,24 @@ const TransactionsProtected: React.FC = () => {
 
   const {
     transactions,
-    pagination,
     loading,
     isCreating,
     isUpdating,
     error,
+    pagination,
+    globalTotals,
     updateTransaction,
     deleteTransaction,
     refetch
   } = useTransactions(currentPage, memoFilters);
 
-  const { sortedData, sortConfig, handleSort } = useSorting(transactions);
+  // Filter to show only Commandes (motif: Commande) and Transferts (motif: Transfert)
+  // Exclude internal operations (depense, revenue)
+  const commercialTransactions = transactions.filter(t => 
+    t.motif === 'Commande' || t.motif === 'Transfert'
+  );
+
+  const { sortedData, sortConfig, handleSort } = useSorting(commercialTransactions, { key: 'statut', direction: 'asc' });
 
   const formatCurrencyValue = (amount: number, currency: string) => {
     if (currency === 'USD') {
@@ -240,8 +256,10 @@ const TransactionsProtected: React.FC = () => {
   };
 
   const handleFormSuccess = () => {
-    // Les mutations dans useTransactions gèrent déjà l'actualisation automatique
-    // Pas besoin de refetch manuel
+    // Forcer le rafraîchissement après création/modification
+    setTimeout(() => {
+      refetch();
+    }, 100);
   };
 
   const handleStatusChange = async (transaction: Transaction, newStatus: string) => {
@@ -342,19 +360,7 @@ const TransactionsProtected: React.FC = () => {
     return { totalUSD, totalCDF, totalCNY, totalFrais, totalBenefice };
   };
 
-  const calculateStats = () => {
-    const totalUSD = transactions
-      .filter(t => t.devise === 'USD')
-      .reduce((sum, t) => sum + t.montant, 0);
-    
-    const totalFrais = transactions.reduce((sum, t) => sum + t.frais, 0);
-
-    const totalBenefice = transactions.reduce((sum, t) => sum + t.benefice, 0);
-
-    return { totalUSD, totalFrais, totalBenefice };
-  };
-
-  const { totalUSD, totalFrais, totalBenefice } = calculateStats();
+  const { totalUSD, totalFrais, totalBenefice, totalDepenses } = globalTotals;
 
   const generateReadableId = (transactionId: string, index: number) => {
     // Utiliser les derniers caractères de l'ID UUID pour garantir l'unicité
@@ -455,7 +461,7 @@ const TransactionsProtected: React.FC = () => {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                        <PermissionGuard module="transactions" permission="delete">
+                        <PermissionGuard module="finances" permission="delete">
                           <Button
                             variant="destructive"
                             size="sm"
@@ -516,29 +522,8 @@ const TransactionsProtected: React.FC = () => {
             );
           })()}
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end">
-            <div className="flex space-x-2">
-              <Button 
-                variant="outline" 
-                onClick={exportTransactions}
-                disabled={transactions.length === 0}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Exporter
-              </Button>
-              
-              <PermissionGuard module="transactions" permission="create">
-                <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddTransaction}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nouvelle Transaction
-                </Button>
-              </PermissionGuard>
-            </div>
-          </div>
-
           {/* Stats Cards - Design System */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
             {/* Total USD Card */}
             <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
@@ -590,6 +575,23 @@ const TransactionsProtected: React.FC = () => {
               </CardContent>
             </Card>
 
+            {/* Total Dépenses Card */}
+            <Card className="card-base transition-shadow-hover">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Dépenses</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+                      {formatCurrencyValue(totalDepenses, 'USD')}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-full bg-red-500 flex-shrink-0">
+                    <TrendingDown className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Transactions Count Card */}
             <Card className="card-base transition-shadow-hover">
               <CardContent className="p-6">
@@ -597,8 +599,9 @@ const TransactionsProtected: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Transactions</p>
                     <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {pagination?.count || 0}
+                      {globalTotals.totalCount || 0}
                     </p>
+                    <p className="text-xs text-muted-foreground mt-1">Toutes pages confondues</p>
                   </div>
                   <div className="p-3 rounded-full bg-orange-500 flex-shrink-0">
                     <Receipt className="h-6 w-6 text-white" />
@@ -659,252 +662,234 @@ const TransactionsProtected: React.FC = () => {
           {/* Transactions Table */}
           <Card>
             <CardHeader>
-              <CardTitle>Liste des Transactions</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Liste des Transactions</CardTitle>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={exportTransactions}
+                    disabled={transactions.length === 0}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Exporter
+                  </Button>
+                  
+                  <PermissionGuard module="finances" permission="create">
+                    <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddTransaction}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Nouvelle Transaction
+                    </Button>
+                  </PermissionGuard>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto overflow-y-hidden">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="w-12 py-3 px-4">
-                        <Checkbox
-                          checked={selectedTransactions.size === transactions.length && transactions.length > 0}
-                          onCheckedChange={handleSelectAll}
-                        />
-                      </th>
-                      <SortableHeader
-                        title="ID"
-                        sortKey="id"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                        className="min-w-[120px]"
-                      />
-                      <SortableHeader
-                        title="Client"
-                        sortKey="client.nom"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="Date"
-                        sortKey="date_paiement"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="Montant"
-                        sortKey="montant"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="Motif"
-                        sortKey="motif"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="Frais"
-                        sortKey="frais"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="Bénéfice"
-                        sortKey="benefice"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="CNY"
-                        sortKey="montant_cny"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="Mode"
-                        sortKey="mode_paiement"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="Statut"
-                        sortKey="statut"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
-                      Array.from({ length: 5 }).map((_, index) => (
-                        <tr key={index} className="border-b">
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-4" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
-                        </tr>
-                      ))
-                    ) : transactions.length === 0 ? (
-                      <tr>
-                        <td colSpan={12} className="py-16">
-                          <div className="flex flex-col items-center justify-center text-center">
-                            <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                              <Receipt className="h-8 w-8 text-gray-400" />
-                            </div>
-                            <p className="text-lg font-medium text-gray-900 mb-2">Aucune transaction</p>
-                            <p className="text-sm text-gray-500 mb-4">Commencez par créer votre première transaction</p>
-                            <PermissionGuard module="transactions" permission="create">
-                              <Button onClick={handleAddTransaction} className="bg-green-500 hover:bg-green-600">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Nouvelle Transaction
-                              </Button>
-                            </PermissionGuard>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      sortedData.map((transaction, index) => (
-                        <tr key={transaction.id} className="border-b hover:bg-gray-50">
-                          <td className="py-3 px-4">
-                            <Checkbox
-                              checked={selectedTransactions.has(transaction.id)}
-                              onCheckedChange={() => handleSelectTransaction(transaction.id)}
-                            />
-                          </td>
-                          <td className="py-3 px-4 font-medium min-w-[120px]">
-                            {generateReadableId(transaction.id, index)}
-                          </td>
-                          <td className="py-3 px-4">{transaction.client?.nom || 'Client inconnu'}</td>
-                          <td className="py-3 px-4 text-sm text-gray-600">
-                            {new Date(transaction.date_paiement).toLocaleDateString('fr-FR')}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="font-medium">
-                              {formatCurrencyValue(transaction.montant, transaction.devise)}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <Badge variant={transaction.motif === 'Commande' ? 'default' : 'secondary'}>
-                              {transaction.motif}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4 text-sm">
-                            {formatCurrencyValue(transaction.frais, 'USD')}
-                          </td>
-                          <td className="py-3 px-4 text-sm font-medium text-green-600">
-                            {formatCurrencyValue(transaction.benefice, 'USD')}
-                          </td>
-                          <td className="py-3 px-4 text-sm font-medium text-blue-600">
-                            {transaction.montant_cny ? formatCurrencyValue(transaction.montant_cny, 'CNY') : '-'}
-                          </td>
-                          <td className="py-3 px-4 text-sm">{transaction.mode_paiement}</td>
-                          <td className="py-3 px-4">
-                            {checkPermission('transactions', 'update') ? (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    className="h-8 flex items-center gap-2 hover:bg-gray-50"
-                                  >
-                                    {getStatusBadge(transaction.statut)}
-                                    <ChevronDown className="h-4 w-4 text-gray-500" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="w-48">
-                                  <DropdownMenuItem 
-                                    onClick={() => handleStatusChange(transaction, 'En attente')}
-                                    className="cursor-pointer"
-                                  >
-                                    <div className="flex items-center">
-                                      <Clock className="h-4 w-4 text-yellow-600 mr-2" />
-                                      En attente
-                                    </div>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleStatusChange(transaction, 'Servi')}
-                                    className="cursor-pointer"
-                                  >
-                                    <div className="flex items-center">
-                                      <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                                      Servi
-                                    </div>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleStatusChange(transaction, 'Remboursé')}
-                                    className="cursor-pointer"
-                                  >
-                                    <div className="flex items-center">
-                                      <RotateCcw className="h-4 w-4 text-blue-600 mr-2" />
-                                      Remboursé
-                                    </div>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    onClick={() => handleStatusChange(transaction, 'Annulé')}
-                                    className="cursor-pointer"
-                                  >
-                                    <div className="flex items-center">
-                                      <XCircle className="h-4 w-4 text-red-600 mr-2" />
-                                      Annulé
-                                    </div>
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            ) : (
-                              getStatusBadge(transaction.statut)
-                            )}
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center space-x-2">
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => handleViewTransaction(transaction)}
-                                className="hover:bg-blue-50"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              
-                              <PermissionGuard module="transactions" permission="update">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon"
-                                  onClick={() => handleEditTransaction(transaction)}
-                                  className="hover:bg-green-50"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              </PermissionGuard>
-                              
-                              <PermissionGuard module="transactions" permission="delete">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  onClick={() => handleDeleteTransaction(transaction)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </PermissionGuard>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <EnhancedTable
+                data={sortedData}
+                loading={loading}
+                emptyMessage="Aucune transaction"
+                emptySubMessage="Commencez par créer votre première transaction"
+                onSort={handleSort}
+                sortKey={sortConfig?.key}
+                sortDirection={sortConfig?.direction}
+                bulkSelect={{
+                  selected: Array.from(selectedTransactions),
+                  onSelectAll: handleSelectAll,
+                  onSelectItem: (id, checked) => handleSelectTransaction(id),
+                  getId: (transaction: Transaction) => transaction.id,
+                  isAllSelected: selectedTransactions.size === transactions.length && transactions.length > 0,
+                  isPartiallySelected: selectedTransactions.size > 0 && selectedTransactions.size < transactions.length
+                }}
+                actionsColumn={{
+                  render: (transaction: Transaction) => (
+                    <div className="flex items-center space-x-2">
+                      <Button 
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleViewTransaction(transaction)}
+                        className="hover:bg-blue-50"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      
+                      <PermissionGuard module="finances" permission="update">
+                        <Button 
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditTransaction(transaction)}
+                          className="hover:bg-green-50"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </PermissionGuard>
+                      
+                      <PermissionGuard module="finances" permission="delete">
+                        <Button 
+                          variant="ghost"
+                          size="icon" 
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeleteTransaction(transaction)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </PermissionGuard>
+                    </div>
+                  )
+                }}
+                columns={[
+                  {
+                    key: 'id',
+                    title: 'ID',
+                    sortable: true,
+                    className: 'min-w-[120px]',
+                    render: (value: any, transaction: Transaction, index: number) => (
+                      <span className="font-medium">
+                        {generateReadableId(transaction.id, index)}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'client',
+                    title: 'Client',
+                    sortable: true,
+                    render: (value: any) => (
+                      <span>{sanitizeUserContent(value?.nom || 'Client inconnu', 'client-name')}</span>
+                    )
+                  },
+                  {
+                    key: 'date_paiement',
+                    title: 'Date',
+                    sortable: true,
+                    render: (value: any) => (
+                      <span className="text-sm text-gray-600">
+                        {new Date(value).toLocaleDateString('fr-FR')}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'montant',
+                    title: 'Montant',
+                    sortable: true,
+                    render: (value: any, transaction: Transaction) => (
+                      <span className="font-medium">
+                        {formatCurrencyValue(value, transaction.devise)}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'motif',
+                    title: 'Motif',
+                    sortable: true,
+                    render: (value: any) => (
+                      <Badge variant={(value === 'Commande' ? 'default' : 'secondary') as any}>
+                        {sanitizeTransactionMotif(value || '')}
+                      </Badge>
+                    )
+                  },
+                  {
+                    key: 'statut',
+                    title: 'Statut',
+                    sortable: true,
+                    render: (value: any, transaction: Transaction) => (
+                      checkPermission('finances', 'update') ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="outline"
+                              size="sm"
+                              className="h-8 flex items-center gap-2 hover:bg-gray-50"
+                            >
+                              {getStatusBadge(value)}
+                              <ChevronDown className="h-4 w-4 text-gray-500" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-48">
+                            <DropdownMenuItem 
+                              onClick={() => handleStatusChange(transaction, 'En attente')}
+                              className="cursor-pointer"
+                            >
+                              <div className="flex items-center">
+                                <Clock className="h-4 w-4 text-yellow-600 mr-2" />
+                                En attente
+                              </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleStatusChange(transaction, 'Servi')}
+                              className="cursor-pointer"
+                            >
+                              <div className="flex items-center">
+                                <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                                Servi
+                              </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleStatusChange(transaction, 'Remboursé')}
+                              className="cursor-pointer"
+                            >
+                              <div className="flex items-center">
+                                <RotateCcw className="h-4 w-4 text-blue-600 mr-2" />
+                                Remboursé
+                              </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleStatusChange(transaction, 'Annulé')}
+                              className="cursor-pointer"
+                            >
+                              <div className="flex items-center">
+                                <XCircle className="h-4 w-4 text-red-600 mr-2" />
+                                Annulé
+                              </div>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        getStatusBadge(value)
+                      )
+                    )
+                  },
+                  {
+                    key: 'frais',
+                    title: 'Frais',
+                    sortable: true,
+                    render: (value: any) => (
+                      <span className="text-sm">
+                        {formatCurrencyValue(value, 'USD')}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'benefice',
+                    title: 'Bénéfice',
+                    sortable: true,
+                    render: (value: any) => (
+                      <span className="text-sm font-medium text-green-600">
+                        {formatCurrencyValue(value, 'USD')}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'montant_cny',
+                    title: 'CNY',
+                    sortable: true,
+                    render: (value: any) => (
+                      <span className="text-sm font-medium text-blue-600">
+                        {value ? formatCurrencyValue(value, 'CNY') : '-'}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'mode_paiement',
+                    title: 'Compte',
+                    sortable: true,
+                    render: (value: any) => (
+                      <span className="text-sm font-medium">
+                        {sanitizePaymentMethod(value || '-')}
+                      </span>
+                    )
+                  }
+                ]}
+              />
 
               {/* Pagination avec sélecteur de taille */}
               {pagination && (
@@ -943,7 +928,7 @@ const TransactionsProtected: React.FC = () => {
           </Card>
 
           {/* Transaction Form Modal */}
-          <TransactionForm
+          <TransactionFormFinancial
             isOpen={isFormOpen}
             onClose={() => setIsFormOpen(false)}
             onSuccess={handleFormSuccess}

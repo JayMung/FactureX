@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useDashboardWithPermissions } from '../hooks/useDashboardWithPermissions';
 import { useActivityLogs } from '../hooks/useActivityLogs';
+import { usePermissions } from '../hooks/usePermissions';
 import { formatCurrency } from '../utils/formatCurrency';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
@@ -33,6 +34,7 @@ import AdvancedDashboard from '../components/dashboard/AdvancedDashboard';
 
 const IndexProtected: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const { isAdmin } = usePermissions();
   
   usePageSetup({
     title: 'Tableau de bord',
@@ -51,8 +53,8 @@ const IndexProtected: React.FC = () => {
     return amount.toString();
   };
 
-  // Stats pour Factures & Revenus uniquement (Vue d'ensemble)
-  const overviewStats = [
+  // Stats pour Factures & Revenus uniquement (Vue d'ensemble) - Admin seulement
+  const overviewStats = isAdmin ? [
     {
       title: 'Total Factures',
       value: isLoading ? '...' : (stats?.facturesCount || 0).toString(),
@@ -80,6 +82,36 @@ const IndexProtected: React.FC = () => {
       change: stats?.facturesValidees > 0 ? { value: 10, isPositive: true } : undefined,
       icon: <TrendingUp className="h-6 w-6 text-white" />,
       iconBg: 'bg-orange-500'
+    }
+  ] : [
+    // Stats pour opérateurs (uniquement factures de base, sans montants)
+    {
+      title: 'Total Factures',
+      value: isLoading ? '...' : (stats?.facturesCount || 0).toString(),
+      change: stats?.facturesCount > 0 ? { value: 5, isPositive: true } : undefined,
+      icon: <FileText className="h-6 w-6 text-white" />,
+      iconBg: 'bg-green-500'
+    },
+    {
+      title: 'Factures Validées',
+      value: isLoading ? '...' : (stats?.facturesValidees || 0).toString(),
+      change: stats?.facturesValidees > 0 ? { value: 3, isPositive: true } : undefined,
+      icon: <TrendingUp className="h-6 w-6 text-white" />,
+      iconBg: 'bg-blue-500'
+    },
+    {
+      title: 'Total Clients',
+      value: isLoading ? '...' : (stats?.clientsCount || 0).toString(),
+      change: stats?.clientsCount > 0 ? { value: 2, isPositive: true } : undefined,
+      icon: <Users className="h-6 w-6 text-white" />,
+      iconBg: 'bg-orange-500'
+    },
+    {
+      title: 'Factures en Attente',
+      value: isLoading ? '...' : (stats?.facturesEnAttente || 0).toString(),
+      change: stats?.facturesEnAttente > 0 ? { value: 1, isPositive: false } : undefined,
+      icon: <Activity className="h-6 w-6 text-white" />,
+      iconBg: 'bg-purple-500'
     }
   ];
 
@@ -125,13 +157,15 @@ const IndexProtected: React.FC = () => {
                 <Activity className="h-4 w-4" />
                 <span className="text-sm font-medium">Vue d'ensemble</span>
               </TabsTrigger>
-              <TabsTrigger 
-                value="analytics" 
-                className="flex items-center gap-2 data-[state=active]:bg-green-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all rounded-md"
-              >
-                <BarChart3 className="h-4 w-4" />
-                <span className="text-sm font-medium">Analytics avancés</span>
-              </TabsTrigger>
+              {isAdmin && (
+                <TabsTrigger 
+                  value="analytics" 
+                  className="flex items-center gap-2 data-[state=active]:bg-green-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all rounded-md"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="text-sm font-medium">Analytics avancés</span>
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* Vue d'ensemble */}
@@ -184,24 +218,26 @@ const IndexProtected: React.FC = () => {
                   </CardHeader>
                   <CardContent className="p-4 pt-0">
                     <div className="space-y-2">
-                      <PermissionGuard module="transactions" permission="create">
-                        <Button 
-                          asChild
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start gap-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-700"
-                        >
-                          <a href="/transactions" className="flex items-center gap-2">
-                            <Plus className="h-4 w-4" />
-                            <span className="text-sm">Nouvelle Transaction</span>
-                          </a>
-                        </Button>
-                      </PermissionGuard>
+                      {isAdmin && (
+                        <PermissionGuard module="finances" permission="create">
+                          <Button 
+                            asChild
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-start gap-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-700"
+                          >
+                            <a href="/transactions" className="flex items-center gap-2">
+                              <Plus className="h-4 w-4" />
+                              <span className="text-sm">Nouvelle Transaction</span>
+                            </a>
+                          </Button>
+                        </PermissionGuard>
+                      )}
                       
                       <PermissionGuard module="clients" permission="create">
                         <Button 
                           asChild
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           className="w-full justify-start gap-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-700"
                         >
@@ -214,7 +250,7 @@ const IndexProtected: React.FC = () => {
                       
                       <Button 
                         asChild
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         className="w-full justify-start gap-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200"
                       >

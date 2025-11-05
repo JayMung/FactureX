@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
+// @ts-ignore - Temporary workaround for react-router-dom types
 import { Navigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -27,6 +28,17 @@ const ProtectedRouteEnhanced: React.FC<ProtectedRouteEnhancedProps> = ({
   // Combiner les deux loading en un seul
   const isLoading = authLoading || permissionsLoading;
 
+  // Fallback: Check metadata role if isAdmin is false - memoized to prevent re-renders
+  const userRole = useMemo(() => 
+    user?.user_metadata?.role || user?.app_metadata?.role,
+    [user?.user_metadata?.role, user?.app_metadata?.role]
+  );
+  
+  const isUserAdmin = useMemo(() => 
+    isAdmin || userRole === 'super_admin' || userRole === 'admin',
+    [isAdmin, userRole]
+  );
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -42,8 +54,8 @@ const ProtectedRouteEnhanced: React.FC<ProtectedRouteEnhancedProps> = ({
     return <Navigate to={fallbackPath} replace />;
   }
 
-  // Vérification du rôle admin
-  if (adminOnly && !isAdmin) {
+  // Vérification du rôle admin avec fallback
+  if (adminOnly && !isUserAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -60,24 +72,48 @@ const ProtectedRouteEnhanced: React.FC<ProtectedRouteEnhancedProps> = ({
     );
   }
 
-  // Vérification du module requis
-  if (requiredModule && !checkPermission(requiredModule as any, requiredPermission)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Accès refusé</h1>
-          <p className="text-gray-600">
-            Vous n'avez pas la permission de {requiredPermission} sur le module {requiredModule}.
-          </p>
-          <button
-            onClick={() => window.history.back()}
-            className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-          >
-            Retour
-          </button>
+  // Vérification du module requis (les admins ont tout accès)
+  if (requiredModule && !isUserAdmin) {
+    try {
+      const hasPermission = checkPermission(requiredModule as any, requiredPermission);
+      if (!hasPermission) {
+        return (
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Accès refusé</h1>
+              <p className="text-gray-600">
+                Vous n'avez pas la permission de {requiredPermission} sur le module {requiredModule}.
+              </p>
+              <button
+                onClick={() => window.history.back()}
+                className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+              >
+                Retour
+              </button>
+            </div>
+          </div>
+        );
+      }
+    } catch (error) {
+      console.error('Error checking permissions:', error);
+      // En cas d'erreur, on refuse l'accès par sécurité
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Erreur de vérification</h1>
+            <p className="text-gray-600">
+              Une erreur s'est produite lors de la vérification des permissions.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+            >
+              Recharger la page
+            </button>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   return <>{children}</>;

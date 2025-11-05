@@ -1,6 +1,7 @@
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+// @ts-ignore - Temporary workaround for react-router-dom types
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { PageProvider } from "@/contexts/PageContext";
@@ -12,11 +13,19 @@ import FacturesProtected from "./pages/Factures-Protected";
 import FacturesCreate from "./pages/Factures-Create";
 import FacturesView from "./pages/Factures-View";
 import FacturesPreview from "./pages/Factures-Preview";
+import ColisAeriens from "./pages/Colis-Aeriens";
+import ColisAeriensCreate from "./pages/Colis-Aeriens-Create";
 import SettingsWithPermissions from "./pages/Settings-Permissions";
 import ActivityLogs from "./pages/ActivityLogs";
 import SecurityDashboard from "./pages/SecurityDashboard";
+import SecurityAudit from "./pages/SecurityAudit";
+import PermissionDiagnosticPage from "./pages/Permission-Diagnostic";
+import ComptesFinancesProtected from "./pages/Comptes-Finances-Protected";
+import OperationsFinancieres from "./pages/Operations-Financieres";
+import EncaissementsProtected from "./pages/Encaissements-Protected";
 import Login from "./pages/Login";
 import AdminSetup from "./pages/AdminSetup";
+import AdminInvitation from "./pages/AdminInvitation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +43,8 @@ const App = () => (
                 <Route path="/admin-setup" element={<AdminSetup />} />
               )}
               <Route path="/login" element={<Login />} />
+              <Route path="/admin-invitation" element={<AdminInvitation />} />
+              <Route path="/security_audit" element={<SecurityAudit />} />
               <Route path="/" element={
                 <ProtectedRouteEnhanced>
                   <IndexProtected />
@@ -45,7 +56,7 @@ const App = () => (
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/transactions" element={
-                <ProtectedRouteEnhanced>
+                <ProtectedRouteEnhanced requiredModule="finances">
                   <TransactionsProtected />
                 </ProtectedRouteEnhanced>
               } />
@@ -74,6 +85,21 @@ const App = () => (
                   <FacturesPreview />
                 </ProtectedRouteEnhanced>
               } />
+              <Route path="/colis/aeriens" element={
+                <ProtectedRouteEnhanced>
+                  <ColisAeriens />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/colis/aeriens/nouveau" element={
+                <ProtectedRouteEnhanced>
+                  <ColisAeriensCreate />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/colis/aeriens/:id/modifier" element={
+                <ProtectedRouteEnhanced>
+                  <ColisAeriensCreate />
+                </ProtectedRouteEnhanced>
+              } />
               <Route path="/settings" element={
                 <ProtectedRouteEnhanced>
                   <SettingsWithPermissions />
@@ -87,6 +113,26 @@ const App = () => (
               <Route path="/security-dashboard" element={
                 <ProtectedRouteEnhanced>
                   <SecurityDashboard />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/comptes" element={
+                <ProtectedRouteEnhanced requiredModule="finances">
+                  <ComptesFinancesProtected />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/operations-financieres" element={
+                <ProtectedRouteEnhanced requiredModule="finances">
+                  <OperationsFinancieres />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/finances/encaissements" element={
+                <ProtectedRouteEnhanced requiredModule="finances">
+                  <EncaissementsProtected />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/permission-diagnostic" element={
+                <ProtectedRouteEnhanced>
+                  <PermissionDiagnosticPage />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="*" element={<NotFound />} />

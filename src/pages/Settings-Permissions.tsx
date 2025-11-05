@@ -28,15 +28,20 @@ import {
   Lock,
   Save,
   Receipt,
-  History
+  History,
+  Package,
+  Truck
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { User as SupabaseUser } from '@supabase/supabase-js';
+// @ts-ignore - Temporary workaround for Supabase types
+import type { User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { permissionConsolidationService } from '@/lib/security/permission-consolidation';
+import { adminService } from '@/services/adminService';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu,
@@ -56,6 +61,8 @@ import ConfirmDialog from '@/components/ui/confirm-dialog';
 import PermissionsManager from '../components/permissions/PermissionsManager';
 import { SettingsFacture } from './Settings-Facture';
 import { CompanySettings } from '../components/settings/CompanySettings';
+import { SettingsColis } from '../components/settings/SettingsColis';
+import { SettingsTransitaires } from '../components/settings/SettingsTransitaires';
 import {
   Dialog,
   DialogContent,
@@ -93,6 +100,20 @@ interface SettingsOption {
   adminOnly?: boolean;
 }
 
+// Fonction pour obtenir l'affichage du rôle
+const getRoleDisplay = (role: string) => {
+  switch (role) {
+    case 'super_admin':
+      return { text: 'Super Admin', icon: Crown, color: 'bg-yellow-500 hover:bg-yellow-600' };
+    case 'admin':
+      return { text: 'Admin', icon: Crown, color: 'bg-green-500 hover:bg-green-600' };
+    case 'operateur':
+      return { text: 'Opérateur', icon: UserCheck, color: 'bg-blue-500 hover:bg-blue-600' };
+    default:
+      return { text: 'Opérateur', icon: UserCheck, color: 'bg-blue-500 hover:bg-blue-600' };
+  }
+};
+
 const SettingsWithPermissions = () => {
   usePageSetup({
     title: 'Paramètres',
@@ -105,6 +126,7 @@ const SettingsWithPermissions = () => {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string>('operateur');
   const [loading, setLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -114,12 +136,9 @@ const SettingsWithPermissions = () => {
 
   // Hook d'authentification
   const { user: authUser } = useAuth();
-  
-  // Vérifier si l'utilisateur est admin
-  const isAdmin = authUser?.app_metadata?.role === 'admin';
 
-  // Hook des permissions
-  const { checkPermission, canAccessModule, getAccessibleModules } = usePermissions();
+  // Hook des permissions (includes admin status)
+  const { checkPermission, canAccessModule, getAccessibleModules, isAdmin, loading: permissionsLoading } = usePermissions();
 
   // États pour les formulaires
   const [profileForm, setProfileForm] = useState({
@@ -170,16 +189,28 @@ const SettingsWithPermissions = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          // Récupérer le rôle depuis admin_roles
+          const { data: adminRole } = await supabase
+            .from('admin_roles')
+            .select('role')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .single();
+
+          const actualRole = adminRole?.role || user.user_metadata?.role || 'operateur';
+          
           setUser({
             id: user.id,
             email: user.email || '',
             first_name: user.user_metadata?.first_name || '',
             last_name: user.user_metadata?.last_name || '',
-            role: user.user_metadata?.role || 'operateur',
+            role: actualRole,
             phone: user.user_metadata?.phone || '',
             avatar_url: user.user_metadata?.avatar_url || '',
             is_active: true
           });
+          
+          setCurrentUserRole(actualRole);
           
           const { data: profileData } = await supabase
             .from('profiles')
@@ -224,7 +255,7 @@ const SettingsWithPermissions = () => {
   const fetchUsers = async () => {
     setUsersLoading(true);
     try {
-      const { data: users, error } = await supabase
+      const { data: profiles, error } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
@@ -235,7 +266,22 @@ const SettingsWithPermissions = () => {
         return;
       }
 
-      setUsers(users || []);
+      // Récupérer les rôles depuis admin_roles pour les admins
+      const { data: adminRoles } = await supabase
+        .from('admin_roles')
+        .select('user_id, role')
+        .eq('is_active', true);
+
+      // Fusionner les données
+      const usersWithRoles = (profiles || []).map(profile => {
+        const adminRole = adminRoles?.find(ar => ar.user_id === profile.id);
+        return {
+          ...profile,
+          role: adminRole?.role || profile.role || 'operateur'
+        };
+      });
+
+      setUsers(usersWithRoles);
     } catch (error: any) {
       console.error('Error fetching users:', error);
       showError(error.message || 'Erreur lors du chargement des utilisateurs');
@@ -334,6 +380,11 @@ const SettingsWithPermissions = () => {
     setPermissionsManagerOpen(true);
   };
 
+  const handlePermissionsApplied = () => {
+    // Rafraîchir la liste des utilisateurs pour mettre à jour les rôles
+    fetchUsers();
+  };
+
   const confirmDeleteUser = async () => {
     if (!userToDelete) return;
     
@@ -365,7 +416,6 @@ const SettingsWithPermissions = () => {
     } catch (error: any) {
       console.error('Error deleting user:', error);
       showError(error.message || 'Erreur lors de la suppression de l\'utilisateur');
-    } finally {
       setIsUserDeleting(false);
     }
   };
@@ -378,17 +428,47 @@ const SettingsWithPermissions = () => {
       }
 
       if (selectedUser) {
-        const { error } = await supabase
+        // Get current user for audit trail
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (!currentUser) throw new Error('Utilisateur non authentifié');
+
+        const previousRole = selectedUser.role;
+        
+        // Update basic profile info
+        const { error: profileError } = await supabase
           .from('profiles')
           .update({
             first_name: userForm.first_name,
             last_name: userForm.last_name,
-            role: userForm.role,
             phone: userForm.phone
           })
           .eq('id', selectedUser.id);
 
-        if (error) throw error;
+        if (profileError) throw profileError;
+
+        // Handle role changes with atomic operations
+        if (previousRole !== userForm.role) {
+          if (userForm.role === 'admin' || userForm.role === 'super_admin') {
+            // Grant admin role
+            await permissionConsolidationService.applyRoleAtomic(
+              selectedUser.id,
+              userForm.role,
+              currentUser.id
+            );
+          } else if (previousRole === 'admin' || previousRole === 'super_admin') {
+            // Revoke admin role
+            await permissionConsolidationService.revokeRoleAtomic(
+              selectedUser.id,
+              currentUser.id
+            );
+          }
+
+          // Force session refresh for the target user if they're the current user
+          if (selectedUser.id === currentUser.id) {
+            await supabase.auth.refreshSession();
+          }
+        }
+
         showSuccess('Utilisateur mis à jour avec succès');
         await fetchUsers();
       } else {
@@ -414,13 +494,24 @@ const SettingsWithPermissions = () => {
           .single();
         
         if (profile) {
+          // If creating admin/super_admin, apply role atomically
+          if (userForm.role === 'admin' || userForm.role === 'super_admin') {
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (currentUser) {
+              await permissionConsolidationService.applyRoleAtomic(
+                profile.id,
+                userForm.role,
+                currentUser.id
+              );
+            }
+          }
+
           showSuccess('Utilisateur créé avec succès');
           await fetchUsers();
         } else {
           const { data: manualProfile, error: manualError } = await supabase
             .from('profiles')
             .insert([{
-              id: authData.user?.id,
               email: userForm.email,
               first_name: userForm.first_name,
               last_name: userForm.last_name,
@@ -438,11 +529,8 @@ const SettingsWithPermissions = () => {
             await fetchUsers();
           }
         }
-        
-        setIsUserFormOpen(false);
-        return;
       }
-
+      
       setIsUserFormOpen(false);
     } catch (error: any) {
       console.error('Error saving user:', error);
@@ -475,17 +563,46 @@ const SettingsWithPermissions = () => {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
+      if (!user) throw new Error('Utilisateur non connecté');
+
+      // Get current user for audit trail
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) throw new Error('Utilisateur non authentifié');
+
+      const previousRole = user.role;
+      
+      // Update basic profile info
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
           first_name: profileForm.first_name,
           last_name: profileForm.last_name,
-          role: profileForm.role,
           phone: profileForm.phone
         })
-        .eq('id', user?.id);
+        .eq('id', user.id);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
+
+      // Handle role changes with atomic operations
+      if (previousRole !== profileForm.role) {
+        if (profileForm.role === 'admin' || profileForm.role === 'super_admin') {
+          // Grant admin role
+          await permissionConsolidationService.applyRoleAtomic(
+            user.id,
+            profileForm.role,
+            currentUser.id
+          );
+        } else if (previousRole === 'admin' || previousRole === 'super_admin') {
+          // Revoke admin role
+          await permissionConsolidationService.revokeRoleAtomic(
+            user.id,
+            currentUser.id
+          );
+        }
+
+        // Force session refresh for current user
+        await supabase.auth.refreshSession();
+      }
 
       setProfile(prev => prev ? { ...prev, ...profileForm } : null);
       showSuccess('Profil mis à jour avec succès');
@@ -543,6 +660,13 @@ const SettingsWithPermissions = () => {
       adminOnly: true
     },
     {
+      id: 'finances',
+      label: 'Finances',
+      icon: <DollarSign className="h-5 w-5" />,
+      description: 'Gestion financière et permissions des comptes',
+      adminOnly: true
+    },
+    {
       id: 'payment-methods',
       label: 'Moyens de paiement',
       icon: <CreditCard className="h-5 w-5" />,
@@ -554,6 +678,20 @@ const SettingsWithPermissions = () => {
       label: 'Factures',
       icon: <Receipt className="h-5 w-5" />,
       description: 'Frais de livraison et catégories produits',
+      adminOnly: false
+    },
+    {
+      id: 'colis',
+      label: 'Colis',
+      icon: <Package className="h-5 w-5" />,
+      description: 'Fournisseurs et tarifs pour colis aériens/maritimes',
+      adminOnly: false
+    },
+    {
+      id: 'transitaires',
+      label: 'Transitaires',
+      icon: <Truck className="h-5 w-5" />,
+      description: 'Gestion des transitaires et partenaires logistiques',
       adminOnly: false
     },
     {
@@ -588,12 +726,42 @@ const SettingsWithPermissions = () => {
     'exchange-rates': 'exchange_rates',
     'transaction-fees': 'transaction_fees',
     'activity-logs': 'activity_logs',
-    'factures': 'factures'
+    'factures': 'factures',
+    'colis': 'colis',
+    'transitaires': 'colis',
+    'finances': 'finances'
   };
 
   const filteredOptions = settingsOptions.filter(option => {
+    // While loading permissions, show all tabs to avoid flash
+    if (permissionsLoading) return true;
+    
+    // Admins see everything
+    if (isAdmin) return true;
+    
+    // Fallback: Check if user has super_admin role in metadata
+    const userRole = authUser?.user_metadata?.role || authUser?.app_metadata?.role;
+    if (userRole === 'super_admin' || userRole === 'admin') return true;
+    
+    // If adminOnly and not admin, hide
+    if (option.adminOnly) return false;
+    
+    // Check module access for non-admin users
     const moduleId = sectionToModuleMap[option.id];
-    return moduleId ? canAccessModule(moduleId as any) : false;
+    return moduleId ? canAccessModule(moduleId as any) : true;
+  });
+
+  // Debug logging
+  console.log('Settings Debug:', {
+    isAdmin,
+    permissionsLoading,
+    loading,
+    filteredOptionsCount: filteredOptions.length,
+    allOptionsCount: settingsOptions.length,
+    authUser: authUser?.email,
+    authUserRole: authUser?.user_metadata?.role || authUser?.app_metadata?.role,
+    authUserMetadata: authUser?.user_metadata,
+    authAppMetadata: authUser?.app_metadata
   });
 
   return (
@@ -667,22 +835,19 @@ const SettingsWithPermissions = () => {
                               <p className="font-medium">{user.first_name} {user.last_name}</p>
                               <p className="text-sm text-gray-500">{user.email}</p>
                               <div className="flex items-center space-x-2 mt-1">
-                                <Badge 
-                                  variant={user.role === 'admin' ? 'default' : 'secondary'}
-                                  className={user.role === 'admin' ? 'bg-green-500 hover:bg-green-600' : ''}
-                                >
-                                  {user.role === 'admin' ? (
-                                    <>
-                                      <Crown className="mr-1 h-3 w-3" />
-                                      Admin
-                                    </>
-                                  ) : (
-                                    <>
-                                      <UserCheck className="mr-1 h-3 w-3" />
-                                      Opérateur
-                                    </>
-                                  )}
-                                </Badge>
+                                {(() => {
+                                  const roleDisplay = getRoleDisplay(user.role || 'operateur');
+                                  const Icon = roleDisplay.icon;
+                                  return (
+                                    <Badge 
+                                      variant={user.role === 'super_admin' || user.role === 'admin' ? 'default' : 'secondary'}
+                                      className={roleDisplay.color}
+                                    >
+                                      <Icon className="mr-1 h-3 w-3" />
+                                      {roleDisplay.text}
+                                    </Badge>
+                                  );
+                                })()}
                                 <Badge 
                                   variant={user.is_active ? 'default' : 'secondary'}
                                   className={user.is_active ? 'bg-green-500 hover:bg-green-600' : ''}
@@ -742,6 +907,70 @@ const SettingsWithPermissions = () => {
             {/* Company Tab */}
             {activeTab === 'company' && <CompanySettings />}
 
+            {/* Finances Tab */}
+            {activeTab === 'finances' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <DollarSign className="mr-2 h-5 w-5" />
+                    Gestion des permissions Financières
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Alert>
+                    <Shield className="h-4 w-4" />
+                    <AlertDescription>
+                      Le module Finances est sensible et nécessite des permissions spéciales. 
+                      Seuls les administrateurs peuvent gérer les permissions financières.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="mt-6 space-y-4">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <h4 className="font-medium text-yellow-800 mb-2">
+                        <AlertCircle className="inline h-4 w-4 mr-2" />
+                        Permissions disponibles
+                      </h4>
+                      <ul className="text-sm text-yellow-700 space-y-1">
+                        <li>• <strong>finances.view</strong> - Voir le module financier (requis)</li>
+                        <li>• <strong>finances.transactions</strong> - Gérer les transactions clients</li>
+                        <li>• <strong>finances.depenses_revenus</strong> - Gérer les dépenses et revenus</li>
+                        <li>• <strong>finances.encaissements.*</strong> - Gérer les encaissements</li>
+                        <li>• <strong>finances.comptes.*</strong> - Gérer les comptes financiers</li>
+                        <li>• <strong>finances.mouvements.*</strong> - Voir et exporter les mouvements</li>
+                      </ul>
+                    </div>
+                    
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-medium text-blue-800 mb-2">
+                        <Info className="inline h-4 w-4 mr-2" />
+                        Comment attribuer les permissions
+                      </h4>
+                      <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+                        <li>Allez dans l'onglet "Utilisateurs"</li>
+                        <li>Cliquez sur l'icône <Key className="inline h-3 w-3 mx-1" /> à côté d'un utilisateur</li>
+                        <li>Dans l'onglet "Modules", cochez les permissions financières</li>
+                        <li>Ou appliquez un rôle prédéfini avec accès financier</li>
+                      </ol>
+                    </div>
+                    
+                    <div className="bg-red-50 border border-red-100 rounded-lg p-4">
+                      <h4 className="font-medium text-red-800 mb-2">
+                        <Lock className="inline h-4 w-4 mr-2" />
+                        Restrictions de sécurité
+                      </h4>
+                      <ul className="text-sm text-red-700 space-y-1">
+                        <li>• Les opérateurs n'ont pas accès aux finances par défaut</li>
+                        <li>• Le menu "Finances" est invisible sans permissions</li>
+                        <li>• Les routes financières sont protégées</li>
+                        <li>• Toutes les actions sont auditées dans les logs de sécurité</li>
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Profile Tab */}
             {activeTab === 'profile' && (
               <div className="space-y-6">
@@ -777,7 +1006,8 @@ const SettingsWithPermissions = () => {
                       <div className="flex-1">
                         <h3 className="font-semibold text-lg">{profileForm.first_name} {profileForm.last_name}</h3>
                         <p className="text-sm text-gray-600 mt-1">
-                          {profile?.role === 'admin' ? '👑 Administrateur' : '👤 Opérateur'}
+                          {currentUserRole === 'super_admin' ? '👑 Super Administrateur' : 
+                           currentUserRole === 'admin' ? '👑 Administrateur' : '👤 Opérateur'}
                         </p>
                         <p className="text-xs text-gray-500 mt-2">
                           Membre depuis {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' }) : 'N/A'}
@@ -1176,6 +1406,13 @@ const SettingsWithPermissions = () => {
 
             {/* Factures Settings Tab */}
             {activeTab === 'factures' && <SettingsFacture />}
+
+            {/* Colis Settings Tab */}
+            {activeTab === 'colis' && <SettingsColis />}
+
+            {/* Transitaires Settings Tab */}
+            {activeTab === 'transitaires' && <SettingsTransitaires />}
+
           </div>
         </div>
       </div>
@@ -1283,11 +1520,7 @@ const SettingsWithPermissions = () => {
             setPermissionsManagerOpen(false);
             setSelectedUserForPermissions(null);
           }}
-          onSuccess={() => {
-            fetchUsers();
-            setPermissionsManagerOpen(false);
-            setSelectedUserForPermissions(null);
-          }}
+          onSuccess={handlePermissionsApplied}
         />
       )}
 

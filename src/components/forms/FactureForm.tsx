@@ -1,27 +1,23 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ClientCombobox } from '@/components/ui/client-combobox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { 
   Plus, 
   Trash2, 
   Upload, 
-  Calculator,
-  Plane,
-  Ship,
-  DollarSign,
-  Package
+  Calculator
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useFactures } from '@/hooks/useFactures';
-import { generateFacturePDF } from '@/utils/pdfGenerator';
-import type { Facture, FactureItem, Client, CreateFactureData } from '@/types';
+import type { Facture, FactureItem, Client } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
+import { validateFactureForm } from '@/lib/validation';
+import { formatCurrency } from '@/utils/formatCurrency';
 
 interface FactureFormProps {
   isOpen: boolean;
@@ -77,35 +73,28 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
           .order('nom');
         setClients(clientsData || []);
 
-        // Charger les frais de livraison
-        const { data: shippingData } = await supabase
+        // Charger les paramètres
+        const { data: settingsData } = await supabase
           .from('settings')
           .select('cle, valeur')
-          .eq('categorie', 'shipping');
-
-        const settings: any = {};
-        shippingData?.forEach(item => {
-          settings[item.cle] = parseFloat(item.valeur);
-        });
+          .in('cle', ['frais_livraison_aerien', 'frais_livraison_maritime', 'conditions_vente_defaut']);
         
-        setShippingSettings({
-          aerien: settings.frais_aerien_par_kg || 16,
-          maritime: settings.frais_maritime_par_cbm || 450
-        });
-
-        // Charger les conditions de vente par défaut
-        const { data: conditionsData } = await supabase
-          .from('settings')
-          .select('valeur')
-          .eq('categorie', 'invoice')
-          .eq('cle', 'conditions_vente_defaut')
-          .single();
-        
-        if (conditionsData?.valeur) {
-          setDefaultConditionsVente(conditionsData.valeur);
+        if (settingsData) {
+          const settings = settingsData.reduce((acc, setting) => {
+            acc[setting.cle.replace('frais_livraison_', '')] = parseFloat(setting.valeur);
+            return acc;
+          }, {} as Record<string, number>);
+          
+          setShippingSettings({
+            aerien: settings.aerien || 16,
+            maritime: settings.maritime || 450
+          });
+          
+          const conditionsVente = settingsData.find(s => s.cle === 'conditions_vente_defaut');
+          setDefaultConditionsVente(conditionsVente?.valeur || '');
         }
       } catch (error) {
-        console.error('Erreur lors du chargement des données:', error);
+        console.error('Error loading data:', error);
       }
     };
 
@@ -114,20 +103,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
     }
   }, [isOpen]);
 
-  // Mettre à jour les conditions de vente dynamiquement selon le mode de livraison
-  useEffect(() => {
-    if (defaultConditionsVente && !facture) {
-      // Remplacer les tags dynamiquement
-      const updatedConditions = defaultConditionsVente
-        .replace(/\[avion\]/gi, formData.mode_livraison === 'aerien' ? `${shippingSettings.aerien}$/kg` : '')
-        .replace(/\[bateau\]/gi, formData.mode_livraison === 'maritime' ? `${shippingSettings.maritime}$/cbm` : '')
-        .trim();
-      
-      setFormData(prev => ({ ...prev, conditions_vente: updatedConditions }));
-    }
-  }, [formData.mode_livraison, defaultConditionsVente, shippingSettings, facture]);
-
-  // Charger les données de la facture si en mode édition
+  // Charger les données de la facture si mode édition
   useEffect(() => {
     if (facture && isOpen) {
       setFormData({
@@ -140,31 +116,58 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
         date_emission: facture.date_emission
       });
 
-      // Charger le client sélectionné
-      const client = clients.find(c => c.id === facture.client_id);
-      setSelectedClient(client || null);
+      // Charger les items
+      const loadItems = async () => {
+        try {
+          const { data: itemsData } = await supabase
+            .from('facture_items')
+            .select('*')
+            .eq('facture_id', facture.id)
+            .order('numero_ligne');
+          
+          if (itemsData && itemsData.length > 0) {
+            const formattedItems = itemsData.map(item => ({
+              tempId: item.id,
+              numero_ligne: item.numero_ligne,
+              image_url: item.image_url || '',
+              product_url: item.product_url || '',
+              quantite: item.quantite,
+              description: item.description,
+              prix_unitaire: item.prix_unitaire,
+              poids: item.poids,
+              montant_total: item.montant_total
+            }));
+            setItems(formattedItems);
+          } else {
+            setItems([{
+              tempId: '1',
+              numero_ligne: 1,
+              image_url: '',
+              product_url: '',
+              quantite: 1,
+              description: '',
+              prix_unitaire: 0,
+              poids: 0,
+              montant_total: 0
+            }]);
+          }
+        } catch (error) {
+          console.error('Error loading items:', error);
+        }
+      };
 
-      // Charger les items (simulation - à adapter selon votre structure)
-      if (facture.items) {
-        const itemsForm = facture.items.map((item, index) => ({
-          ...item,
-          tempId: `existing-${item.id}`,
-          numero_ligne: index + 1
-        }));
-        setItems(itemsForm);
-      }
-    } else {
-      // Reset formulaire pour nouvelle facture
+      loadItems();
+    } else if (!facture && isOpen) {
+      // Reset form pour nouvelle facture
       setFormData({
         client_id: '',
         type: 'devis',
         mode_livraison: 'aerien',
         devise: 'USD',
-        conditions_vente: '',
+        conditions_vente: defaultConditionsVente,
         notes: '',
         date_emission: new Date().toISOString().split('T')[0]
       });
-      setSelectedClient(null);
       setItems([{
         tempId: '1',
         numero_ligne: 1,
@@ -177,7 +180,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
         montant_total: 0
       }]);
     }
-  }, [facture, isOpen, clients]);
+  }, [facture, isOpen, defaultConditionsVente]);
 
   // Calculer les totaux
   const calculateTotals = () => {
@@ -186,7 +189,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
     const shippingFee = formData.mode_livraison === 'aerien' 
       ? totalPoids * shippingSettings.aerien 
       : totalPoids * shippingSettings.maritime;
-    const fraisTransportDouane = shippingFee; // Selon votre logique
+    const fraisTransportDouane = shippingFee;
     const totalGeneral = subtotal + fraisTransportDouane;
 
     return {
@@ -198,8 +201,6 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
     };
   };
 
-  const totals = calculateTotals();
-
   // Gérer le changement de client
   const handleClientChange = (clientId: string) => {
     const client = clients.find(c => c.id === clientId);
@@ -207,7 +208,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
     setFormData(prev => ({ ...prev, client_id: clientId }));
   };
 
-  // Ajouter une ligne
+  // Ajouter un item
   const addItem = () => {
     const newItem: FactureItemForm = {
       tempId: Date.now().toString(),
@@ -223,7 +224,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
     setItems([...items, newItem]);
   };
 
-  // Supprimer une ligne
+  // Supprimer un item
   const removeItem = (tempId: string) => {
     if (items.length > 1) {
       const updatedItems = items.filter(item => item.tempId !== tempId);
@@ -241,9 +242,9 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
       if (item.tempId === tempId) {
         const updatedItem = { ...item, [field]: value };
         
-        // Recalculer le montant total si nécessaire
-        if (field === 'quantite' || field === 'prix_unitaire') {
-          updatedItem.montant_total = updatedItem.quantite * updatedItem.prix_unitaire;
+        // Recalculer le montant total si prix ou quantité change
+        if (field === 'prix_unitaire' || field === 'quantite') {
+          updatedItem.montant_total = updatedItem.prix_unitaire * updatedItem.quantite;
         }
         
         return updatedItem;
@@ -255,21 +256,20 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
 
   // Sauvegarder la facture
   const handleSave = async () => {
-    if (!formData.client_id || items.some(item => !item.description || item.prix_unitaire <= 0)) {
-      showError('Veuillez remplir tous les champs obligatoires');
-      return;
-    }
-
     setLoading(true);
     try {
-      const factureData: CreateFactureData = {
-        client_id: formData.client_id,
-        type: formData.type,
-        mode_livraison: formData.mode_livraison,
-        devise: formData.devise,
-        date_emission: formData.date_emission,
-        conditions_vente: formData.conditions_vente,
-        notes: formData.notes,
+      const validationResult = validateFactureForm({
+        ...formData,
+        items: items
+      });
+
+      if (!validationResult.isValid) {
+        showError(validationResult.errors?.[0] || 'Veuillez corriger les erreurs dans le formulaire');
+        return;
+      }
+
+      const factureData = {
+        ...formData,
         items: items.map(item => ({
           numero_ligne: item.numero_ligne,
           image_url: item.image_url,
@@ -293,252 +293,163 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error('Erreur lors de la sauvegarde:', error);
-      showError(error.message || 'Erreur lors de la sauvegarde');
+      console.error('Error saving facture:', error);
+      showError('Erreur lors de la sauvegarde de la facture');
     } finally {
       setLoading(false);
     }
   };
 
-  // Générer le PDF
-  const handleGeneratePDF = async () => {
-    if (!facture) return;
-    
-    try {
-      // Récupérer les items complets
-      const { data: itemsData } = await supabase
-        .from('facture_items')
-        .select('*')
-        .eq('facture_id', facture.id);
-
-      const factureWithItems = {
-        ...facture,
-        items: itemsData || []
-      };
-
-      await generateFacturePDF(factureWithItems);
-    } catch (error: any) {
-      console.error('Erreur lors de la génération du PDF:', error);
-      showError('Erreur lors de la génération du PDF');
-    }
-  };
+  const totals = calculateTotals();
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {facture ? 'Modifier' : 'Créer'} {formData.type === 'devis' ? 'un Devis' : 'une Facture'}
+            {facture ? 'Modifier' : 'Créer'} {formData.type === 'devis' ? 'Devis' : 'Facture'}
           </DialogTitle>
         </DialogHeader>
-
+        
         <div className="space-y-6">
-          {/* Informations générales */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Package className="mr-2 h-5 w-5" />
-                Informations générales
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <Label>Type</Label>
-                  <Select value={formData.type} onValueChange={(value: 'devis' | 'facture') => 
-                    setFormData(prev => ({ ...prev, type: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="devis">Devis</SelectItem>
-                      <SelectItem value="facture">Facture</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>Client</Label>
-                  <Select value={formData.client_id} onValueChange={handleClientChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map(client => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.nom}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>Mode livraison</Label>
-                  <Select value={formData.mode_livraison} onValueChange={(value: 'aerien' | 'maritime') => 
-                    setFormData(prev => ({ ...prev, mode_livraison: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="aerien">
-                        <div className="flex items-center">
-                          <Plane className="mr-2 h-4 w-4" />
-                          Aérien ({shippingSettings.aerien}$/{formData.mode_livraison === 'aerien' ? 'kg' : 'cbm'})
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="maritime">
-                        <div className="flex items-center">
-                          <Ship className="mr-2 h-4 w-4" />
-                          Maritime ({shippingSettings.maritime}$/{formData.mode_livraison === 'maritime' ? 'cbm' : 'kg'})
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>Devise</Label>
-                  <Select value={formData.devise} onValueChange={(value: 'USD' | 'CDF') => 
-                    setFormData(prev => ({ ...prev, devise: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="CDF">CDF</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Informations client sélectionné */}
-              {selectedClient && (
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <h4 className="font-medium mb-2">Informations client</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                    <div><strong>Nom:</strong> {selectedClient.nom}</div>
-                    <div><strong>Téléphone:</strong> {selectedClient.telephone}</div>
-                    <div><strong>Ville:</strong> {selectedClient.ville}</div>
+          {/* Formulaire principal */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Client</Label>
+              <ClientCombobox
+                clients={clients}
+                value={formData.client_id}
+                onValueChange={handleClientChange}
+                placeholder="Sélectionner un client"
+              />
+            </div>
+            
+            <div>
+              <Label>Type</Label>
+              <select
+                value={formData.type}
+                onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as 'devis' | 'facture' }))}
+                className="w-full p-2 border rounded"
+              >
+                <option value="devis">Devis</option>
+                <option value="facture">Facture</option>
+              </select>
+            </div>
+            
+            <div>
+              <Label>Mode de livraison</Label>
+              <select
+                value={formData.mode_livraison}
+                onChange={(e) => setFormData(prev => ({ ...prev, mode_livraison: e.target.value as 'aerien' | 'maritime' }))}
+                className="w-full p-2 border rounded"
+              >
+                <option value="aerien">Aérien</option>
+                <option value="maritime">Maritime</option>
+              </select>
+            </div>
+            
+            <div>
+              <Label>Devise</Label>
+              <select
+                value={formData.devise}
+                onChange={(e) => setFormData(prev => ({ ...prev, devise: e.target.value as 'USD' | 'CDF' }))}
+                className="w-full p-2 border rounded"
+              >
+                <option value="USD">USD</option>
+                <option value="CDF">CDF</option>
+              </select>
+            </div>
+          </div>
+          
+          {/* Info client */}
+          {selectedClient && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Informations Client</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <strong>Nom:</strong> {selectedClient.nom}
+                  </div>
+                  <div>
+                    <strong>Téléphone:</strong> {selectedClient.telephone}
+                  </div>
+                  <div>
+                    <strong>Ville:</strong> {selectedClient.ville}
                   </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Articles */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Articles</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                <span>Articles</span>
                 <Button onClick={addItem} size="sm">
                   <Plus className="mr-2 h-4 w-4" />
-                  Ajouter une ligne
+                  Ajouter un article
                 </Button>
-              </div>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {items.map((item) => (
-                  <div key={item.tempId} className="grid grid-cols-12 gap-3 items-start p-4 border rounded-lg">
-                    {/* Image Preview */}
-                    <div className="col-span-12 md:col-span-2">
-                      <Label className="text-xs">Image</Label>
-                      <div className="space-y-2">
-                        <Input
-                          value={item.image_url}
-                          onChange={(e) => updateItem(item.tempId, 'image_url', e.target.value)}
-                          placeholder="URL de l'image"
-                          className="text-xs"
-                        />
-                        {item.image_url && (
-                          <div className="relative w-full h-24 bg-gray-100 rounded border overflow-hidden">
-                            <img
-                              src={item.image_url}
-                              alt="Preview"
-                              className="w-full h-full object-contain"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                const parent = target.parentElement;
-                                if (parent && !parent.querySelector('.error-text')) {
-                                  const errorDiv = document.createElement('div');
-                                  errorDiv.className = 'error-text flex items-center justify-center h-full text-xs text-gray-400';
-                                  errorDiv.textContent = 'Image non disponible';
-                                  parent.appendChild(errorDiv);
-                                }
-                              }}
-                            />
-                          </div>
-                        )}
+                  <div key={item.tempId} className="grid grid-cols-12 gap-4 items-center">
+                    <div className="col-span-1">
+                      <Label className="text-xs">N°</Label>
+                      <div className="font-medium text-center">{item.numero_ligne}</div>
+                    </div>
+                    
+                    <div className="col-span-5">
+                      <Label className="text-xs">Description *</Label>
+                      <Input
+                        value={item.description}
+                        onChange={(e) => updateItem(item.tempId, 'description', e.target.value)}
+                        placeholder="Description du produit"
+                      />
+                    </div>
+
+                    <div className="col-span-2">
+                      <Label className="text-xs">Quantité *</Label>
+                      <Input
+                        type="number"
+                        value={item.quantite}
+                        onChange={(e) => updateItem(item.tempId, 'quantite', parseInt(e.target.value) || 0)}
+                        min="1"
+                      />
+                    </div>
+
+                    <div className="col-span-2">
+                      <Label className="text-xs">Prix unitaire *</Label>
+                      <Input
+                        type="number"
+                        value={item.prix_unitaire}
+                        onChange={(e) => updateItem(item.tempId, 'prix_unitaire', parseFloat(e.target.value) || 0)}
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+
+                    <div className="col-span-1">
+                      <Label className="text-xs">Montant</Label>
+                      <div className="font-medium text-green-600">
+                        {formatCurrency(item.montant_total, formData.devise)}
                       </div>
                     </div>
 
-                    <div className="col-span-12 md:col-span-10 grid grid-cols-12 gap-2 items-end">
-                      <div className="col-span-1">
-                        <Label className="text-xs">N°</Label>
-                        <div className="font-medium text-center">{item.numero_ligne}</div>
-                      </div>
-                      
-                      <div className="col-span-3">
-                        <Label className="text-xs">Description *</Label>
-                        <Input
-                          value={item.description}
-                          onChange={(e) => updateItem(item.tempId, 'description', e.target.value)}
-                          placeholder="Description du produit"
-                        />
-                      </div>
-
-                      <div className="col-span-2">
-                        <Label className="text-xs">Qty *</Label>
-                        <Input
-                          type="number"
-                          value={item.quantite}
-                          onChange={(e) => updateItem(item.tempId, 'quantite', parseInt(e.target.value) || 0)}
-                          min="1"
-                        />
-                      </div>
-
-                      <div className="col-span-2">
-                        <Label className="text-xs">Prix unit. *</Label>
-                        <Input
-                          type="number"
-                          value={item.prix_unitaire}
-                          onChange={(e) => updateItem(item.tempId, 'prix_unitaire', parseFloat(e.target.value) || 0)}
-                          min="0"
-                          step="0.01"
-                        />
-                      </div>
-
-                      <div className="col-span-2">
-                        <Label className="text-xs">Poids ({formData.mode_livraison === 'aerien' ? 'kg' : 'cbm'})</Label>
-                        <Input
-                          type="number"
-                          value={item.poids}
-                          onChange={(e) => updateItem(item.tempId, 'poids', parseFloat(e.target.value) || 0)}
-                          min="0"
-                          step="0.01"
-                        />
-                      </div>
-
-                      <div className="col-span-2">
-                        <Label className="text-xs">Montant</Label>
-                        <div className="font-medium text-green-500 p-2">
-                          {formData.devise === 'USD' ? '$' : ''}{item.montant_total.toFixed(2)}{formData.devise === 'CDF' ? ' FC' : ''}
-                        </div>
-                      </div>
-
-                      <div className="col-span-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeItem(item.tempId)}
-                          disabled={items.length === 1}
-                          className="text-red-600 hover:text-red-700 mt-5"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                    <div className="col-span-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeItem(item.tempId)}
+                        disabled={items.length === 1}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -559,7 +470,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
                 <div>
                   <Label className="text-xs">Sous-total</Label>
                   <div className="font-medium">
-                    {formData.devise === 'USD' ? '$' : ''}{totals.subtotal.toFixed(2)}{formData.devise === 'CDF' ? ' FC' : ''}
+                    {formatCurrency(totals.subtotal, formData.devise)}
                   </div>
                 </div>
                 <div>
@@ -571,13 +482,13 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
                 <div>
                   <Label className="text-xs">Frais transport</Label>
                   <div className="font-medium">
-                    {formData.devise === 'USD' ? '$' : ''}{totals.shippingFee.toFixed(2)}{formData.devise === 'CDF' ? ' FC' : ''}
+                    {formatCurrency(totals.shippingFee, formData.devise)}
                   </div>
                 </div>
                 <div>
                   <Label className="text-xs">Total général</Label>
-                  <div className="font-bold text-lg text-green-500">
-                    {formData.devise === 'USD' ? '$' : ''}{totals.totalGeneral.toFixed(2)}{formData.devise === 'CDF' ? ' FC' : ''}
+                  <div className="font-bold text-lg text-green-600">
+                    {formatCurrency(totals.totalGeneral, formData.devise)}
                   </div>
                 </div>
               </div>
@@ -602,11 +513,29 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
             </CardContent>
           </Card>
 
+          {/* Notes */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Notes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div>
+                <Label>Notes</Label>
+                <Textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Notes..."
+                  rows={2}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Actions */}
           <div className="flex justify-between">
             <div className="space-x-2">
               {facture && (
-                <Button variant="outline" onClick={handleGeneratePDF}>
+                <Button variant="outline" onClick={() => {}}>
                   <Upload className="mr-2 h-4 w-4" />
                   Générer PDF
                 </Button>

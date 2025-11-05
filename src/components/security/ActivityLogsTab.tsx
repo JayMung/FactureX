@@ -16,7 +16,8 @@ import {
   Settings, 
   FileText,
   Eye,
-  Activity
+  Activity,
+  User
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
@@ -402,8 +403,8 @@ const ActivityLogsTab: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Table */}
-      <Card>
+      {/* Table - Desktop */}
+      <Card className="hidden md:block">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Liste des activités</span>
@@ -496,10 +497,83 @@ const ActivityLogsTab: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Cards - Mobile */}
+      <div className="md:hidden space-y-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold">Liste des activités</h3>
+          <Badge variant="outline">{totalCount} activités</Badge>
+        </div>
+        
+        {loading ? (
+          Array.from({ length: 5 }).map((_, index) => (
+            <Card key={index}>
+              <CardContent className="p-4 space-y-3">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-24" />
+              </CardContent>
+            </Card>
+          ))
+        ) : activities.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-500">Aucune activité trouvée</p>
+            </CardContent>
+          </Card>
+        ) : (
+          activities.map((activity) => (
+            <Card key={activity.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <div className={cn("inline-flex p-1.5 rounded-full", getActivityColor(activity.action))}>
+                        {getActivityIcon(activity.action)}
+                      </div>
+                    </div>
+                    <p className="font-medium text-gray-900 dark:text-white mb-1">
+                      {formatActivityMessage(activity)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {formatDateTime(activity.created_at)}
+                    </p>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => handleViewDetails(activity)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <div className="space-y-1 text-sm">
+                  {activity.user && (
+                    <div className="flex items-center text-gray-600 dark:text-gray-400">
+                      <User className="h-3 w-3 mr-2 flex-shrink-0" />
+                      <span className="truncate">{activity.user.first_name} {activity.user.last_name}</span>
+                    </div>
+                  )}
+                  {activity.cible && (
+                    <div className="flex items-center text-gray-600 dark:text-gray-400">
+                      <FileText className="h-3 w-3 mr-2 flex-shrink-0" />
+                      <Badge variant="outline" className="text-xs">
+                        {activity.cible}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
       {/* Pagination avec sélecteur de taille */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-600">Afficher</span>
+          <span className="text-sm text-gray-600 hidden sm:inline">Afficher</span>
           <Select value={pageSize.toString()} onValueChange={(value) => {
             setPageSize(parseInt(value));
             setCurrentPage(1);
@@ -514,7 +588,7 @@ const ActivityLogsTab: React.FC = () => {
               <SelectItem value="100">100</SelectItem>
             </SelectContent>
           </Select>
-          <span className="text-sm text-gray-600">par page</span>
+          <span className="text-sm text-gray-600 hidden sm:inline">par page</span>
         </div>
         
         {totalPages > 1 && (

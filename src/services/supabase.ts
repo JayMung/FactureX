@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { fieldLevelSecurityService } from '@/lib/security/field-level-security';
 import type { 
   Client, 
   Transaction, 
@@ -21,14 +22,24 @@ export class SupabaseService {
   // Clients
   async getClients(page: number = 1, pageSize: number = 10, filters: ClientFilters = {}): Promise<ApiResponse<PaginatedResponse<Client>>> {
     try {
+      // SECURITY: Use field-level security to prevent sensitive data exposure
+      const secureSelect = await fieldLevelSecurityService.buildSecureSelect('clients');
+      
       let query = supabase
         .from('clients')
-        .select('*', { count: 'exact' })
+        .select(secureSelect, { count: 'exact' })
         .range((page - 1) * pageSize, page * pageSize - 1)
         .order('created_at', { ascending: false });
 
       if (filters.search) {
-        query = query.or(`nom.ilike.%${filters.search}%,telephone.ilike.%${filters.search}%`);
+        // SECURITY: Only search in allowed fields
+        const allowedFields = await fieldLevelSecurityService.getFilteredFields('clients');
+        const searchFields = allowedFields.filter(field => ['nom', 'telephone'].includes(field));
+        
+        if (searchFields.length > 0) {
+          const searchConditions = searchFields.map(field => `${field}.ilike.%${filters.search}%`).join(',');
+          query = query.or(searchConditions);
+        }
       }
 
       if (filters.ville) {
@@ -39,11 +50,15 @@ export class SupabaseService {
 
       if (error) throw error;
 
-      const clients = data || [];
+      // SECURITY: Filter response data to ensure no sensitive information leaks
+      const filteredClients = await fieldLevelSecurityService.filterResponseData('clients', data || []);
 
       // Compute total_paye per client from transactions (USD only, exclude canceled)
-      if (clients.length > 0) {
-        const clientIds = clients.map(c => c.id);
+      // SECURITY: Only add financial data if user has permission
+      const canSeeFinancialData = await fieldLevelSecurityService.isFieldAllowed('clients', 'total_paye');
+      
+      if (filteredClients.length > 0 && canSeeFinancialData) {
+        const clientIds = filteredClients.map(c => c.id);
         const { data: txData, error: txError } = await supabase
           .from('transactions')
           .select('client_id, montant, devise, statut')
@@ -56,14 +71,14 @@ export class SupabaseService {
               totalsMap.set(t.client_id, (totalsMap.get(t.client_id) || 0) + (t.montant || 0));
             }
           });
-          clients.forEach(c => {
+          filteredClients.forEach(c => {
             (c as any).total_paye = totalsMap.get(c.id) || 0;
           });
         }
       }
 
       const result: PaginatedResponse<Client> = {
-        data: clients,
+        data: filteredClients,
         count: count || 0,
         page,
         pageSize,
@@ -71,6 +86,56 @@ export class SupabaseService {
       };
 
       return { data: result };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  }
+
+  async getClientsGlobalTotals(filters: ClientFilters = {}): Promise<ApiResponse<{ totalPaye: number; totalCount: number }>> {
+    try {
+      // Requête pour le total payé
+      let transQuery = supabase
+        .from('transactions')
+        .select('montant, devise, statut, clients!inner(id)');
+
+      // Appliquer les filtres de recherche sur les clients
+      if (filters.search) {
+        transQuery = transQuery.or(`clients.nom.ilike.%${filters.search}%,clients.telephone.ilike.%${filters.search}%`);
+      }
+
+      if (filters.ville) {
+        transQuery = transQuery.eq('clients.ville', filters.ville);
+      }
+
+      // Filtrer pour exclure les transactions annulées et ne compter que USD
+      transQuery = transQuery.neq('statut', 'Annulé').eq('devise', 'USD');
+
+      const { data: transData, error: transError } = await transQuery;
+
+      if (transError) throw transError;
+
+      // Calculer le total payé
+      const totalPaye = (transData || []).reduce((sum, t) => sum + (t.montant || 0), 0);
+
+      // Requête pour le nombre total de clients
+      let clientQuery = supabase
+        .from('clients')
+        .select('id', { count: 'exact', head: true });
+
+      // Appliquer les mêmes filtres
+      if (filters.search) {
+        clientQuery = clientQuery.or(`nom.ilike.%${filters.search}%,telephone.ilike.%${filters.search}%`);
+      }
+
+      if (filters.ville) {
+        clientQuery = clientQuery.eq('ville', filters.ville);
+      }
+
+      const { count, error: countError } = await clientQuery;
+
+      if (countError) throw countError;
+
+      return { data: { totalPaye, totalCount: count || 0 } };
     } catch (error: any) {
       return { error: error.message };
     }
@@ -166,11 +231,15 @@ export class SupabaseService {
   // Transactions
   async getTransactions(page: number = 1, pageSize: number = 10, filters: TransactionFilters = {}): Promise<ApiResponse<PaginatedResponse<Transaction & { client: Client }>>> {
     try {
+      // SECURITY: Use field-level security for both transactions and client data
+      const secureTransactionSelect = await fieldLevelSecurityService.buildSecureSelect('transactions');
+      const secureClientSelect = await fieldLevelSecurityService.buildSecureSelect('clients');
+      
       let query = supabase
         .from('transactions')
         .select(`
-          *,
-          client:clients(*)
+          ${secureTransactionSelect},
+          client:clients(${secureClientSelect})
         `, { count: 'exact' })
         .range((page - 1) * pageSize, page * pageSize - 1)
         .order('created_at', { ascending: false });
@@ -199,11 +268,14 @@ export class SupabaseService {
         query = query.lte('created_at', filters.dateTo);
       }
 
-      if (filters.minAmount) {
+      // SECURITY: Only allow amount filtering if user can see sensitive financial data
+      const canSeeFinancialData = await fieldLevelSecurityService.isFieldAllowed('transactions', 'montant');
+      
+      if (filters.minAmount && canSeeFinancialData) {
         query = query.gte('montant', parseFloat(filters.minAmount));
       }
 
-      if (filters.maxAmount) {
+      if (filters.maxAmount && canSeeFinancialData) {
         query = query.lte('montant', parseFloat(filters.maxAmount));
       }
 
@@ -211,8 +283,11 @@ export class SupabaseService {
 
       if (error) throw error;
 
+      // SECURITY: Additional filtering to ensure no sensitive data leaks
+      const filteredData = await fieldLevelSecurityService.filterResponseData('transactions', data || []);
+
       const result: PaginatedResponse<Transaction & { client: Client }> = {
-        data: data || [],
+        data: filteredData,
         count: count || 0,
         page,
         pageSize,
@@ -255,9 +330,10 @@ export class SupabaseService {
 
       const tauxUSD = transactionData.devise === 'USD' ? 1 : rates.data!.usdToCdf;
       const fraisUSD = transactionData.montant * (fees.data![transactionData.motif.toLowerCase() as keyof Fees] / 100);
+      const montantNet = transactionData.montant - fraisUSD; // Montant après déduction des frais
       const montantCNY = transactionData.devise === 'USD' 
-        ? transactionData.montant * rates.data!.usdToCny 
-        : (transactionData.montant / tauxUSD) * rates.data!.usdToCny;
+        ? montantNet * rates.data!.usdToCny 
+        : (montantNet / tauxUSD) * rates.data!.usdToCny;
       const benefice = fraisUSD;
 
       const fullTransactionData = {
@@ -555,20 +631,29 @@ export class SupabaseService {
   // User Profiles
   async getUserProfiles(): Promise<ApiResponse<(UserProfile & { user: { email: string } })[]>> {
     try {
+      // SECURITY: Use field-level security to prevent sensitive data exposure
+      const secureSelect = await fieldLevelSecurityService.buildSecureSelect('profiles');
+      
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(secureSelect)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       const profiles = data || [];
       
+      // SECURITY: Filter response data to ensure no sensitive information leaks
+      const filteredProfiles = await fieldLevelSecurityService.filterResponseData('profiles', profiles);
+      
       // Pour la table profiles, l'email est directement dans la table
-      const profilesWithEmail = profiles.map(profile => ({
+      // SECURITY: Only include email if user has permission
+      const canSeeEmail = await fieldLevelSecurityService.isFieldAllowed('profiles', 'email');
+      
+      const profilesWithEmail = filteredProfiles.map(profile => ({
         ...profile,
         user: { 
-          email: profile.email || ''
+          email: canSeeEmail && profile.email ? profile.email : '[MASQUÉ]'
         }
       }));
 
@@ -674,60 +759,38 @@ export class SupabaseService {
     }
   }
 
-  // Activity Logs
-  async getActivityLogs(page: number = 1, pageSize: number = 10): Promise<ApiResponse<PaginatedResponse<ActivityLog & { user: { email: string } }>>> {
+  // Activity Logs - SECURE VERSION
+  async getActivityLogs(page: number = 1, pageSize: number = 10): Promise<ApiResponse<PaginatedResponse<ActivityLog & { user: { email: string; first_name: string; last_name: string } }>>> {
     try {
-      const { data, error, count } = await supabase
-        .from('activity_logs')
-        .select('*', { count: 'exact' })
-        .range((page - 1) * pageSize, page * pageSize - 1)
-        .order('date', { ascending: false });
+      // Use secure RPC function instead of direct table access
+      const { data, error } = await supabase.rpc('get_activity_logs_secure', {
+        page_num: page,
+        page_size: pageSize
+      });
 
       if (error) throw error;
 
-      const logs = data || [];
-      const userIds = [...new Set(logs.map(l => l.user_id).filter(Boolean))];
-      
-      if (userIds.length === 0) {
-        const result: PaginatedResponse<ActivityLog & { user: { email: string } }> = {
-          data: logs.map(l => ({ ...l, user: { email: '' } })),
-          count: count || 0,
-          page,
-          pageSize,
-          totalPages: Math.ceil((count || 0) / pageSize)
-        };
-        return { data: result };
+      // Get total count for pagination
+      const { data: countData, error: countError } = await supabase.rpc('count_activity_logs_secure');
+
+      if (countError) {
+        console.warn('Failed to get log count:', countError);
       }
 
-      // Fetch user data from profiles table instead of auth.admin
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, email, first_name, last_name')
-        .in('id', userIds);
-
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
-      }
-
-      const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
-
-      const logsWithEmail = logs.map(log => ({
-        ...log,
-        user: { 
-          email: profilesMap.get(log.user_id)?.email || 'Utilisateur inconnu'
-        }
-      }));
-
-      const result: PaginatedResponse<ActivityLog & { user: { email: string } }> = {
-        data: logsWithEmail,
-        count: count || 0,
+      const result: PaginatedResponse<ActivityLog & { user: { email: string; first_name: string; last_name: string } }> = {
+        data: data || [],
+        count: countData || 0,
         page,
         pageSize,
-        totalPages: Math.ceil((count || 0) / pageSize)
+        totalPages: Math.ceil((countData || 0) / pageSize)
       };
 
       return { data: result };
     } catch (error: any) {
+      // Handle permission errors specifically
+      if (error.message.includes('Access denied')) {
+        return { error: 'Accès refusé: Permissions administrateur requises pour consulter les logs d\'activité' };
+      }
       return { error: error.message };
     }
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+// @ts-ignore - Temporary workaround for react-router-dom types
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
@@ -10,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ClientCombobox } from '@/components/ui/client-combobox';
 import { Badge } from '@/components/ui/badge';
 import { 
   Plus, 
@@ -22,13 +24,14 @@ import {
   RotateCcw,
   Clock
 } from 'lucide-react';
-import { useClients } from '../hooks/useClients';
+import { useAllClients } from '../hooks/useClients';
 import { useFactures } from '../hooks/useFactures';
 import { useFees, useExchangeRates } from '../hooks/useSettings';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { showSuccess, showError } from '@/utils/toast';
 import ImagePreview from '@/components/ui/ImagePreview';
 import { supabase } from '@/integrations/supabase/client';
+import { sanitizeHtml, sanitizeUrl } from '@/lib/xss-protection';
 import type { Client, CreateFactureData, FactureItem } from '@/types';
 
 const FacturesCreate: React.FC = () => {
@@ -41,7 +44,7 @@ const FacturesCreate: React.FC = () => {
   });
 
   const navigate = useNavigate();
-  const { clients } = useClients(1, {});
+  const { clients } = useAllClients();
   const { fees } = useFees();
   const { rates } = useExchangeRates();
   const { createFacture, updateFacture, getFactureWithItems } = useFactures();
@@ -65,6 +68,7 @@ const FacturesCreate: React.FC = () => {
   const [isEditingFrais, setIsEditingFrais] = useState(false);
   const [customTransportFee, setCustomTransportFee] = useState<number | null>(null);
   const [isEditingTransport, setIsEditingTransport] = useState(false);
+  const [tempTransportValue, setTempTransportValue] = useState<string>('');
   const [defaultConditions, setDefaultConditions] = useState({
     aerien: '',
     maritime: ''
@@ -98,7 +102,7 @@ const FacturesCreate: React.FC = () => {
         setItems(savedData.items || []);
         setCustomFraisPercentage(savedData.customFraisPercentage);
         setCustomTransportFee(savedData.customTransportFee);
-        showSuccess('Brouillon restauré', { duration: 2000 });
+        showSuccess('Brouillon restauré');
       }
     }
   }, []); // Only run on mount
@@ -202,7 +206,7 @@ const FacturesCreate: React.FC = () => {
           mode_livraison: facture.mode_livraison,
           devise: facture.devise,
           date_emission: facture.date_emission.split('T')[0],
-          statut: facture.statut,
+          statut: facture.statut as 'brouillon' | 'en_attente' | 'validee' | 'annulee',
           conditions_vente: facture.conditions_vente || '',
           notes: facture.notes || '',
           informations_bancaires: facture.informations_bancaires || '',
@@ -222,6 +226,38 @@ const FacturesCreate: React.FC = () => {
           product_url: item.product_url
         }));
         setItems(loadedItems);
+
+        // Charger les valeurs personnalisées si elles existent
+        // Calculer le pourcentage de frais personnalisé
+        if (facture.frais && facture.subtotal) {
+          const calculatedPercentage = (facture.frais / facture.subtotal) * 100;
+          const defaultPercentage = fees?.commande || 15;
+          // Si le pourcentage est différent du défaut, c'est une valeur personnalisée
+          if (Math.abs(calculatedPercentage - defaultPercentage) > 0.01) {
+            setCustomFraisPercentage(calculatedPercentage);
+          }
+        }
+
+        // Charger les frais de transport personnalisés
+        // Calculer ce que serait la valeur automatique
+        const totalPoids = loadedItems.reduce((sum, item) => sum + item.poids, 0);
+        const fraisAerien = 16; // Valeur par défaut
+        const fraisMaritime = 450; // Valeur par défaut
+        const autoTransportFee = facture.mode_livraison === 'aerien' 
+          ? totalPoids * fraisAerien 
+          : totalPoids * fraisMaritime;
+        
+        // Convertir en USD si la facture est en CDF
+        const tauxUSDtoCDF = rates?.usdToCdf || 2100;
+        const conversionRate = facture.devise === 'CDF' ? tauxUSDtoCDF : 1;
+        const autoTransportFeeInCurrentCurrency = autoTransportFee * conversionRate;
+        
+        // Si les frais de transport sont différents de la valeur auto, c'est personnalisé
+        if (facture.frais_transport_douane && 
+            Math.abs(facture.frais_transport_douane - autoTransportFeeInCurrentCurrency) > 0.01) {
+          // Stocker en USD
+          setCustomTransportFee(facture.frais_transport_douane / conversionRate);
+        }
       } catch (error) {
         console.error('Error loading facture:', error);
         showError('Erreur lors du chargement de la facture');
@@ -274,7 +310,16 @@ const FacturesCreate: React.FC = () => {
   const updateItem = (tempId: string, field: keyof FactureItem, value: any) => {
     setItems(items.map(item => {
       if (item.tempId === tempId) {
-        const updatedItem = { ...item, [field]: value };
+        let sanitizedValue = value;
+        
+        // Sanitize text fields to prevent XSS
+        if (field === 'description') {
+          sanitizedValue = sanitizeHtml(value);
+        } else if (field === 'image_url' || field === 'product_url') {
+          sanitizedValue = sanitizeUrl(value);
+        }
+        
+        const updatedItem = { ...item, [field]: sanitizedValue };
         
         // Recalculate montant_total if quantite or prix_unitaire changes
         if (field === 'quantite' || field === 'prix_unitaire') {
@@ -322,18 +367,19 @@ const FacturesCreate: React.FC = () => {
     const fraisAerien = 16; // Default value
     const fraisMaritime = 450; // Default value
     
+    // Appliquer la conversion si la devise est CDF
+    const tauxUSDtoCDF = rates?.usdToCdf || 2100;
+    const conversionRate = formData.devise === 'CDF' ? tauxUSDtoCDF : 1;
+    
     // Use custom transport fee if set, otherwise calculate normally
+    // IMPORTANT: customTransportFee is always stored in USD
     const fraisTransportDouaneUSD = customTransportFee !== null 
-      ? customTransportFee 
+      ? customTransportFee  // Already in USD
       : (formData.mode_livraison === 'aerien' 
         ? totalPoids * fraisAerien 
         : totalPoids * fraisMaritime);
     
     const totalGeneralUSD = subtotalUSD + fraisUSD + fraisTransportDouaneUSD;
-
-    // Appliquer la conversion si la devise est CDF
-    const tauxUSDtoCDF = rates?.usdToCdf || 2100;
-    const conversionRate = formData.devise === 'CDF' ? tauxUSDtoCDF : 1;
     
     return {
       subtotal: subtotalUSD * conversionRate,
@@ -363,10 +409,18 @@ const FacturesCreate: React.FC = () => {
     setLoading(true);
     
     try {
+      // Calculer les totaux avec les valeurs personnalisées
+      const finalTotals = calculateTotals();
+      
       if (isEditMode && id) {
         // Mode édition
         await updateFacture(id, {
           ...formData,
+          subtotal: finalTotals.subtotal,
+          frais: finalTotals.frais,
+          frais_transport_douane: finalTotals.fraisTransportDouane,
+          total_poids: finalTotals.totalPoids,
+          total_general: finalTotals.totalGeneral,
           items: items.map(({ tempId, id: itemId, ...item }) => item)
         });
         // Toast déjà affiché par le hook
@@ -375,6 +429,11 @@ const FacturesCreate: React.FC = () => {
         // Mode création
         const factureData: CreateFactureData = {
           ...formData,
+          subtotal: finalTotals.subtotal,
+          frais: finalTotals.frais,
+          frais_transport_douane: finalTotals.fraisTransportDouane,
+          total_poids: finalTotals.totalPoids,
+          total_general: finalTotals.totalGeneral,
           items: items.map(({ tempId, ...item }) => item)
         };
         const newFacture = await createFacture(factureData);
@@ -414,7 +473,7 @@ const FacturesCreate: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <Button
-            variant="outline"
+            variant={"outline" as any}
             onClick={() => navigate('/factures')}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -441,7 +500,7 @@ const FacturesCreate: React.FC = () => {
                 size="sm"
                 onClick={() => {
                   clearSavedData();
-                  showSuccess('Brouillon supprimé', { duration: 2000 });
+                  showSuccess('Brouillon supprimé');
                 }}
                 className="text-gray-500 hover:text-red-600"
                 title="Supprimer le brouillon"
@@ -496,21 +555,12 @@ const FacturesCreate: React.FC = () => {
 
                   <div>
                     <Label htmlFor="client_id">Client</Label>
-                    <Select
+                    <ClientCombobox
+                      clients={clients}
                       value={formData.client_id}
                       onValueChange={(value) => setFormData({ ...formData, client_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un client" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.nom}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Sélectionner un client"
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -560,7 +610,7 @@ const FacturesCreate: React.FC = () => {
                       <Package className="mr-2 h-5 w-5" />
                       Articles
                     </CardTitle>
-                    <Button type="button" onClick={addItem} variant="outline" size="sm">
+                    <Button type="button" onClick={addItem} variant={"outline" as any} size="sm">
                       <Plus className="mr-2 h-4 w-4" />
                       Ajouter un article
                     </Button>
@@ -809,11 +859,29 @@ const FacturesCreate: React.FC = () => {
                           <span className="text-gray-600">Frais transport & douane:</span>
                           <Input
                             type="number"
-                            value={customTransportFee !== null ? customTransportFee : totals.fraisTransportDouane}
-                            onChange={(e) => setCustomTransportFee(parseFloat(e.target.value) || 0)}
-                            onBlur={() => setIsEditingTransport(false)}
+                            value={tempTransportValue}
+                            onChange={(e) => setTempTransportValue(e.target.value)}
+                            onFocus={() => {
+                              // Initialize temp value when entering edit mode
+                              const displayValue = customTransportFee !== null 
+                                ? (customTransportFee * totals.tauxConversion).toFixed(2)
+                                : totals.fraisTransportDouane.toFixed(2);
+                              setTempTransportValue(displayValue);
+                            }}
+                            onBlur={() => {
+                              // Save the value when leaving edit mode
+                              const valueInCurrentCurrency = parseFloat(tempTransportValue) || 0;
+                              const valueInUSD = valueInCurrentCurrency / totals.tauxConversion;
+                              setCustomTransportFee(valueInUSD);
+                              setIsEditingTransport(false);
+                            }}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') setIsEditingTransport(false);
+                              if (e.key === 'Enter') {
+                                const valueInCurrentCurrency = parseFloat(tempTransportValue) || 0;
+                                const valueInUSD = valueInCurrentCurrency / totals.tauxConversion;
+                                setCustomTransportFee(valueInUSD);
+                                setIsEditingTransport(false);
+                              }
                             }}
                             className="w-24 h-6 text-sm px-2"
                             autoFocus
@@ -831,6 +899,12 @@ const FacturesCreate: React.FC = () => {
                       <span className="font-medium">
                         {formData.devise === 'USD' ? '$' : ''}{totals.fraisTransportDouane.toFixed(2)}
                         {formData.devise === 'CDF' ? ' CDF' : ''}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Poids total:</span>
+                      <span className="font-medium text-green-600">
+                        {totals.totalPoids.toFixed(2)} {formData.mode_livraison === 'aerien' ? 'Kg' : 'CBM'}
                       </span>
                     </div>
                     <div className="border-t pt-2">
@@ -853,11 +927,11 @@ const FacturesCreate: React.FC = () => {
                     {!isEditMode && hasSavedData() && (
                       <Button
                         type="button"
-                        variant="outline"
+                        variant={"outline" as any}
                         className="w-full text-gray-600 hover:text-red-600 hover:border-red-200"
                         onClick={() => {
                           clearSavedData();
-                          showSuccess('Brouillon supprimé', { duration: 2000 });
+                          showSuccess('Brouillon supprimé');
                         }}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
@@ -885,7 +959,7 @@ const FacturesCreate: React.FC = () => {
                     
                     <Button
                       type="button"
-                      variant="outline"
+                      variant={"outline" as any}
                       className="w-full"
                       onClick={() => navigate('/factures')}
                     >

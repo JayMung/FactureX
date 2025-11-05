@@ -29,6 +29,8 @@ import ClientHistoryModal from '../components/clients/ClientHistoryModal';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
+import { usePermissions } from '../hooks/usePermissions';
+import EnhancedTable from '@/components/ui/enhanced-table';
 import { useClients } from '../hooks/useClients';
 import { useSorting } from '../hooks/useSorting';
 import { useBulkOperations } from '../hooks/useBulkOperations';
@@ -36,6 +38,14 @@ import Pagination from '../components/ui/pagination-custom';
 import type { Client } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { cn } from '@/lib/utils';
+import { 
+  sanitizeUserContent, 
+  validateContentSecurity,
+  sanitizeClientName,
+  sanitizePhoneNumber,
+  sanitizeCityName,
+  sanitizeCSV
+} from '@/lib/security/content-sanitization';
 
 const ClientsProtected: React.FC = () => {
   usePageSetup({
@@ -57,12 +67,14 @@ const ClientsProtected: React.FC = () => {
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { isAdmin } = usePermissions();
 
   const {
     clients,
     pagination,
     isLoading,
     error,
+    globalTotals,
     createClient,
     updateClient,
     deleteClient,
@@ -177,11 +189,11 @@ const ClientsProtected: React.FC = () => {
     const csv = [
       ['nom', 'telephone', 'ville', 'total_paye', 'created_at'],
       ...dataToExport.map((client: Client) => [
-        client.nom,
-        client.telephone,
-        client.ville,
-        client.total_paye?.toString() || '0',
-        client.created_at
+        sanitizeCSV(client.nom || ''),
+        sanitizeCSV(client.telephone || ''),
+        sanitizeCSV(client.ville || ''),
+        sanitizeCSV(client.total_paye?.toString() || '0'),
+        sanitizeCSV(client.created_at || '')
       ])
     ].map(row => row.join(',')).join('\n');
 
@@ -211,32 +223,10 @@ const ClientsProtected: React.FC = () => {
       </Layout>
     );
   }
-
   return (
     <ProtectedRouteEnhanced requiredModule="clients" requiredPermission="read">
       <Layout>
         <div className="space-y-6 animate-in fade-in duration-300">
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end">
-            <div className="flex space-x-2">
-              <Button 
-                variant="outline" 
-                onClick={exportClients}
-                disabled={sortedData.length === 0}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Exporter
-              </Button>
-              
-              <PermissionGuard module="clients" permission="create">
-                <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddClient}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nouveau Client
-                </Button>
-              </PermissionGuard>
-            </div>
-          </div>
-
           {/* Stats Cards - Design System */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {/* Total Clients Card */}
@@ -246,8 +236,9 @@ const ClientsProtected: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Clients</p>
                     <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {pagination?.count || 0}
+                      {globalTotals.totalCount || 0}
                     </p>
+                    <p className="text-xs text-muted-foreground mt-1">Toutes pages confondues</p>
                   </div>
                   <div className="p-3 rounded-full bg-green-500 flex-shrink-0">
                     <Users className="h-6 w-6 text-white" />
@@ -256,24 +247,40 @@ const ClientsProtected: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Total Payé Card */}
-            <Card className="card-base transition-shadow-hover">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Payé</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {formatCurrency(
-                        clients.reduce((sum, client: Client) => sum + (client.total_paye || 0), 0)
-                      )}
-                    </p>
+            {/* Carte conditionnelle - Admin voit Total Payé, Opérateurs voit Pays */}
+            {isAdmin ? (
+              <Card className="card-base Transition-shadow-hover">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Payé</p>
+                      <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+                        {formatCurrency(globalTotals.totalPaye)}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-full bg-blue-500 flex-shrink-0">
+                      <DollarSign className="h-6 w-6 text-white" />
+                    </div>
                   </div>
-                  <div className="p-3 rounded-full bg-blue-500 flex-shrink-0">
-                    <DollarSign className="h-6 w-6 text-white" />
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="card-base Transition-shadow-hover">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pays</p>
+                      <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+                        {new Set(sortedData.map((c: Client) => c.pays)).size}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-full bg-green-500 flex-shrink-0">
+                      <MapPin className="h-6 w-6 text-white" />
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Villes Card */}
             <Card className="card-base transition-shadow-hover">
@@ -343,7 +350,7 @@ const ClientsProtected: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Toutes les villes</SelectItem>
-                {Array.from(new Set(sortedData.map((c: Client) => c.ville))).map((city: string) => (
+                {Array.from(new Set(sortedData.map((c: Client) => sanitizeCityName(c.ville || '')))).map((city: string) => (
                   <SelectItem key={city} value={city}>{city}</SelectItem>
                 ))}
               </SelectContent>
@@ -357,191 +364,160 @@ const ClientsProtected: React.FC = () => {
           {/* Clients Table */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Liste des Clients</span>
-                {selectedClients.length > 0 && (
-                  <span className="text-sm text-gray-500">
-                    {selectedClients.length} sur {sortedData.length} sélectionné(s)
-                  </span>
-                )}
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <CardTitle>Liste des Clients</CardTitle>
+                  {selectedClients.length > 0 && (
+                    <span className="text-sm text-gray-500">
+                      {selectedClients.length} sur {sortedData.length} sélectionné(s)
+                    </span>
+                  )}
+                </div>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="outline"
+                    onClick={exportClients}
+                    disabled={sortedData.length === 0}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Exporter
+                  </Button>
+                  
+                  <PermissionGuard module="clients" permission="create">
+                    <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddClient}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Nouveau Client
+                    </Button>
+                  </PermissionGuard>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4 font-medium text-gray-700 w-12">
-                        <input
-                          type="checkbox"
-                          checked={isAllSelected}
-                          ref={(el) => {
-                            if (el) el.indeterminate = isPartiallySelected;
-                          }}
-                          onChange={(e) => handleSelectAll(e.target.checked)}
-                          className="rounded border-gray-300"
-                        />
-                      </th>
-                      <SortableHeader
-                        title="ID"
-                        sortKey="id"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                        className="min-w-[120px]"
-                      />
-                      <SortableHeader
-                        title="Nom"
-                        sortKey="nom"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="Téléphone"
-                        sortKey="telephone"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="Ville"
-                        sortKey="ville"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="Total Payé"
-                        sortKey="total_paye"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        title="Date"
-                        sortKey="created_at"
-                        currentSort={sortConfig}
-                        onSort={handleSort}
-                      />
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {isLoading && clients.length === 0 ? (
-                      Array.from({ length: 5 }).map((_, index) => (
-                        <tr key={index} className="border-b">
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-4" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
-                          <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
-                        </tr>
-                      ))
-                    ) : sortedData.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="py-16">
-                          <div className="flex flex-col items-center justify-center text-center">
-                            <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                              <Users className="h-8 w-8 text-gray-400" />
-                            </div>
-                            <p className="text-lg font-medium text-gray-900 mb-2">Aucun client</p>
-                            <p className="text-sm text-gray-500 mb-4">Commencez par ajouter votre premier client</p>
-                            <PermissionGuard module="clients" permission="create">
-                              <Button onClick={handleAddClient} className="bg-green-500 hover:bg-green-600">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Nouveau Client
-                              </Button>
-                            </PermissionGuard>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      sortedData.map((client: Client, index: number) => (
-                        <tr 
-                          key={client.id} 
-                          className={cn(
-                            "border-b hover:bg-gray-50",
-                            selectedClients.includes(client.id) && "bg-blue-50"
-                          )}
+              <EnhancedTable
+                data={sortedData}
+                loading={isLoading && clients.length === 0}
+                emptyMessage="Aucun client"
+                emptySubMessage="Commencez par ajouter votre premier client"
+                onSort={handleSort}
+                sortKey={sortConfig?.key}
+                sortDirection={sortConfig?.direction}
+                bulkSelect={{
+                  selected: selectedClients,
+                  onSelectAll: handleSelectAll,
+                  onSelectItem: handleClientSelection,
+                  getId: (client: Client) => client.id,
+                  isAllSelected: isAllSelected,
+                  isPartiallySelected: isPartiallySelected
+                }}
+                actionsColumn={{
+                  render: (client: Client, index: number) => (
+                    <div className="flex items-center space-x-2">
+                      <Button 
+                        {...({ variant: "ghost" } as any)}
+                        size="icon"
+                        onClick={() => handleViewClientHistory(client)}
+                        title="Voir l'historique"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      
+                      <PermissionGuard module="clients" permission="update">
+                        <Button 
+                          {...({ variant: "ghost" } as any)}
+                          size="icon"
+                          onClick={() => handleEditClient(client)}
+                          className="hover:bg-green-50"
                         >
-                          <td className="py-3 px-4">
-                            <input
-                              type="checkbox"
-                              checked={selectedClients.includes(client.id)}
-                              onChange={(e) => handleClientSelection(client.id, e.target.checked)}
-                              className="rounded border-gray-300"
-                            />
-                          </td>
-                          <td className="py-3 px-4 font-medium min-w-[120px]">
-                            {generateReadableId(client.id, index)}
-                          </td>
-                          <td className="py-3 px-4 font-medium">
-                            <button
-                              onClick={() => handleViewClientHistory(client)}
-                              className="text-left hover:text-green-500 hover:underline transition-colors cursor-pointer"
-                            >
-                              {client.nom.split(' ').map(word => 
-                                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-                              ).join(' ')}
-                            </button>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center space-x-1">
-                              <span className="text-gray-400">📞</span>
-                              <span>{client.telephone}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center space-x-1">
-                              <span className="text-gray-400">📍</span>
-                              <span>{client.ville}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 font-medium text-green-500">
-                            {formatCurrency(client.total_paye || 0)}
-                          </td>
-                          <td className="py-3 px-4 text-sm text-gray-600">
-                            {new Date(client.created_at).toLocaleDateString('fr-FR')}
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center space-x-2">
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => handleViewClientHistory(client)}
-                                title="Voir l'historique"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              
-                              <PermissionGuard module="clients" permission="update">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon"
-                                  onClick={() => handleEditClient(client)}
-                                  className="hover:bg-green-50"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              </PermissionGuard>
-                              
-                              <PermissionGuard module="clients" permission="delete">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="text-red-600 hover:bg-red-50"
-                                  onClick={() => handleDeleteClient(client)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </PermissionGuard>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </PermissionGuard>
+                      
+                      <PermissionGuard module="clients" permission="delete">
+                        <Button 
+                          {...({ variant: "ghost" } as any)}
+                          size="icon" 
+                          className="text-red-600 hover:bg-red-50"
+                          onClick={() => handleDeleteClient(client)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </PermissionGuard>
+                    </div>
+                  )
+                }}
+                columns={[
+                  {
+                    key: 'id',
+                    title: 'ID',
+                    sortable: true,
+                    className: 'min-w-[120px]',
+                    render: (value: any, client: Client, index: number) => (
+                      <span className="font-medium">
+                        {generateReadableId(client.id, index)}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'nom',
+                    title: 'Nom',
+                    sortable: true,
+                    render: (value: any, client: Client) => (
+                      <button
+                        onClick={() => handleViewClientHistory(client)}
+                        className="text-left hover:text-green-500 hover:underline transition-colors cursor-pointer font-medium"
+                        title={sanitizeClientName(client.nom || '')}
+                      >
+                        {sanitizeClientName(client.nom || '').split(' ').map(word => 
+                          word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                        ).join(' ')}
+                      </button>
+                    )
+                  },
+                  {
+                    key: 'telephone',
+                    title: 'Téléphone',
+                    sortable: true,
+                    render: (value: any) => (
+                      <div className="flex items-center space-x-1">
+                        <span className="text-gray-400">📞</span>
+                        <span>{sanitizePhoneNumber(value || '')}</span>
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'ville',
+                    title: 'Ville',
+                    sortable: true,
+                    render: (value: any) => (
+                      <div className="flex items-center space-x-1">
+                        <span className="text-gray-400">📍</span>
+                        <span>{sanitizeCityName(value || '')}</span>
+                      </div>
+                    )
+                  },
+                  ...(isAdmin ? [{
+                    key: 'total_paye',
+                    title: 'Total Payé',
+                    sortable: true,
+                    align: 'right' as const,
+                    render: (value: any) => (
+                      <span className="font-medium text-green-500">
+                        {formatCurrency(value || 0)}
+                      </span>
+                    )
+                  }] : []),
+                  {
+                    key: 'created_at',
+                    title: 'Date',
+                    sortable: true,
+                    render: (value: any) => (
+                      <span className="text-sm text-gray-600">
+                        {new Date(value).toLocaleDateString('fr-FR')}
+                      </span>
+                    )
+                  }
+                ]}
+              />
 
               {/* Pagination avec sélecteur de taille */}
               {pagination && (
@@ -600,7 +576,7 @@ const ClientsProtected: React.FC = () => {
             open={deleteDialogOpen}
             onOpenChange={setDeleteDialogOpen}
             title="Supprimer le client"
-            description={`Êtes-vous sûr de vouloir supprimer le client "${clientToDelete?.nom}" ? Cette action est irréversible et supprimera également toutes ses transactions associées.`}
+            description={`Êtes-vous sûr de vouloir supprimer le client "${sanitizeClientName(clientToDelete?.nom || '')}" ? Cette action est irréversible et supprimera également toutes ses transactions associées.`}
             confirmText="Supprimer"
             cancelText="Annuler"
             onConfirm={confirmDeleteClient}

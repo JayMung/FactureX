@@ -14,7 +14,8 @@ import {
   Loader2,
   Crown,
   UserCheck,
-  BookOpen
+  BookOpen,
+  DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,6 +45,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
 }) => {
   const { permissions, loading, updatePermission, applyRole } = useUserPermissions(user.id);
   const [isSaving, setIsSaving] = useState(false);
+  const [savingRole, setSavingRole] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('modules');
 
   const handlePermissionChange = async (
@@ -63,16 +65,29 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
     }
   };
 
-  const handleRoleApply = async (roleName: string) => {
+  const handleRoleApply = async (roleName: string, event?: React.MouseEvent) => {
+    // Empêcher la propagation de l'événement
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    // Empêcher les clics multiples
+    if (isSaving || savingRole) return;
+    
     setIsSaving(true);
+    setSavingRole(roleName);
+    
     try {
       await applyRole(roleName);
+      showSuccess(`Rôle ${roleName} appliqué avec succès`);
       onSuccess?.();
     } catch (error: any) {
       console.error('Error applying role:', error);
       showError(error.message || 'Erreur lors de l\'application du rôle');
     } finally {
       setIsSaving(false);
+      setSavingRole(null);
     }
   };
 
@@ -80,6 +95,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
     switch (iconName) {
       case 'Users': return <Users className="h-4 w-4" />;
       case 'Receipt': return <Shield className="h-4 w-4" />;
+      case 'DollarSign': return <DollarSign className="h-4 w-4" />;
       case 'Settings': return <Settings className="h-4 w-4" />;
       case 'CreditCard': return <Shield className="h-4 w-4" />;
       case 'FileText': return <BookOpen className="h-4 w-4" />;
@@ -126,7 +142,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
                 <p className="font-medium">{user.email}</p>
                 <p className="text-sm text-gray-500">Rôle actuel : {user.role}</p>
               </div>
-              <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+              <Badge {...({ variant: user.role === 'admin' ? 'default' : 'secondary' } as any)}>
                 {user.role === 'admin' ? (
                   <>
                     <Crown className="mr-1 h-3 w-3" />
@@ -170,7 +186,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
                           <CardTitle className="flex items-center space-x-2 text-base">
                             {getModuleIcon(module.icon)}
                             <span>{module.name}</span>
-                            <Badge variant="outline" className="text-xs">
+                            <Badge {...({ variant: "outline" } as any)} className="text-xs">
                               {module.description}
                             </Badge>
                           </CardTitle>
@@ -253,11 +269,12 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
                   <Card key={role.name} className={getCurrentRole() === role.name ? 'border-green-500' : ''}>
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center space-x-2 text-base">
-                        {role.name === 'admin' && <Crown className="h-4 w-4 text-yellow-500" />}
+                        {role.name === 'super_admin' && <Crown className="h-4 w-4 text-yellow-500" />}
+                        {role.name === 'admin' && <Crown className="h-4 w-4 text-orange-500" />}
                         {role.name === 'operateur' && <UserCheck className="h-4 w-4 text-blue-500" />}
-                        {role.name === 'lecteur' && <BookOpen className="h-4 w-4 text-green-500" />}
-                        <span>{role.name === 'admin' ? 'Administrateur' : 
-                              role.name === 'operateur' ? 'Opérateur' : 'Lecteur'}</span>
+                        <span>{role.name === 'super_admin' ? 'Super Administrateur' : 
+                              role.name === 'admin' ? 'Administrateur' :
+                              role.name === 'operateur' ? 'Opérateur' : role.name}</span>
                         {getCurrentRole() === role.name && (
                           <CheckCircle className="h-4 w-4 text-green-500" />
                         )}
@@ -289,12 +306,13 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
                       </div>
 
                       <Button
-                        onClick={() => handleRoleApply(role.name)}
-                        disabled={isSaving || getCurrentRole() === role.name}
+                        onClick={(e) => handleRoleApply(role.name, e)}
+                        disabled={savingRole !== null || getCurrentRole() === role.name}
                         className="w-full"
-                        variant={getCurrentRole() === role.name ? 'outline' : 'default'}
+                        variant={getCurrentRole() === role.name ? 'outline' as any : 'default' as any}
+                        type="button"
                       >
-                        {isSaving ? (
+                        {savingRole === role.name ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             Application...
@@ -317,7 +335,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({
 
           {/* Actions */}
           <div className="flex justify-end space-x-3 pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
+            <Button {...({ variant: "outline" } as any)} onClick={onClose}>
               Fermer
             </Button>
           </div>

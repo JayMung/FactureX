@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
 import React from 'react';
+// @ts-ignore - Temporary workaround for react-router-dom types
 import { Navigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { Loader2 } from 'lucide-react';

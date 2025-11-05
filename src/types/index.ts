@@ -4,6 +4,7 @@ export interface Client {
   nom: string;
   telephone: string;
   ville: string;
+  pays?: string;
   total_paye?: number;
   created_at: string;
   updated_at?: string;
@@ -12,7 +13,7 @@ export interface Client {
 
 export interface Transaction {
   id: string;
-  client_id: string;
+  client_id?: string; // Optional for internal expenses
   date_paiement: string;
   montant: number;
   devise: string;
@@ -30,6 +31,80 @@ export interface Transaction {
   updated_at?: string;
   created_by?: string;
   client?: Client;
+  
+  // New financial fields
+  type_transaction: 'revenue' | 'depense' | 'transfert';
+  categorie?: string;
+  compte_source_id?: string;
+  compte_destination_id?: string;
+  colis_id?: string;
+  notes?: string;
+  organization_id: string;
+  
+  // Related objects
+  compte_source?: CompteFinancier;
+  compte_destination?: CompteFinancier;
+  colis?: any; // Will be typed when colis interface is created
+}
+
+export interface CompteFinancier {
+  id: string;
+  nom: string;
+  type_compte: 'mobile_money' | 'banque' | 'cash';
+  numero_compte?: string;
+  solde_actuel: number;
+  devise: 'USD' | 'CDF';
+  is_active: boolean;
+  description?: string;
+  organization_id: string;
+  created_at: string;
+  updated_at?: string;
+  created_by?: string;
+}
+
+export interface CreateCompteFinancierData {
+  nom: string;
+  type_compte: 'mobile_money' | 'banque' | 'cash';
+  numero_compte?: string;
+  solde_actuel: number;
+  devise: 'USD' | 'CDF';
+  description?: string;
+}
+
+export interface UpdateCompteFinancierData {
+  nom?: string;
+  type_compte?: 'mobile_money' | 'banque' | 'cash';
+  numero_compte?: string;
+  solde_actuel?: number;
+  devise?: 'USD' | 'CDF';
+  is_active?: boolean;
+  description?: string;
+}
+
+export interface MouvementCompte {
+  id: string;
+  compte_id: string;
+  transaction_id?: string;
+  type_mouvement: 'debit' | 'credit';
+  montant: number;
+  solde_avant: number;
+  solde_apres: number;
+  description?: string;
+  date_mouvement: string;
+  organization_id: string;
+  created_at: string;
+  updated_at?: string;
+  
+  // Relations
+  compte?: CompteFinancier;
+  transaction?: Transaction;
+}
+
+export interface MouvementFilters {
+  compte_id?: string;
+  type_mouvement?: 'debit' | 'credit';
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export interface Setting {
@@ -107,6 +182,10 @@ export interface TransactionFilters {
   currency?: string;
   clientId?: string;
   modePaiement?: string;
+  type_transaction?: 'revenue' | 'depense' | 'transfert';
+  categorie?: string;
+  compte_source_id?: string;
+  compte_destination_id?: string;
   dateFrom?: string;
   dateTo?: string;
   minAmount?: string;
@@ -120,16 +199,28 @@ export interface CreateClientData {
 }
 
 export interface CreateTransactionData {
-  client_id: string;
+  type_transaction: 'revenue' | 'depense' | 'transfert';
+  motif: string;
+  client_id?: string;
   montant: number;
   devise: string;
-  motif: string;
-  mode_paiement: string;
+  mode_paiement?: string;
   date_paiement?: string;
   statut?: string;
+  categorie?: string;
+  compte_source_id?: string;
+  compte_destination_id?: string;
+  colis_id?: string;
+  notes?: string;
+  frais?: number;
+  taux_usd_cny?: number;
+  taux_usd_cdf?: number;
+  montant_cny?: number;
+  benefice?: number;
 }
 
 export interface UpdateTransactionData {
+  type_transaction?: 'revenue' | 'depense' | 'transfert';
   client_id?: string;
   montant?: number;
   devise?: string;
@@ -137,6 +228,11 @@ export interface UpdateTransactionData {
   mode_paiement?: string;
   date_paiement?: string;
   statut?: string;
+  categorie?: string;
+  compte_source_id?: string;
+  compte_destination_id?: string;
+  colis_id?: string;
+  notes?: string;
   valide_par?: string;
   date_validation?: string;
   taux_usd_cny?: number;
@@ -212,6 +308,11 @@ export interface CreateFactureData {
   conditions_vente?: string;
   notes?: string;
   informations_bancaires?: string;
+  subtotal?: number;
+  frais?: number;
+  frais_transport_douane?: number;
+  total_poids?: number;
+  total_general?: number;
   items: Omit<FactureItem, 'id' | 'facture_id' | 'created_at'>[];
   created_by?: string;
 }
@@ -225,12 +326,18 @@ export interface UpdateFactureData {
   conditions_vente?: string;
   notes?: string;
   informations_bancaires?: string;
+  subtotal?: number;
+  frais?: number;
+  frais_transport_douane?: number;
+  total_poids?: number;
+  total_general?: number;
   items?: Omit<FactureItem, 'id' | 'facture_id' | 'created_at'>[];
 }
 
 export interface FactureFilters {
   type?: 'devis' | 'facture';
   statut?: string;
+  statut_paiement?: string;
   clientId?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -250,7 +357,7 @@ export interface UserPermission {
   updated_at: string;
 }
 
-export type ModuleType = 'clients' | 'transactions' | 'settings' | 'payment_methods' | 'activity_logs' | 'factures' | 'exchange_rates' | 'transaction_fees';
+export type ModuleType = 'clients' | 'finances' | 'settings' | 'payment_methods' | 'activity_logs' | 'factures' | 'exchange_rates' | 'transaction_fees' | 'colis';
 
 export interface ModuleInfo {
   id: ModuleType;
@@ -285,17 +392,41 @@ export interface PermissionRole {
 // Rôles prédéfinis
 export const PREDEFINED_ROLES: PermissionRole[] = [
   {
-    name: 'admin',
+    name: 'super_admin',
     description: 'Administrateur - Accès complet à tout',
     permissions: {
       clients: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      transactions: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      finances: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      factures: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      colis: { can_read: true, can_create: true, can_update: true, can_delete: true },
       settings: { can_read: true, can_create: true, can_update: true, can_delete: true },
       payment_methods: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      activity_logs: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      factures: { can_read: true, can_create: true, can_update: true, can_delete: true },
       exchange_rates: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      transaction_fees: { can_read: true, can_create: true, can_update: true, can_delete: true }
+      transaction_fees: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      activity_logs: { can_read: true, can_create: false, can_update: false, can_delete: false },
+      users: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      profile: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      reports: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      security_logs: { can_read: true, can_create: false, can_update: false, can_delete: false }
+    }
+  },
+  {
+    name: 'admin',
+    description: 'Administrateur - Gestion complète limitée',
+    permissions: {
+      clients: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      finances: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      factures: { can_read: true, can_create: true, can_update: true, can_delete: true },
+      colis: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      settings: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      payment_methods: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      exchange_rates: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      transaction_fees: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      activity_logs: { can_read: true, can_create: false, can_update: false, can_delete: false },
+      users: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      profile: { can_read: true, can_create: true, can_update: true, can_delete: false },
+      reports: { can_read: true, can_create: true, can_update: false, can_delete: false },
+      security_logs: { can_read: false, can_create: false, can_update: false, can_delete: false }
     }
   },
   {
@@ -303,39 +434,107 @@ export const PREDEFINED_ROLES: PermissionRole[] = [
     description: 'Opérateur - Gestion quotidienne limitée',
     permissions: {
       clients: { can_read: true, can_create: true, can_update: true, can_delete: false },
-      transactions: { can_read: true, can_create: true, can_update: true, can_delete: false },
-      settings: { can_read: false, can_create: false, can_update: false, can_delete: false },
-      payment_methods: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      activity_logs: { can_read: false, can_create: false, can_update: false, can_delete: false },
+      finances: { can_read: false, can_create: false, can_update: false, can_delete: false },
       factures: { can_read: true, can_create: true, can_update: true, can_delete: false },
-      exchange_rates: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      transaction_fees: { can_read: true, can_create: false, can_update: false, can_delete: false }
-    }
-  },
-  {
-    name: 'lecteur',
-    description: 'Lecteur - Accès en lecture seule',
-    permissions: {
-      clients: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      transactions: { can_read: true, can_create: false, can_update: false, can_delete: false },
+      colis: { can_read: true, can_create: true, can_update: false, can_delete: false },
       settings: { can_read: false, can_create: false, can_update: false, can_delete: false },
       payment_methods: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      activity_logs: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      factures: { can_read: true, can_create: false, can_update: false, can_delete: false },
       exchange_rates: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      transaction_fees: { can_read: true, can_create: false, can_update: false, can_delete: false }
+      transaction_fees: { can_read: true, can_create: false, can_update: false, can_delete: false },
+      activity_logs: { can_read: false, can_create: false, can_update: false, can_delete: false },
+      users: { can_read: false, can_create: false, can_update: false, can_delete: false },
+      profile: { can_read: true, can_create: false, can_update: true, can_delete: false },
+      reports: { can_read: true, can_create: false, can_update: false, can_delete: false },
+      security_logs: { can_read: false, can_create: false, can_update: false, can_delete: false }
     }
   }
 ];
 
+// Types pour les Colis
+export interface Colis {
+  id: string;
+  client_id: string;
+  type_livraison: 'aerien' | 'maritime';
+  fournisseur: string;
+  tracking_chine?: string;
+  numero_commande?: string;
+  quantite: number; // Nombre de colis
+  poids: number;
+  contenu_description?: string;
+  tarif_kg: number;
+  montant_a_payer: number; // Calculé automatiquement
+  transitaire_id?: string;
+  date_expedition?: string;
+  date_arrivee_agence?: string;
+  statut: 'en_preparation' | 'expedie_chine' | 'en_transit' | 'arrive_congo' | 'recupere_client' | 'livre';
+  statut_paiement: 'non_paye' | 'partiellement_paye' | 'paye';
+  notes?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  // Relations
+  client?: Client;
+  transitaire?: Transitaire;
+}
+
+export interface Transitaire {
+  id: string;
+  nom: string;
+  nom_contact?: string;
+  telephone?: string;
+  ville?: string;
+  services_offerts?: string[];
+  specialisation_chine: boolean;
+  specialisation_congo: boolean;
+  delai_moyen_livraison?: number;
+  tarif_base?: number;
+  actif: boolean;
+  note_interne?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TarifColis {
+  id: string;
+  type_livraison: 'aerien' | 'maritime';
+  categorie: string;
+  poids_min: number;
+  poids_max: number;
+  tarif_par_kg: number;
+  devise: 'USD' | 'CDF';
+  description?: string;
+  conditions?: string;
+  actif: boolean;
+  date_debut?: string;
+  date_fin?: string;
+  created_at: string;
+}
+
+export interface PaiementColis {
+  id: string;
+  colis_id: string;
+  client_id: string;
+  montant_paye: number;
+  devise: 'USD' | 'CDF';
+  mode_paiement: string;
+  reference_paiement?: string;
+  date_paiement: string;
+  statut: 'en_attente' | 'confirme' | 'annule';
+  recu_url?: string;
+  notes?: string;
+  created_by: string;
+  created_at: string;
+}
+
 // Informations sur les modules
 export const MODULES_INFO: ModuleInfo[] = [
   { id: 'clients', name: 'Clients', description: 'Gestion des clients', icon: 'Users', adminOnly: false },
-  { id: 'transactions', name: 'Transactions', description: 'Gestion des transactions', icon: 'Receipt', adminOnly: false },
+  { id: 'finances', name: 'Finances', description: 'Gestion financière, transactions et comptes', icon: 'DollarSign', adminOnly: true },
   { id: 'settings', name: 'Paramètres', description: 'Configuration système', icon: 'Settings', adminOnly: true },
   { id: 'payment_methods', name: 'Moyens de paiement', description: 'Modes de paiement', icon: 'CreditCard', adminOnly: true },
   { id: 'activity_logs', name: 'Logs d\'activité', description: 'Historique des actions', icon: 'FileText', adminOnly: true },
   { id: 'factures', name: 'Factures', description: 'Gestion des factures et devis', icon: 'FileText', adminOnly: false },
   { id: 'exchange_rates', name: 'Taux de change', description: 'Configuration des taux', icon: 'DollarSign', adminOnly: true },
-  { id: 'transaction_fees', name: 'Frais de transaction', description: 'Configuration des frais', icon: 'Settings', adminOnly: true }
+  { id: 'transaction_fees', name: 'Frais de transaction', description: 'Configuration des frais', icon: 'Settings', adminOnly: true },
+  { id: 'colis', name: 'Colis', description: 'Gestion des colis aériens et maritimes', icon: 'Package', adminOnly: false }
 ];

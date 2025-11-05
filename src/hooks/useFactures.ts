@@ -10,7 +10,14 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
   const [factures, setFactures] = useState<Facture[]>([]);
   const [pagination, setPagination] = useState<PaginatedResponse<Facture> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingTotals, setIsLoadingTotals] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [globalTotals, setGlobalTotals] = useState({
+    totalUSD: 0,
+    totalCDF: 0,
+    totalFrais: 0,
+    totalCount: 0
+  });
 
   const fetchFactures = async () => {
     try {
@@ -21,12 +28,20 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       const from = (page - 1) * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
 
-      // Construire la requête
+      // Construire la requête optimisée
       let query = supabase
         .from('factures')
         .select(`
-          *,
-          clients!inner(id, nom, telephone, ville)
+          id,
+          facture_number,
+          type,
+          statut,
+          date_emission,
+          total_general,
+          devise,
+          mode_livraison,
+          client_id,
+          clients(id, nom, telephone, ville)
         `, { count: 'exact' })
         .order('date_emission', { ascending: false })
         .range(from, to);
@@ -51,15 +66,21 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
         query = query.lte('date_emission', filters.dateTo);
       }
 
-      const { data, error: fetchError, count } = await query;
+      // Charger factures et totaux en parallèle pour gagner du temps
+      const [facturesResult] = await Promise.all([
+        query,
+        fetchGlobalTotals() // Charger en parallèle
+      ]);
+
+      const { data, error: fetchError, count } = facturesResult;
 
       if (fetchError) throw fetchError;
 
-      setFactures(data || []);
+      setFactures((data || []) as unknown as Facture[]);
       
       if (count !== null) {
         setPagination({
-          data: data || [],
+          data: (data || []) as unknown as Facture[],
           count,
           page,
           pageSize: PAGE_SIZE,
@@ -72,6 +93,71 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       showError('Erreur lors du chargement des factures');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Fonction pour calculer les totaux globaux (toutes pages confondues)
+  // IMPORTANT: Ne compte QUE les factures payées (statut = 'payee')
+  const fetchGlobalTotals = async () => {
+    try {
+      setIsLoadingTotals(true);
+      let query = supabase
+        .from('factures')
+        .select('total_general, devise, frais')
+        .eq('statut', 'payee'); // UNIQUEMENT les factures payées
+
+      // Appliquer les mêmes filtres que fetchFactures (sauf statut qui est forcé à 'payee')
+      if (filters?.type) {
+        query = query.eq('type', filters.type);
+      }
+      // Ne pas appliquer filters.statut car on force 'payee'
+      if (filters?.clientId) {
+        query = query.eq('client_id', filters.clientId);
+      }
+      if (filters?.modeLivraison) {
+        query = query.eq('mode_livraison', filters.modeLivraison);
+      }
+      if (filters?.dateFrom) {
+        query = query.gte('date_emission', filters.dateFrom);
+      }
+      if (filters?.dateTo) {
+        query = query.lte('date_emission', filters.dateTo);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      // Calculer les totaux globaux (uniquement factures payées)
+      const totals = (data || []).reduce((acc, facture) => {
+        if (facture.devise === 'USD') {
+          acc.totalUSD += facture.total_general || 0;
+        } else if (facture.devise === 'CDF') {
+          acc.totalCDF += facture.total_general || 0;
+        }
+        acc.totalFrais += facture.frais || 0;
+        return acc;
+      }, {
+        totalUSD: 0,
+        totalCDF: 0,
+        totalFrais: 0
+      });
+
+      setGlobalTotals({
+        ...totals,
+        totalCount: data?.length || 0
+      });
+    } catch (err: any) {
+      console.error('Error fetching global totals:', err);
+      // En cas d'erreur, mettre à zéro
+      setGlobalTotals({
+        totalUSD: 0,
+        totalCDF: 0,
+        totalFrais: 0,
+        totalCount: 0
+      });
+    } finally {
+      setIsLoadingTotals(false);
     }
   };
 
@@ -103,15 +189,28 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
         feeSettings?.find(s => s.cle === 'frais_commande')?.valeur || '15'
       );
 
-      // Calculer les totaux
-      const subtotal = data.items.reduce((sum, item) => sum + item.montant_total, 0);
-      const totalPoids = data.items.reduce((sum, item) => sum + item.poids, 0);
-      const fraisCommission = subtotal * (fraisPercentage / 100);
-      const shippingFee = data.mode_livraison === 'aerien' 
-        ? totalPoids * fraisAerien 
-        : totalPoids * fraisMaritime;
-      const fraisTransportDouane = shippingFee;
-      const totalGeneral = subtotal + fraisCommission + fraisTransportDouane;
+      // Utiliser les totaux fournis ou les calculer automatiquement
+      let subtotal, totalPoids, fraisCommission, shippingFee, fraisTransportDouane, totalGeneral;
+      
+      if (data.subtotal !== undefined && data.frais !== undefined && data.frais_transport_douane !== undefined) {
+        // Utiliser les valeurs fournies (avec personnalisations)
+        subtotal = data.subtotal;
+        totalPoids = data.total_poids || data.items.reduce((sum, item) => sum + item.poids, 0);
+        fraisCommission = data.frais;
+        fraisTransportDouane = data.frais_transport_douane;
+        shippingFee = fraisTransportDouane;
+        totalGeneral = data.total_general || (subtotal + fraisCommission + fraisTransportDouane);
+      } else {
+        // Calculer automatiquement
+        subtotal = data.items.reduce((sum, item) => sum + item.montant_total, 0);
+        totalPoids = data.items.reduce((sum, item) => sum + item.poids, 0);
+        fraisCommission = subtotal * (fraisPercentage / 100);
+        shippingFee = data.mode_livraison === 'aerien' 
+          ? totalPoids * fraisAerien 
+          : totalPoids * fraisMaritime;
+        fraisTransportDouane = shippingFee;
+        totalGeneral = subtotal + fraisCommission + fraisTransportDouane;
+      }
 
       // Insérer la facture
       const { data: factureData, error: factureError } = await supabase
@@ -185,8 +284,30 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       if (data.notes !== undefined) updateData.notes = data.notes;
       if (data.informations_bancaires !== undefined) updateData.informations_bancaires = data.informations_bancaires;
 
-      // Si on met à jour les items, recalculer les totaux
-      if (data.items) {
+      // Si les totaux sont fournis, les utiliser directement (valeurs personnalisées)
+      if (data.subtotal !== undefined) updateData.subtotal = data.subtotal;
+      if (data.frais !== undefined) updateData.frais = data.frais;
+      if (data.frais_transport_douane !== undefined) updateData.frais_transport_douane = data.frais_transport_douane;
+      if (data.total_poids !== undefined) updateData.total_poids = data.total_poids;
+      if (data.total_general !== undefined) updateData.total_general = data.total_general;
+
+      // Si on met à jour les items, toujours les mettre à jour dans la DB
+      if (data.items && data.items.length > 0) {
+        // Supprimer les anciens items
+        await supabase.from('facture_items').delete().eq('facture_id', id);
+
+        // Insérer les nouveaux items
+        const itemsToInsert = data.items.map((item, index) => ({
+          facture_id: id,
+          numero_ligne: index + 1,
+          ...item
+        }));
+
+        await supabase.from('facture_items').insert(itemsToInsert);
+      }
+
+      // Si on met à jour les items SANS fournir de totaux, recalculer automatiquement
+      if (data.items && data.subtotal === undefined) {
         const { data: shippingSettings } = await supabase
           .from('settings')
           .select('cle, valeur')
@@ -232,18 +353,6 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
         updateData.frais = fraisCommission;
         updateData.frais_transport_douane = fraisTransportDouane;
         updateData.total_general = totalGeneral;
-
-        // Supprimer les anciens items
-        await supabase.from('facture_items').delete().eq('facture_id', id);
-
-        // Insérer les nouveaux items
-        const itemsToInsert = data.items.map((item, index) => ({
-          facture_id: id,
-          numero_ligne: index + 1,
-          ...item
-        }));
-
-        await supabase.from('facture_items').insert(itemsToInsert);
       }
 
       const { error } = await supabase
@@ -356,13 +465,16 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
 
   useEffect(() => {
     fetchFactures();
-  }, [page, filters?.type, filters?.statut, filters?.clientId, filters?.modeLivraison]);
+    // Charger les totaux de manière asynchrone (non bloquant)
+    setTimeout(() => fetchGlobalTotals(), 0);
+  }, [page, filters]);
 
   return {
     factures,
     pagination,
     isLoading,
     error,
+    globalTotals,
     createFacture,
     updateFacture,
     deleteFacture,

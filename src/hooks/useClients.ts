@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabaseService } from '@/services/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { activityLogger } from '@/services/activityLogger';
+import { fieldLevelSecurityService } from '@/lib/security/field-level-security';
 import type { Client, ClientFilters, CreateClientData, ApiResponse } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 
@@ -15,6 +17,15 @@ export const useClients = (page: number = 1, filters: ClientFilters = {}) => {
   } = useQuery({
     queryKey: ['clients', page, filters],
     queryFn: () => supabaseService.getClients(page, 10, filters),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  const {
+    data: globalTotalsData,
+    isLoading: isGlobalTotalsLoading
+  } = useQuery({
+    queryKey: ['clientsGlobalTotals', filters],
+    queryFn: () => supabaseService.getClientsGlobalTotals(filters),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
@@ -104,7 +115,12 @@ export const useClients = (page: number = 1, filters: ClientFilters = {}) => {
       pageSize: data.data.pageSize,
       totalPages: data.data.totalPages
     } : null,
+    globalTotals: {
+      totalPaye: globalTotalsData?.data?.totalPaye || 0,
+      totalCount: globalTotalsData?.data?.totalCount || 0
+    },
     isLoading,
+    isGlobalTotalsLoading,
     error: error?.message || data?.error,
     refetch,
     createClient: createMutation.mutate,
@@ -132,6 +148,41 @@ export const useClient = (id: string) => {
     client: data?.data,
     isLoading,
     error: error?.message || data?.error,
+    refetch
+  };
+};
+
+// Hook pour récupérer TOUS les clients (sans pagination) - utilisé dans les combobox
+export const useAllClients = () => {
+  const {
+    data,
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ['clients', 'all'],
+    queryFn: async () => {
+      // SECURITY: Use field-level security for combobox data
+      const secureSelect = await fieldLevelSecurityService.buildSecureSelect('clients');
+      
+      const { data, error } = await supabase
+        .from('clients')
+        .select(secureSelect)
+        .order('nom');
+      
+      if (error) throw error;
+      
+      // SECURITY: Filter response data
+      const filteredData = await fieldLevelSecurityService.filterResponseData('clients', data || []);
+      return filteredData;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  return {
+    clients: data || [],
+    isLoading,
+    error: error?.message,
     refetch
   };
 };

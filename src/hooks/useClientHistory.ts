@@ -52,79 +52,45 @@ export const useClientHistory = (
     console.log('useClientHistory: Fetching for client', clientId);
     setLoading(true);
     try {
-      let query = supabase
-        .from('transactions')
-        .select(`
-          *,
-          client:clients(*)
-        `, { count: 'exact' })
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false })
-        .range((page - 1) * pagination.pageSize, page * pagination.pageSize - 1);
+      // Use secure RPC function instead of dynamic query building
+      const { data: result, error: rpcError } = await supabase
+        .rpc('search_client_history_secure', {
+          p_client_id: clientId,
+          p_search_term: filters.search || null,
+          p_status: filters.status || null,
+          p_currency: filters.currency || null,
+          p_date_from: filters.dateFrom || null,
+          p_date_to: filters.dateTo || null,
+          p_page: page,
+          p_page_size: pagination.pageSize
+        });
 
-      // Appliquer les filtres
-      if (filters.search) {
-        query = query.or(`
-          reference.ilike.%${filters.search}%
-          ,montant.ilike.%${filters.search}%
-          ,motif.ilike.%${filters.search}%
-          ,mode_paiement.ilike.%${filters.search}%
-        `);
+      if (rpcError) {
+        console.error('useClientHistory: RPC error', rpcError);
+        throw rpcError;
       }
 
-      if (filters.status && filters.status !== 'all') {
-        query = query.eq('statut', filters.status);
-      }
+      // Parse the secure response
+      const transactions = result?.[0]?.transactions || [];
+      const totalCount = result?.[0]?.total_count || 0;
+      const statsData = result?.[0]?.stats || {};
 
-      if (filters.currency && filters.currency !== 'all') {
-        query = query.eq('devise', filters.currency);
-      }
-
-      if (filters.dateFrom) {
-        query = query.gte('created_at', filters.dateFrom);
-      }
-
-      if (filters.dateTo) {
-        query = query.lte('created_at', filters.dateTo);
-      }
-
-      const { data, error, count } = await query;
-
-      if (error) {
-        console.error('useClientHistory: Query error', error);
-        throw error;
-      }
-
-      console.log('useClientHistory: Fetched', data?.length, 'transactions, total:', count);
-      setHistory(data || []);
+      console.log('useClientHistory: Fetched', transactions?.length, 'transactions, total:', totalCount);
+      setHistory(transactions);
       setPagination(prev => ({
         ...prev,
-        count: count || 0,
+        count: totalCount,
         page,
-        totalPages: Math.ceil((count || 0) / prev.pageSize)
+        totalPages: Math.ceil(totalCount / prev.pageSize)
       }));
 
-      // Calculer les statistiques
-      const stats = data?.reduce((acc, transaction) => {
-        acc.totalTransactions++;
-        
-        if (transaction.devise === 'USD') {
-          acc.totalUSD += transaction.montant;
-        } else if (transaction.devise === 'CDF') {
-          acc.totalCDF += transaction.montant;
-        }
-        
-        acc.totalBenefice += transaction.benefice || 0;
-        
-        return acc;
-      }, {
-        totalTransactions: 0,
-        totalUSD: 0,
-        totalCDF: 0,
-        totalBenefice: 0
+      // Set statistics from secure RPC
+      setStats({
+        totalTransactions: statsData.totalTransactions || 0,
+        totalUSD: statsData.totalUSD || 0,
+        totalCDF: statsData.totalCDF || 0,
+        totalBenefice: statsData.totalBenefice || 0
       });
-
-      setStats(stats);
 
     } catch (error) {
       console.error('Error fetching client history:', error);

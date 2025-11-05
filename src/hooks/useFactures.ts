@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
 import { logActivity } from '@/services/activityLogger';
@@ -20,7 +20,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
     totalCount: 0
   });
 
-  const fetchFactures = async () => {
+  const fetchFactures = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -84,13 +84,6 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
         });
       }
 
-      // Charger les totaux uniquement si pas trop d'échecs
-      if (retryCount < 3) {
-        fetchGlobalTotals().catch(() => {
-          setRetryCount(prev => prev + 1);
-        });
-      }
-
       // Reset retry count on success
       setRetryCount(0);
     } catch (err: any) {
@@ -105,11 +98,11 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, filters, retryCount]);
 
   // Fonction pour calculer les totaux globaux (toutes pages confondues)
   // IMPORTANT: Ne compte QUE les factures payées (statut = 'payee')
-  const fetchGlobalTotals = async () => {
+  const fetchGlobalTotals = useCallback(async () => {
     try {
       setIsLoadingTotals(true);
       
@@ -171,7 +164,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
     } finally {
       setIsLoadingTotals(false);
     }
-  };
+  }, [filters]);
 
   const createFacture = async (data: CreateFactureData): Promise<Facture> => {
     try {
@@ -477,9 +470,12 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
 
   useEffect(() => {
     fetchFactures();
+  }, [fetchFactures]);
+
+  useEffect(() => {
     // Charger les totaux de manière asynchrone (non bloquant)
-    setTimeout(() => fetchGlobalTotals(), 0);
-  }, [page, filters]);
+    fetchGlobalTotals();
+  }, [fetchGlobalTotals]);
 
   return {
     factures,

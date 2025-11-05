@@ -262,7 +262,6 @@ const SettingsWithPermissions = () => {
 
       if (error) {
         console.error('Error fetching users:', error);
-        showError('Erreur lors du chargement des utilisateurs');
         return;
       }
 
@@ -284,7 +283,6 @@ const SettingsWithPermissions = () => {
       setUsers(usersWithRoles);
     } catch (error: any) {
       console.error('Error fetching users:', error);
-      showError(error.message || 'Erreur lors du chargement des utilisateurs');
     } finally {
       setUsersLoading(false);
     }
@@ -300,7 +298,6 @@ const SettingsWithPermissions = () => {
       setPaymentMethods(data || []);
     } catch (error) {
       console.error('Error fetching payment methods:', error);
-      showError('Erreur lors du chargement des moyens de paiement');
     }
   };
 
@@ -315,7 +312,6 @@ const SettingsWithPermissions = () => {
       setActivityLogs(data || []);
     } catch (error) {
       console.error('Error fetching activity logs:', error);
-      showError('Erreur lors du chargement des logs d\'activité');
     }
   };
 
@@ -339,7 +335,6 @@ const SettingsWithPermissions = () => {
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
-      showError('Erreur lors du chargement des paramètres');
     }
   };
 

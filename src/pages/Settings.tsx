@@ -218,7 +218,7 @@ const Settings = () => {
 
       if (error) {
         console.error('Error fetching users:', error);
-        showError('Erreur lors du chargement des utilisateurs');
+        // Ne pas afficher de toast pour éviter de polluer l'UI
         return;
       }
 
@@ -226,7 +226,7 @@ const Settings = () => {
       setUsers(users || []);
     } catch (error: any) {
       console.error('Error fetching users:', error);
-      showError(error.message || 'Erreur lors du chargement des utilisateurs');
+      // Ne pas afficher de toast pour éviter de polluer l'UI
     } finally {
       setUsersLoading(false);
     }
@@ -242,7 +242,7 @@ const Settings = () => {
       setPaymentMethods(data || []);
     } catch (error) {
       console.error('Error fetching payment methods:', error);
-      showError('Erreur lors du chargement des moyens de paiement');
+      // Ne pas afficher de toast pour éviter de polluer l'UI
     }
   };
 
@@ -257,7 +257,7 @@ const Settings = () => {
       setActivityLogs(data || []);
     } catch (error) {
       console.error('Error fetching activity logs:', error);
-      showError('Erreur lors du chargement des logs d\'activité');
+      // Ne pas afficher de toast pour éviter de polluer l'UI
     }
   };
 
@@ -283,7 +283,7 @@ const Settings = () => {
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
-      showError('Erreur lors du chargement des paramètres');
+      // Ne pas afficher de toast pour éviter de polluer l'UI
     }
   };
 

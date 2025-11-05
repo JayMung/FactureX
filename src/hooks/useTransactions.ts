@@ -86,7 +86,8 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     } catch (err: any) {
       const friendlyMessage = getFriendlyErrorMessage(err, 'Erreur de chargement des transactions');
       setError(friendlyMessage);
-      showError(friendlyMessage);
+      // Ne pas afficher de toast pour éviter de polluer l'UI
+      // L'erreur est loggée dans la console et stockée dans le state
     } finally {
       setLoading(false);
     }

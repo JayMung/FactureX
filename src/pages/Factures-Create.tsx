@@ -260,7 +260,6 @@ const FacturesCreate: React.FC = () => {
         }
       } catch (error) {
         console.error('Error loading facture:', error);
-        showError('Erreur lors du chargement de la facture');
         navigate('/factures');
       } finally {
         setLoadingData(false);

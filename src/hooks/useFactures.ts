@@ -461,7 +461,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       return data;
     } catch (err: any) {
       console.error('Error fetching facture:', err);
-      showError('Erreur lors du chargement de la facture');
+      // Ne pas afficher de toast pour éviter de polluer l'UI
       return null;
     }
   };

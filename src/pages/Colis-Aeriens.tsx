@@ -150,7 +150,8 @@ const ColisAeriens: React.FC = () => {
       setGlobalTotals(totals);
     } catch (error) {
       console.error('Error loading colis:', error);
-      showError('Erreur lors du chargement des colis');
+      // Ne pas afficher de toast pour éviter de polluer l'UI
+      // L'erreur est loggée dans la console
     } finally {
       setLoading(false);
     }

@@ -69,7 +69,7 @@ const FacturesPreview: React.FC = () => {
       setFacture(data);
     } catch (error) {
       console.error('Error loading facture:', error);
-      showError('Erreur lors du chargement de la facture');
+      // Ne pas afficher de toast pour éviter de polluer l'UI
       navigate('/factures');
     } finally {
       setLoading(false);

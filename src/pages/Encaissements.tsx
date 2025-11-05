@@ -141,9 +141,9 @@ export default function Encaissements() {
       );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 p-2 sm:p-4 md:p-0">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -151,7 +151,7 @@ export default function Encaissements() {
               Nouvel encaissement
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Enregistrer un encaissement</DialogTitle>
               <DialogDescription>
@@ -159,7 +159,7 @@ export default function Encaissements() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Type *</Label>
                   <Select
@@ -326,10 +326,10 @@ export default function Encaissements() {
                 />
               </div>
 
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 justify-end">
                 <Button
-                  type="button"
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => setIsDialogOpen(false)}
                 >
                   Annuler
@@ -344,14 +344,14 @@ export default function Encaissements() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total encaissé</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats?.total.toFixed(2) || '0.00'}</div>
+            <div className="text-xl sm:text-2xl font-bold">${stats?.total.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground">
               {stats?.count || 0} encaissement(s)
             </p>
@@ -364,7 +364,7 @@ export default function Encaissements() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats?.totalToday.toFixed(2) || '0.00'}</div>
+            <div className="text-xl sm:text-2xl font-bold">${stats?.totalToday.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground">
               {stats?.countToday || 0} paiement(s)
             </p>
@@ -377,7 +377,7 @@ export default function Encaissements() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats?.totalFactures.toFixed(2) || '0.00'}</div>
+            <div className="text-xl sm:text-2xl font-bold">${stats?.totalFactures.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground">Paiements factures</p>
           </CardContent>
         </Card>
@@ -388,7 +388,7 @@ export default function Encaissements() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats?.totalColis.toFixed(2) || '0.00'}</div>
+            <div className="text-xl sm:text-2xl font-bold">${stats?.totalColis.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground">Paiements colis</p>
           </CardContent>
         </Card>
@@ -403,7 +403,7 @@ export default function Encaissements() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-5">
+          <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
             <div className="space-y-2">
               <Label>Type</Label>
               <Select
@@ -494,7 +494,7 @@ export default function Encaissements() {
             </div>
           </div>
 
-          <div className="mt-4 flex gap-2">
+          <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-end">
             <Button
               variant="outline"
               onClick={() =>
@@ -510,7 +510,7 @@ export default function Encaissements() {
             >
               Réinitialiser
             </Button>
-            <Button variant="outline" onClick={exportToCSV}>
+            <Button variant="outline" onClick={exportToCSV} className="w-full sm:w-auto">
               <Download className="mr-2 h-4 w-4" />
               Exporter CSV
             </Button>
@@ -530,7 +530,66 @@ export default function Encaissements() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              {/* Mobile Card View */}
+              <div className="block lg:hidden space-y-3">
+                {data?.paiements.map((paiement) => (
+                  <Card key={paiement.id} className="p-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          paiement.type_paiement === 'facture'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          {paiement.type_paiement === 'facture' ? 'Facture' : 'Colis'}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          {format(new Date(paiement.date_paiement), 'dd/MM/yyyy', { locale: fr })}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold">{paiement.client?.nom}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {paiement.type_paiement === 'facture' 
+                              ? paiement.facture?.facture_number || 'N/A'
+                              : paiement.colis && paiement.colis.id && paiement.colis.created_at
+                                ? generateColisId(paiement.colis.id, paiement.colis.created_at)
+                                : 'N/A'
+                            }
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold">${paiement.montant_paye}</p>
+                          <p className="text-xs text-muted-foreground">{paiement.compte?.nom}</p>
+                        </div>
+                      </div>
+                      {(paiement.mode_paiement || paiement.notes) && (
+                        <div className="pt-2 border-t text-sm">
+                          {paiement.mode_paiement && (
+                            <p><span className="font-medium">Mode:</span> {paiement.mode_paiement}</p>
+                          )}
+                          {paiement.notes && (
+                            <p className="text-muted-foreground">{paiement.notes}</p>
+                          )}
+                        </div>
+                      )}
+                      <div className="flex justify-end pt-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeleteId(paiement.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
@@ -592,7 +651,7 @@ export default function Encaissements() {
 
               {/* Pagination */}
               {data && data.totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4">
                   <p className="text-sm text-muted-foreground">
                     Page {page} sur {data.totalPages}
                   </p>

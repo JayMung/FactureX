@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, DollarSign, TrendingUp, Calendar, Filter, Download, Trash2 } from 'lucide-react';
+import { Plus, DollarSign, TrendingUp, Calendar, Filter, Download, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -29,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { usePaiements, useCreatePaiement, useDeletePaiement, usePaiementStats, CreatePaiementData, generateColisId } from '@/hooks/usePaiements';
+import { usePaiements, useCreatePaiement, useUpdatePaiement, useDeletePaiement, usePaiementStats, CreatePaiementData, generateColisId } from '@/hooks/usePaiements';
 import { useAllClients } from '@/hooks/useClients';
 import { useFactures } from '@/hooks/useFactures';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
@@ -56,6 +56,7 @@ export default function Encaissements() {
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editingPaiement, setEditingPaiement] = useState<any | null>(null);
   
   // Déclarer formData AVANT de l'utiliser dans les hooks
   const [formData, setFormData] = useState<CreatePaiementData>({
@@ -77,6 +78,7 @@ export default function Encaissements() {
   const { data: colisData } = useColisList({ clientId: formData.client_id });
 
   const createPaiement = useCreatePaiement();
+  const updatePaiement = useUpdatePaiement();
   const deletePaiement = useDeletePaiement();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -93,7 +95,15 @@ export default function Encaissements() {
       return;
     }
     
-    await createPaiement.mutateAsync(formData);
+    if (editingPaiement) {
+      // Mode édition
+      await updatePaiement.mutateAsync({ id: editingPaiement.id, data: formData });
+      setEditingPaiement(null);
+    } else {
+      // Mode création
+      await createPaiement.mutateAsync(formData);
+    }
+    
     setIsDialogOpen(false);
     setFormData({
       type_paiement: 'facture',
@@ -104,6 +114,22 @@ export default function Encaissements() {
       date_paiement: new Date().toISOString().split('T')[0],
       notes: '',
     });
+  };
+
+  const handleEdit = (paiement: any) => {
+    setEditingPaiement(paiement);
+    setFormData({
+      type_paiement: paiement.type_paiement,
+      client_id: paiement.client_id,
+      facture_id: paiement.facture_id,
+      colis_id: paiement.colis_id,
+      montant_paye: paiement.montant_paye,
+      compte_id: paiement.compte_id,
+      mode_paiement: paiement.mode_paiement || '',
+      date_paiement: paiement.date_paiement,
+      notes: paiement.notes || '',
+    });
+    setIsDialogOpen(true);
   };
 
   const handleDelete = async () => {
@@ -170,9 +196,9 @@ export default function Encaissements() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Enregistrer un encaissement</DialogTitle>
+              <DialogTitle>{editingPaiement ? 'Modifier l\'encaissement' : 'Enregistrer un encaissement'}</DialogTitle>
               <DialogDescription>
-                Enregistrez un paiement reçu pour une facture ou un colis
+                {editingPaiement ? 'Modifiez les informations de l\'encaissement' : 'Enregistrez un paiement reçu pour une facture ou un colis'}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -385,8 +411,8 @@ export default function Encaissements() {
                 >
                   Annuler
                 </Button>
-                <Button type="submit" disabled={createPaiement.isPending}>
-                  {createPaiement.isPending ? 'Enregistrement...' : 'Enregistrer'}
+                <Button type="submit" className="w-full bg-green-500 hover:bg-green-600">
+                  {editingPaiement ? 'Mettre à jour' : 'Enregistrer'}
                 </Button>
               </div>
             </form>
@@ -625,7 +651,14 @@ export default function Encaissements() {
                           )}
                         </div>
                       )}
-                      <div className="flex justify-end pt-2">
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(paiement)}
+                        >
+                          <Edit className="h-4 w-4 text-blue-600" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -686,13 +719,22 @@ export default function Encaissements() {
                           {paiement.notes || '-'}
                         </td>
                         <td className="p-2 text-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeleteId(paiement.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <div className="flex justify-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(paiement)}
+                            >
+                              <Edit className="h-4 w-4 text-blue-600" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteId(paiement.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}

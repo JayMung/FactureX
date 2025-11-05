@@ -243,3 +243,32 @@ export function usePaiementStats(filters?: PaiementFilters) {
     },
   });
 }
+
+// Hook to update a paiement
+export function useUpdatePaiement() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<CreatePaiementData> }) => {
+      const { data: paiement, error } = await supabase
+        .from('paiements')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return paiement;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paiements'] });
+      queryClient.invalidateQueries({ queryKey: ['factures'] });
+      queryClient.invalidateQueries({ queryKey: ['comptes'] });
+      toast.success('Encaissement modifié avec succès');
+    },
+    onError: (error: any) => {
+      console.error('Error updating paiement:', error);
+      toast.error(error.message || 'Erreur lors de la modification de l\'encaissement');
+    },
+  });
+}

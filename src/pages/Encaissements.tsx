@@ -35,6 +35,7 @@ import { useFactures } from '@/hooks/useFactures';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 export default function Encaissements() {
   const [page, setPage] = useState(1);
@@ -76,6 +77,18 @@ export default function Encaissements() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation: vérifier que facture_id ou colis_id est fourni selon le type
+    if (formData.type_paiement === 'facture' && !formData.facture_id) {
+      toast.error('Veuillez sélectionner une facture');
+      return;
+    }
+    
+    if (formData.type_paiement === 'colis' && !formData.colis_id) {
+      toast.error('Veuillez sélectionner un colis');
+      return;
+    }
+    
     await createPaiement.mutateAsync(formData);
     setIsDialogOpen(false);
     setFormData({
@@ -216,6 +229,7 @@ export default function Encaissements() {
                         setFormData({ ...formData, facture_id: value })
                       }
                       disabled={!formData.client_id}
+                      required
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner" />

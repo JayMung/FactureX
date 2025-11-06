@@ -8,7 +8,12 @@ import { detectAttackPatterns } from '@/lib/security/validation';
 import { logSecurityEvent } from '@/lib/security/error-handling';
 import type { Transaction, UpdateTransactionData, CreateTransactionData, TransactionFilters } from '@/types';
 
-export const useTransactions = (page: number = 1, filters: TransactionFilters = {}) => {
+export const useTransactions = (
+  page: number = 1, 
+  filters: TransactionFilters = {},
+  sortColumn: string = 'date_paiement',
+  sortDirection: 'asc' | 'desc' = 'desc'
+) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -42,9 +47,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
         .select(`
           *,
           client:clients(*)
-        `, { count: 'exact' })
-        .range((page - 1) * pagination.pageSize, page * pagination.pageSize - 1)
-        .order('date_paiement', { ascending: false });
+        `, { count: 'exact' });
 
       // Appliquer les filtres
       if (filters.status) {
@@ -71,6 +74,13 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       if (filters.maxAmount) {
         query = query.lte('montant', parseFloat(filters.maxAmount));
       }
+
+      // Appliquer le tri AVANT la pagination
+      const ascending = sortDirection === 'asc';
+      query = query.order(sortColumn, { ascending });
+
+      // Appliquer la pagination APRÈS le tri
+      query = query.range((page - 1) * pagination.pageSize, page * pagination.pageSize - 1);
 
       const { data, error, count } = await query;
 
@@ -186,8 +196,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     fetchTransactions();
     // Charger les totaux de manière asynchrone (non bloquant)
     setTimeout(() => fetchGlobalTotals(), 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, filters.status, filters.currency, filters.modePaiement, filters.clientId, filters.dateFrom, filters.dateTo, filters.minAmount, filters.maxAmount, pagination.pageSize, refreshTrigger]);
+  }, [page, filters.status, filters.currency, filters.modePaiement, filters.clientId, filters.dateFrom, filters.dateTo, filters.minAmount, filters.maxAmount, sortColumn, sortDirection, refreshTrigger]);
 
   const createTransaction = async (transactionData: CreateTransactionData) => {
     setIsCreating(true);

@@ -38,7 +38,6 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTransactions } from '../hooks/useTransactions';
 import { usePermissions } from '../hooks/usePermissions';
-import { useSorting } from '../hooks/useSorting';
 import Pagination from '../components/ui/pagination-custom';
 import SortableHeader from '../components/ui/sortable-header';
 import TransactionFormFinancial from '@/components/forms/TransactionFormFinancial';
@@ -73,6 +72,8 @@ const TransactionsProtected: React.FC = () => {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | undefined>();
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
   const [bulkActionOpen, setBulkActionOpen] = useState(false);
+  const [sortColumn, setSortColumn] = useState('date_paiement');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
   // États pour les modales de confirmation
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -113,7 +114,7 @@ const TransactionsProtected: React.FC = () => {
     updateTransaction,
     deleteTransaction,
     refetch
-  } = useTransactions(currentPage, memoFilters);
+  } = useTransactions(currentPage, memoFilters, sortColumn, sortDirection);
 
   // Filter to show only Commandes (motif: Commande)
   // Exclude internal operations (depense, revenue) and internal transfers (type_transaction: transfert)
@@ -121,7 +122,19 @@ const TransactionsProtected: React.FC = () => {
     t.motif === 'Commande' && t.type_transaction !== 'transfert'
   );
 
-  const { sortedData, sortConfig, handleSort } = useSorting(commercialTransactions, { key: 'statut', direction: 'asc' });
+  // Fonction de tri côté serveur
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      // Inverser la direction si on clique sur la même colonne
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Nouvelle colonne, commencer par ordre descendant
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+    // Retourner à la première page lors du tri
+    setCurrentPage(1);
+  };
 
   const formatCurrencyValue = (amount: number, currency: string) => {
     if (currency === 'USD') {
@@ -678,13 +691,13 @@ const TransactionsProtected: React.FC = () => {
             </CardHeader>
             <CardContent>
               <EnhancedTable
-                data={sortedData}
+                data={commercialTransactions}
                 loading={loading}
                 emptyMessage="Aucune transaction"
                 emptySubMessage="Commencez par créer votre première transaction"
                 onSort={handleSort}
-                sortKey={sortConfig?.key}
-                sortDirection={sortConfig?.direction}
+                sortKey={sortColumn}
+                sortDirection={sortDirection}
                 bulkSelect={{
                   selected: Array.from(selectedTransactions),
                   onSelectAll: handleSelectAll,

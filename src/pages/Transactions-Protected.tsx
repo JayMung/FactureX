@@ -116,10 +116,11 @@ const TransactionsProtected: React.FC = () => {
     refetch
   } = useTransactions(currentPage, memoFilters, sortColumn, sortDirection);
 
-  // Filter to show only Commandes (motif: Commande)
-  // Exclude internal operations (depense, revenue) and internal transfers (type_transaction: transfert)
+  // Filter to show all client transactions (Commande AND Transfert)
+  // Exclude only internal account transfers (type_transaction: transfert)
   const commercialTransactions = transactions.filter(t => 
-    t.motif === 'Commande' && t.type_transaction !== 'transfert'
+    (t.motif === 'Commande' || t.motif === 'Transfert') && 
+    t.type_transaction !== 'transfert'
   );
 
   // Fonction de tri côté serveur

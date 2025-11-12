@@ -12,3 +12,6 @@ export { useDeleteColis } from './useDeleteColis';
 export { useUpdateColisStatut } from './useUpdateColisStatut';
 export { useOperationsFinancieres } from './useOperationsFinancieres';
 export { useMouvementsComptesStats } from './useMouvementsComptesStats';
+export { useFinancialReports, useReportGeneration } from './useFinancialReports';
+export { useApprovalWorkflow, useTransactionApproval } from './useApprovalWorkflow';
+export { useFinancialOperations } from './useFinancialOperations';

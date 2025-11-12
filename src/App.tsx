@@ -117,7 +117,7 @@ const App = () => (
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/activity-logs" element={
-                <ProtectedRouteEnhanced>
+                <ProtectedRouteEnhanced adminOnly={false}>
                   <ActivityLogs />
                 </ProtectedRouteEnhanced>
               } />

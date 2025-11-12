@@ -344,111 +344,19 @@ export interface FactureFilters {
   modeLivraison?: 'aerien' | 'maritime';
 }
 
-// Permissions types
-export interface UserPermission {
-  id: string;
-  user_id: string;
-  module: ModuleType;
-  can_read: boolean;
-  can_create: boolean;
-  can_update: boolean;
-  can_delete: boolean;
-  created_at: string;
-  updated_at: string;
-}
+// Permissions types - Importés depuis permissions.ts
+export type {
+  UserPermission,
+  ModuleType,
+  ModuleInfo,
+  UserPermissionsMap,
+  PermissionRole
+} from './permissions';
 
-export type ModuleType = 'clients' | 'finances' | 'settings' | 'payment_methods' | 'activity_logs' | 'factures' | 'exchange_rates' | 'transaction_fees' | 'colis';
-
-export interface ModuleInfo {
-  id: ModuleType;
-  name: string;
-  description: string;
-  icon: string;
-  adminOnly: boolean;
-}
-
-export interface UserPermissionsMap {
-  [module: string]: {
-    can_read: boolean;
-    can_create: boolean;
-    can_update: boolean;
-    can_delete: boolean;
-  };
-}
-
-export interface PermissionRole {
-  name: string;
-  description: string;
-  permissions: {
-    [module: string]: {
-      can_read: boolean;
-      can_create: boolean;
-      can_update: boolean;
-      can_delete: boolean;
-    };
-  };
-}
-
-// Rôles prédéfinis
-export const PREDEFINED_ROLES: PermissionRole[] = [
-  {
-    name: 'super_admin',
-    description: 'Administrateur - Accès complet à tout',
-    permissions: {
-      clients: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      finances: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      factures: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      colis: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      settings: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      payment_methods: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      exchange_rates: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      transaction_fees: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      activity_logs: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      users: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      profile: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      reports: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      security_logs: { can_read: true, can_create: false, can_update: false, can_delete: false }
-    }
-  },
-  {
-    name: 'admin',
-    description: 'Administrateur - Gestion complète limitée',
-    permissions: {
-      clients: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      finances: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      factures: { can_read: true, can_create: true, can_update: true, can_delete: true },
-      colis: { can_read: true, can_create: true, can_update: true, can_delete: false },
-      settings: { can_read: true, can_create: true, can_update: true, can_delete: false },
-      payment_methods: { can_read: true, can_create: true, can_update: true, can_delete: false },
-      exchange_rates: { can_read: true, can_create: true, can_update: true, can_delete: false },
-      transaction_fees: { can_read: true, can_create: true, can_update: true, can_delete: false },
-      activity_logs: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      users: { can_read: true, can_create: true, can_update: true, can_delete: false },
-      profile: { can_read: true, can_create: true, can_update: true, can_delete: false },
-      reports: { can_read: true, can_create: true, can_update: false, can_delete: false },
-      security_logs: { can_read: false, can_create: false, can_update: false, can_delete: false }
-    }
-  },
-  {
-    name: 'operateur',
-    description: 'Opérateur - Gestion quotidienne limitée',
-    permissions: {
-      clients: { can_read: true, can_create: true, can_update: true, can_delete: false },
-      finances: { can_read: false, can_create: false, can_update: false, can_delete: false },
-      factures: { can_read: true, can_create: true, can_update: true, can_delete: false },
-      colis: { can_read: true, can_create: true, can_update: false, can_delete: false },
-      settings: { can_read: false, can_create: false, can_update: false, can_delete: false },
-      payment_methods: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      exchange_rates: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      transaction_fees: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      activity_logs: { can_read: false, can_create: false, can_update: false, can_delete: false },
-      users: { can_read: false, can_create: false, can_update: false, can_delete: false },
-      profile: { can_read: true, can_create: false, can_update: true, can_delete: false },
-      reports: { can_read: true, can_create: false, can_update: false, can_delete: false },
-      security_logs: { can_read: false, can_create: false, can_update: false, can_delete: false }
-    }
-  }
-];
+export {
+  PREDEFINED_ROLES,
+  MODULES_INFO
+} from './permissions';
 
 // Types pour les Colis
 export interface Colis {
@@ -526,15 +434,105 @@ export interface PaiementColis {
   created_at: string;
 }
 
-// Informations sur les modules
-export const MODULES_INFO: ModuleInfo[] = [
-  { id: 'clients', name: 'Clients', description: 'Gestion des clients', icon: 'Users', adminOnly: false },
-  { id: 'finances', name: 'Finances', description: 'Gestion financière, transactions et comptes', icon: 'DollarSign', adminOnly: true },
-  { id: 'settings', name: 'Paramètres', description: 'Configuration système', icon: 'Settings', adminOnly: true },
-  { id: 'payment_methods', name: 'Moyens de paiement', description: 'Modes de paiement', icon: 'CreditCard', adminOnly: true },
-  { id: 'activity_logs', name: 'Logs d\'activité', description: 'Historique des actions', icon: 'FileText', adminOnly: true },
-  { id: 'factures', name: 'Factures', description: 'Gestion des factures et devis', icon: 'FileText', adminOnly: false },
-  { id: 'exchange_rates', name: 'Taux de change', description: 'Configuration des taux', icon: 'DollarSign', adminOnly: true },
-  { id: 'transaction_fees', name: 'Frais de transaction', description: 'Configuration des frais', icon: 'Settings', adminOnly: true },
-  { id: 'colis', name: 'Colis', description: 'Gestion des colis aériens et maritimes', icon: 'Package', adminOnly: false }
-];
+// Types pour les rapports financiers
+export interface FinancialReport {
+  id: string;
+  organization_id: string;
+  report_type: 'cash_flow' | 'profitability' | 'discrepancies';
+  title: string;
+  description?: string;
+  parameters: Record<string, any>;
+  date_range_start: string;
+  date_range_end: string;
+  file_path?: string;
+  file_size?: number;
+  checksum_md5?: string;
+  checksum_sha256?: string;
+  generated_by: string;
+  generated_by_email: string;
+  generated_at: string;
+  expires_at: string;
+  status: 'pending' | 'generating' | 'completed' | 'failed' | 'expired';
+  download_count: number;
+  last_downloaded_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FinancialReportRequest {
+  report_type: 'cash_flow' | 'profitability' | 'discrepancies';
+  date_range_start: string;
+  date_range_end: string;
+  parameters?: Record<string, any>;
+}
+
+export interface CashFlowReport {
+  period: {
+    start: string;
+    end: string;
+    days: number;
+  };
+  summary: {
+    total_inflows: number;
+    total_outflows: number;
+    net_cash_flow: number;
+    projection_30_days: number;
+  };
+  generated_at: string;
+  watermark: string;
+}
+
+export interface ProfitabilityReport {
+  period: {
+    start: string;
+    end: string;
+  };
+  top_clients: Array<{
+    client_id: string;
+    client_name: string;
+    total_revenue: number;
+    transaction_count: number;
+  }>;
+  profitability_by_type: Array<{
+    transaction_type: string;
+    total_amount: number;
+    transaction_count: number;
+    average_amount: number;
+  }>;
+  generated_at: string;
+  watermark: string;
+}
+
+export interface DiscrepanciesReport {
+  period: {
+    start: string;
+    end: string;
+  };
+  discrepancies: Array<{
+    transaction_id: string;
+    transaction_date: string;
+    recorded_amount: number;
+    calculated_amount: number;
+    discrepancy_percentage: number;
+    discrepancy_type: string;
+  }>;
+  summary: {
+    total_transactions: number;
+    transactions_with_discrepancies: number;
+    discrepancy_rate: number;
+  };
+  generated_at: string;
+  watermark: string;
+}
+
+export interface ReportDownloadInfo {
+  report_id: string;
+  title: string;
+  file_path: string;
+  file_size: number;
+  checksum_md5: string;
+  checksum_sha256: string;
+  generated_at: string;
+  expires_at: string;
+  download_count: number;
+}

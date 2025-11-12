@@ -19,7 +19,10 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   Download,
-  Search
+  Search,
+  Trash2,
+  Edit,
+  MoreVertical
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { format } from 'date-fns';
@@ -40,6 +43,7 @@ const OperationsFinancieres: React.FC = () => {
     pagination, 
     loading, 
     createTransaction,
+    deleteTransaction,
     refetch 
   } = useTransactions(currentPage);
   
@@ -96,6 +100,22 @@ const OperationsFinancieres: React.FC = () => {
       date_paiement: format(new Date(), 'yyyy-MM-dd')
     });
     setIsCreateDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette opération ? Cette action est irréversible.')) {
+      return;
+    }
+
+    try {
+      await deleteTransaction(id);
+      showSuccess('Opération supprimée avec succès');
+      refetch();
+      refetchStats();
+    } catch (error: any) {
+      console.error('Erreur lors de la suppression:', error);
+      showError(error.message || 'Erreur lors de la suppression de l\'opération');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -348,11 +368,21 @@ const OperationsFinancieres: React.FC = () => {
                               : operation.compte_destination?.nom}
                           </p>
                         </div>
-                        <div className={`text-right text-lg font-bold ${
-                          operation.type_transaction === 'depense' ? 'text-red-600' : 'text-green-600'
-                        }`}>
-                          {operation.type_transaction === 'depense' ? '-' : '+'}
-                          {formatCurrency(operation.montant, operation.devise)}
+                        <div className="flex items-center justify-between">
+                          <div className={`text-lg font-bold ${
+                            operation.type_transaction === 'depense' ? 'text-red-600' : 'text-green-600'
+                          }`}>
+                            {operation.type_transaction === 'depense' ? '-' : '+'}
+                            {formatCurrency(operation.montant, operation.devise)}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(operation.id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -371,18 +401,19 @@ const OperationsFinancieres: React.FC = () => {
                     <th className="px-4 py-3 text-left text-sm font-medium">Description</th>
                     <th className="px-4 py-3 text-left text-sm font-medium">Compte</th>
                     <th className="px-4 py-3 text-right text-sm font-medium">Montant</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {loading ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center">
+                      <td colSpan={6} className="px-4 py-8 text-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
                       </td>
                     </tr>
                   ) : searchedOperations.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                         Aucune opération trouvée
                       </td>
                     </tr>
@@ -408,6 +439,16 @@ const OperationsFinancieres: React.FC = () => {
                         }`}>
                           {operation.type_transaction === 'depense' ? '-' : '+'}
                           {formatCurrency(operation.montant, operation.devise)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(operation.id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </td>
                       </tr>
                     ))

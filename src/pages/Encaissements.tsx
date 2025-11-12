@@ -34,6 +34,7 @@ import { useAllClients } from '@/hooks/useClients';
 import { useFactures } from '@/hooks/useFactures';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 import { useColisList } from '@/hooks/useColisList';
+import { ClientCombobox } from '@/components/ui/client-combobox';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -223,31 +224,15 @@ export default function Encaissements() {
 
                 <div className="space-y-2">
                   <Label>Client *</Label>
-                  <Select
+                  <ClientCombobox
+                    clients={clients || []}
                     value={formData.client_id}
                     onValueChange={(value) =>
                       setFormData({ ...formData, client_id: value, facture_id: undefined, colis_id: undefined })
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients && clients.length > 0 ? (
-                        clients
-                          .filter((client) => typeof client?.id === 'string' && client.id.trim().length > 0)
-                          .map((client) => (
-                          <SelectItem key={String(client.id)} value={String(client.id)}>
-                            {client.nom} - {client.telephone}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="__no_client__" disabled>
-                          Aucun client disponible
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Rechercher un client..."
+                    emptyMessage="Aucun client trouvé"
+                  />
                 </div>
 
                 {formData.type_paiement === 'facture' && (

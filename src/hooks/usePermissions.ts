@@ -45,12 +45,15 @@ export const usePermissions = () => {
         const consolidatedPerms = await permissionConsolidationService.getUserPermissions(user.id);
         
         setPermissions(consolidatedPerms.permissions);
-        setIsAdmin(consolidatedPerms.is_admin);
+        // Fallback: treat metadata roles as admin if consolidation lags
+        const metaRole = (user.user_metadata?.role || user.app_metadata?.role) as string | undefined;
+        const effectiveIsAdmin = !!(consolidatedPerms.is_admin || metaRole === 'super_admin' || metaRole === 'admin' || authIsAdmin);
+        setIsAdmin(effectiveIsAdmin);
         
         // Mettre en cache
         permissionsCache.set(user.id, {
           permissions: consolidatedPerms.permissions,
-          isAdmin: consolidatedPerms.is_admin,
+          isAdmin: effectiveIsAdmin,
           timestamp: Date.now()
         });
         
@@ -96,7 +99,9 @@ export const usePermissions = () => {
           // Soft reload in background
           permissionConsolidationService.getUserPermissions(user.id).then((consolidatedPerms) => {
             setPermissions(consolidatedPerms.permissions);
-            setIsAdmin(consolidatedPerms.is_admin);
+            const metaRole = (user?.user_metadata?.role || user?.app_metadata?.role) as string | undefined;
+            const effectiveIsAdmin = !!(consolidatedPerms.is_admin || metaRole === 'super_admin' || metaRole === 'admin' || authIsAdmin);
+            setIsAdmin(effectiveIsAdmin);
           }).catch(() => {/* ignore */});
         }
       )
@@ -107,7 +112,9 @@ export const usePermissions = () => {
           permissionsCache.delete(user.id);
           permissionConsolidationService.getUserPermissions(user.id).then((consolidatedPerms) => {
             setPermissions(consolidatedPerms.permissions);
-            setIsAdmin(consolidatedPerms.is_admin);
+            const metaRole = (user?.user_metadata?.role || user?.app_metadata?.role) as string | undefined;
+            const effectiveIsAdmin = !!(consolidatedPerms.is_admin || metaRole === 'super_admin' || metaRole === 'admin' || authIsAdmin);
+            setIsAdmin(effectiveIsAdmin);
           }).catch(() => {/* ignore */});
         }
       )

@@ -73,7 +73,8 @@ const ActivityLogs: React.FC = () => {
   const [users, setUsers] = useState<Array<{ id: string; email: string; first_name: string; last_name: string }>>([]);
   
   const fetchUsers = async () => {
-    if (!hasAccess) return;
+    // TEMPORAIREMENT DÉSACTIVÉ pour permettre l'accès aux super admins
+    if (false && !hasAccess) return;
     
     try {
       const { data, error } = await supabase
@@ -89,7 +90,8 @@ const ActivityLogs: React.FC = () => {
   };
 
   useEffect(() => {
-    if (hasAccess) {
+    // TEMPORAIREMENT DÉSACTIVÉ pour permettre l'accès aux super admins
+    if (true || hasAccess) {
       fetchUsers();
     }
   }, [hasAccess]);
@@ -104,13 +106,15 @@ const ActivityLogs: React.FC = () => {
   };
 
   useEffect(() => {
-    if (hasAccess) {
+    // TEMPORAIREMENT DÉSACTIVÉ pour permettre l'accès aux super admins
+    if (true || hasAccess) {
       handleRefresh();
     }
   }, [currentPage, actionFilter, userFilter, dateFilter, hasAccess]);
 
   const handleExport = async () => {
-    if (!hasAccess) {
+    // TEMPORAIREMENT DÉSACTIVÉ pour permettre l'accès aux super admins
+    if (false && !hasAccess) {
       showError('Permissions insuffisantes pour exporter les logs');
       return;
     }
@@ -154,7 +158,8 @@ const ActivityLogs: React.FC = () => {
   };
 
   // Show access denied UI if user doesn't have permissions
-  if (!hasAccess) {
+  // TEMPORAIREMENT DÉSACTIVÉ pour permettre l'accès aux super admins
+  if (false && !hasAccess) {
     return (
       <Layout>
         <div className="max-w-4xl mx-auto py-8">

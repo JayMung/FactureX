@@ -294,19 +294,24 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       if (data.total_poids !== undefined) updateData.total_poids = data.total_poids;
       if (data.total_general !== undefined) updateData.total_general = data.total_general;
 
-      // Si on met à jour les items, toujours les mettre à jour dans la DB
-      if (data.items && data.items.length > 0) {
+      // ✅ CORRECTION: Ne mettre à jour les items que si explicitement fournis ET non vides
+      // Si data.items est undefined, on ne touche pas aux items existants
+      // Si data.items est un tableau vide [], on supprime tous les items
+      // Si data.items contient des éléments, on remplace tous les items
+      if (data.items !== undefined) {
         // Supprimer les anciens items
         await supabase.from('facture_items').delete().eq('facture_id', id);
 
-        // Insérer les nouveaux items
-        const itemsToInsert = data.items.map((item, index) => ({
-          facture_id: id,
-          numero_ligne: index + 1,
-          ...item
-        }));
+        // Insérer les nouveaux items (seulement s'il y en a)
+        if (data.items.length > 0) {
+          const itemsToInsert = data.items.map((item, index) => ({
+            facture_id: id,
+            numero_ligne: index + 1,
+            ...item
+          }));
 
-        await supabase.from('facture_items').insert(itemsToInsert);
+          await supabase.from('facture_items').insert(itemsToInsert);
+        }
       }
 
       // Si on met à jour les items SANS fournir de totaux, recalculer automatiquement

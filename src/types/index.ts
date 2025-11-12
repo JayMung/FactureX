@@ -178,6 +178,7 @@ export interface ClientFilters {
 }
 
 export interface TransactionFilters {
+  search?: string;
   status?: string;
   currency?: string;
   clientId?: string;
@@ -335,6 +336,7 @@ export interface UpdateFactureData {
 }
 
 export interface FactureFilters {
+  search?: string;
   type?: 'devis' | 'facture';
   statut?: string;
   statut_paiement?: string;

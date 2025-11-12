@@ -66,6 +66,15 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       if (filters?.dateTo) {
         query = query.lte('date_emission', filters.dateTo);
       }
+      
+      // Appliquer la recherche textuelle
+      if (filters?.search) {
+        query = query.or(`
+          facture_number.ilike.%${filters.search}%, 
+          clients.nom.ilike.%${filters.search}%, 
+          clients.telephone.ilike.%${filters.search}%
+        `);
+      }
 
       // Charger factures
       const { data, error: fetchError, count } = await query;
@@ -125,6 +134,15 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       }
       if (filters?.dateTo) {
         query = query.lte('date_emission', filters.dateTo);
+      }
+      
+      // Appliquer la recherche textuelle pour les totaux
+      if (filters?.search) {
+        query = query.or(`
+          facture_number.ilike.%${filters.search}%, 
+          clients.nom.ilike.%${filters.search}%, 
+          clients.telephone.ilike.%${filters.search}%
+        `);
       }
 
       const { data, error } = await query;

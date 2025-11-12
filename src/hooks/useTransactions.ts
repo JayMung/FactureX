@@ -74,6 +74,16 @@ export const useTransactions = (
       if (filters.maxAmount) {
         query = query.lte('montant', parseFloat(filters.maxAmount));
       }
+      
+      // Appliquer la recherche textuelle
+      if (filters.search) {
+        query = query.or(`
+          id.ilike.%${filters.search}%, 
+          client.nom.ilike.%${filters.search}%, 
+          client.telephone.ilike.%${filters.search}%, 
+          mode_paiement.ilike.%${filters.search}%
+        `);
+      }
 
       // Appliquer le tri AVANT la pagination
       const ascending = sortDirection === 'asc';
@@ -135,6 +145,16 @@ export const useTransactions = (
       }
       if (filters.maxAmount) {
         query = query.lte('montant', parseFloat(filters.maxAmount));
+      }
+      
+      // Appliquer la recherche textuelle pour les totaux
+      if (filters.search) {
+        query = query.or(`
+          id.ilike.%${filters.search}%, 
+          client.nom.ilike.%${filters.search}%, 
+          client.telephone.ilike.%${filters.search}%, 
+          mode_paiement.ilike.%${filters.search}%
+        `);
       }
 
       const { data, error } = await query;

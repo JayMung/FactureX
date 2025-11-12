@@ -100,7 +100,7 @@ const TransactionsProtected: React.FC = () => {
   const memoFilters = useMemo(() => ({
     status: statusFilter === 'all' ? undefined : statusFilter,
     currency: currencyFilter === 'all' ? undefined : currencyFilter,
-    modePaiement: searchTerm || undefined
+    search: searchTerm || undefined
   }), [statusFilter, currencyFilter, searchTerm]);
 
   const {
@@ -900,34 +900,43 @@ const TransactionsProtected: React.FC = () => {
 
               {/* Pagination avec sélecteur de taille */}
               {pagination && (
-                <div className="mt-6 flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-600">Afficher</span>
-                    <Select value="10" onValueChange={(value) => {
-                      console.log('Page size:', value);
-                    }}>
-                      <SelectTrigger className="w-20">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="25">25</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                        <SelectItem value="100">100</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span className="text-sm text-gray-600">par page</span>
-                    <span className="text-sm text-gray-500 ml-4">
-                      {pagination.count} transaction{pagination.count > 1 ? 's' : ''} au total
-                    </span>
+                <div className="mt-6 space-y-4">
+                  {/* Informations et sélecteur de taille - Stack sur mobile */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-600">Afficher</span>
+                        <Select value="10" onValueChange={(value) => {
+                          console.log('Page size:', value);
+                        }}>
+                          <SelectTrigger className="w-20 h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <span className="text-sm text-gray-600">par page</span>
+                      </div>
+                      <span className="text-sm text-gray-500 sm:ml-4">
+                        {pagination.count} transaction{pagination.count > 1 ? 's' : ''} au total
+                      </span>
+                    </div>
                   </div>
                   
+                  {/* Pagination - Centrée et responsive */}
                   {pagination.totalPages > 1 && (
-                    <Pagination
-                      currentPage={currentPage}
-                      totalPages={pagination.totalPages}
-                      onPageChange={setCurrentPage}
-                    />
+                    <div className="flex justify-center">
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={pagination.totalPages}
+                        onPageChange={setCurrentPage}
+                        className="w-full max-w-full overflow-x-auto"
+                      />
+                    </div>
                   )}
                 </div>
               )}

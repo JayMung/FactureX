@@ -25,10 +25,6 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       setIsLoading(true);
       setError(null);
 
-      // Calculer offset pour la pagination
-      const from = (page - 1) * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-
       // Construire la requête optimisée
       let query = supabase
         .from('factures')
@@ -42,10 +38,16 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
           devise,
           mode_livraison,
           client_id,
-          clients!factures_client_id_fkey(id, nom, telephone, ville)
+          clients(id, nom, telephone, ville)
         `, { count: 'exact' })
-        .order('date_emission', { ascending: false })
-        .range(from, to);
+        .order('date_emission', { ascending: false });
+      
+      // Si pas de recherche, appliquer la pagination
+      if (!filters?.search) {
+        const from = (page - 1) * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+        query = query.range(from, to);
+      }
 
       // Appliquer les filtres
       if (filters?.type) {
@@ -67,27 +69,40 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
         query = query.lte('date_emission', filters.dateTo);
       }
       
-      // Appliquer la recherche textuelle
-      if (filters?.search) {
-        query = query.or(`facture_number.ilike.%${filters.search}%,clients!factures_client_id_fkey.nom.ilike.%${filters.search}%,clients!factures_client_id_fkey.telephone.ilike.%${filters.search}%`);
-      }
-
       // Charger factures
       const { data, error: fetchError, count } = await query;
 
       if (fetchError) throw fetchError;
 
-      setFactures((data || []) as unknown as Facture[]);
+      // Filtrage côté client pour rechercher dans les données du client
+      let filteredData = (data || []) as unknown as Facture[];
+      let filteredCount = count || 0;
       
-      if (count !== null) {
-        setPagination({
-          data: (data || []) as unknown as Facture[],
-          count,
-          page,
-          pageSize: PAGE_SIZE,
-          totalPages: Math.ceil(count / PAGE_SIZE)
+      if (filters?.search && filteredData.length > 0) {
+        const searchLower = filters.search.toLowerCase().trim();
+        filteredData = filteredData.filter((facture: any) => {
+          const matchFactureNumber = facture.facture_number?.toLowerCase().includes(searchLower);
+          const matchClientNom = facture.clients?.nom?.toLowerCase().includes(searchLower);
+          const matchClientTelephone = facture.clients?.telephone?.toLowerCase().includes(searchLower);
+          return matchFactureNumber || matchClientNom || matchClientTelephone;
         });
+        filteredCount = filteredData.length;
+        
+        // Appliquer la pagination côté client si recherche active
+        const from = (page - 1) * PAGE_SIZE;
+        const to = from + PAGE_SIZE;
+        filteredData = filteredData.slice(from, to);
       }
+
+      setFactures(filteredData);
+      
+      setPagination({
+        data: filteredData,
+        count: filteredCount,
+        page,
+        pageSize: PAGE_SIZE,
+        totalPages: Math.ceil(filteredCount / PAGE_SIZE)
+      });
 
       // Reset retry count on success
       setRetryCount(0);

@@ -46,7 +46,7 @@ export const useTransactions = (
         .from('transactions')
         .select(`
           *,
-          client:transactions_client_id_fkey(*)
+          client:clients(*)
         `, { count: 'exact' });
 
       // Appliquer les filtres
@@ -75,28 +75,46 @@ export const useTransactions = (
         query = query.lte('montant', parseFloat(filters.maxAmount));
       }
       
-      // Appliquer la recherche textuelle
-      if (filters.search) {
-        query = query.or(`id.ilike.%${filters.search}%,client:transactions_client_id_fkey.nom.ilike.%${filters.search}%,client:transactions_client_id_fkey.telephone.ilike.%${filters.search}%,mode_paiement.ilike.%${filters.search}%`);
-      }
-
       // Appliquer le tri AVANT la pagination
       const ascending = sortDirection === 'asc';
       query = query.order(sortColumn, { ascending });
 
-      // Appliquer la pagination APRÈS le tri
-      query = query.range((page - 1) * pagination.pageSize, page * pagination.pageSize - 1);
+      // Appliquer la pagination APRÈS le tri (sauf si recherche active)
+      if (!filters.search) {
+        query = query.range((page - 1) * pagination.pageSize, page * pagination.pageSize - 1);
+      }
 
       const { data, error, count } = await query;
 
       if (error) throw error;
 
-      setTransactions(data || []);
+      // Filtrage côté client pour la recherche
+      let filteredData = data || [];
+      let filteredCount = count || 0;
+      
+      if (filters.search && filteredData.length > 0) {
+        const searchLower = filters.search.toLowerCase().trim();
+        filteredData = filteredData.filter((transaction: any) => {
+          const matchId = transaction.id?.toLowerCase().includes(searchLower);
+          const matchClientNom = transaction.client?.nom?.toLowerCase().includes(searchLower);
+          const matchClientTelephone = transaction.client?.telephone?.toLowerCase().includes(searchLower);
+          const matchModePaiement = transaction.mode_paiement?.toLowerCase().includes(searchLower);
+          return matchId || matchClientNom || matchClientTelephone || matchModePaiement;
+        });
+        filteredCount = filteredData.length;
+        
+        // Appliquer la pagination côté client si recherche active
+        const from = (page - 1) * pagination.pageSize;
+        const to = from + pagination.pageSize;
+        filteredData = filteredData.slice(from, to);
+      }
+
+      setTransactions(filteredData);
       setPagination(prev => ({
         ...prev,
-        count: count || 0,
+        count: filteredCount,
         page,
-        totalPages: Math.ceil((count || 0) / prev.pageSize)
+        totalPages: Math.ceil(filteredCount / prev.pageSize)
       }));
     } catch (err: any) {
       const friendlyMessage = getFriendlyErrorMessage(err, 'Erreur de chargement des transactions');

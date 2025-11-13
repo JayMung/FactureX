@@ -116,7 +116,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, filters, retryCount]);
+  }, [page, filters?.type, filters?.statut, filters?.clientId, filters?.modeLivraison, filters?.dateFrom, filters?.dateTo, filters?.search, retryCount]);
 
   // Fonction pour calculer les totaux globaux (toutes pages confondues)
   // IMPORTANT: Ne compte QUE les factures payées (statut = 'payee')
@@ -499,7 +499,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
   useEffect(() => {
     fetchFactures();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, filters?.type, filters?.statut, filters?.clientId, filters?.modeLivraison, filters?.dateFrom, filters?.dateTo]);
+  }, [page, filters?.type, filters?.statut, filters?.clientId, filters?.modeLivraison, filters?.dateFrom, filters?.dateTo, filters?.search]);
 
   useEffect(() => {
     // Charger les totaux de manière asynchrone (non bloquant)

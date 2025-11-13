@@ -124,7 +124,7 @@ export const useTransactions = (
     } finally {
       setLoading(false);
     }
-  }, [page, filters.status, filters.currency, filters.modePaiement, pagination.pageSize, refreshTrigger]);
+  }, [page, filters.status, filters.currency, filters.modePaiement, filters.search, pagination.pageSize, refreshTrigger]);
 
   // Fonction pour calculer les totaux globaux (toutes pages confondues)
   const fetchGlobalTotals = useCallback(async () => {
@@ -224,7 +224,7 @@ export const useTransactions = (
     fetchTransactions();
     // Charger les totaux de manière asynchrone (non bloquant)
     setTimeout(() => fetchGlobalTotals(), 0);
-  }, [page, filters.status, filters.currency, filters.modePaiement, filters.clientId, filters.dateFrom, filters.dateTo, filters.minAmount, filters.maxAmount, sortColumn, sortDirection, refreshTrigger]);
+  }, [page, filters.status, filters.currency, filters.modePaiement, filters.clientId, filters.dateFrom, filters.dateTo, filters.minAmount, filters.maxAmount, filters.search, sortColumn, sortDirection, refreshTrigger]);
 
   const createTransaction = async (transactionData: CreateTransactionData) => {
     setIsCreating(true);

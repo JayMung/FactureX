@@ -545,6 +545,14 @@ export interface TransactionApproval {
   transaction_id: string;
   approver_id: string;
   status: 'pending' | 'approved' | 'rejected';
+  approval_status: 'pending' | 'approved' | 'rejected';
+  approval_level: number;
+  required_approvals: number;
+  transaction_amount?: number;
+  transaction_type?: string;
+  requested_at: string;
+  created_by_email?: string;
+  organization_id?: string;
   comments?: string;
   created_at: string;
   updated_at: string;

@@ -30,7 +30,8 @@ import {
   Receipt,
   History,
   Package,
-  Truck
+  Truck,
+  Webhook
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 // @ts-ignore - Temporary workaround for Supabase types
@@ -708,6 +709,20 @@ const SettingsWithPermissions = () => {
       label: 'Logs d\'activité',
       icon: <History className="h-5 w-5" />,
       description: 'Historique des actions dans l\'application',
+      adminOnly: true
+    },
+    {
+      id: 'api-keys',
+      label: 'Clés API',
+      icon: <Key className="h-5 w-5" />,
+      description: 'Gestion des clés API pour intégrations externes',
+      adminOnly: true
+    },
+    {
+      id: 'webhooks',
+      label: 'Webhooks',
+      icon: <Webhook className="h-5 w-5" />,
+      description: 'Notifications en temps réel vers Discord, Slack, n8n',
       adminOnly: true
     }
   ];
@@ -1407,6 +1422,161 @@ const SettingsWithPermissions = () => {
 
             {/* Transitaires Settings Tab */}
             {activeTab === 'transitaires' && <SettingsTransitaires />}
+
+            {/* API Keys Tab */}
+            {activeTab === 'api-keys' && (
+              <div className="space-y-6">
+                <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-blue-900 dark:text-blue-100">
+                      <AlertCircle className="mr-2 h-5 w-5" />
+                      Gestion des Clés API
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-blue-800 dark:text-blue-200">
+                    <p className="mb-4">
+                      Les clés API vous permettent d'intégrer FactureX avec des outils externes comme n8n, Discord, ou vos propres applications.
+                    </p>
+                    <Button 
+                      onClick={() => navigate('/api-keys')}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Key className="mr-2 h-4 w-4" />
+                      Gérer les Clés API
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Documentation API</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <h3 className="font-semibold mb-2">Endpoints Disponibles</h3>
+                      <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
+                        <li><code className="bg-gray-100 px-2 py-1 rounded">GET /api-transactions</code> - Récupérer les transactions</li>
+                        <li><code className="bg-gray-100 px-2 py-1 rounded">GET /api-clients</code> - Récupérer les clients</li>
+                        <li><code className="bg-gray-100 px-2 py-1 rounded">GET /api-factures</code> - Récupérer les factures</li>
+                        <li><code className="bg-gray-100 px-2 py-1 rounded">GET /api-colis</code> - Récupérer les colis</li>
+                        <li><code className="bg-gray-100 px-2 py-1 rounded">GET /api-stats</code> - Récupérer les statistiques</li>
+                        <li><code className="bg-gray-100 px-2 py-1 rounded">POST /api-webhooks</code> - Gérer les webhooks</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h3 className="font-semibold mb-2">Types de Clés</h3>
+                      <div className="space-y-2">
+                        <div className="flex items-start space-x-2">
+                          <Badge className="bg-blue-500">Public</Badge>
+                          <span className="text-sm text-gray-600">100 req/h - Lecture seule des stats</span>
+                        </div>
+                        <div className="flex items-start space-x-2">
+                          <Badge className="bg-green-500">Secret</Badge>
+                          <span className="text-sm text-gray-600">1000 req/h - Lecture + Webhooks</span>
+                        </div>
+                        <div className="flex items-start space-x-2">
+                          <Badge className="bg-red-500">Admin</Badge>
+                          <span className="text-sm text-gray-600">5000 req/h - Accès complet</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Webhooks Tab */}
+            {activeTab === 'webhooks' && (
+              <div className="space-y-6">
+                <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950 dark:border-purple-800">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-purple-900 dark:text-purple-100">
+                      <AlertCircle className="mr-2 h-5 w-5" />
+                      Gestion des Webhooks
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-purple-800 dark:text-purple-200">
+                    <p className="mb-4">
+                      Les webhooks vous permettent de recevoir des notifications en temps réel lorsque des événements se produisent dans FactureX.
+                    </p>
+                    <Button 
+                      onClick={() => navigate('/webhooks')}
+                      className="bg-purple-600 hover:bg-purple-700"
+                    >
+                      <Webhook className="mr-2 h-4 w-4" />
+                      Gérer les Webhooks
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Événements Disponibles</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <h3 className="font-semibold mb-2">Transactions</h3>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline">transaction.created</Badge>
+                        <Badge variant="outline">transaction.validated</Badge>
+                        <Badge variant="outline">transaction.deleted</Badge>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="font-semibold mb-2">Factures</h3>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline">facture.created</Badge>
+                        <Badge variant="outline">facture.validated</Badge>
+                        <Badge variant="outline">facture.paid</Badge>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="font-semibold mb-2">Clients</h3>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline">client.created</Badge>
+                        <Badge variant="outline">client.updated</Badge>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="font-semibold mb-2">Colis</h3>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline">colis.created</Badge>
+                        <Badge variant="outline">colis.delivered</Badge>
+                        <Badge variant="outline">colis.status_changed</Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Formats Supportés</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-start space-x-3">
+                      <Badge className="bg-gray-500">JSON</Badge>
+                      <span className="text-sm text-gray-600">Format standard pour toutes les intégrations</span>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <Badge className="bg-indigo-500">Discord</Badge>
+                      <span className="text-sm text-gray-600">Embeds riches avec couleurs et champs</span>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <Badge className="bg-purple-500">Slack</Badge>
+                      <span className="text-sm text-gray-600">Messages formatés pour Slack</span>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <Badge className="bg-orange-500">n8n</Badge>
+                      <span className="text-sm text-gray-600">Format optimisé pour n8n workflows</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
           </div>
         </div>

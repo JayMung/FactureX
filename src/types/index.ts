@@ -538,3 +538,44 @@ export interface ReportDownloadInfo {
   expires_at: string;
   download_count: number;
 }
+
+// Workflow and Approval Types
+export interface TransactionApproval {
+  id: string;
+  transaction_id: string;
+  approver_id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approval_status: 'pending' | 'approved' | 'rejected';
+  approval_level: number;
+  required_approvals: number;
+  transaction_amount?: number;
+  transaction_type?: string;
+  requested_at: string;
+  created_by_email?: string;
+  organization_id?: string;
+  comments?: string;
+  created_at: string;
+  updated_at: string;
+  transaction?: Transaction;
+}
+
+export interface WorkflowRule {
+  id: string;
+  name: string;
+  condition: string;
+  action: string;
+  priority: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApprovalNotification {
+  id: string;
+  approval_id: string;
+  user_id: string;
+  type: 'email' | 'in_app' | 'sms';
+  status: 'pending' | 'sent' | 'failed';
+  sent_at?: string;
+  created_at: string;
+}

@@ -40,6 +40,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useApprovalWorkflow } from '@/hooks/useApprovalWorkflow';
 import { TransactionApproval } from '@/types';

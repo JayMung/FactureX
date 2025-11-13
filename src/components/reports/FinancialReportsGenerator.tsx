@@ -166,7 +166,7 @@ export const FinancialReportsGenerator: React.FC = () => {
                     <div>
                       <div className="font-medium">Écarts</div>
                       <div className="text-sm text-muted-foreground">
-                        Détection anomalies > 1%
+                        Détection anomalies &gt; 1%
                       </div>
                     </div>
                   </div>

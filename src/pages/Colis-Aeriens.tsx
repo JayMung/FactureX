@@ -140,6 +140,27 @@ const ColisAeriens: React.FC = () => {
         .eq('type_livraison', 'aerien')
         .order('created_at', { ascending: false });
 
+      // Charger les informations des créateurs séparément
+      if (data && data.length > 0) {
+        const creatorIds = [...new Set(data.map(c => c.created_by).filter(Boolean))];
+        if (creatorIds.length > 0) {
+          const { data: creators } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, email')
+            .in('id', creatorIds);
+          
+          // Ajouter les informations du créateur à chaque colis
+          if (creators) {
+            data.forEach((colis: any) => {
+              const creator = creators.find(c => c.id === colis.created_by);
+              if (creator) {
+                colis.creator = creator;
+              }
+            });
+          }
+        }
+      }
+
       if (error) throw error;
       
       setColis(data || []);
@@ -986,6 +1007,14 @@ const ColisAeriens: React.FC = () => {
                         <span className="text-sm text-gray-500">Créé le:</span>
                         <p className="font-medium">
                           {new Date(selectedColis.created_at || '').toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500">Créé par:</span>
+                        <p className="font-medium">
+                          {(selectedColis as any).creator 
+                            ? `${(selectedColis as any).creator.first_name} ${(selectedColis as any).creator.last_name}`
+                            : '-'}
                         </p>
                       </div>
                     </CardContent>

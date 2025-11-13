@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -49,6 +49,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [editedData, setEditedData] = useState<Partial<Transaction>>({});
   const [validatorName, setValidatorName] = useState<string>('');
+  const [creatorName, setCreatorName] = useState<string>('');
 
   useEffect(() => {
     if (transaction) {
@@ -68,6 +69,11 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
       if (transaction.valide_par) {
         fetchValidatorName(transaction.valide_par);
       }
+
+      // Fetch creator name if exists
+      if (transaction.created_by) {
+        fetchCreatorName(transaction.created_by);
+      }
     }
   }, [transaction]);
 
@@ -84,6 +90,22 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
       }
     } catch (error) {
       console.error('Error fetching validator name:', error);
+    }
+  };
+
+  const fetchCreatorName = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', userId)
+        .single();
+
+      if (data && !error) {
+        setCreatorName(`${data.first_name} ${data.last_name}`);
+      }
+    } catch (error) {
+      console.error('Error fetching creator name:', error);
     }
   };
 
@@ -437,6 +459,16 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                   {new Date(transaction.created_at).toLocaleString('fr-FR')}
                 </p>
               </div>
+
+              {creatorName && (
+                <div>
+                  <Label className="text-xs text-gray-500 flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Créé par
+                  </Label>
+                  <p className="text-base font-medium">{creatorName}</p>
+                </div>
+              )}
 
               {transaction.updated_at && (
                 <div>

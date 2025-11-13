@@ -750,9 +750,12 @@ const TransactionsProtected: React.FC = () => {
                     sortable: true,
                     className: 'min-w-[120px]',
                     render: (value: any, transaction: Transaction, index: number) => (
-                      <span className="font-medium">
+                      <button
+                        onClick={() => handleViewTransaction(transaction)}
+                        className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                      >
                         {generateReadableId(transaction.id, index)}
-                      </span>
+                      </button>
                     )
                   },
                   {

@@ -1,10 +1,47 @@
 # 📚 Documentation FactureX
 
-Bienvenue dans la documentation complète de FactureX v1.0.3
+Bienvenue dans la documentation complète de FactureX v2.0
+
+> 💡 **Nouveau** : Consultez [`INDEX.md`](./INDEX.md) pour un index complet et détaillé de toute la documentation.
 
 ---
 
 ## 📂 Structure de la Documentation
+
+### 🆕 Nouveautés (Novembre 2025)
+
+#### 🔌 [API REST](api/)
+Documentation complète de l'API REST
+- `API_README.md` - Guide principal
+- `API_GUIDE.md` - Guide d'utilisation détaillé
+- `API_IMPLEMENTATION_GUIDE.md` - Implémentation technique
+- `API_KEYS_INTERFACE_GUIDE.md` - Gestion des clés API
+- `API_DEPLOYMENT_SUMMARY.md` - Résumé du déploiement
+- `API_FINAL_SUMMARY.md` - Résumé final complet
+
+**Fichiers** : 6
+
+---
+
+#### 🔔 [Webhooks](webhooks/)
+Système de notifications en temps réel
+- `WEBHOOKS_GUIDE.md` - Guide complet utilisateur
+- `WEBHOOKS_IMPLEMENTATION_COMPLETE.md` - Implémentation technique
+- `WEBHOOKS_ENRICHMENT_SUMMARY.md` - Enrichissement des données
+- `WEBHOOK_DELETE_EVENTS.md` - Événements de suppression
+
+**Fichiers** : 4
+
+---
+
+#### 🔗 [Integrations](integrations/)
+Intégrations avec services tiers
+- `DISCORD_CHANNELS_SETUP.md` - Configuration Discord complète
+- `N8N_INTEGRATION_GUIDE.md` - Intégration n8n
+
+**Fichiers** : 2
+
+---
 
 ### 🚀 [Releases](releases/)
 Documentation des versions et déploiements
@@ -190,10 +227,11 @@ Spécifications techniques
 
 ## 📊 Statistiques
 
-- **Total de fichiers** : 110+ documents
-- **Catégories** : 17 dossiers
-- **Version** : 1.0.3
-- **Dernière mise à jour** : 5 novembre 2025
+- **Total de fichiers** : 120+ documents
+- **Catégories** : 20 dossiers
+- **Version** : 2.0
+- **Dernière mise à jour** : 13 novembre 2025
+- **Nouveaux modules** : API REST, Webhooks, Intégrations
 
 ---
 
@@ -215,4 +253,6 @@ Pour toute question sur la documentation :
 
 ---
 
-**FactureX Documentation v1.0.3** - Complète et Organisée ✨
+**FactureX Documentation v2.0** - Complète et Organisée ✨
+
+> 📖 Pour un index détaillé : [`INDEX.md`](./INDEX.md)

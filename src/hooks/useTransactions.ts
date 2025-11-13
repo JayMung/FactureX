@@ -46,7 +46,7 @@ export const useTransactions = (
         .from('transactions')
         .select(`
           *,
-          client:clients(*)
+          client:transactions_client_id_fkey(*)
         `, { count: 'exact' });
 
       // Appliquer les filtres
@@ -77,12 +77,7 @@ export const useTransactions = (
       
       // Appliquer la recherche textuelle
       if (filters.search) {
-        query = query.or(`
-          id.ilike.%${filters.search}%, 
-          client.nom.ilike.%${filters.search}%, 
-          client.telephone.ilike.%${filters.search}%, 
-          mode_paiement.ilike.%${filters.search}%
-        `);
+        query = query.or(`id.ilike.%${filters.search}%,client:transactions_client_id_fkey.nom.ilike.%${filters.search}%,client:transactions_client_id_fkey.telephone.ilike.%${filters.search}%,mode_paiement.ilike.%${filters.search}%`);
       }
 
       // Appliquer le tri AVANT la pagination
@@ -149,12 +144,7 @@ export const useTransactions = (
       
       // Appliquer la recherche textuelle pour les totaux
       if (filters.search) {
-        query = query.or(`
-          id.ilike.%${filters.search}%, 
-          client.nom.ilike.%${filters.search}%, 
-          client.telephone.ilike.%${filters.search}%, 
-          mode_paiement.ilike.%${filters.search}%
-        `);
+        query = query.or(`id.ilike.%${filters.search}%`);
       }
 
       const { data, error } = await query;

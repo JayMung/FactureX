@@ -42,7 +42,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
           devise,
           mode_livraison,
           client_id,
-          clients(id, nom, telephone, ville)
+          clients!factures_client_id_fkey(id, nom, telephone, ville)
         `, { count: 'exact' })
         .order('date_emission', { ascending: false })
         .range(from, to);
@@ -69,11 +69,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       
       // Appliquer la recherche textuelle
       if (filters?.search) {
-        query = query.or(`
-          facture_number.ilike.%${filters.search}%, 
-          clients.nom.ilike.%${filters.search}%, 
-          clients.telephone.ilike.%${filters.search}%
-        `);
+        query = query.or(`facture_number.ilike.%${filters.search}%,clients!factures_client_id_fkey.nom.ilike.%${filters.search}%,clients!factures_client_id_fkey.telephone.ilike.%${filters.search}%`);
       }
 
       // Charger factures
@@ -138,11 +134,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       
       // Appliquer la recherche textuelle pour les totaux
       if (filters?.search) {
-        query = query.or(`
-          facture_number.ilike.%${filters.search}%, 
-          clients.nom.ilike.%${filters.search}%, 
-          clients.telephone.ilike.%${filters.search}%
-        `);
+        query = query.or(`facture_number.ilike.%${filters.search}%`);
       }
 
       const { data, error } = await query;

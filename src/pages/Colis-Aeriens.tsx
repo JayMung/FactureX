@@ -78,6 +78,8 @@ const ColisAeriens: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statutFilter, setStatutFilter] = useState<string>('tous');
+  const [transitaireFilter, setTransitaireFilter] = useState<string>('tous');
+  const [fournisseurFilter, setFournisseurFilter] = useState<string>('tous');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 10;
 
@@ -172,9 +174,15 @@ const ColisAeriens: React.FC = () => {
       c.fournisseur.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatut = statutFilter === 'tous' || c.statut === statutFilter;
+    const matchesTransitaire = transitaireFilter === 'tous' || c.transitaire?.nom === transitaireFilter;
+    const matchesFournisseur = fournisseurFilter === 'tous' || c.fournisseur === fournisseurFilter;
     
-    return matchesSearch && matchesStatut;
+    return matchesSearch && matchesStatut && matchesTransitaire && matchesFournisseur;
   });
+
+  // Extraire les listes uniques de transitaires et fournisseurs
+  const transitaires = Array.from(new Set(colis.map(c => c.transitaire?.nom).filter(Boolean))) as string[];
+  const fournisseurs = Array.from(new Set(colis.map(c => c.fournisseur).filter(Boolean))) as string[];
 
   // Pagination
   const totalPages = Math.ceil(filteredColis.length / PAGE_SIZE);
@@ -185,7 +193,7 @@ const ColisAeriens: React.FC = () => {
   // Réinitialiser la page quand les filtres changent
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statutFilter]);
+  }, [searchTerm, statutFilter, transitaireFilter, fournisseurFilter]);
 
   // Badge de statut avec couleurs
   const getStatutBadge = (statut: string) => {
@@ -400,29 +408,55 @@ const ColisAeriens: React.FC = () => {
               </div>
 
               {/* Filtres et recherche */}
-              <div className="flex flex-col sm:flex-row gap-4 mt-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Rechercher par client, tracking, commande..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
+              <div className="flex flex-col gap-4 mt-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Rechercher par client, tracking, commande..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <select
+                    value={statutFilter}
+                    onChange={(e) => setStatutFilter(e.target.value)}
+                    className="px-4 py-2 border rounded-md bg-white"
+                  >
+                    <option value="tous">Tous les statuts</option>
+                    <option value="en_preparation">En préparation</option>
+                    <option value="expedie_chine">Expédié Chine</option>
+                    <option value="en_transit">En transit</option>
+                    <option value="arrive_congo">Arrivé Congo</option>
+                    <option value="recupere_client">Récupéré</option>
+                    <option value="livre">Livré</option>
+                  </select>
                 </div>
-                <select
-                  value={statutFilter}
-                  onChange={(e) => setStatutFilter(e.target.value)}
-                  className="px-4 py-2 border rounded-md bg-white"
-                >
-                  <option value="tous">Tous les statuts</option>
-                  <option value="en_preparation">En préparation</option>
-                  <option value="expedie_chine">Expédié Chine</option>
-                  <option value="en_transit">En transit</option>
-                  <option value="arrive_congo">Arrivé Congo</option>
-                  <option value="recupere_client">Récupéré</option>
-                  <option value="livre">Livré</option>
-                </select>
+                
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <select
+                    value={transitaireFilter}
+                    onChange={(e) => setTransitaireFilter(e.target.value)}
+                    className="flex-1 px-4 py-2 border rounded-md bg-white"
+                  >
+                    <option value="tous">Tous les transitaires</option>
+                    {transitaires.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                  
+                  <select
+                    value={fournisseurFilter}
+                    onChange={(e) => setFournisseurFilter(e.target.value)}
+                    className="flex-1 px-4 py-2 border rounded-md bg-white"
+                  >
+                    <option value="tous">Tous les fournisseurs</option>
+                    {fournisseurs.map(f => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </CardHeader>
 
@@ -437,7 +471,7 @@ const ColisAeriens: React.FC = () => {
                   <Package className="h-16 w-16 mx-auto text-gray-300 mb-4" />
                   <p className="text-gray-500 text-lg">Aucun colis trouvé</p>
                   <p className="text-gray-400 text-sm mt-2">
-                    {searchTerm || statutFilter !== 'tous' 
+                    {searchTerm || statutFilter !== 'tous' || transitaireFilter !== 'tous' || fournisseurFilter !== 'tous'
                       ? 'Essayez de modifier vos filtres'
                       : 'Commencez par créer un nouveau colis'}
                   </p>

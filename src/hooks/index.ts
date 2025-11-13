@@ -15,3 +15,5 @@ export { useMouvementsComptesStats } from './useMouvementsComptesStats';
 export { useFinancialReports, useReportGeneration } from './useFinancialReports';
 export { useApprovalWorkflow, useTransactionApproval } from './useApprovalWorkflow';
 export { useFinancialOperations } from './useFinancialOperations';
+export { useApiKeys } from './useApiKeys';
+export { useWebhooks } from './useWebhooks';

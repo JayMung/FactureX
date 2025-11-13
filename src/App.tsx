@@ -23,6 +23,8 @@ import PermissionDiagnosticPage from "./pages/Permission-Diagnostic";
 import ComptesFinancesProtected from "./pages/Comptes-Finances-Protected";
 import OperationsFinancieres from "./pages/Operations-Financieres";
 import EncaissementsProtected from "./pages/Encaissements-Protected";
+import ApiKeys from "./pages/ApiKeys";
+import Webhooks from "./pages/Webhooks";
 import Login from "./pages/Login";
 import AdminSetup from "./pages/AdminSetup";
 import AdminInvitation from "./pages/AdminInvitation";
@@ -114,6 +116,16 @@ const App = () => (
               <Route path="/settings" element={
                 <ProtectedRouteEnhanced>
                   <SettingsWithPermissions />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/api-keys" element={
+                <ProtectedRouteEnhanced>
+                  <ApiKeys />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/webhooks" element={
+                <ProtectedRouteEnhanced>
+                  <Webhooks />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/activity-logs" element={

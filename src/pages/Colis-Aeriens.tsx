@@ -26,6 +26,7 @@ import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import Layout from '../components/layout/Layout';
 import { useSorting } from '../hooks/useSorting';
 import { usePageSetup } from '../hooks/use-page-setup';
+import Pagination from '@/components/ui/pagination-custom';
 
 // Error Boundary component
 class ErrorBoundary extends React.Component<
@@ -77,6 +78,8 @@ const ColisAeriens: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statutFilter, setStatutFilter] = useState<string>('tous');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   // Hook pour mettre à jour la date d'arrivée
   const updateDateArrivee = async (colisId: string, date: Date | null) => {
@@ -172,6 +175,17 @@ const ColisAeriens: React.FC = () => {
     
     return matchesSearch && matchesStatut;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredColis.length / PAGE_SIZE);
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const endIndex = startIndex + PAGE_SIZE;
+  const paginatedColis = filteredColis.slice(startIndex, endIndex);
+
+  // Réinitialiser la page quand les filtres changent
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statutFilter]);
 
   // Badge de statut avec couleurs
   const getStatutBadge = (statut: string) => {
@@ -525,14 +539,14 @@ const ColisAeriens: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {filteredColis.map((c, index) => (
+                      {paginatedColis.map((c, index) => (
                         <tr 
                           key={c.id} 
                           className="hover:bg-gradient-to-r hover:from-blue-50/30 hover:to-indigo-50/30 transition-all duration-200 border-b border-gray-50"
                         >
                           <td className="py-4 px-3 md:px-4">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-400 font-mono">#{index + 1}</span>
+                              <span className="text-xs text-gray-400 font-mono">#{startIndex + index + 1}</span>
                               <button
                                 onClick={(e) => handleViewDetails(c, e)}
                                 className="text-blue-600 hover:text-blue-800 font-mono text-sm font-semibold hover:bg-blue-50 px-2 py-1 rounded transition-colors"
@@ -792,6 +806,18 @@ const ColisAeriens: React.FC = () => {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {/* Pagination */}
+              {!loading && filteredColis.length > 0 && totalPages > 1 && (
+                <div className="mt-6 flex justify-center">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    className="w-full max-w-full overflow-x-auto"
+                  />
                 </div>
               )}
             </CardContent>

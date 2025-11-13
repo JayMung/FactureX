@@ -95,17 +95,25 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
 
   const fetchCreatorName = async (userId: string) => {
     try {
+      console.log('Fetching creator for userId:', userId);
       const { data, error } = await supabase
         .from('profiles')
-        .select('first_name, last_name')
+        .select('first_name, last_name, email')
         .eq('id', userId)
         .single();
 
+      console.log('Creator data:', data, 'Error:', error);
+
       if (data && !error) {
-        setCreatorName(`${data.first_name} ${data.last_name}`);
+        const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim();
+        console.log('Setting creator name:', fullName);
+        setCreatorName(fullName || data.email || 'Utilisateur inconnu');
+      } else {
+        setCreatorName('Utilisateur inconnu');
       }
     } catch (error) {
       console.error('Error fetching creator name:', error);
+      setCreatorName('Utilisateur inconnu');
     }
   };
 
@@ -290,12 +298,19 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
 
   if (!transaction) return null;
 
+  // Générer un ID lisible pour la transaction
+  const generateReadableId = (id: string) => {
+    const shortId = id.substring(0, 6).toUpperCase();
+    return `TX001-${shortId}`;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">
-            {isEditMode ? 'Modifier la Transaction' : 'Détails de la Transaction'}
+          <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+            <span>{isEditMode ? 'Modifier la Transaction' : 'Détails de la Transaction'}</span>
+            <span className="text-lg font-mono text-blue-600">#{generateReadableId(transaction.id)}</span>
           </DialogTitle>
         </DialogHeader>
 
@@ -460,15 +475,13 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                 </p>
               </div>
 
-              {creatorName && (
-                <div>
-                  <Label className="text-xs text-gray-500 flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Créé par
-                  </Label>
-                  <p className="text-base font-medium">{creatorName}</p>
-                </div>
-              )}
+              <div>
+                <Label className="text-xs text-gray-500 flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Créé par
+                </Label>
+                <p className="text-base font-medium">{creatorName || '-'}</p>
+              </div>
 
               {transaction.updated_at && (
                 <div>

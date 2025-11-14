@@ -152,16 +152,17 @@ Colis Livré
 
 ### 4. 💰 #transactions
 
-**Description** : Suivi des opérations financières
+**Description** : Suivi des opérations financières (Transactions Clients + Opérations Internes)
 
 **Événements** :
 - ✅ `transaction.created` - Nouvelle transaction
 - ✅ `transaction.validated` - Transaction servie/validée
 
-**Exemple de notification** :
+**Exemple 1 : Transaction Client** (avec client) :
 ```
 Transaction Servie
 
+**Type:** 💵 Revenue
 **Client:** Ephraim Mpoyi
 **Montant:** $30.00 USD
 **Montant CNY:** ¥199.50
@@ -170,6 +171,38 @@ Transaction Servie
 **Mode:** Airtel Money
 **Motif:** Transfert
 **Statut:** En attente
+
+**Effectué par:** Francy Mungedi
+```
+
+**Exemple 2 : Dépense** (opération interne) :
+```
+Nouvelle Transaction
+
+**Type:** 💸 Dépense
+**Catégorie:** Frais de transport
+**Compte Source:** Airtel Money
+**Montant:** $50.00 USD
+**Mode:** Mobile Money
+**Motif:** Transport marchandises
+**Notes:** Livraison colis clients
+**Statut:** Servi
+
+**Effectué par:** Daniel Muyela
+```
+
+**Exemple 3 : Transfert** (entre comptes) :
+```
+Nouvelle Transaction
+
+**Type:** 🔄 Transfert
+**Compte Source:** Cash Bureau
+**Compte Destination:** Airtel Money
+**Montant:** $200.00 USD
+**Frais:** $2.00
+**Mode:** Mobile Money
+**Motif:** Réapprovisionnement compte mobile
+**Statut:** Servi
 
 **Effectué par:** Francy Mungedi
 ```

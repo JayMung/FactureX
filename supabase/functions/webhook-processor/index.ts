@@ -73,9 +73,34 @@ function formatDiscordEmbed(event: string, data: any) {
   if (event.startsWith('transaction.')) {
     const parts: string[] = [];
     
+    // Type de transaction
+    if (data.type_transaction) {
+      const typeLabels: Record<string, string> = {
+        'revenue': '💵 Revenue',
+        'depense': '💸 Dépense',
+        'transfert': '🔄 Transfert'
+      };
+      parts.push(`**Type:** ${typeLabels[data.type_transaction] || data.type_transaction}`);
+    }
+    
+    // Catégorie si présente
+    if (data.categorie) {
+      parts.push(`**Catégorie:** ${data.categorie}`);
+    }
+    
+    // Client (pour transactions clients uniquement)
     if (data.client?.nom) {
       parts.push(`**Client:** ${data.client.nom}`);
     }
+    
+    // Comptes (pour opérations internes)
+    if (data.compte_source_nom) {
+      parts.push(`**Compte Source:** ${data.compte_source_nom}`);
+    }
+    if (data.compte_destination_nom) {
+      parts.push(`**Compte Destination:** ${data.compte_destination_nom}`);
+    }
+    
     if (data.montant) {
       parts.push(`**Montant:** $${data.montant} ${data.devise || 'USD'}`);
     }
@@ -99,6 +124,9 @@ function formatDiscordEmbed(event: string, data: any) {
     }
     if (data.motif) {
       parts.push(`**Motif:** ${data.motif}`);
+    }
+    if (data.notes) {
+      parts.push(`**Notes:** ${data.notes}`);
     }
     if (data.statut) {
       parts.push(`**Statut:** ${data.statut}`);

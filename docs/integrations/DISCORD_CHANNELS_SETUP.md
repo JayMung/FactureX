@@ -162,13 +162,16 @@ Colis Livré
 ```
 Transaction Servie
 
-**Client:** Entreprise ABC
-**Montant:** 1,500 USD
-**Bénéfice:** 300 USD
-**Mode:** Espèces
-**Motif:** Paiement service
+**Client:** Ephraim Mpoyi
+**Montant:** $30.00 USD
+**Montant CNY:** ¥199.50
+**Taux:** 7.0000
+**Frais:** $1.50
+**Mode:** Airtel Money
+**Motif:** Transfert
+**Statut:** En attente
 
-**Effectué par:** Jeaney Mungedi
+**Effectué par:** Francy Mungedi
 ```
 
 **Configuration Webhook** :

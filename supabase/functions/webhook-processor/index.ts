@@ -50,6 +50,9 @@ function formatDiscordEmbed(event: string, data: any) {
     'transaction.created': { title: 'Nouvelle Transaction', color: 3447003 },
     'transaction.validated': { title: 'Transaction Servie', color: 3066993 },
     'transaction.deleted': { title: '🗑️ Transaction Supprimée', color: 15158332 },
+    'paiement.created': { title: '💰 Encaissement Reçu', color: 5763719 },
+    'paiement.updated': { title: '💰 Encaissement Modifié', color: 10181046 },
+    'paiement.deleted': { title: '🗑️ Encaissement Supprimé', color: 15158332 },
     'facture.created': { title: 'Nouvelle Facture', color: 3447003 },
     'facture.validated': { title: 'Facture Validée', color: 3066993 },
     'facture.paid': { title: 'Facture Payée', color: 5763719 },
@@ -74,10 +77,22 @@ function formatDiscordEmbed(event: string, data: any) {
       parts.push(`**Client:** ${data.client.nom}`);
     }
     if (data.montant) {
-      parts.push(`**Montant:** ${data.montant} ${data.devise || 'USD'}`);
+      parts.push(`**Montant:** $${data.montant} ${data.devise || 'USD'}`);
+    }
+    // Montant CNY si présent
+    if (data.montant_cny) {
+      parts.push(`**Montant CNY:** ¥${data.montant_cny}`);
+    }
+    // Taux de change si présent
+    if (data.taux) {
+      parts.push(`**Taux:** ${data.taux}`);
     }
     if (data.benefice) {
-      parts.push(`**Bénéfice:** ${data.benefice} ${data.devise || 'USD'}`);
+      parts.push(`**Bénéfice:** $${data.benefice} ${data.devise || 'USD'}`);
+    }
+    // Frais si présents
+    if (data.frais) {
+      parts.push(`**Frais:** $${data.frais}`);
     }
     if (data.mode_paiement) {
       parts.push(`**Mode:** ${data.mode_paiement}`);
@@ -165,6 +180,46 @@ function formatDiscordEmbed(event: string, data: any) {
     }
     if (data.type_livraison) {
       parts.push(`**Type:** ${data.type_livraison}`);
+    }
+    if (data.user_info) {
+      const userName = [data.user_info.prenom, data.user_info.nom].filter(Boolean).join(' ') || data.user_info.email || 'Utilisateur inconnu';
+      parts.push(`\n**Effectué par:** ${userName}`);
+    }
+    
+    description = parts.join('\n');
+  }
+
+  // Description pour paiements (encaissements)
+  if (event.startsWith('paiement.')) {
+    const parts: string[] = [];
+    
+    if (data.type_paiement) {
+      const typeLabel = data.type_paiement === 'facture' ? 'Facture' : 'Colis';
+      parts.push(`**Type:** ${typeLabel}`);
+    }
+    if (data.client?.nom) {
+      parts.push(`**Client:** ${data.client.nom}`);
+      if (data.client.telephone) {
+        parts.push(`**Téléphone:** ${data.client.telephone}`);
+      }
+    }
+    if (data.montant_paye) {
+      parts.push(`**Montant:** $${data.montant_paye} USD`);
+    }
+    if (data.mode_paiement) {
+      parts.push(`**Mode:** ${data.mode_paiement}`);
+    }
+    if (data.compte_nom) {
+      parts.push(`**Compte:** ${data.compte_nom}`);
+    }
+    if (data.facture_number) {
+      parts.push(`**N° Facture:** ${data.facture_number}`);
+    }
+    if (data.colis_tracking) {
+      parts.push(`**Tracking:** ${data.colis_tracking}`);
+    }
+    if (data.notes) {
+      parts.push(`**Notes:** ${data.notes}`);
     }
     if (data.user_info) {
       const userName = [data.user_info.prenom, data.user_info.nom].filter(Boolean).join(' ') || data.user_info.email || 'Utilisateur inconnu';

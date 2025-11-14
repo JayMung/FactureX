@@ -25,11 +25,13 @@ import {
   X,
   User,
   Phone,
-  MapPin
+  MapPin,
+  Package
 } from 'lucide-react';
 import { useClientHistory } from '@/hooks/useClientHistory';
 import { useFactures } from '@/hooks/useFactures';
-import type { Client, Transaction } from '@/types';
+import { useColisList } from '@/hooks/useColisList';
+import type { Client, Transaction, Colis } from '@/types';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { cn } from '@/lib/utils';
 
@@ -74,6 +76,17 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
     type: undefined, // Tous les types (devis et factures)
     statut: undefined // Tous les statuts
   });
+
+  // Colis hook
+  const {
+    data: colisData,
+    isLoading: colisLoading,
+    refetch: refetchColis
+  } = useColisList({
+    clientId: client?.id
+  });
+  
+  const colis = (colisData as any[]) || [];
 
   const formatCurrencyValue = (amount: number, currency: string) => {
     if (currency === 'USD') {
@@ -175,29 +188,29 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange} modal>
       <DialogContent 
-        className="max-w-6xl max-h-[90vh] overflow-y-auto"
+        className="max-w-6xl max-h-[90vh] overflow-y-auto p-4 sm:p-6"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">
+          <DialogTitle className="text-lg sm:text-xl font-bold">
             Historique complet - {client.nom.split(' ').map(word => 
               word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
             ).join(' ')}
           </DialogTitle>
         </DialogHeader>
 
-        {/* Client Info Header Card */}
-        <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
-          <CardContent className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Client Info Header Card - Mobile Optimized */}
+        <Card className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border-green-200">
+          <CardContent className="p-3 sm:p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-green-500 rounded-full">
-                  <User className="h-5 w-5 text-white" />
+                  <User className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Nom complet</p>
-                  <p className="font-semibold text-gray-900">
+                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
                     {client.nom.split(' ').map(word => 
                       word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
                     ).join(' ')}
@@ -206,42 +219,51 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
               </div>
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-blue-500 rounded-full">
-                  <Phone className="h-5 w-5 text-white" />
+                  <Phone className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Téléphone</p>
-                  <p className="font-semibold text-gray-900">{client.telephone}</p>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">{client.telephone}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-purple-500 rounded-full">
-                  <MapPin className="h-5 w-5 text-white" />
+                  <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Ville</p>
-                  <p className="font-semibold text-gray-900">{client.ville}</p>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">{client.ville}</p>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="transactions" className="flex items-center gap-2">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4 sm:mt-6">
+          <TabsList className="grid w-full grid-cols-3 h-auto">
+            <TabsTrigger value="transactions" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1.5 text-xs sm:text-sm">
               <Receipt className="h-4 w-4" />
-              Transactions ({transactionPagination?.count || 0})
+              <span className="hidden sm:inline">Transactions</span>
+              <span className="sm:hidden">Trans.</span>
+              <span className="text-xs">({transactionPagination?.count || 0})</span>
             </TabsTrigger>
-            <TabsTrigger value="factures" className="flex items-center gap-2">
+            <TabsTrigger value="factures" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1.5 text-xs sm:text-sm">
               <FileText className="h-4 w-4" />
-              Factures ({facturePagination?.count || 0})
+              <span className="hidden sm:inline">Factures</span>
+              <span className="sm:hidden">Fact.</span>
+              <span className="text-xs">({facturePagination?.count || 0})</span>
+            </TabsTrigger>
+            <TabsTrigger value="colis" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1.5 text-xs sm:text-sm">
+              <Package className="h-4 w-4" />
+              <span>Colis</span>
+              <span className="text-xs">({colis?.length || 0})</span>
             </TabsTrigger>
           </TabsList>
 
           {/* Transactions Tab */}
-          <TabsContent value="transactions" className="space-y-6">
-            {/* Transaction Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <TabsContent value="transactions" className="space-y-4 sm:space-y-6">
+            {/* Transaction Stats - Mobile Optimized */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
@@ -527,6 +549,139 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
                           <p className="text-sm font-medium text-green-600 mt-1">
                             {formatCurrencyValue(facture.total_general, facture.devise)}
                           </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Colis Tab */}
+          <TabsContent value="colis" className="space-y-4 sm:space-y-6">
+            {/* Colis Stats - Mobile Optimized */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+              <Card>
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs sm:text-sm text-gray-600">Total Colis</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                        {colis?.length || 0}
+                      </p>
+                    </div>
+                    <Package className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs sm:text-sm text-gray-600">Aériens</p>
+                      <p className="text-xl sm:text-2xl font-bold text-green-600">
+                        {colis?.filter((c: any) => c.type_livraison === 'aerien').length || 0}
+                      </p>
+                    </div>
+                    <Package className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs sm:text-sm text-gray-600">Maritimes</p>
+                      <p className="text-xl sm:text-2xl font-bold text-blue-600">
+                        {colis?.filter((c: any) => c.type_livraison === 'maritime').length || 0}
+                      </p>
+                    </div>
+                    <Package className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs sm:text-sm text-gray-600">Poids Total</p>
+                      <p className="text-xl sm:text-2xl font-bold text-purple-600">
+                        {colis?.reduce((sum: number, c: any) => sum + (c.poids || 0), 0).toFixed(1) || 0} kg
+                      </p>
+                    </div>
+                    <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-purple-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Colis List */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between text-base sm:text-lg">
+                  <span>Liste des Colis</span>
+                  <Badge variant="outline">
+                    {colis?.length || 0} colis
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {colisLoading ? (
+                  <div className="space-y-4">
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <div key={index} className="flex items-center space-x-4 p-4 border rounded">
+                        <Skeleton className="h-4 w-4" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-24" />
+                        </div>
+                        <Skeleton className="h-4 w-20" />
+                      </div>
+                    ))}
+                  </div>
+                ) : !colis || colis.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Package className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p className="text-gray-500">Aucun colis trouvé</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {colis.map((colisItem: any) => (
+                      <div key={colisItem.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 gap-3 sm:gap-0">
+                        <div className="flex items-center space-x-3 sm:space-x-4">
+                          <div className={`p-2 rounded-full ${colisItem.type_livraison === 'aerien' ? 'bg-green-100' : 'bg-blue-100'}`}>
+                            <Package className={`h-4 w-4 ${colisItem.type_livraison === 'aerien' ? 'text-green-600' : 'text-blue-600'}`} />
+                          </div>
+                          <div>
+                            <p className="text-sm sm:text-base font-medium">
+                              {colisItem.type_livraison === 'aerien' ? '✈️ Aérien' : '🚢 Maritime'}
+                            </p>
+                            <p className="text-xs sm:text-sm text-gray-500">
+                              {colisItem.quantite} colis • {colisItem.poids} kg
+                            </p>
+                            {colisItem.tracking_chine && (
+                              <p className="text-xs text-gray-400">
+                                Tracking: {colisItem.tracking_chine}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-left sm:text-right">
+                          <Badge variant={colisItem.statut === 'livre' ? 'default' : 'secondary'} className="mb-1">
+                            {colisItem.statut}
+                          </Badge>
+                          <p className="text-sm sm:text-base font-medium text-green-600">
+                            {formatCurrencyValue(colisItem.montant_a_payer, 'USD')}
+                          </p>
+                          {colisItem.transitaire && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              {colisItem.transitaire.nom}
+                            </p>
+                          )}
                         </div>
                       </div>
                     ))}

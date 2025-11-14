@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, DollarSign, TrendingUp, Calendar, Filter, Download, Trash2 } from 'lucide-react';
+import { Plus, DollarSign, TrendingUp, Calendar, Filter, Download, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -29,12 +29,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { usePaiements, useCreatePaiement, useDeletePaiement, usePaiementStats, CreatePaiementData } from '@/hooks/usePaiements';
+import { usePaiements, useCreatePaiement, useUpdatePaiement, useDeletePaiement, usePaiementStats, CreatePaiementData, generateColisId } from '@/hooks/usePaiements';
 import { useAllClients } from '@/hooks/useClients';
 import { useFactures } from '@/hooks/useFactures';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
+import { useColisList } from '@/hooks/useColisList';
+import { ClientCombobox } from '@/components/ui/client-combobox';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 export default function Encaissements() {
   const [page, setPage] = useState(1);
@@ -54,16 +57,9 @@ export default function Encaissements() {
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  const { data, isLoading } = usePaiements(page, filters);
-  const { data: stats } = usePaiementStats(filters);
-  const { clients } = useAllClients();
-  const { factures: facturesData } = useFactures(1, { statut_paiement: 'non_paye,partiel' });
-  const { comptes: comptesData } = useComptesFinanciers();
-
-  const createPaiement = useCreatePaiement();
-  const deletePaiement = useDeletePaiement();
-
+  const [editingPaiement, setEditingPaiement] = useState<any | null>(null);
+  
+  // Déclarer formData AVANT de l'utiliser dans les hooks
   const [formData, setFormData] = useState<CreatePaiementData>({
     type_paiement: 'facture',
     client_id: '',
@@ -74,9 +70,41 @@ export default function Encaissements() {
     notes: '',
   });
 
+  const { data, isLoading } = usePaiements(page, filters);
+  const { data: stats } = usePaiementStats(filters);
+  const { clients } = useAllClients();
+  // Charger toutes les factures sans filtre de statut_paiement (filtre non supporté)
+  const { factures: facturesData } = useFactures(1);
+  const { comptes: comptesData } = useComptesFinanciers();
+  const { data: colisData } = useColisList({ clientId: formData.client_id });
+
+  const createPaiement = useCreatePaiement();
+  const updatePaiement = useUpdatePaiement();
+  const deletePaiement = useDeletePaiement();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await createPaiement.mutateAsync(formData);
+    
+    // Validation: vérifier que facture_id ou colis_id est fourni selon le type
+    if (formData.type_paiement === 'facture' && !formData.facture_id) {
+      toast.error('Veuillez sélectionner une facture');
+      return;
+    }
+    
+    if (formData.type_paiement === 'colis' && !formData.colis_id) {
+      toast.error('Veuillez sélectionner un colis');
+      return;
+    }
+    
+    if (editingPaiement) {
+      // Mode édition
+      await updatePaiement.mutateAsync({ id: editingPaiement.id, data: formData });
+      setEditingPaiement(null);
+    } else {
+      // Mode création
+      await createPaiement.mutateAsync(formData);
+    }
+    
     setIsDialogOpen(false);
     setFormData({
       type_paiement: 'facture',
@@ -87,6 +115,22 @@ export default function Encaissements() {
       date_paiement: new Date().toISOString().split('T')[0],
       notes: '',
     });
+  };
+
+  const handleEdit = (paiement: any) => {
+    setEditingPaiement(paiement);
+    setFormData({
+      type_paiement: paiement.type_paiement,
+      client_id: paiement.client_id,
+      facture_id: paiement.facture_id,
+      colis_id: paiement.colis_id,
+      montant_paye: paiement.montant_paye,
+      compte_id: paiement.compte_id,
+      mode_paiement: paiement.mode_paiement || '',
+      date_paiement: paiement.date_paiement,
+      notes: paiement.notes || '',
+    });
+    setIsDialogOpen(true);
   };
 
   const handleDelete = async () => {
@@ -104,7 +148,11 @@ export default function Encaissements() {
       format(new Date(p.date_paiement), 'dd/MM/yyyy', { locale: fr }),
       p.type_paiement === 'facture' ? 'Facture' : 'Colis',
       p.client?.nom || '',
-      p.facture?.numero_facture || p.colis_id || '',
+      p.type_paiement === 'facture' 
+        ? p.facture?.facture_number || 'N/A'
+        : p.colis && p.colis.id && p.colis.created_at
+          ? generateColisId(p.colis.id, p.colis.created_at)
+          : 'N/A',
       `${p.montant_paye} USD`,
       p.compte?.nom || '',
       p.mode_paiement || '',
@@ -137,9 +185,9 @@ export default function Encaissements() {
       );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 p-2 sm:p-4 md:p-0">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -147,15 +195,15 @@ export default function Encaissements() {
               Nouvel encaissement
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Enregistrer un encaissement</DialogTitle>
+              <DialogTitle>{editingPaiement ? 'Modifier l\'encaissement' : 'Enregistrer un encaissement'}</DialogTitle>
               <DialogDescription>
-                Enregistrez un paiement reçu pour une facture ou un colis
+                {editingPaiement ? 'Modifiez les informations de l\'encaissement' : 'Enregistrez un paiement reçu pour une facture ou un colis'}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Type *</Label>
                   <Select
@@ -176,31 +224,15 @@ export default function Encaissements() {
 
                 <div className="space-y-2">
                   <Label>Client *</Label>
-                  <Select
+                  <ClientCombobox
+                    clients={clients || []}
                     value={formData.client_id}
                     onValueChange={(value) =>
-                      setFormData({ ...formData, client_id: value, facture_id: undefined })
+                      setFormData({ ...formData, client_id: value, facture_id: undefined, colis_id: undefined })
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients && clients.length > 0 ? (
-                        clients
-                          .filter((client) => typeof client?.id === 'string' && client.id.trim().length > 0)
-                          .map((client) => (
-                          <SelectItem key={String(client.id)} value={String(client.id)}>
-                            {client.nom} - {client.telephone}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="__no_client__" disabled>
-                          Aucun client disponible
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Rechercher un client..."
+                    emptyMessage="Aucun client trouvé"
+                  />
                 </div>
 
                 {formData.type_paiement === 'facture' && (
@@ -212,6 +244,7 @@ export default function Encaissements() {
                         setFormData({ ...formData, facture_id: value })
                       }
                       disabled={!formData.client_id}
+                      required
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner" />
@@ -228,6 +261,39 @@ export default function Encaissements() {
                         ) : (
                           <SelectItem value="__no_facture__" disabled>
                             {formData.client_id ? 'Aucune facture impayée' : 'Sélectionnez un client d\'abord'}
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {formData.type_paiement === 'colis' && (
+                  <div className="space-y-2">
+                    <Label>Colis *</Label>
+                    <Select
+                      value={formData.colis_id}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, colis_id: value })
+                      }
+                      disabled={!formData.client_id}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {colisData && colisData.length > 0 ? (
+                          colisData
+                            .filter((colis) => typeof colis?.id === 'string' && colis.id.trim().length > 0)
+                            .map((colis) => (
+                            <SelectItem key={String(colis.id)} value={String(colis.id)}>
+                              {generateColisId(colis.id, colis.created_at)} - {colis.tracking_chine || 'N/A'}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="__no_colis__" disabled>
+                            {formData.client_id ? 'Aucun colis disponible' : 'Sélectionnez un client d\'abord'}
                           </SelectItem>
                         )}
                       </SelectContent>
@@ -322,16 +388,16 @@ export default function Encaissements() {
                 />
               </div>
 
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 justify-end">
                 <Button
-                  type="button"
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => setIsDialogOpen(false)}
                 >
                   Annuler
                 </Button>
-                <Button type="submit" disabled={createPaiement.isPending}>
-                  {createPaiement.isPending ? 'Enregistrement...' : 'Enregistrer'}
+                <Button type="submit" className="w-full bg-green-500 hover:bg-green-600">
+                  {editingPaiement ? 'Mettre à jour' : 'Enregistrer'}
                 </Button>
               </div>
             </form>
@@ -340,14 +406,14 @@ export default function Encaissements() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total encaissé</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats?.total.toFixed(2) || '0.00'}</div>
+            <div className="text-xl sm:text-2xl font-bold">${stats?.total.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground">
               {stats?.count || 0} encaissement(s)
             </p>
@@ -360,7 +426,7 @@ export default function Encaissements() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats?.totalToday.toFixed(2) || '0.00'}</div>
+            <div className="text-xl sm:text-2xl font-bold">${stats?.totalToday.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground">
               {stats?.countToday || 0} paiement(s)
             </p>
@@ -373,7 +439,7 @@ export default function Encaissements() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats?.totalFactures.toFixed(2) || '0.00'}</div>
+            <div className="text-xl sm:text-2xl font-bold">${stats?.totalFactures.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground">Paiements factures</p>
           </CardContent>
         </Card>
@@ -384,7 +450,7 @@ export default function Encaissements() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats?.totalColis.toFixed(2) || '0.00'}</div>
+            <div className="text-xl sm:text-2xl font-bold">${stats?.totalColis.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground">Paiements colis</p>
           </CardContent>
         </Card>
@@ -399,7 +465,7 @@ export default function Encaissements() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-5">
+          <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
             <div className="space-y-2">
               <Label>Type</Label>
               <Select
@@ -490,7 +556,7 @@ export default function Encaissements() {
             </div>
           </div>
 
-          <div className="mt-4 flex gap-2">
+          <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-end">
             <Button
               variant="outline"
               onClick={() =>
@@ -506,7 +572,7 @@ export default function Encaissements() {
             >
               Réinitialiser
             </Button>
-            <Button variant="outline" onClick={exportToCSV}>
+            <Button variant="outline" onClick={exportToCSV} className="w-full sm:w-auto">
               <Download className="mr-2 h-4 w-4" />
               Exporter CSV
             </Button>
@@ -526,7 +592,73 @@ export default function Encaissements() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              {/* Mobile Card View */}
+              <div className="block lg:hidden space-y-3">
+                {data?.paiements.map((paiement) => (
+                  <Card key={paiement.id} className="p-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          paiement.type_paiement === 'facture'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          {paiement.type_paiement === 'facture' ? 'Facture' : 'Colis'}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          {format(new Date(paiement.date_paiement), 'dd/MM/yyyy', { locale: fr })}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold">{paiement.client?.nom}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {paiement.type_paiement === 'facture' 
+                              ? paiement.facture?.facture_number || 'N/A'
+                              : paiement.colis && paiement.colis.id && paiement.colis.created_at
+                                ? generateColisId(paiement.colis.id, paiement.colis.created_at)
+                                : 'N/A'
+                            }
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold">${paiement.montant_paye}</p>
+                          <p className="text-xs text-muted-foreground">{paiement.compte?.nom}</p>
+                        </div>
+                      </div>
+                      {(paiement.mode_paiement || paiement.notes) && (
+                        <div className="pt-2 border-t text-sm">
+                          {paiement.mode_paiement && (
+                            <p><span className="font-medium">Mode:</span> {paiement.mode_paiement}</p>
+                          )}
+                          {paiement.notes && (
+                            <p className="text-muted-foreground">{paiement.notes}</p>
+                          )}
+                        </div>
+                      )}
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(paiement)}
+                        >
+                          <Edit className="h-4 w-4 text-blue-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeleteId(paiement.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
@@ -557,7 +689,14 @@ export default function Encaissements() {
                           </span>
                         </td>
                         <td className="p-2">{paiement.client?.nom}</td>
-                        <td className="p-2">{paiement.facture?.numero_facture || paiement.colis_id}</td>
+                        <td className="p-2">
+                          {paiement.type_paiement === 'facture' 
+                            ? paiement.facture?.facture_number || 'N/A'
+                            : paiement.colis && paiement.colis.id && paiement.colis.created_at
+                              ? generateColisId(paiement.colis.id, paiement.colis.created_at)
+                              : 'N/A'
+                          }
+                        </td>
                         <td className="p-2 text-right font-semibold">${paiement.montant_paye}</td>
                         <td className="p-2">{paiement.compte?.nom}</td>
                         <td className="p-2">{paiement.mode_paiement || '-'}</td>
@@ -565,13 +704,22 @@ export default function Encaissements() {
                           {paiement.notes || '-'}
                         </td>
                         <td className="p-2 text-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeleteId(paiement.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <div className="flex justify-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(paiement)}
+                            >
+                              <Edit className="h-4 w-4 text-blue-600" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteId(paiement.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -581,7 +729,7 @@ export default function Encaissements() {
 
               {/* Pagination */}
               {data && data.totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4">
                   <p className="text-sm text-muted-foreground">
                     Page {page} sur {data.totalPages}
                   </p>

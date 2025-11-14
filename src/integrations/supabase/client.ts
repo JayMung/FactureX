@@ -21,8 +21,12 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     flowType: 'pkce',
-    // Additional security settings
-    debug: import.meta.env.DEV,
+    // Disable debug logs to reduce console noise and improve performance
+    debug: false,
+    // Storage key for session
+    storageKey: 'sb-ddnxtuhswmewoxrwswzg-auth-token',
+    // Reduce lock acquisition attempts
+    storage: undefined, // Use default localStorage
   },
   global: {
     headers: import.meta.env.PROD ? {

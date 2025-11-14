@@ -857,8 +857,8 @@ export class SupabaseService {
         .filter(t => t.created_at?.startsWith(today))
         .length;
 
-      // Statistiques des factures
-      const facturesValidees = factures.filter(f => f.statut === 'validee');
+      // Statistiques des factures (validées ET payées)
+      const facturesValidees = factures.filter(f => f.statut === 'validee' || f.statut === 'payee');
       
       const facturesAmountUSD = facturesValidees
         .filter(f => f.devise === 'USD')

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
 import { logActivity } from '@/services/activityLogger';
@@ -20,14 +20,10 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
     totalCount: 0
   });
 
-  const fetchFactures = async () => {
+  const fetchFactures = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-
-      // Calculer offset pour la pagination
-      const from = (page - 1) * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
 
       // Construire la requête optimisée
       let query = supabase
@@ -44,8 +40,14 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
           client_id,
           clients(id, nom, telephone, ville)
         `, { count: 'exact' })
-        .order('date_emission', { ascending: false })
-        .range(from, to);
+        .order('date_emission', { ascending: false });
+      
+      // Si pas de recherche, appliquer la pagination
+      if (!filters?.search) {
+        const from = (page - 1) * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+        query = query.range(from, to);
+      }
 
       // Appliquer les filtres
       if (filters?.type) {
@@ -66,30 +68,41 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       if (filters?.dateTo) {
         query = query.lte('date_emission', filters.dateTo);
       }
-
+      
       // Charger factures
       const { data, error: fetchError, count } = await query;
 
       if (fetchError) throw fetchError;
 
-      setFactures((data || []) as unknown as Facture[]);
+      // Filtrage côté client pour rechercher dans les données du client
+      let filteredData = (data || []) as unknown as Facture[];
+      let filteredCount = count || 0;
       
-      if (count !== null) {
-        setPagination({
-          data: (data || []) as unknown as Facture[],
-          count,
-          page,
-          pageSize: PAGE_SIZE,
-          totalPages: Math.ceil(count / PAGE_SIZE)
+      if (filters?.search && filteredData.length > 0) {
+        const searchLower = filters.search.toLowerCase().trim();
+        filteredData = filteredData.filter((facture: any) => {
+          const matchFactureNumber = facture.facture_number?.toLowerCase().includes(searchLower);
+          const matchClientNom = facture.clients?.nom?.toLowerCase().includes(searchLower);
+          const matchClientTelephone = facture.clients?.telephone?.toLowerCase().includes(searchLower);
+          return matchFactureNumber || matchClientNom || matchClientTelephone;
         });
+        filteredCount = filteredData.length;
+        
+        // Appliquer la pagination côté client si recherche active
+        const from = (page - 1) * PAGE_SIZE;
+        const to = from + PAGE_SIZE;
+        filteredData = filteredData.slice(from, to);
       }
 
-      // Charger les totaux uniquement si pas trop d'échecs
-      if (retryCount < 3) {
-        fetchGlobalTotals().catch(() => {
-          setRetryCount(prev => prev + 1);
-        });
-      }
+      setFactures(filteredData);
+      
+      setPagination({
+        data: filteredData,
+        count: filteredCount,
+        page,
+        pageSize: PAGE_SIZE,
+        totalPages: Math.ceil(filteredCount / PAGE_SIZE)
+      });
 
       // Reset retry count on success
       setRetryCount(0);
@@ -98,18 +111,16 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       setError(err.message || 'Erreur lors du chargement des factures');
       setRetryCount(prev => prev + 1);
       
-      // Ne montrer l'erreur que si c'est la première fois
-      if (retryCount === 0) {
-        showError('Erreur lors du chargement des factures');
-      }
+      // Ne pas afficher de toast d'erreur pour éviter de polluer l'UI
+      // L'erreur est déjà loggée dans la console et stockée dans le state
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, filters?.type, filters?.statut, filters?.clientId, filters?.modeLivraison, filters?.dateFrom, filters?.dateTo, filters?.search, retryCount]);
 
   // Fonction pour calculer les totaux globaux (toutes pages confondues)
   // IMPORTANT: Ne compte QUE les factures payées (statut = 'payee')
-  const fetchGlobalTotals = async () => {
+  const fetchGlobalTotals = useCallback(async () => {
     try {
       setIsLoadingTotals(true);
       
@@ -134,6 +145,11 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       }
       if (filters?.dateTo) {
         query = query.lte('date_emission', filters.dateTo);
+      }
+      
+      // Appliquer la recherche textuelle pour les totaux
+      if (filters?.search) {
+        query = query.or(`facture_number.ilike.%${filters.search}%`);
       }
 
       const { data, error } = await query;
@@ -171,7 +187,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
     } finally {
       setIsLoadingTotals(false);
     }
-  };
+  }, [filters]);
 
   const createFacture = async (data: CreateFactureData): Promise<Facture> => {
     try {
@@ -303,19 +319,24 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       if (data.total_poids !== undefined) updateData.total_poids = data.total_poids;
       if (data.total_general !== undefined) updateData.total_general = data.total_general;
 
-      // Si on met à jour les items, toujours les mettre à jour dans la DB
-      if (data.items && data.items.length > 0) {
+      // ✅ CORRECTION: Ne mettre à jour les items que si explicitement fournis ET non vides
+      // Si data.items est undefined, on ne touche pas aux items existants
+      // Si data.items est un tableau vide [], on supprime tous les items
+      // Si data.items contient des éléments, on remplace tous les items
+      if (data.items !== undefined) {
         // Supprimer les anciens items
         await supabase.from('facture_items').delete().eq('facture_id', id);
 
-        // Insérer les nouveaux items
-        const itemsToInsert = data.items.map((item, index) => ({
-          facture_id: id,
-          numero_ligne: index + 1,
-          ...item
-        }));
+        // Insérer les nouveaux items (seulement s'il y en a)
+        if (data.items.length > 0) {
+          const itemsToInsert = data.items.map((item, index) => ({
+            facture_id: id,
+            numero_ligne: index + 1,
+            ...item
+          }));
 
-        await supabase.from('facture_items').insert(itemsToInsert);
+          await supabase.from('facture_items').insert(itemsToInsert);
+        }
       }
 
       // Si on met à jour les items SANS fournir de totaux, recalculer automatiquement
@@ -470,16 +491,21 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
       return data;
     } catch (err: any) {
       console.error('Error fetching facture:', err);
-      showError('Erreur lors du chargement de la facture');
+      // Ne pas afficher de toast pour éviter de polluer l'UI
       return null;
     }
   };
 
   useEffect(() => {
     fetchFactures();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filters?.type, filters?.statut, filters?.clientId, filters?.modeLivraison, filters?.dateFrom, filters?.dateTo, filters?.search]);
+
+  useEffect(() => {
     // Charger les totaux de manière asynchrone (non bloquant)
-    setTimeout(() => fetchGlobalTotals(), 0);
-  }, [page, filters]);
+    fetchGlobalTotals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters?.type, filters?.clientId, filters?.modeLivraison, filters?.dateFrom, filters?.dateTo]);
 
   return {
     factures,

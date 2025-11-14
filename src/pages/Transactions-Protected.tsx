@@ -38,7 +38,6 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTransactions } from '../hooks/useTransactions';
 import { usePermissions } from '../hooks/usePermissions';
-import { useSorting } from '../hooks/useSorting';
 import Pagination from '../components/ui/pagination-custom';
 import SortableHeader from '../components/ui/sortable-header';
 import TransactionFormFinancial from '@/components/forms/TransactionFormFinancial';
@@ -73,6 +72,8 @@ const TransactionsProtected: React.FC = () => {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | undefined>();
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
   const [bulkActionOpen, setBulkActionOpen] = useState(false);
+  const [sortColumn, setSortColumn] = useState('date_paiement');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
   // États pour les modales de confirmation
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -99,7 +100,7 @@ const TransactionsProtected: React.FC = () => {
   const memoFilters = useMemo(() => ({
     status: statusFilter === 'all' ? undefined : statusFilter,
     currency: currencyFilter === 'all' ? undefined : currencyFilter,
-    modePaiement: searchTerm || undefined
+    search: searchTerm || undefined
   }), [statusFilter, currencyFilter, searchTerm]);
 
   const {
@@ -113,15 +114,28 @@ const TransactionsProtected: React.FC = () => {
     updateTransaction,
     deleteTransaction,
     refetch
-  } = useTransactions(currentPage, memoFilters);
+  } = useTransactions(currentPage, memoFilters, sortColumn, sortDirection);
 
-  // Filter to show only Commandes (motif: Commande) and Transferts (motif: Transfert)
-  // Exclude internal operations (depense, revenue)
+  // Filter to show all client transactions (Commande AND Transfert)
+  // Exclude only internal account transfers (type_transaction: transfert)
   const commercialTransactions = transactions.filter(t => 
-    t.motif === 'Commande' || t.motif === 'Transfert'
+    (t.motif === 'Commande' || t.motif === 'Transfert') && 
+    t.type_transaction !== 'transfert'
   );
 
-  const { sortedData, sortConfig, handleSort } = useSorting(commercialTransactions, { key: 'statut', direction: 'asc' });
+  // Fonction de tri côté serveur
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      // Inverser la direction si on clique sur la même colonne
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Nouvelle colonne, commencer par ordre descendant
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+    // Retourner à la première page lors du tri
+    setCurrentPage(1);
+  };
 
   const formatCurrencyValue = (amount: number, currency: string) => {
     if (currency === 'USD') {
@@ -411,17 +425,17 @@ const TransactionsProtected: React.FC = () => {
   return (
     <ProtectedRouteEnhanced requiredModule="transactions" requiredPermission="read">
       <Layout>
-        <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="space-y-4 md:space-y-6 p-2 sm:p-4 md:p-0 animate-in fade-in duration-300">
           {/* Bulk Actions Bar */}
           {selectedTransactions.size > 0 && (() => {
             const selectedTotals = calculateSelectedTotals();
             return (
               <Card className="bg-blue-50 border-blue-200">
-                <CardContent className="p-4">
-                  <div className="flex flex-col space-y-4">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col space-y-3 sm:space-y-4">
                     {/* Première ligne: Sélection et actions */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                         <Badge variant="default" className="bg-blue-600">
                           {selectedTransactions.size} sélectionnée(s)
                         </Badge>
@@ -429,36 +443,25 @@ const TransactionsProtected: React.FC = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => setSelectedTransactions(new Set())}
+                          className="w-full sm:w-auto"
                         >
                           Désélectionner tout
                         </Button>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center gap-2 sm:gap-4">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" className="w-full sm:w-auto">
                               <CheckCircle className="mr-2 h-4 w-4" />
                               Changer le statut
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => handleBulkStatusChange('En attente')}>
-                              <Clock className="mr-2 h-4 w-4" />
-                              En attente
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleBulkStatusChange('Servi')}>
-                              <CheckCircle className="mr-2 h-4 w-4" />
-                              Servi
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleBulkStatusChange('Remboursé')}>
-                              <RotateCcw className="mr-2 h-4 w-4" />
-                              Remboursé
-                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleBulkStatusChange('En attente')}>En attente</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleBulkStatusChange('Servi')}>Servi</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleBulkStatusChange('Remboursé')}>Remboursé</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleBulkStatusChange('Annulé')}>
-                              <XCircle className="mr-2 h-4 w-4" />
-                              Annulé
-                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleBulkStatusChange('Annulé')}>Annulé</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                         <PermissionGuard module="finances" permission="delete">
@@ -467,6 +470,7 @@ const TransactionsProtected: React.FC = () => {
                             size="sm"
                             onClick={handleBulkDelete}
                             disabled={isDeleting}
+                            className="w-full sm:w-auto"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Supprimer
@@ -476,8 +480,8 @@ const TransactionsProtected: React.FC = () => {
                     </div>
                     
                     {/* Deuxième ligne: Résumé des montants */}
-                    <div className="flex items-center justify-center space-x-6 text-sm border-t border-blue-200 pt-3">
-                      <div className="flex items-center space-x-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm border-t border-blue-200 pt-3">
+                      <div className="flex items-center gap-2 sm:gap-4">
                         <DollarSign className="h-4 w-4 text-green-600" />
                         <span className="font-medium text-gray-700">Montant USD:</span>
                         <span className="font-bold text-green-600">
@@ -485,7 +489,7 @@ const TransactionsProtected: React.FC = () => {
                         </span>
                       </div>
                       {selectedTotals.totalCDF > 0 && (
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center gap-2 sm:gap-4">
                           <Wallet className="h-4 w-4 text-blue-600" />
                           <span className="font-medium text-gray-700">Montant CDF:</span>
                           <span className="font-bold text-blue-600">
@@ -494,21 +498,21 @@ const TransactionsProtected: React.FC = () => {
                         </div>
                       )}
                       {selectedTotals.totalCNY > 0 && (
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center gap-2 sm:gap-4">
                           <span className="font-medium text-gray-700">CNY:</span>
                           <span className="font-bold text-purple-600">
                             {formatCurrencyValue(selectedTotals.totalCNY, 'CNY')}
                           </span>
                         </div>
                       )}
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center gap-2 sm:gap-4">
                         <TrendingUp className="h-4 w-4 text-orange-600" />
                         <span className="font-medium text-gray-700">Bénéfice:</span>
                         <span className="font-bold text-orange-600">
                           {formatCurrencyValue(selectedTotals.totalBenefice, 'USD')}
                         </span>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center gap-2 sm:gap-4">
                         <Receipt className="h-4 w-4 text-gray-600" />
                         <span className="font-medium text-gray-700">Frais:</span>
                         <span className="font-bold text-gray-600">
@@ -523,14 +527,14 @@ const TransactionsProtected: React.FC = () => {
           })()}
 
           {/* Stats Cards - Design System */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
             {/* Total USD Card */}
             <Card className="card-base transition-shadow-hover">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total USD</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {formatCurrencyValue(totalUSD, 'USD')}
                     </p>
                   </div>
@@ -543,11 +547,11 @@ const TransactionsProtected: React.FC = () => {
 
             {/* Total Frais Card */}
             <Card className="card-base transition-shadow-hover">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Frais</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {formatCurrencyValue(totalFrais, 'USD')}
                     </p>
                   </div>
@@ -560,11 +564,11 @@ const TransactionsProtected: React.FC = () => {
 
             {/* Bénéfice Card */}
             <Card className="card-base transition-shadow-hover">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Bénéfice total</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {formatCurrencyValue(totalBenefice, 'USD')}
                     </p>
                   </div>
@@ -577,11 +581,11 @@ const TransactionsProtected: React.FC = () => {
 
             {/* Total Dépenses Card */}
             <Card className="card-base transition-shadow-hover">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Dépenses</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {formatCurrencyValue(totalDepenses, 'USD')}
                     </p>
                   </div>
@@ -594,11 +598,11 @@ const TransactionsProtected: React.FC = () => {
 
             {/* Transactions Count Card */}
             <Card className="card-base transition-shadow-hover">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Transactions</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
                       {globalTotals.totalCount || 0}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">Toutes pages confondues</p>
@@ -612,7 +616,7 @@ const TransactionsProtected: React.FC = () => {
           </div>
 
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
@@ -653,31 +657,34 @@ const TransactionsProtected: React.FC = () => {
                 <SelectItem value="CDF">CDF</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">
+            <Button variant="outline" className="w-full sm:w-auto">
               <Filter className="mr-2 h-4 w-4" />
-              Plus de filtres
+              <span className="hidden sm:inline">Plus de filtres</span>
+              <span className="sm:hidden">Filtres</span>
             </Button>
           </div>
 
           {/* Transactions Table */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <CardTitle>Liste des Transactions</CardTitle>
-                <div className="flex space-x-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button 
                     variant="outline" 
                     onClick={exportTransactions}
                     disabled={transactions.length === 0}
+                    className="w-full sm:w-auto"
                   >
                     <Download className="mr-2 h-4 w-4" />
                     Exporter
                   </Button>
                   
                   <PermissionGuard module="finances" permission="create">
-                    <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddTransaction}>
+                    <Button className="bg-green-500 hover:bg-green-600 w-full sm:w-auto" onClick={handleAddTransaction}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Nouvelle Transaction
+                      <span className="hidden sm:inline">Nouvelle Transaction</span>
+                      <span className="sm:hidden">Nouvelle</span>
                     </Button>
                   </PermissionGuard>
                 </div>
@@ -685,13 +692,13 @@ const TransactionsProtected: React.FC = () => {
             </CardHeader>
             <CardContent>
               <EnhancedTable
-                data={sortedData}
+                data={commercialTransactions}
                 loading={loading}
                 emptyMessage="Aucune transaction"
                 emptySubMessage="Commencez par créer votre première transaction"
                 onSort={handleSort}
-                sortKey={sortConfig?.key}
-                sortDirection={sortConfig?.direction}
+                sortKey={sortColumn}
+                sortDirection={sortDirection}
                 bulkSelect={{
                   selected: Array.from(selectedTransactions),
                   onSelectAll: handleSelectAll,
@@ -743,9 +750,12 @@ const TransactionsProtected: React.FC = () => {
                     sortable: true,
                     className: 'min-w-[120px]',
                     render: (value: any, transaction: Transaction, index: number) => (
-                      <span className="font-medium">
+                      <button
+                        onClick={() => handleViewTransaction(transaction)}
+                        className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                      >
                         {generateReadableId(transaction.id, index)}
-                      </span>
+                      </button>
                     )
                   },
                   {
@@ -893,34 +903,43 @@ const TransactionsProtected: React.FC = () => {
 
               {/* Pagination avec sélecteur de taille */}
               {pagination && (
-                <div className="mt-6 flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-600">Afficher</span>
-                    <Select value="10" onValueChange={(value) => {
-                      console.log('Page size:', value);
-                    }}>
-                      <SelectTrigger className="w-20">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="25">25</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                        <SelectItem value="100">100</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span className="text-sm text-gray-600">par page</span>
-                    <span className="text-sm text-gray-500 ml-4">
-                      {pagination.count} transaction{pagination.count > 1 ? 's' : ''} au total
-                    </span>
+                <div className="mt-6 space-y-4">
+                  {/* Informations et sélecteur de taille - Stack sur mobile */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-600">Afficher</span>
+                        <Select value="10" onValueChange={(value) => {
+                          console.log('Page size:', value);
+                        }}>
+                          <SelectTrigger className="w-20 h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <span className="text-sm text-gray-600">par page</span>
+                      </div>
+                      <span className="text-sm text-gray-500 sm:ml-4">
+                        {pagination.count} transaction{pagination.count > 1 ? 's' : ''} au total
+                      </span>
+                    </div>
                   </div>
                   
+                  {/* Pagination - Centrée et responsive */}
                   {pagination.totalPages > 1 && (
-                    <Pagination
-                      currentPage={currentPage}
-                      totalPages={pagination.totalPages}
-                      onPageChange={setCurrentPage}
-                    />
+                    <div className="flex justify-center">
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={pagination.totalPages}
+                        onPageChange={setCurrentPage}
+                        className="w-full max-w-full overflow-x-auto"
+                      />
+                    </div>
                   )}
                 </div>
               )}

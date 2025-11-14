@@ -8,7 +8,12 @@ import { detectAttackPatterns } from '@/lib/security/validation';
 import { logSecurityEvent } from '@/lib/security/error-handling';
 import type { Transaction, UpdateTransactionData, CreateTransactionData, TransactionFilters } from '@/types';
 
-export const useTransactions = (page: number = 1, filters: TransactionFilters = {}) => {
+export const useTransactions = (
+  page: number = 1, 
+  filters: TransactionFilters = {},
+  sortColumn: string = 'date_paiement',
+  sortDirection: 'asc' | 'desc' = 'desc'
+) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -42,9 +47,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
         .select(`
           *,
           client:clients(*)
-        `, { count: 'exact' })
-        .range((page - 1) * pagination.pageSize, page * pagination.pageSize - 1)
-        .order('date_paiement', { ascending: false });
+        `, { count: 'exact' });
 
       // Appliquer les filtres
       if (filters.status) {
@@ -71,26 +74,57 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       if (filters.maxAmount) {
         query = query.lte('montant', parseFloat(filters.maxAmount));
       }
+      
+      // Appliquer le tri AVANT la pagination
+      const ascending = sortDirection === 'asc';
+      query = query.order(sortColumn, { ascending });
+
+      // Appliquer la pagination APRÈS le tri (sauf si recherche active)
+      if (!filters.search) {
+        query = query.range((page - 1) * pagination.pageSize, page * pagination.pageSize - 1);
+      }
 
       const { data, error, count } = await query;
 
       if (error) throw error;
 
-      setTransactions(data || []);
+      // Filtrage côté client pour la recherche
+      let filteredData = data || [];
+      let filteredCount = count || 0;
+      
+      if (filters.search && filteredData.length > 0) {
+        const searchLower = filters.search.toLowerCase().trim();
+        filteredData = filteredData.filter((transaction: any) => {
+          const matchId = transaction.id?.toLowerCase().includes(searchLower);
+          const matchClientNom = transaction.client?.nom?.toLowerCase().includes(searchLower);
+          const matchClientTelephone = transaction.client?.telephone?.toLowerCase().includes(searchLower);
+          const matchModePaiement = transaction.mode_paiement?.toLowerCase().includes(searchLower);
+          return matchId || matchClientNom || matchClientTelephone || matchModePaiement;
+        });
+        filteredCount = filteredData.length;
+        
+        // Appliquer la pagination côté client si recherche active
+        const from = (page - 1) * pagination.pageSize;
+        const to = from + pagination.pageSize;
+        filteredData = filteredData.slice(from, to);
+      }
+
+      setTransactions(filteredData);
       setPagination(prev => ({
         ...prev,
-        count: count || 0,
+        count: filteredCount,
         page,
-        totalPages: Math.ceil((count || 0) / prev.pageSize)
+        totalPages: Math.ceil(filteredCount / prev.pageSize)
       }));
     } catch (err: any) {
       const friendlyMessage = getFriendlyErrorMessage(err, 'Erreur de chargement des transactions');
       setError(friendlyMessage);
-      showError(friendlyMessage);
+      // Ne pas afficher de toast pour éviter de polluer l'UI
+      // L'erreur est loggée dans la console et stockée dans le state
     } finally {
       setLoading(false);
     }
-  }, [page, filters.status, filters.currency, filters.modePaiement, pagination.pageSize, refreshTrigger]);
+  }, [page, filters.status, filters.currency, filters.modePaiement, filters.search, pagination.pageSize, refreshTrigger]);
 
   // Fonction pour calculer les totaux globaux (toutes pages confondues)
   const fetchGlobalTotals = useCallback(async () => {
@@ -124,6 +158,11 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
       }
       if (filters.maxAmount) {
         query = query.lte('montant', parseFloat(filters.maxAmount));
+      }
+      
+      // Appliquer la recherche textuelle pour les totaux
+      if (filters.search) {
+        query = query.or(`id.ilike.%${filters.search}%`);
       }
 
       const { data, error } = await query;
@@ -185,7 +224,7 @@ export const useTransactions = (page: number = 1, filters: TransactionFilters = 
     fetchTransactions();
     // Charger les totaux de manière asynchrone (non bloquant)
     setTimeout(() => fetchGlobalTotals(), 0);
-  }, [fetchTransactions, fetchGlobalTotals]);
+  }, [page, filters.status, filters.currency, filters.modePaiement, filters.clientId, filters.dateFrom, filters.dateTo, filters.minAmount, filters.maxAmount, filters.search, sortColumn, sortDirection, refreshTrigger]);
 
   const createTransaction = async (transactionData: CreateTransactionData) => {
     setIsCreating(true);

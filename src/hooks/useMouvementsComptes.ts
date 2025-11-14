@@ -178,6 +178,13 @@ export const useCompteStats = (compteId: string) => {
       try {
         setIsLoading(true);
 
+        // Get the compte to get the actual current balance
+        const { data: compte } = await supabase
+          .from('comptes_financiers')
+          .select('solde_actuel')
+          .eq('id', compteId)
+          .single();
+
         // Get all mouvements for this compte
         const { data: mouvements } = await supabase
           .from('mouvements_comptes')
@@ -190,15 +197,16 @@ export const useCompteStats = (compteId: string) => {
           const debits = mouvements.filter(m => m.type_mouvement === 'debit');
           const credits = mouvements.filter(m => m.type_mouvement === 'credit');
 
-          // Get the most recent solde_apres (first element after sorting)
-          const dernierSolde = mouvements.length > 0 ? mouvements[0].solde_apres : 0;
+          // Use the actual compte balance instead of last mouvement's solde_apres
+          // This ensures we include the initial balance even if no mouvements exist
+          const soldeActuel = compte?.solde_actuel || 0;
 
           setStats({
             totalDebits: debits.reduce((sum, m) => sum + m.montant, 0),
             totalCredits: credits.reduce((sum, m) => sum + m.montant, 0),
             nombreDebits: debits.length,
             nombreCredits: credits.length,
-            soldeActuel: dernierSolde
+            soldeActuel: soldeActuel
           });
         }
       } catch (err) {

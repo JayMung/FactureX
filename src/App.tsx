@@ -23,12 +23,25 @@ import PermissionDiagnosticPage from "./pages/Permission-Diagnostic";
 import ComptesFinancesProtected from "./pages/Comptes-Finances-Protected";
 import OperationsFinancieres from "./pages/Operations-Financieres";
 import EncaissementsProtected from "./pages/Encaissements-Protected";
+import ApiKeys from "./pages/ApiKeys";
+import Webhooks from "./pages/Webhooks";
 import Login from "./pages/Login";
 import AdminSetup from "./pages/AdminSetup";
 import AdminInvitation from "./pages/AdminInvitation";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false, // Désactiver le refetch automatique au focus
+      refetchOnMount: false, // Désactiver le refetch automatique au mount
+      refetchOnReconnect: false, // Désactiver le refetch automatique à la reconnexion
+      staleTime: 5 * 60 * 1000, // 5 minutes - les données sont considérées fraîches pendant 5 min
+      retry: 1, // Réessayer seulement 1 fois en cas d'erreur
+      retryDelay: 1000, // Attendre 1 seconde avant de réessayer
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -105,8 +118,18 @@ const App = () => (
                   <SettingsWithPermissions />
                 </ProtectedRouteEnhanced>
               } />
-              <Route path="/activity-logs" element={
+              <Route path="/api-keys" element={
                 <ProtectedRouteEnhanced>
+                  <ApiKeys />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/webhooks" element={
+                <ProtectedRouteEnhanced>
+                  <Webhooks />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/activity-logs" element={
+                <ProtectedRouteEnhanced adminOnly={false}>
                   <ActivityLogs />
                 </ProtectedRouteEnhanced>
               } />

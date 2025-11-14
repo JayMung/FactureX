@@ -148,7 +148,7 @@ const ColisAeriensCreate: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading initial data:', error);
-      showError('Erreur lors du chargement des données');
+      // Ne pas afficher de toast pour éviter de polluer l'UI
     }
   };
 

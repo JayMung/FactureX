@@ -1,0 +1,21 @@
+name: Process Webhooks
+
+on:
+  schedule:
+    # Toutes les 30 secondes (GitHub Actions minimum est 1 minute, donc on fait toutes les minutes)
+    - cron: '* * * * *'
+  workflow_dispatch: # Permet l'exécution manuelle
+
+jobs:
+  process-webhooks:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Call Webhook Processor
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            https://ddnxtuhswmewoxrwswzg.supabase.co/functions/v1/webhook-processor
+        env:
+          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkbnh0dWhzd21ld294cndzd3pnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5NjYyMDAsImV4cCI6MjA3NjU0MjIwMH0.8Yz606cdYr3W5vmoRADppwMyAg2dCRglfEtlOVKoGwk

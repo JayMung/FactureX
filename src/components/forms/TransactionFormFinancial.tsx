@@ -18,6 +18,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { toast } from 'sonner';
+import { formatDateForInput, getTodayDateString } from '@/utils/dateUtils';
 
 interface TransactionFormProps {
   isOpen: boolean;
@@ -61,7 +62,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
     devise: 'USD' as 'USD' | 'CDF',
     categorie: 'Commande',
     mode_paiement: '',
-    date_paiement: new Date().toISOString().split('T')[0],
+    date_paiement: getTodayDateString(),
     compte_source_id: '',
     compte_destination_id: '',
     notes: '',
@@ -90,7 +91,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
         devise: transaction.devise as 'USD' | 'CDF',
         categorie: transaction.categorie || transaction.motif || 'Commande',
         mode_paiement: transaction.mode_paiement || '',
-        date_paiement: transaction.date_paiement?.split('T')[0] || new Date().toISOString().split('T')[0],
+        date_paiement: transaction.date_paiement?.split('T')[0] || getTodayDateString(),
         compte_source_id: transaction.compte_source_id || '',
         compte_destination_id: transaction.compte_destination_id || '',
         notes: transaction.notes || '',
@@ -238,7 +239,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
         devise: 'USD',
         categorie: 'Commande',
         mode_paiement: '',
-        date_paiement: new Date().toISOString().split('T')[0],
+        date_paiement: getTodayDateString(),
         compte_source_id: '',
         compte_destination_id: '',
         notes: '',
@@ -563,7 +564,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
                 onDateChange={(date) => {
                   if (date) {
                     setSelectedDate(date);
-                    handleChange('date_paiement', date.toISOString().split('T')[0]);
+                    handleChange('date_paiement', formatDateForInput(date));
                   }
                 }}
                 placeholder="Sélectionner une date"

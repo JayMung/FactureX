@@ -26,6 +26,7 @@ import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import Layout from '../components/layout/Layout';
 import { useSorting } from '../hooks/useSorting';
 import { usePageSetup } from '../hooks/use-page-setup';
+import Pagination from '@/components/ui/pagination-custom';
 
 // Error Boundary component
 class ErrorBoundary extends React.Component<
@@ -77,6 +78,10 @@ const ColisAeriens: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statutFilter, setStatutFilter] = useState<string>('tous');
+  const [transitaireFilter, setTransitaireFilter] = useState<string>('tous');
+  const [fournisseurFilter, setFournisseurFilter] = useState<string>('tous');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   // Hook pour mettre à jour la date d'arrivée
   const updateDateArrivee = async (colisId: string, date: Date | null) => {
@@ -135,6 +140,27 @@ const ColisAeriens: React.FC = () => {
         .eq('type_livraison', 'aerien')
         .order('created_at', { ascending: false });
 
+      // Charger les informations des créateurs séparément
+      if (data && data.length > 0) {
+        const creatorIds = [...new Set(data.map(c => c.created_by).filter(Boolean))];
+        if (creatorIds.length > 0) {
+          const { data: creators } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, email')
+            .in('id', creatorIds);
+          
+          // Ajouter les informations du créateur à chaque colis
+          if (creators) {
+            data.forEach((colis: any) => {
+              const creator = creators.find(c => c.id === colis.created_by);
+              if (creator) {
+                colis.creator = creator;
+              }
+            });
+          }
+        }
+      }
+
       if (error) throw error;
       
       setColis(data || []);
@@ -150,7 +176,8 @@ const ColisAeriens: React.FC = () => {
       setGlobalTotals(totals);
     } catch (error) {
       console.error('Error loading colis:', error);
-      showError('Erreur lors du chargement des colis');
+      // Ne pas afficher de toast pour éviter de polluer l'UI
+      // L'erreur est loggée dans la console
     } finally {
       setLoading(false);
     }
@@ -168,9 +195,26 @@ const ColisAeriens: React.FC = () => {
       c.fournisseur.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatut = statutFilter === 'tous' || c.statut === statutFilter;
+    const matchesTransitaire = transitaireFilter === 'tous' || c.transitaire?.nom === transitaireFilter;
+    const matchesFournisseur = fournisseurFilter === 'tous' || c.fournisseur === fournisseurFilter;
     
-    return matchesSearch && matchesStatut;
+    return matchesSearch && matchesStatut && matchesTransitaire && matchesFournisseur;
   });
+
+  // Extraire les listes uniques de transitaires et fournisseurs
+  const transitaires = Array.from(new Set(colis.map(c => c.transitaire?.nom).filter(Boolean))) as string[];
+  const fournisseurs = Array.from(new Set(colis.map(c => c.fournisseur).filter(Boolean))) as string[];
+
+  // Pagination
+  const totalPages = Math.ceil(filteredColis.length / PAGE_SIZE);
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const endIndex = startIndex + PAGE_SIZE;
+  const paginatedColis = filteredColis.slice(startIndex, endIndex);
+
+  // Réinitialiser la page quand les filtres changent
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statutFilter, transitaireFilter, fournisseurFilter]);
 
   // Badge de statut avec couleurs
   const getStatutBadge = (statut: string) => {
@@ -385,29 +429,55 @@ const ColisAeriens: React.FC = () => {
               </div>
 
               {/* Filtres et recherche */}
-              <div className="flex flex-col sm:flex-row gap-4 mt-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Rechercher par client, tracking, commande..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
+              <div className="flex flex-col gap-4 mt-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Rechercher par client, tracking, commande..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <select
+                    value={statutFilter}
+                    onChange={(e) => setStatutFilter(e.target.value)}
+                    className="px-4 py-2 border rounded-md bg-white"
+                  >
+                    <option value="tous">Tous les statuts</option>
+                    <option value="en_preparation">En préparation</option>
+                    <option value="expedie_chine">Expédié Chine</option>
+                    <option value="en_transit">En transit</option>
+                    <option value="arrive_congo">Arrivé Congo</option>
+                    <option value="recupere_client">Récupéré</option>
+                    <option value="livre">Livré</option>
+                  </select>
                 </div>
-                <select
-                  value={statutFilter}
-                  onChange={(e) => setStatutFilter(e.target.value)}
-                  className="px-4 py-2 border rounded-md bg-white"
-                >
-                  <option value="tous">Tous les statuts</option>
-                  <option value="en_preparation">En préparation</option>
-                  <option value="expedie_chine">Expédié Chine</option>
-                  <option value="en_transit">En transit</option>
-                  <option value="arrive_congo">Arrivé Congo</option>
-                  <option value="recupere_client">Récupéré</option>
-                  <option value="livre">Livré</option>
-                </select>
+                
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <select
+                    value={transitaireFilter}
+                    onChange={(e) => setTransitaireFilter(e.target.value)}
+                    className="flex-1 px-4 py-2 border rounded-md bg-white"
+                  >
+                    <option value="tous">Tous les transitaires</option>
+                    {transitaires.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                  
+                  <select
+                    value={fournisseurFilter}
+                    onChange={(e) => setFournisseurFilter(e.target.value)}
+                    className="flex-1 px-4 py-2 border rounded-md bg-white"
+                  >
+                    <option value="tous">Tous les fournisseurs</option>
+                    {fournisseurs.map(f => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </CardHeader>
 
@@ -422,7 +492,7 @@ const ColisAeriens: React.FC = () => {
                   <Package className="h-16 w-16 mx-auto text-gray-300 mb-4" />
                   <p className="text-gray-500 text-lg">Aucun colis trouvé</p>
                   <p className="text-gray-400 text-sm mt-2">
-                    {searchTerm || statutFilter !== 'tous' 
+                    {searchTerm || statutFilter !== 'tous' || transitaireFilter !== 'tous' || fournisseurFilter !== 'tous'
                       ? 'Essayez de modifier vos filtres'
                       : 'Commencez par créer un nouveau colis'}
                   </p>
@@ -524,14 +594,14 @@ const ColisAeriens: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {filteredColis.map((c, index) => (
+                      {paginatedColis.map((c, index) => (
                         <tr 
                           key={c.id} 
                           className="hover:bg-gradient-to-r hover:from-blue-50/30 hover:to-indigo-50/30 transition-all duration-200 border-b border-gray-50"
                         >
                           <td className="py-4 px-3 md:px-4">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-400 font-mono">#{index + 1}</span>
+                              <span className="text-xs text-gray-400 font-mono">#{startIndex + index + 1}</span>
                               <button
                                 onClick={(e) => handleViewDetails(c, e)}
                                 className="text-blue-600 hover:text-blue-800 font-mono text-sm font-semibold hover:bg-blue-50 px-2 py-1 rounded transition-colors"
@@ -793,6 +863,18 @@ const ColisAeriens: React.FC = () => {
                   </table>
                 </div>
               )}
+
+              {/* Pagination */}
+              {!loading && filteredColis.length > 0 && totalPages > 1 && (
+                <div className="mt-6 flex justify-center">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    className="w-full max-w-full overflow-x-auto"
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -925,6 +1007,14 @@ const ColisAeriens: React.FC = () => {
                         <span className="text-sm text-gray-500">Créé le:</span>
                         <p className="font-medium">
                           {new Date(selectedColis.created_at || '').toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500">Créé par:</span>
+                        <p className="font-medium">
+                          {(selectedColis as any).creator 
+                            ? `${(selectedColis as any).creator.first_name} ${(selectedColis as any).creator.last_name}`
+                            : '-'}
                         </p>
                       </div>
                     </CardContent>

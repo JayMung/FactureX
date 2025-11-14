@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -49,6 +49,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [editedData, setEditedData] = useState<Partial<Transaction>>({});
   const [validatorName, setValidatorName] = useState<string>('');
+  const [creatorName, setCreatorName] = useState<string>('');
 
   useEffect(() => {
     if (transaction) {
@@ -68,6 +69,11 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
       if (transaction.valide_par) {
         fetchValidatorName(transaction.valide_par);
       }
+
+      // Fetch creator name if exists
+      if (transaction.created_by) {
+        fetchCreatorName(transaction.created_by);
+      }
     }
   }, [transaction]);
 
@@ -84,6 +90,30 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
       }
     } catch (error) {
       console.error('Error fetching validator name:', error);
+    }
+  };
+
+  const fetchCreatorName = async (userId: string) => {
+    try {
+      console.log('Fetching creator for userId:', userId);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email')
+        .eq('id', userId)
+        .single();
+
+      console.log('Creator data:', data, 'Error:', error);
+
+      if (data && !error) {
+        const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim();
+        console.log('Setting creator name:', fullName);
+        setCreatorName(fullName || data.email || 'Utilisateur inconnu');
+      } else {
+        setCreatorName('Utilisateur inconnu');
+      }
+    } catch (error) {
+      console.error('Error fetching creator name:', error);
+      setCreatorName('Utilisateur inconnu');
     }
   };
 
@@ -268,18 +298,25 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
 
   if (!transaction) return null;
 
+  // Générer un ID lisible pour la transaction
+  const generateReadableId = (id: string) => {
+    const shortId = id.substring(0, 6).toUpperCase();
+    return `TX001-${shortId}`;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">
-            {isEditMode ? 'Modifier la Transaction' : 'Détails de la Transaction'}
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogHeader className="space-y-3">
+          <DialogTitle className="text-xl sm:text-2xl font-bold flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <span className="text-base sm:text-2xl">{isEditMode ? 'Modifier la Transaction' : 'Détails de la Transaction'}</span>
+            <span className="text-sm sm:text-lg font-mono text-blue-600">#{generateReadableId(transaction.id)}</span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 mt-4 px-2">
-          {/* Status and Actions Bar */}
-          <div className="flex items-center justify-between">
+        <div className="space-y-4 sm:space-y-6 mt-4">
+          {/* Status Badge - Mobile Centered */}
+          <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-3">
             <div className="flex items-center space-x-2">
               {getStatusIcon(isEditMode ? editedData.statut! : transaction.statut)}
               <Badge className={getStatusColor(isEditMode ? editedData.statut! : transaction.statut)}>
@@ -288,89 +325,93 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
             </div>
             
             {!isEditMode && (
-              <div className="flex space-x-2">
-                <Button variant="outline" size="sm" onClick={handlePrint}>
-                  <Printer className="h-4 w-4 mr-2" />
-                  Imprimer
+              <div className="flex flex-wrap justify-center sm:justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={handlePrint} className="text-xs sm:text-sm">
+                  <Printer className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Imprimer</span>
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleDuplicate}>
-                  <Copy className="h-4 w-4 mr-2" />
-                  Dupliquer
+                <Button variant="outline" size="sm" onClick={handleDuplicate} className="text-xs sm:text-sm">
+                  <Copy className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Dupliquer</span>
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setIsEditMode(true)}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Modifier
+                <Button variant="outline" size="sm" onClick={() => setIsEditMode(true)} className="text-xs sm:text-sm">
+                  <Edit className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Modifier</span>
                 </Button>
               </div>
             )}
           </div>
 
-          <Separator />
+          <Separator className="my-4" />
 
-          {/* Transaction Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
-            {/* Left Column */}
-            <div className="space-y-4">
-              <div>
-                <Label className="text-xs text-gray-500 flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Client
-                </Label>
-                <p className="text-lg font-medium">{transaction.client?.nom || 'Client inconnu'}</p>
-              </div>
+          {/* Transaction Information - Mobile Optimized */}
+          <div className="space-y-4 sm:space-y-6">
+            {/* Client Info */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+              <Label className="text-xs text-gray-500 flex items-center gap-2 mb-2">
+                <User className="h-4 w-4" />
+                Client
+              </Label>
+              <p className="text-base sm:text-lg font-medium">{transaction.client?.nom || 'Client inconnu'}</p>
+            </div>
 
-              <div>
-                <Label className="text-xs text-gray-500 flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Montant
-                </Label>
+            {/* Montant - Centered on Mobile */}
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg p-6 text-center sm:text-left">
+              <Label className="text-xs text-gray-500 flex items-center justify-center sm:justify-start gap-2 mb-2">
+                <DollarSign className="h-4 w-4" />
+                Montant
+              </Label>
+              {isEditMode ? (
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    value={editedData.montant}
+                    onChange={(e) => setEditedData({ ...editedData, montant: parseFloat(e.target.value) })}
+                    className="flex-1"
+                  />
+                  <Select 
+                    value={editedData.devise} 
+                    onValueChange={(value) => setEditedData({ ...editedData, devise: value })}
+                  >
+                    <SelectTrigger className="w-24 sm:w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="CDF">CDF</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <p className="text-3xl sm:text-4xl font-bold text-green-600 dark:text-green-400">
+                  {formatCurrencyValue(transaction.montant, transaction.devise)}
+                </p>
+              )}
+            </div>
+
+            {/* Montant CNY */}
+            {transaction.montant_cny && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                <Label className="text-xs text-gray-500 mb-2 block">Montant CNY</Label>
                 {isEditMode ? (
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      value={editedData.montant}
-                      onChange={(e) => setEditedData({ ...editedData, montant: parseFloat(e.target.value) })}
-                      className="flex-1"
-                    />
-                    <Select 
-                      value={editedData.devise} 
-                      onValueChange={(value) => setEditedData({ ...editedData, devise: value })}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="CDF">CDF</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <Input
+                    type="number"
+                    value={editedData.montant_cny || ''}
+                    onChange={(e) => setEditedData({ ...editedData, montant_cny: parseFloat(e.target.value) || undefined })}
+                  />
                 ) : (
-                  <p className="text-2xl font-bold text-green-500">
-                    {formatCurrencyValue(transaction.montant, transaction.devise)}
+                  <p className="text-xl sm:text-2xl font-bold text-blue-600">
+                    {formatCurrencyValue(transaction.montant_cny, 'CNY')}
                   </p>
                 )}
               </div>
+            )}
 
-              {transaction.montant_cny && (
-                <div>
-                  <Label className="text-xs text-gray-500">Montant CNY</Label>
-                  {isEditMode ? (
-                    <Input
-                      type="number"
-                      value={editedData.montant_cny || ''}
-                      onChange={(e) => setEditedData({ ...editedData, montant_cny: parseFloat(e.target.value) || undefined })}
-                    />
-                  ) : (
-                    <p className="text-xl font-medium text-blue-600">
-                      {formatCurrencyValue(transaction.montant_cny, 'CNY')}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <div>
-                <Label className="text-xs text-gray-500 flex items-center gap-2">
+            {/* Details Grid - 2 columns on mobile, responsive */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              {/* Motif */}
+              <div className="col-span-2 sm:col-span-1 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                <Label className="text-xs text-gray-500 flex items-center gap-2 mb-2">
                   <FileText className="h-4 w-4" />
                   Motif
                 </Label>
@@ -389,53 +430,41 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                     </SelectContent>
                   </Select>
                 ) : (
-                  <p className="text-base font-medium">{transaction.motif}</p>
+                  <p className="text-sm sm:text-base font-medium">{transaction.motif}</p>
                 )}
               </div>
 
-              <div>
-                <Label className="text-xs text-gray-500">Mode de paiement</Label>
+              {/* Mode de paiement */}
+              <div className="col-span-2 sm:col-span-1 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                <Label className="text-xs text-gray-500 mb-2 block">Mode de paiement</Label>
                 {isEditMode ? (
                   <Input
                     value={editedData.mode_paiement}
                     onChange={(e) => setEditedData({ ...editedData, mode_paiement: e.target.value })}
                   />
                 ) : (
-                  <p className="text-base font-medium">{transaction.mode_paiement}</p>
+                  <p className="text-sm sm:text-base font-medium">{transaction.mode_paiement}</p>
                 )}
               </div>
-            </div>
 
-            {/* Right Column */}
-            <div className="space-y-4">
-              {isEditMode && (
-                <div>
-                  <Label className="text-xs text-gray-500">Statut</Label>
-                  <Select 
-                    value={editedData.statut} 
-                    onValueChange={(value) => setEditedData({ ...editedData, statut: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="En attente">En attente</SelectItem>
-                      <SelectItem value="Servi">Servi</SelectItem>
-                      <SelectItem value="Annulé">Annulé</SelectItem>
-                      <SelectItem value="Remboursé">Remboursé</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              <div>
-                <Label className="text-xs text-gray-500 flex items-center gap-2">
+              {/* Date de création */}
+              <div className="col-span-2 sm:col-span-1 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                <Label className="text-xs text-gray-500 flex items-center gap-2 mb-2">
                   <Calendar className="h-4 w-4" />
-                  Date de création
+                  Date
                 </Label>
-                <p className="text-base font-medium">
-                  {new Date(transaction.created_at).toLocaleString('fr-FR')}
+                <p className="text-sm sm:text-base font-medium">
+                  {new Date(transaction.created_at).toLocaleDateString('fr-FR')}
                 </p>
+              </div>
+
+              {/* Créé par */}
+              <div className="col-span-2 sm:col-span-1 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                <Label className="text-xs text-gray-500 flex items-center gap-2 mb-2">
+                  <User className="h-4 w-4" />
+                  Créé par
+                </Label>
+                <p className="text-sm sm:text-base font-medium">{creatorName || '-'}</p>
               </div>
 
               {transaction.updated_at && (
@@ -457,65 +486,71 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
               )}
 
               {transaction.valide_par && validatorName && (
-                <div>
-                  <Label className="text-xs text-gray-500">Validé par</Label>
-                  <p className="text-base font-medium">{validatorName}</p>
+                <div className="col-span-2 sm:col-span-1 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                  <Label className="text-xs text-gray-500 mb-2 block">Validé par</Label>
+                  <p className="text-sm sm:text-base font-medium">{validatorName}</p>
                 </div>
               )}
             </div>
           </div>
 
-          <Separator />
+          <Separator className="my-4" />
 
-          {/* Calculation Details */}
+          {/* Calculation Details - Mobile Optimized */}
           <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
               Détails de calcul
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 bg-gray-50 p-6 rounded-lg">
-              <div>
-                <Label className="text-xs text-gray-500">Frais</Label>
+            <div className="grid grid-cols-3 gap-3 sm:gap-4">
+              {/* Frais */}
+              <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 sm:p-4 text-center">
+                <Label className="text-xs text-gray-500 mb-1 sm:mb-2 block">Frais</Label>
                 {isEditMode ? (
                   <Input
                     type="number"
                     value={editedData.frais}
                     onChange={(e) => setEditedData({ ...editedData, frais: parseFloat(e.target.value) })}
+                    className="text-center"
                   />
                 ) : (
-                  <p className="text-lg font-medium text-orange-600">
+                  <p className="text-base sm:text-lg font-bold text-orange-600">
                     {formatCurrencyValue(transaction.frais, 'USD')}
                   </p>
                 )}
               </div>
 
-              <div>
-                <Label className="text-xs text-gray-500">Bénéfice</Label>
+              {/* Bénéfice */}
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 sm:p-4 text-center">
+                <Label className="text-xs text-gray-500 mb-1 sm:mb-2 block">Bénéfice</Label>
                 {isEditMode ? (
                   <Input
                     type="number"
                     value={editedData.benefice}
                     onChange={(e) => setEditedData({ ...editedData, benefice: parseFloat(e.target.value) })}
+                    className="text-center"
                   />
                 ) : (
-                  <p className="text-lg font-medium text-green-600">
+                  <p className="text-base sm:text-lg font-bold text-green-600">
                     {formatCurrencyValue(transaction.benefice, 'USD')}
                   </p>
                 )}
               </div>
 
+              {/* Taux USD/CNY */}
               {transaction.taux_usd_cny && (
-                <div>
-                  <Label className="text-xs text-gray-500">Taux USD/CNY</Label>
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 sm:p-4 text-center">
+                  <Label className="text-xs text-gray-500 mb-1 sm:mb-2 block">Taux USD/CNY</Label>
                   {isEditMode ? (
                     <Input
                       type="number"
                       step="0.0001"
                       value={editedData.taux_usd_cny || ''}
                       onChange={(e) => setEditedData({ ...editedData, taux_usd_cny: parseFloat(e.target.value) || undefined })}
+                      className="text-center"
                     />
                   ) : (
-                    <p className="text-lg font-medium text-blue-600">
+                    <p className="text-base sm:text-lg font-bold text-blue-600">
                       {transaction.taux_usd_cny.toFixed(4)}
                     </p>
                   )}
@@ -524,9 +559,9 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
             </div>
           </div>
 
-          {/* Action Buttons in Edit Mode */}
+          {/* Action Buttons in Edit Mode - Mobile Optimized */}
           {isEditMode && (
-            <div className="flex justify-end space-x-2 pt-4">
+            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-2 pt-4">
               <Button 
                 variant="outline" 
                 onClick={() => {
@@ -543,13 +578,14 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                     taux_usd_cny: transaction.taux_usd_cny
                   });
                 }}
+                className="w-full sm:w-auto"
               >
                 Annuler
               </Button>
               <Button 
                 onClick={handleSave}
                 disabled={isSaving}
-                className="bg-green-500 hover:bg-green-600"
+                className="bg-green-500 hover:bg-green-600 w-full sm:w-auto"
               >
                 <Save className="h-4 w-4 mr-2" />
                 {isSaving ? 'Enregistrement...' : 'Enregistrer'}

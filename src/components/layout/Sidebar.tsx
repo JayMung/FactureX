@@ -18,7 +18,8 @@ import {
   ChevronDown,
   ChevronRight,
   ArrowLeftRight,
-  DollarSign
+  DollarSign,
+  Key
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/AuthProvider';

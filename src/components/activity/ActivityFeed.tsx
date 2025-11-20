@@ -173,23 +173,26 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
   }
 
   return (
-    <Card className={cn("animate-in fade-in duration-300", className)}>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
+    <Card className={cn("animate-in fade-in duration-300 border border-slate-100 shadow-sm", className)}>
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Chronologie</p>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Activity className="h-4 w-4 text-emerald-500" />
+              Activité récente
+            </CardTitle>
+          </div>
           <div className="flex items-center space-x-2">
-            <Activity className="h-5 w-5" />
-            <span>Activité Récente</span>
             {unreadCount > 0 && (
               <Badge variant="destructive" className="text-xs">
                 {unreadCount} nouvelle{unreadCount > 1 ? 's' : ''}
               </Badge>
             )}
-          </div>
-          <div className="flex items-center space-x-2">
             {unreadCount > 0 && (
               <Button 
                 variant="outline" 
-                size="sm"
+                size="xs"
                 onClick={markAsRead}
                 className="text-xs"
               >
@@ -199,7 +202,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
             {showViewAll && (
               <Button 
                 variant="ghost" 
-                size="sm" 
+                size="xs" 
                 className="text-xs"
                 onClick={() => navigate('/activity-logs')}
               >
@@ -208,52 +211,65 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
               </Button>
             )}
           </div>
-        </CardTitle>
+        </div>
       </CardHeader>
       <CardContent className="max-h-[500px] overflow-y-auto">
-          <div className="space-y-3">
-            {activities.map((activity) => (
-              <div 
-                key={activity.id} 
-                className="flex items-start space-x-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 hover:shadow-sm transition-all duration-200 animate-in slide-in-from-right"
-              >
-                <div className={cn("flex-shrink-0 p-2 rounded-full", 
-                  activity.action.includes('Création') ? 'bg-green-100' :
-                  activity.action.includes('Modification') ? 'bg-yellow-100' :
-                  activity.action.includes('Suppression') ? 'bg-red-100' :
-                  'bg-blue-100'
-                )}>
-                  {getActivityIcon(activity.action, activity.cible || '')}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-medium text-gray-900">
+        <div className="space-y-4">
+          {activities.map((activity, index) => (
+            <div key={activity.id} className="relative pl-6">
+              {/* Timeline connector */}
+              {index !== activities.length - 1 && (
+                <span className="absolute left-2 top-5 h-full w-px bg-slate-100" aria-hidden />
+              )}
+              <span
+                className={cn(
+                  "absolute left-0 top-3 h-4 w-4 rounded-full border-2 border-white",
+                  activity.action.includes('Création') ? 'bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.2)]' :
+                  activity.action.includes('Modification') ? 'bg-amber-500 shadow-[0_0_0_4px_rgba(251,191,36,0.25)]' :
+                  activity.action.includes('Suppression') ? 'bg-rose-500 shadow-[0_0_0_4px_rgba(244,63,94,0.25)]' :
+                  'bg-sky-500 shadow-[0_0_0_4px_rgba(14,165,233,0.2)]'
+                )}
+              />
+
+              <div className="rounded-xl border border-slate-100 bg-white/80 p-3.5 shadow-sm transition-all hover:border-slate-200 hover:shadow-md">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900">
                       {formatActivityMessage(activity)}
                     </p>
-                    <span className="text-xs text-gray-500 whitespace-nowrap ml-2">
-                      {formatRelativeTime(activity.created_at)}
-                    </span>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {formatDateTime(activity.created_at)} — {formatRelativeTime(activity.created_at)}
+                    </p>
                   </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    {activity.cible && (
-                      <Badge variant="outline" className="text-xs">
-                        {activity.cible}
-                      </Badge>
-                    )}
-                    {activity.details?.changes && (
-                      <Badge className="bg-orange-100 text-orange-800 text-xs border-orange-200">
-                        Modifié
-                      </Badge>
-                    )}
+                  <div className="rounded-full bg-slate-50 p-2">
+                    {getActivityIcon(activity.action, activity.cible || '')}
                   </div>
                 </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {activity.cible && (
+                    <Badge variant="outline" className="text-[11px] uppercase tracking-wider text-slate-600">
+                      {activity.cible}
+                    </Badge>
+                  )}
+                  {activity.details?.changes && (
+                    <Badge className="bg-amber-50 text-amber-700 border-amber-100 text-[11px]">
+                      Modifié
+                    </Badge>
+                  )}
+                  {activity.details?.status && (
+                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[11px]">
+                      {activity.details.status}
+                    </Badge>
+                  )}
+                </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
 };
 
 export default ActivityFeed;

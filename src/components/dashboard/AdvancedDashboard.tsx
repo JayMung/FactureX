@@ -132,6 +132,32 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
     </Card>
   );
 
+  const ChartTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+
+    return (
+      <div className="rounded-xl border border-slate-100 bg-white/95 px-4 py-3 shadow-lg">
+        <p className="text-xs font-semibold text-slate-500">{label}</p>
+        <div className="mt-2 space-y-1">
+          {payload.map((entry: any, index: number) => (
+            <div key={index} className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2 text-slate-600">
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: entry.color }}
+                />
+                {entry.name}
+              </span>
+              <span className="font-semibold text-slate-900">
+                {entry.value?.toLocaleString('fr-FR')}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -238,7 +264,7 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
       </div>
 
       {/* Graphique principal */}
-      <Card>
+      <Card className="border border-slate-100 shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -263,39 +289,47 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
               <AreaChart data={analytics.dailyStats}>
                 <defs>
                   <linearGradient id="colorUSD" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="colorCDF" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} />
-                <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
-                <Legend />
+                <CartesianGrid strokeDasharray="4 4" stroke="#e5e7eb" />
+                <XAxis dataKey="date" stroke="#94a3b8" style={{ fontSize: '12px' }} tickMargin={12} />
+                <YAxis stroke="#94a3b8" style={{ fontSize: '12px' }} tickFormatter={(val) => `${val / 1000}k`} />
+                <Tooltip content={<ChartTooltip />} />
+                <Legend formatter={(value) => <span className="text-xs text-slate-500">{value}</span>} />
                 <Area type="monotone" dataKey="revenueUSD" stroke="#10b981" fillOpacity={1} fill="url(#colorUSD)" name="Revenus USD" />
                 <Area type="monotone" dataKey="revenueCDF" stroke="#3b82f6" fillOpacity={1} fill="url(#colorCDF)" name="Revenus CDF" />
               </AreaChart>
             ) : chartType === 'transactions' ? (
               <BarChart data={analytics.dailyStats}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} />
-                <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
-                <Legend />
+                <CartesianGrid strokeDasharray="4 4" stroke="#e5e7eb" />
+                <XAxis dataKey="date" stroke="#94a3b8" style={{ fontSize: '12px' }} tickMargin={12} />
+                <YAxis stroke="#94a3b8" style={{ fontSize: '12px' }} />
+                <Tooltip content={<ChartTooltip />} />
+                <Legend formatter={(value) => <span className="text-xs text-slate-500">{value}</span>} />
                 <Bar dataKey="transactions" fill="#3b82f6" radius={[8, 8, 0, 0]} name="Transactions" />
               </BarChart>
             ) : (
               <LineChart data={analytics.dailyStats}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} />
-                <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
-                <Legend />
-                <Line type="monotone" dataKey="newClients" stroke="#9333ea" strokeWidth={2} dot={{ fill: '#9333ea', r: 4 }} activeDot={{ r: 6 }} name="Nouveaux clients" />
+                <CartesianGrid strokeDasharray="4 4" stroke="#e5e7eb" />
+                <XAxis dataKey="date" stroke="#94a3b8" style={{ fontSize: '12px' }} tickMargin={12} />
+                <YAxis stroke="#94a3b8" style={{ fontSize: '12px' }} />
+                <Tooltip content={<ChartTooltip />} />
+                <Legend formatter={(value) => <span className="text-xs text-slate-500">{value}</span>} />
+                <Line
+                  type="monotone"
+                  dataKey="newClients"
+                  stroke="#9333ea"
+                  strokeWidth={2}
+                  dot={{ fill: '#9333ea', r: 4 }}
+                  activeDot={{ r: 6 }}
+                  name="Nouveaux clients"
+                />
               </LineChart>
             )}
           </ResponsiveContainer>

@@ -28,12 +28,10 @@ interface TransactionFormProps {
 }
 
 // Catégories par type de transaction
+// Seulement Commande et Transfert pour les revenues commerciales
 const REVENUE_CATEGORIES = [
   { value: 'Commande', label: 'Commande (Achat client)' },
-  { value: 'Transfert', label: 'Transfert d\'argent' },
-  { value: 'Retrait Colis', label: 'Retrait Colis' },
-  { value: 'Vente', label: 'Vente directe' },
-  { value: 'Autre', label: 'Autre revenue' }
+  { value: 'Transfert', label: 'Transfert d\'argent' }
 ];
 
 const DEPENSE_CATEGORIES = [
@@ -82,8 +80,11 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   const isLoading = isCreating || isUpdating;
 
   // Charger les données de la transaction si en mode édition
+  // Utiliser transaction.id au lieu de transaction pour éviter de réinitialiser
+  // le formulaire quand l'utilisateur modifie les champs
   useEffect(() => {
-    if (transaction && isEditing) {
+    if (transaction && isEditing && isOpen) {
+      console.log('📝 Loading transaction data into form:', transaction.id, 'montant:', transaction.montant);
       setFormData({
         type_transaction: transaction.type_transaction || 'revenue',
         client_id: transaction.client_id || '',
@@ -102,10 +103,13 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
         setSelectedDate(new Date(transaction.date_paiement));
       }
     }
-  }, [transaction, isEditing]);
+  }, [transaction?.id, isEditing, isOpen]);
 
-  // Reset catégorie when type changes
+  // Reset catégorie when type changes (only for new transactions)
   useEffect(() => {
+    // Ne pas exécuter cet effet en mode édition
+    if (isEditing) return;
+    
     if (formData.type_transaction === 'revenue') {
       setFormData(prev => ({ ...prev, categorie: 'Commande', client_id: prev.client_id || '', mode_paiement: prev.mode_paiement || '' }));
     } else if (formData.type_transaction === 'depense') {
@@ -113,7 +117,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
     } else if (formData.type_transaction === 'transfert') {
       setFormData(prev => ({ ...prev, categorie: 'Transfert', client_id: '', mode_paiement: '' }));
     }
-  }, [formData.type_transaction]);
+  }, [formData.type_transaction, isEditing]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -176,6 +180,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('📋 Form submitted with formData:', formData);
+    
     if (!validateForm()) {
       toast.error('Veuillez corriger les erreurs du formulaire');
       return;
@@ -189,7 +195,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
         categorie: formData.categorie,
         motif: formData.categorie, // Pour compatibilité
         date_paiement: formData.date_paiement,
-        statut: 'En attente',
+        // Préserver le statut existant lors de la mise à jour, sinon 'En attente'
+        statut: isEditing && transaction ? transaction.statut : 'En attente',
         notes: formData.notes,
         frais: parseFloat(formData.frais) || 0,
         taux_usd_cny: rates?.usdToCny || 0,
@@ -223,9 +230,13 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
       }
 
       if (isEditing && transaction) {
+        console.log('🔄 Updating transaction:', transaction.id, transactionData);
         await updateTransaction(transaction.id, transactionData);
+        console.log('✅ Transaction updated successfully');
       } else {
+        console.log('➕ Creating new transaction:', transactionData);
         await createTransaction(transactionData);
+        console.log('✅ Transaction created successfully');
       }
       
       onSuccess?.();
@@ -253,6 +264,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   };
 
   const handleChange = (field: string, value: string) => {
+    console.log(`✏️ Field changed: ${field} = ${value}`);
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));

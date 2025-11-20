@@ -4,9 +4,17 @@ import { showSuccess, showError } from '@/utils/toast';
 import { logActivity } from '@/services/activityLogger';
 import type { Facture, CreateFactureData, UpdateFactureData, FactureFilters, PaginatedResponse } from '@/types';
 
-const PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 10;
 
-export const useFactures = (page: number = 1, filters?: FactureFilters) => {
+type UseFacturesOptions = {
+  pageSize?: number;
+  sort?: {
+    key: string;
+    direction: 'asc' | 'desc';
+  };
+};
+
+export const useFactures = (page: number = 1, filters?: FactureFilters, options?: UseFacturesOptions) => {
   const [factures, setFactures] = useState<Facture[]>([]);
   const [pagination, setPagination] = useState<PaginatedResponse<Facture> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -19,6 +27,8 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
     totalFrais: 0,
     totalCount: 0
   });
+  const pageSize = options?.pageSize ?? DEFAULT_PAGE_SIZE;
+  const sort = options?.sort;
 
   const fetchFactures = useCallback(async () => {
     try {
@@ -39,13 +49,23 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
           mode_livraison,
           client_id,
           clients(id, nom, telephone, ville)
-        `, { count: 'exact' })
-        .order('date_emission', { ascending: false });
+        `, { count: 'exact' });
+
+      // Appliquer le tri
+      if (sort?.key) {
+        if (sort.key === 'clients') {
+          query = query.order('nom', { foreignTable: 'clients', ascending: sort.direction === 'asc' });
+        } else {
+          query = query.order(sort.key, { ascending: sort.direction === 'asc' });
+        }
+      } else {
+        query = query.order('date_emission', { ascending: false });
+      }
       
       // Si pas de recherche, appliquer la pagination
       if (!filters?.search) {
-        const from = (page - 1) * PAGE_SIZE;
-        const to = from + PAGE_SIZE - 1;
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
         query = query.range(from, to);
       }
 
@@ -89,8 +109,8 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
         filteredCount = filteredData.length;
         
         // Appliquer la pagination côté client si recherche active
-        const from = (page - 1) * PAGE_SIZE;
-        const to = from + PAGE_SIZE;
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize;
         filteredData = filteredData.slice(from, to);
       }
 
@@ -100,8 +120,8 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
         data: filteredData,
         count: filteredCount,
         page,
-        pageSize: PAGE_SIZE,
-        totalPages: Math.ceil(filteredCount / PAGE_SIZE)
+        pageSize,
+        totalPages: Math.ceil(filteredCount / pageSize)
       });
 
       // Reset retry count on success
@@ -116,7 +136,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, filters?.type, filters?.statut, filters?.clientId, filters?.modeLivraison, filters?.dateFrom, filters?.dateTo, filters?.search, retryCount]);
+  }, [page, pageSize, filters?.type, filters?.statut, filters?.clientId, filters?.modeLivraison, filters?.dateFrom, filters?.dateTo, filters?.search, retryCount]);
 
   // Fonction pour calculer les totaux globaux (toutes pages confondues)
   // IMPORTANT: Ne compte QUE les factures payées (statut = 'payee')
@@ -499,7 +519,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters) => {
   useEffect(() => {
     fetchFactures();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, filters?.type, filters?.statut, filters?.clientId, filters?.modeLivraison, filters?.dateFrom, filters?.dateTo, filters?.search]);
+  }, [page, pageSize, filters?.type, filters?.statut, filters?.clientId, filters?.modeLivraison, filters?.dateFrom, filters?.dateTo, filters?.search, sort?.key, sort?.direction]);
 
   useEffect(() => {
     // Charger les totaux de manière asynchrone (non bloquant)

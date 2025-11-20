@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
+
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
@@ -42,8 +43,6 @@ import PermissionGuard from '../components/auth/PermissionGuard';
 import EnhancedTable from '@/components/ui/enhanced-table';
 import { usePermissions } from '../hooks/usePermissions';
 import { useFactures } from '../hooks/useFactures';
-import { useSorting } from '../hooks/useSorting';
-import SortableHeader from '../components/ui/sortable-header';
 import Pagination from '../components/ui/pagination-custom';
 import FactureDetailsModal from '../components/modals/FactureDetailsModal';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
@@ -66,6 +65,8 @@ const FacturesProtected: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [statutFilter, setStatutFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | undefined>(undefined);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [factureToView, setFactureToView] = useState<Facture | null>(null);
   const [selectedFactures, setSelectedFactures] = useState<Set<string>>(new Set());
@@ -85,33 +86,24 @@ const FacturesProtected: React.FC = () => {
     getFactureWithItems,
     convertToFacture,
     refetch
-  } = useFactures(currentPage, {
-    type: typeFilter === 'all' ? undefined : typeFilter as 'devis' | 'facture',
-    statut: statutFilter === 'all' ? undefined : statutFilter,
-    search: searchTerm || undefined
-  });
+  } = useFactures(
+    currentPage,
+    {
+      type: typeFilter === 'all' ? undefined : (typeFilter as 'devis' | 'facture'),
+      statut: statutFilter === 'all' ? undefined : statutFilter,
+      search: searchTerm || undefined,
+    },
+    { pageSize, sort: sortConfig }
+  );
 
-  const { sortedData: initialSortedData, sortConfig, handleSort } = useSorting(factures, { key: 'statut', direction: 'asc' });
+  const handleSort = (key: string) => {
+    setSortConfig(current => ({
+      key,
+      direction: current?.key === key && current.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
 
-  // Tri personnalisé pour mettre "payee" en premier
-  const sortedData = useMemo(() => {
-    if (sortConfig?.key === 'statut') {
-      const statusOrder: Record<string, number> = {
-        'payee': 1,
-        'validee': 2,
-        'en_attente': 3,
-        'brouillon': 4,
-        'annulee': 5
-      };
-      
-      return [...initialSortedData].sort((a, b) => {
-        const orderA = statusOrder[a.statut] || 999;
-        const orderB = statusOrder[b.statut] || 999;
-        return sortConfig.direction === 'asc' ? orderA - orderB : orderB - orderA;
-      });
-    }
-    return initialSortedData;
-  }, [initialSortedData, sortConfig]);
+  const sortedData = factures;
 
   const formatCurrency = (amount: number, devise: string) => {
     const formatted = amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -555,6 +547,7 @@ const FacturesProtected: React.FC = () => {
                   isPartiallySelected: selectedFactures.size > 0 && selectedFactures.size < factures.length
                 }}
                 actionsColumn={{
+                  header: 'Actions',
                   render: (facture: Facture) => (
                     <div className="flex items-center space-x-2">
                       <Button
@@ -732,19 +725,29 @@ const FacturesProtected: React.FC = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                       <div className="flex items-center space-x-2">
                         <span className="text-sm text-gray-600">Afficher</span>
-                        <Select value="10" onValueChange={(value) => {
-                          console.log('Page size:', value);
-                        }}>
-                          <SelectTrigger className="w-20 h-8">
-                            <SelectValue />
+                        <Select
+                          value={String(pageSize)}
+                          onValueChange={(value) => {
+                            const nextSize = parseInt(value, 10);
+                            if (!Number.isNaN(nextSize)) {
+                              setPageSize(nextSize);
+                              setCurrentPage(1);
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="w-32 h-8">
+                            <SelectValue placeholder="10" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="20">20</SelectItem>
                             <SelectItem value="25">25</SelectItem>
                             <SelectItem value="50">50</SelectItem>
                             <SelectItem value="100">100</SelectItem>
+                            <SelectItem value="1000">Tout afficher</SelectItem>
                           </SelectContent>
                         </Select>
+
                         <span className="text-sm text-gray-600">par page</span>
                       </div>
                       <span className="text-sm text-gray-500 sm:ml-4">

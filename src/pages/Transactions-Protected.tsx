@@ -68,6 +68,7 @@ const TransactionsProtected: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [currencyFilter, setCurrencyFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | undefined>();
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
@@ -100,7 +101,9 @@ const TransactionsProtected: React.FC = () => {
   const memoFilters = useMemo(() => ({
     status: statusFilter === 'all' ? undefined : statusFilter,
     currency: currencyFilter === 'all' ? undefined : currencyFilter,
-    search: searchTerm || undefined
+    search: searchTerm || undefined,
+    // Filtrer uniquement les transactions commerciales (Commande et Transfert)
+    motifCommercial: true
   }), [statusFilter, currencyFilter, searchTerm]);
 
   const {
@@ -114,14 +117,10 @@ const TransactionsProtected: React.FC = () => {
     updateTransaction,
     deleteTransaction,
     refetch
-  } = useTransactions(currentPage, memoFilters, sortColumn, sortDirection);
+  } = useTransactions(currentPage, memoFilters, sortColumn, sortDirection, { pageSize });
 
-  // Filter to show all client transactions (Commande AND Transfert)
-  // Exclude only internal account transfers (type_transaction: transfert)
-  const commercialTransactions = transactions.filter(t => 
-    (t.motif === 'Commande' || t.motif === 'Transfert') && 
-    t.type_transaction !== 'transfert'
-  );
+  // Les transactions sont déjà filtrées côté serveur (Commande/Transfert uniquement)
+  const commercialTransactions = transactions;
 
   // Fonction de tri côté serveur
   const handleSort = (column: string) => {
@@ -270,10 +269,9 @@ const TransactionsProtected: React.FC = () => {
   };
 
   const handleFormSuccess = () => {
-    // Forcer le rafraîchissement après création/modification
-    setTimeout(() => {
-      refetch();
-    }, 100);
+    // Le hook useTransactions gère déjà le rafraîchissement automatique
+    // via setRefreshTrigger dans updateTransaction/createTransaction
+    console.log('📋 Form success - hook will auto-refresh');
   };
 
   const handleStatusChange = async (transaction: Transaction, newStatus: string) => {
@@ -708,6 +706,7 @@ const TransactionsProtected: React.FC = () => {
                   isPartiallySelected: selectedTransactions.size > 0 && selectedTransactions.size < transactions.length
                 }}
                 actionsColumn={{
+                  header: 'Actions',
                   render: (transaction: Transaction) => (
                     <div className="flex items-center space-x-2">
                       <Button 
@@ -909,14 +908,22 @@ const TransactionsProtected: React.FC = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                       <div className="flex items-center space-x-2">
                         <span className="text-sm text-gray-600">Afficher</span>
-                        <Select value="10" onValueChange={(value) => {
-                          console.log('Page size:', value);
-                        }}>
+                        <Select
+                          value={String(pageSize)}
+                          onValueChange={(value) => {
+                            const nextSize = parseInt(value, 10);
+                            if (!Number.isNaN(nextSize)) {
+                              setPageSize(nextSize);
+                              setCurrentPage(1);
+                            }
+                          }}
+                        >
                           <SelectTrigger className="w-20 h-8">
-                            <SelectValue />
+                            <SelectValue placeholder="10" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="20">20</SelectItem>
                             <SelectItem value="25">25</SelectItem>
                             <SelectItem value="50">50</SelectItem>
                             <SelectItem value="100">100</SelectItem>

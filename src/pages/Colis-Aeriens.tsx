@@ -611,6 +611,15 @@ const ColisAeriens: React.FC = () => {
                                 {generateColisId(c)}
                               </button>
                             </div>
+                            <div className="mt-3 space-y-1 lg:hidden">
+                              <p className="text-xs uppercase tracking-wide text-gray-500">Tracking</p>
+                              <p className="text-sm font-mono text-gray-800 bg-gray-50 px-2 py-1 rounded">
+                                {c.tracking_chine || '-'}
+                              </p>
+                              {c.numero_commande && (
+                                <p className="text-[11px] text-gray-500">Cmd: {c.numero_commande}</p>
+                              )}
+                            </div>
                           </td>
                           <td className="py-4 px-3 md:px-4">
                             <div className="flex flex-col">

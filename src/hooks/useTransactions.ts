@@ -75,6 +75,11 @@ export const useTransactions = (
         query = query.lte('montant', parseFloat(filters.maxAmount));
       }
       
+      // Filtrer uniquement les transactions commerciales (Commande et Transfert)
+      if (filters.motifCommercial) {
+        query = query.in('motif', ['Commande', 'Transfert']);
+      }
+      
       // Appliquer le tri AVANT la pagination
       const ascending = sortDirection === 'asc';
       query = query.order(sortColumn, { ascending });
@@ -124,7 +129,7 @@ export const useTransactions = (
     } finally {
       setLoading(false);
     }
-  }, [page, filters.status, filters.currency, filters.modePaiement, filters.search, pagination.pageSize, refreshTrigger]);
+  }, [page, filters.status, filters.currency, filters.modePaiement, filters.search, filters.motifCommercial, pagination.pageSize, refreshTrigger]);
 
   // Fonction pour calculer les totaux globaux (toutes pages confondues)
   const fetchGlobalTotals = useCallback(async () => {
@@ -158,6 +163,11 @@ export const useTransactions = (
       }
       if (filters.maxAmount) {
         query = query.lte('montant', parseFloat(filters.maxAmount));
+      }
+      
+      // Filtrer uniquement les transactions commerciales (Commande et Transfert)
+      if (filters.motifCommercial) {
+        query = query.in('motif', ['Commande', 'Transfert']);
       }
       
       // Appliquer la recherche textuelle pour les totaux
@@ -218,13 +228,13 @@ export const useTransactions = (
     } finally {
       setIsLoadingTotals(false);
     }
-  }, [filters.status, filters.currency, filters.modePaiement, filters.clientId, filters.dateFrom, filters.dateTo, filters.minAmount, filters.maxAmount]);
+  }, [filters.status, filters.currency, filters.modePaiement, filters.clientId, filters.dateFrom, filters.dateTo, filters.minAmount, filters.maxAmount, filters.motifCommercial]);
 
   useEffect(() => {
     fetchTransactions();
     // Charger les totaux de manière asynchrone (non bloquant)
     setTimeout(() => fetchGlobalTotals(), 0);
-  }, [page, filters.status, filters.currency, filters.modePaiement, filters.clientId, filters.dateFrom, filters.dateTo, filters.minAmount, filters.maxAmount, filters.search, sortColumn, sortDirection, refreshTrigger]);
+  }, [page, filters.status, filters.currency, filters.modePaiement, filters.clientId, filters.dateFrom, filters.dateTo, filters.minAmount, filters.maxAmount, filters.search, filters.motifCommercial, sortColumn, sortDirection, refreshTrigger]);
 
   const createTransaction = async (transactionData: CreateTransactionData) => {
     setIsCreating(true);

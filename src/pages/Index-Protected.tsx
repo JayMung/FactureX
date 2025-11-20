@@ -21,8 +21,10 @@ import {
   Eye,
   Plus,
   Shield,
-  BarChart3
+  BarChart3,
+  ArrowUpRight
 } from 'lucide-react';
+
 import { useDashboardWithPermissions } from '../hooks/useDashboardWithPermissions';
 import { useActivityLogs } from '../hooks/useActivityLogs';
 import { usePermissions } from '../hooks/usePermissions';
@@ -114,6 +116,45 @@ const IndexProtected: React.FC = () => {
       iconBg: 'bg-purple-500'
     }
   ];
+
+  const quickActions = [
+    {
+      id: 'transaction',
+      title: 'Nouvelle transaction',
+      description: 'Créez une opération financière en USD ou CDF.',
+      icon: Plus,
+      href: '/transactions',
+      badge: 'Finance',
+      badgeClasses: 'bg-emerald-50 text-emerald-700 border border-emerald-100',
+      iconClasses: 'bg-emerald-500/15 text-emerald-600',
+      borderClasses: 'border-emerald-100/60 hover:border-emerald-200/80',
+      adminOnly: true,
+      guard: { module: 'finances', permission: 'create' } as const
+    },
+    {
+      id: 'client',
+      title: 'Ajouter un client',
+      description: 'Enregistrez un client pour les prochains devis.',
+      icon: Users,
+      href: '/clients',
+      badge: 'CRM',
+      badgeClasses: 'bg-sky-50 text-sky-700 border border-sky-100',
+      iconClasses: 'bg-sky-500/15 text-sky-600',
+      borderClasses: 'border-sky-100/70 hover:border-sky-200/80',
+      guard: { module: 'clients', permission: 'create' } as const
+    },
+    {
+      id: 'activity',
+      title: "Journal d'activités",
+      description: 'Suivez les validations, connexions et alertes.',
+      icon: Activity,
+      href: '/activity-logs',
+      badge: 'Sécurité',
+      badgeClasses: 'bg-slate-100 text-slate-700 border border-slate-200',
+      iconClasses: 'bg-slate-500/15 text-slate-600',
+      borderClasses: 'border-slate-100/80 hover:border-slate-200'
+    }
+  ].filter(action => !action.adminOnly || isAdmin);
 
   if (error) {
     return (
@@ -213,52 +254,61 @@ const IndexProtected: React.FC = () => {
                 
                 {/* Quick Actions */}
                 <Card className="card-base">
-                  <CardHeader className="p-4">
-                    <CardTitle className="text-lg font-bold text-gray-900 dark:text-white">Actions Rapides</CardTitle>
+                  <CardHeader className="p-4 pb-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Productivité</p>
+                        <CardTitle className="text-lg font-bold text-gray-900 dark:text-white">Actions rapides</CardTitle>
+                      </div>
+                      <Badge variant="outline" className="text-xs border-green-200 text-green-700 bg-green-50">
+                        {quickActions.length} raccourci{quickActions.length > 1 ? 's' : ''}
+                      </Badge>
+                    </div>
                   </CardHeader>
                   <CardContent className="p-4 pt-0">
-                    <div className="space-y-2">
-                      {isAdmin && (
-                        <PermissionGuard module="finances" permission="create">
-                          <Button 
-                            asChild
-                            variant="ghost"
-                            size="sm"
-                            className="w-full justify-start gap-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-700"
+                    <div className="space-y-3">
+                      {quickActions.map((action) => {
+                        const content = (
+                          <a
+                            key={action.id}
+                            href={action.href}
+                            className={`group block rounded-xl border bg-white/60 p-4 transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-lg ${action.borderClasses}`}
                           >
-                            <a href="/transactions" className="flex items-center gap-2">
-                              <Plus className="h-4 w-4" />
-                              <span className="text-sm">Nouvelle Transaction</span>
-                            </a>
-                          </Button>
-                        </PermissionGuard>
-                      )}
-                      
-                      <PermissionGuard module="clients" permission="create">
-                        <Button 
-                          asChild
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start gap-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-700"
-                        >
-                          <a href="/clients" className="flex items-center gap-2">
-                            <Users className="h-4 w-4" />
-                            <span className="text-sm">Ajouter Client</span>
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-gray-900">{action.title}</p>
+                                <p className="text-xs text-gray-500 mt-1 leading-relaxed">{action.description}</p>
+                              </div>
+                              <span className={`rounded-full p-2 ${action.iconClasses}`}>
+                                <action.icon className="h-4 w-4" />
+                              </span>
+                            </div>
+                            <div className="mt-3 flex items-center justify-between text-xs">
+                              <span className={`inline-flex items-center rounded-full px-2.5 py-1 font-medium ${action.badgeClasses}`}>
+                                {action.badge}
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-gray-500 group-hover:text-gray-900 font-medium">
+                                Accéder
+                                <ArrowUpRight className="h-3.5 w-3.5" />
+                              </span>
+                            </div>
                           </a>
-                        </Button>
-                      </PermissionGuard>
-                      
-                      <Button 
-                        asChild
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start gap-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200"
-                      >
-                        <a href="/activity-logs" className="flex items-center gap-2">
-                          <Activity className="h-4 w-4" />
-                          <span className="text-sm">Voir Activités</span>
-                        </a>
-                      </Button>
+                        );
+
+                        if (action.guard) {
+                          return (
+                            <PermissionGuard
+                              key={action.id}
+                              module={action.guard.module}
+                              permission={action.guard.permission}
+                            >
+                              {content}
+                            </PermissionGuard>
+                          );
+                        }
+
+                        return content;
+                      })}
                     </div>
                   </CardContent>
                 </Card>

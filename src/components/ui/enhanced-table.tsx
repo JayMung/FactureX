@@ -29,6 +29,7 @@ interface EnhancedTableProps<T> {
   rowClassName?: (item: T, index: number) => string;
   actionsColumn?: {
     render: (item: T, index: number) => React.ReactNode;
+    header?: string;
   };
   bulkSelect?: {
     selected: string[];
@@ -199,8 +200,8 @@ export function EnhancedTable<T>({
             ))}
             {actionsColumn && (
               <th className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm w-16">
-                <span className="flex items-center justify-center">
-                  <MoreVertical className="h-4 w-4" />
+                <span className="flex items-center justify-center whitespace-nowrap">
+                  {actionsColumn.header || <MoreVertical className="h-4 w-4" />}
                 </span>
               </th>
             )}

@@ -796,7 +796,8 @@ const TransactionsProtected: React.FC = () => {
                     </div>
                   )
                 }}
-                columns={[
+                columns={activeTab === 'clients' ? [
+                  // Colonnes pour Transactions Client
                   {
                     key: 'id',
                     title: 'ID',
@@ -948,6 +949,146 @@ const TransactionsProtected: React.FC = () => {
                     render: (value: any) => (
                       <span className="text-sm font-medium">
                         {sanitizePaymentMethod(value || '-')}
+                      </span>
+                    )
+                  }
+                ] : activeTab === 'internes' ? [
+                  // Colonnes pour Opérations Internes (Dépenses/Revenus)
+                  {
+                    key: 'id',
+                    title: 'ID',
+                    sortable: true,
+                    className: 'min-w-[100px]',
+                    render: (value: any, transaction: Transaction, index: number) => (
+                      <button
+                        onClick={() => handleViewTransaction(transaction)}
+                        className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                      >
+                        {transaction.type_transaction === 'depense' ? 'DEP' : 'REV'}-{(index + 1).toString().padStart(3, '0')}
+                      </button>
+                    )
+                  },
+                  {
+                    key: 'date_paiement',
+                    title: 'Date',
+                    sortable: true,
+                    render: (value: any) => (
+                      <span className="text-sm text-gray-600">
+                        {new Date(value).toLocaleDateString('fr-FR')}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'type_transaction',
+                    title: 'Type',
+                    sortable: true,
+                    render: (value: any) => (
+                      <Badge variant={value === 'depense' ? 'destructive' : 'default'} className={value === 'depense' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}>
+                        {value === 'depense' ? '↓ Dépense' : '↑ Revenu'}
+                      </Badge>
+                    )
+                  },
+                  {
+                    key: 'montant',
+                    title: 'Montant',
+                    sortable: true,
+                    render: (value: any, transaction: Transaction) => (
+                      <span className={`font-bold ${transaction.type_transaction === 'depense' ? 'text-red-600' : 'text-green-600'}`}>
+                        {transaction.type_transaction === 'depense' ? '-' : '+'}{formatCurrencyValue(value, transaction.devise)}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'motif',
+                    title: 'Motif',
+                    sortable: true,
+                    render: (value: any) => (
+                      <span className="text-sm">{sanitizeTransactionMotif(value || '-')}</span>
+                    )
+                  },
+                  {
+                    key: 'categorie',
+                    title: 'Catégorie',
+                    sortable: true,
+                    render: (value: any) => (
+                      <Badge variant="outline" className="bg-gray-50">
+                        {value || '-'}
+                      </Badge>
+                    )
+                  },
+                  {
+                    key: 'compte_destination',
+                    title: 'Compte',
+                    sortable: false,
+                    render: (value: any, transaction: Transaction) => (
+                      <span className="text-sm font-medium">
+                        {transaction.compte_destination?.nom || transaction.compte_source?.nom || transaction.mode_paiement || '-'}
+                      </span>
+                    )
+                  }
+                ] : [
+                  // Colonnes pour Transferts entre comptes
+                  {
+                    key: 'id',
+                    title: 'ID',
+                    sortable: true,
+                    className: 'min-w-[100px]',
+                    render: (value: any, transaction: Transaction, index: number) => (
+                      <button
+                        onClick={() => handleViewTransaction(transaction)}
+                        className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                      >
+                        SWAP-{(index + 1).toString().padStart(3, '0')}
+                      </button>
+                    )
+                  },
+                  {
+                    key: 'date_paiement',
+                    title: 'Date',
+                    sortable: true,
+                    render: (value: any) => (
+                      <span className="text-sm text-gray-600">
+                        {new Date(value).toLocaleDateString('fr-FR')}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'compte_source',
+                    title: 'Compte Source',
+                    sortable: false,
+                    render: (value: any, transaction: Transaction) => (
+                      <span className="text-sm font-medium text-red-600">
+                        {transaction.compte_source?.nom || transaction.mode_paiement || '-'}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'compte_destination',
+                    title: 'Compte Destination',
+                    sortable: false,
+                    render: (value: any, transaction: Transaction) => (
+                      <span className="text-sm font-medium text-green-600">
+                        {transaction.compte_destination?.nom || '-'}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'montant',
+                    title: 'Montant',
+                    sortable: true,
+                    render: (value: any, transaction: Transaction) => (
+                      <span className="font-bold text-blue-600">
+                        {formatCurrencyValue(value, transaction.devise)}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'notes',
+                    title: 'Notes',
+                    sortable: false,
+                    render: (value: any) => (
+                      <span className="text-sm text-gray-500 truncate max-w-[150px] block">
+                        {value || '-'}
                       </span>
                     )
                   }

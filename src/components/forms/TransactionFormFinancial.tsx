@@ -17,6 +17,7 @@ import { useExchangeRates } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { useColisList } from '@/hooks/useColisList';
 import { toast } from 'sonner';
 import { formatDateForInput, getTodayDateString } from '@/utils/dateUtils';
 
@@ -28,11 +29,15 @@ interface TransactionFormProps {
 }
 
 // Catégories par type de transaction
-// Seulement Commande et Transfert pour les revenues commerciales
+// Commande et Transfert ont des frais, Paiement Colis n'a pas de frais
 const REVENUE_CATEGORIES = [
-  { value: 'Commande', label: 'Commande (Achat client)' },
-  { value: 'Transfert', label: 'Transfert d\'argent' }
+  { value: 'Commande', label: 'Commande (Facture)', hasFees: true },
+  { value: 'Transfert', label: 'Transfert d\'argent', hasFees: true },
+  { value: 'Paiement Colis', label: 'Paiement Colis', hasFees: false }
 ];
+
+// Catégories qui ont des frais
+const CATEGORIES_WITH_FEES = ['Commande', 'Transfert'];
 
 const DEPENSE_CATEGORIES = [
   { value: 'Paiement Fournisseur', label: 'Paiement Fournisseur' },
@@ -64,7 +69,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
     compte_source_id: '',
     compte_destination_id: '',
     notes: '',
-    frais: '0'
+    frais: '0',
+    colis_id: '' // Pour Paiement Colis
   });
   
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -75,9 +81,17 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   const { createTransaction, updateTransaction, isCreating, isUpdating } = useTransactions();
   const { comptes } = useComptesFinanciers();
   const { paymentMethods } = usePaymentMethods();
+  
+  // Charger les colis du client sélectionné (pour Paiement Colis)
+  const { data: clientColis = [] } = useColisList({ 
+    clientId: formData.client_id || undefined 
+  });
 
   const isEditing = !!transaction;
   const isLoading = isCreating || isUpdating;
+  
+  // Vérifier si la catégorie actuelle a des frais
+  const hasFees = CATEGORIES_WITH_FEES.includes(formData.categorie);
 
   // Charger les données de la transaction si en mode édition
   // Utiliser transaction.id au lieu de transaction pour éviter de réinitialiser
@@ -96,7 +110,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
         compte_source_id: transaction.compte_source_id || '',
         compte_destination_id: transaction.compte_destination_id || '',
         notes: transaction.notes || '',
-        frais: transaction.frais?.toString() || '0'
+        frais: transaction.frais?.toString() || '0',
+        colis_id: (transaction as any).colis_id || ''
       });
 
       if (transaction.date_paiement) {
@@ -119,6 +134,13 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
     }
   }, [formData.type_transaction, isEditing]);
 
+  // Reset frais à 0 quand la catégorie n'a pas de frais (Paiement Colis)
+  useEffect(() => {
+    if (!CATEGORIES_WITH_FEES.includes(formData.categorie)) {
+      setFormData(prev => ({ ...prev, frais: '0', colis_id: prev.colis_id }));
+    }
+  }, [formData.categorie]);
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -130,6 +152,11 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
     // Validation mode de paiement (requis pour revenue)
     if (formData.type_transaction === 'revenue' && !formData.mode_paiement) {
       newErrors.mode_paiement = 'Le mode de paiement est requis pour un revenue';
+    }
+
+    // Validation colis (requis pour Paiement Colis)
+    if (formData.type_transaction === 'revenue' && formData.categorie === 'Paiement Colis' && !formData.colis_id) {
+      newErrors.colis_id = 'Le colis est requis pour un paiement colis';
     }
 
     // Validation montant
@@ -220,6 +247,11 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
         transactionData.compte_destination_id = formData.compte_destination_id;
       }
 
+      // Ajouter colis_id si Paiement Colis
+      if (formData.colis_id && formData.categorie === 'Paiement Colis') {
+        transactionData.colis_id = formData.colis_id;
+      }
+
       // Calculer bénéfice selon le type
       if (formData.type_transaction === 'revenue') {
         transactionData.benefice = parseFloat(formData.frais) || 0;
@@ -256,7 +288,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
         compte_source_id: '',
         compte_destination_id: '',
         notes: '',
-        frais: '0'
+        frais: '0',
+        colis_id: ''
       });
       setErrors({});
     } catch (error: any) {
@@ -386,6 +419,42 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
                 <p className="text-sm text-red-600">{errors.categorie}</p>
               )}
             </div>
+
+            {/* Sélecteur de Colis (uniquement pour Paiement Colis) */}
+            {formData.type_transaction === 'revenue' && formData.categorie === 'Paiement Colis' && (
+              <div className="space-y-2">
+                <Label htmlFor="colis_id">Colis *</Label>
+                <Select
+                  value={formData.colis_id}
+                  onValueChange={(value) => handleChange('colis_id', value)}
+                >
+                  <SelectTrigger className={errors.colis_id ? 'border-red-500' : ''}>
+                    <SelectValue placeholder="Sélectionner un colis" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientColis.length === 0 ? (
+                      <SelectItem value="" disabled>
+                        {formData.client_id ? 'Aucun colis trouvé pour ce client' : 'Sélectionnez d\'abord un client'}
+                      </SelectItem>
+                    ) : (
+                      clientColis.map((colis: any) => (
+                        <SelectItem key={colis.id} value={colis.id}>
+                          {colis.tracking_chine || colis.id.slice(0, 8)} - {colis.statut}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {errors.colis_id && (
+                  <p className="text-sm text-red-600">{errors.colis_id}</p>
+                )}
+                {!hasFees && (
+                  <p className="text-xs text-gray-500">
+                    💡 Les paiements colis n'ont pas de frais
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Mode de paiement (pour revenue et depense) */}
             {formData.type_transaction !== 'transfert' && (

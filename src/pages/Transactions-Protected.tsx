@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
@@ -61,8 +62,11 @@ import {
 const TransactionsProtected: React.FC = () => {
   usePageSetup({
     title: 'Gestion des Transactions',
-    subtitle: 'Enregistrez, suivez et validez chaque transfert'
+    subtitle: 'Gérez toutes vos opérations financières'
   });
+
+  // État pour l'onglet actif
+  const [activeTab, setActiveTab] = useState<'clients' | 'internes' | 'transferts'>('clients');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -98,13 +102,29 @@ const TransactionsProtected: React.FC = () => {
     getCurrentUser();
   }, []);
 
-  const memoFilters = useMemo(() => ({
-    status: statusFilter === 'all' ? undefined : statusFilter,
-    currency: currencyFilter === 'all' ? undefined : currencyFilter,
-    search: searchTerm || undefined,
-    // Filtrer uniquement les transactions commerciales (Commande et Transfert)
-    motifCommercial: true
-  }), [statusFilter, currencyFilter, searchTerm]);
+  // Filtrer selon l'onglet actif
+  const memoFilters = useMemo(() => {
+    const baseFilters: any = {
+      status: statusFilter === 'all' ? undefined : statusFilter,
+      currency: currencyFilter === 'all' ? undefined : currencyFilter,
+      search: searchTerm || undefined,
+    };
+    
+    // Filtrer selon l'onglet
+    if (activeTab === 'clients') {
+      // Transactions commerciales (Commande, Transfert, Paiement Colis)
+      baseFilters.motifCommercial = true;
+    } else if (activeTab === 'internes') {
+      // Opérations internes (dépenses et revenus sans client)
+      baseFilters.typeTransaction = ['depense', 'revenue'];
+      baseFilters.excludeMotifs = ['Commande', 'Transfert', 'Paiement Colis'];
+    } else if (activeTab === 'transferts') {
+      // Transferts entre comptes
+      baseFilters.typeTransaction = ['transfert'];
+    }
+    
+    return baseFilters;
+  }, [statusFilter, currencyFilter, searchTerm, activeTab]);
 
   const {
     transactions,
@@ -524,6 +544,30 @@ const TransactionsProtected: React.FC = () => {
               </Card>
             );
           })()}
+
+          {/* Tabs de navigation */}
+          <Tabs value={activeTab} onValueChange={(value) => {
+            setActiveTab(value as 'clients' | 'internes' | 'transferts');
+            setCurrentPage(1); // Reset pagination on tab change
+            setSelectedTransactions(new Set()); // Clear selection
+          }} className="w-full">
+            <TabsList className="grid w-full max-w-2xl grid-cols-3 mb-4">
+              <TabsTrigger value="clients" className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                <span className="hidden sm:inline">Transactions Client</span>
+                <span className="sm:hidden">Clients</span>
+              </TabsTrigger>
+              <TabsTrigger value="internes" className="flex items-center gap-2">
+                <Receipt className="h-4 w-4" />
+                <span className="hidden sm:inline">Opérations Internes</span>
+                <span className="sm:hidden">Internes</span>
+              </TabsTrigger>
+              <TabsTrigger value="transferts" className="flex items-center gap-2">
+                <Wallet className="h-4 w-4" />
+                <span className="hidden sm:inline">Transferts</span>
+                <span className="sm:hidden">Swap</span>
+              </TabsTrigger>
+            </TabsList>
 
           {/* Stats Cards - Design System */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
@@ -998,6 +1042,7 @@ const TransactionsProtected: React.FC = () => {
             onUpdate={updateTransaction}
             onDuplicate={handleDuplicateTransaction}
           />
+          </Tabs>
         </div>
       </Layout>
     </ProtectedRouteEnhanced>

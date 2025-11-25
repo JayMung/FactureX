@@ -553,32 +553,34 @@ const TransactionsProtected: React.FC = () => {
             setCurrentPage(1); // Reset pagination on tab change
             setSelectedTransactions(new Set()); // Clear selection
           }} className="w-full">
-            <TabsList className="grid w-full max-w-3xl grid-cols-3 mb-6 h-14 p-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl">
-              <TabsTrigger 
-                value="clients" 
-                className="flex items-center justify-center gap-2 h-full text-base font-semibold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-green-600 transition-all"
-              >
-                <DollarSign className="h-5 w-5" />
-                <span className="hidden sm:inline">Transactions Client</span>
-                <span className="sm:hidden">Clients</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="internes" 
-                className="flex items-center justify-center gap-2 h-full text-base font-semibold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-orange-600 transition-all"
-              >
-                <Receipt className="h-5 w-5" />
-                <span className="hidden sm:inline">Opérations Internes</span>
-                <span className="sm:hidden">Internes</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="transferts" 
-                className="flex items-center justify-center gap-2 h-full text-base font-semibold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 transition-all"
-              >
-                <Wallet className="h-5 w-5" />
-                <span className="hidden sm:inline">Transferts Comptes</span>
-                <span className="sm:hidden">Swap</span>
-              </TabsTrigger>
-            </TabsList>
+            <div className="flex justify-center mb-6">
+              <TabsList className="grid w-full max-w-3xl grid-cols-3 h-14 p-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                <TabsTrigger 
+                  value="clients" 
+                  className="flex items-center justify-center gap-2 h-full text-base font-semibold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-green-600 transition-all border-r border-gray-200 dark:border-gray-700 last:border-r-0 data-[state=active]:border-transparent"
+                >
+                  <DollarSign className="h-5 w-5" />
+                  <span className="hidden sm:inline">Transactions Client</span>
+                  <span className="sm:hidden">Clients</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="internes" 
+                  className="flex items-center justify-center gap-2 h-full text-base font-semibold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-orange-600 transition-all border-r border-gray-200 dark:border-gray-700 last:border-r-0 data-[state=active]:border-transparent"
+                >
+                  <Receipt className="h-5 w-5" />
+                  <span className="hidden sm:inline">Opérations Internes</span>
+                  <span className="sm:hidden">Internes</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="transferts" 
+                  className="flex items-center justify-center gap-2 h-full text-base font-semibold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 transition-all border-r border-gray-200 dark:border-gray-700 last:border-r-0 data-[state=active]:border-transparent"
+                >
+                  <Wallet className="h-5 w-5" />
+                  <span className="hidden sm:inline">Transferts Comptes</span>
+                  <span className="sm:hidden">Swap</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
           {/* Stats Cards - Design System */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 lg:gap-6">

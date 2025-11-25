@@ -205,7 +205,7 @@ Transaction créée
 | 2 | Nom | Nom du client |
 | 3 | Date | Date de paiement |
 | 4 | Montant | Montant en USD/CDF |
-| 5 | Motif | Commande/Transfert/Paiement Colis |
+| 5 | Motif | Commande/Swap/Paiement Colis |
 | 6 | Statut | En attente/Servi/Remboursé/Annulé |
 | 7 | Frais | Frais de transaction |
 | 8 | Bénéfice | Bénéfice calculé |
@@ -217,8 +217,8 @@ Transaction créée
 ## Résumé Final
 
 ### ✅ Terminé
-- Phase 1 : Formulaire avec catégorie Paiement Colis
-- Phase 2 : Tabs dans Transactions-Protected
+- Phase 1 : Formulaire avec catégorie Paiement Colis et rename Transfert -> Swap
+- Phase 2 : Tabs dans Transactions-Protected (Clients, Internes, Swaps)
 - Phase 3 : Routes et menu simplifiés
 
 ### 📁 Fichiers modifiés

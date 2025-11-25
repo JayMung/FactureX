@@ -369,7 +369,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
                   onClick={() => handleChange('type_transaction', 'transfert')}
                 >
                   <ArrowRightLeft className="h-6 w-6 mb-2" />
-                  <span>TRANSFERT</span>
+                  <span>SWAP</span>
                   <span className="text-xs">Entre comptes</span>
                 </Button>
               </div>

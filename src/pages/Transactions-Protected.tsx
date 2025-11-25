@@ -68,7 +68,7 @@ const TransactionsProtected: React.FC = () => {
   });
 
   // État pour l'onglet actif
-  const [activeTab, setActiveTab] = useState<'clients' | 'internes' | 'transferts'>('clients');
+  const [activeTab, setActiveTab] = useState<'clients' | 'internes' | 'swaps'>('clients');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -120,8 +120,8 @@ const TransactionsProtected: React.FC = () => {
       // Opérations internes (dépenses et revenus sans client)
       baseFilters.typeTransaction = ['depense', 'revenue'];
       baseFilters.excludeMotifs = ['Commande', 'Transfert', 'Paiement Colis'];
-    } else if (activeTab === 'transferts') {
-      // Transferts entre comptes
+    } else if (activeTab === 'swaps') {
+      // Swaps entre comptes
       baseFilters.typeTransaction = ['transfert'];
     }
     
@@ -549,7 +549,7 @@ const TransactionsProtected: React.FC = () => {
 
           {/* Tabs de navigation */}
           <Tabs value={activeTab} onValueChange={(value) => {
-            setActiveTab(value as 'clients' | 'internes' | 'transferts');
+            setActiveTab(value as 'clients' | 'internes' | 'swaps');
             setCurrentPage(1); // Reset pagination on tab change
             setSelectedTransactions(new Set()); // Clear selection
           }} className="w-full">
@@ -572,11 +572,11 @@ const TransactionsProtected: React.FC = () => {
                   <span className="sm:hidden">Internes</span>
                 </TabsTrigger>
                 <TabsTrigger 
-                  value="transferts" 
+                  value="swaps" 
                   className="flex items-center justify-center gap-2 h-full text-base font-semibold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 transition-all border-r border-gray-200 dark:border-gray-700 last:border-r-0 data-[state=active]:border-transparent"
                 >
                   <Wallet className="h-5 w-5" />
-                  <span className="hidden sm:inline">Transferts Comptes</span>
+                  <span className="hidden sm:inline">Swaps Comptes</span>
                   <span className="sm:hidden">Swap</span>
                 </TabsTrigger>
               </TabsList>
@@ -1048,7 +1048,7 @@ const TransactionsProtected: React.FC = () => {
                     )
                   }
                 ] : [
-                  // Colonnes pour Transferts entre comptes
+                  // Colonnes pour Swaps entre comptes
                   {
                     key: 'id',
                     title: 'ID',

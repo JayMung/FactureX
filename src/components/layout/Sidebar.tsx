@@ -113,7 +113,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   ];
 
-  // Sous-menus pour Finances
+  // Sous-menus pour Finances (simplifié après fusion)
   const financesSubMenuItems: Array<{
     icon: any;
     label: string;
@@ -121,24 +121,13 @@ const Sidebar: React.FC<SidebarProps> = ({
     permission?: string;
   }> = [
     {
-      icon: DollarSign,
-      label: 'Encaissements',
-      path: '/finances/encaissements',
-      permission: 'finances.view'
-    },
-    {
       icon: Receipt,
-      label: 'Transactions Clients',
+      label: 'Transactions',
       path: '/transactions',
     },
     {
-      icon: ArrowLeftRight,
-      label: 'Opérations Internes',
-      path: '/operations-financieres',
-    },
-    {
       icon: Wallet,
-      label: 'Comptes',
+      label: 'Comptes & Mouvements',
       path: '/comptes',
     },
   ];

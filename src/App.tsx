@@ -21,8 +21,9 @@ import SecurityDashboard from "./pages/SecurityDashboard";
 import SecurityAudit from "./pages/SecurityAudit";
 import PermissionDiagnosticPage from "./pages/Permission-Diagnostic";
 import ComptesFinancesProtected from "./pages/Comptes-Finances-Protected";
-import OperationsFinancieres from "./pages/Operations-Financieres";
-import EncaissementsProtected from "./pages/Encaissements-Protected";
+// Pages supprimées - fusionnées dans Transactions-Protected
+// import OperationsFinancieres from "./pages/Operations-Financieres";
+// import EncaissementsProtected from "./pages/Encaissements-Protected";
 import ApiKeys from "./pages/ApiKeys";
 import Webhooks from "./pages/Webhooks";
 import Login from "./pages/Login";
@@ -145,16 +146,9 @@ const App = () => (
                   <ComptesFinancesProtected />
                 </ProtectedRouteEnhanced>
               } />
-              <Route path="/operations-financieres" element={
-                <ProtectedRouteEnhanced requiredModule="finances">
-                  <OperationsFinancieres />
-                </ProtectedRouteEnhanced>
-              } />
-              <Route path="/finances/encaissements" element={
-                <ProtectedRouteEnhanced requiredModule="finances">
-                  <EncaissementsProtected />
-                </ProtectedRouteEnhanced>
-              } />
+              {/* Routes redirigées vers /transactions (pages fusionnées) */}
+              <Route path="/operations-financieres" element={<Navigate to="/transactions" replace />} />
+              <Route path="/finances/encaissements" element={<Navigate to="/transactions" replace />} />
               <Route path="/permission-diagnostic" element={
                 <ProtectedRouteEnhanced>
                   <PermissionDiagnosticPage />

@@ -207,4 +207,7 @@ Tableau Transactions :
 - motif
 - Statut
 - Frais
--Benefice
+- Benefice
+- Cny
+- Compte
+ 

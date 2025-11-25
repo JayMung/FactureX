@@ -202,8 +202,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                   variant={"ghost" as any}
                   asChild
                   className={cn(
-                    "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-lg h-11 px-4",
-                    currentPath === item.path && "bg-white dark:bg-white text-green-600 dark:text-green-600 shadow-lg font-semibold hover:bg-white hover:text-green-600"
+                    "w-full justify-start text-white/90 hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-[0.98] rounded-lg h-10 px-3",
+                    currentPath === item.path && "bg-white text-green-600 shadow-sm font-medium hover:bg-white hover:text-green-600"
                   )}
                 >
                   <Link to={item.path}>
@@ -220,8 +220,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               <Button
                 variant={"ghost" as any}
                 className={cn(
-                  "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 rounded-lg h-11 px-4",
-                  (currentPath?.startsWith('/finances') || currentPath?.startsWith('/transactions') || currentPath?.startsWith('/operations-financieres') || currentPath?.startsWith('/comptes')) && "bg-green-600 dark:bg-green-700"
+                  "w-full justify-start text-white/90 hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-[0.98] rounded-lg h-10 px-3",
+                  (currentPath?.startsWith('/finances') || currentPath?.startsWith('/transactions') || currentPath?.startsWith('/operations-financieres') || currentPath?.startsWith('/comptes')) && "bg-white/15"
                 )}
                 onClick={() => setFinancesMenuOpen(!financesMenuOpen)}
               >
@@ -248,8 +248,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                           variant={"ghost" as any}
                           asChild
                           className={cn(
-                            "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 rounded-lg h-10 px-3 text-sm",
-                            currentPath === subItem.path && "bg-white dark:bg-white text-green-600 dark:text-green-600 shadow-md font-semibold hover:bg-white hover:text-green-600"
+                            "w-full justify-start text-white/80 hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-[0.98] rounded-lg h-9 px-3 text-sm",
+                            currentPath === subItem.path && "bg-white text-green-600 shadow-sm font-medium hover:bg-white hover:text-green-600"
                           )}
                         >
                           <Link to={subItem.path}>
@@ -270,8 +270,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             <Button
               variant={"ghost" as any}
               className={cn(
-                "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 rounded-lg h-11 px-4",
-                (currentPath?.startsWith('/colis')) && "bg-green-600 dark:bg-green-700"
+                "w-full justify-start text-white/90 hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-[0.98] rounded-lg h-10 px-3",
+                (currentPath?.startsWith('/colis')) && "bg-white/15"
               )}
               onClick={() => setColisMenuOpen(!colisMenuOpen)}
             >
@@ -293,8 +293,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                       variant={"ghost" as any}
                       asChild
                       className={cn(
-                        "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 rounded-lg h-10 px-3 text-sm",
-                        currentPath === subItem.path && "bg-white dark:bg-white text-green-600 dark:text-green-600 shadow-md font-semibold hover:bg-white hover:text-green-600"
+                        "w-full justify-start text-white/80 hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-[0.98] rounded-lg h-9 px-3 text-sm",
+                        currentPath === subItem.path && "bg-white text-green-600 shadow-sm font-medium hover:bg-white hover:text-green-600"
                       )}
                     >
                       <Link to={subItem.path}>
@@ -317,8 +317,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             variant={"ghost" as any}
             asChild
             className={cn(
-              "w-full justify-start text-white hover:bg-green-600 dark:hover:bg-green-700 hover:text-white transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-500 rounded-lg h-11 px-4",
-              currentPath === settingsItem.path && "bg-white dark:bg-white text-green-600 dark:text-green-600 shadow-lg font-semibold hover:bg-white hover:text-green-600"
+              "w-full justify-start text-white/90 hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-[0.98] rounded-lg h-10 px-3",
+              currentPath === settingsItem.path && "bg-white text-green-600 shadow-sm font-medium hover:bg-white hover:text-green-600"
             )}
           >
             <Link to={settingsItem.path}>

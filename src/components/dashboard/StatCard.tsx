@@ -31,8 +31,8 @@ const StatCard: React.FC<StatCardProps> = ({
   };
 
   return (
-    <Card className={cn("card-base transition-shadow-hover", className)}>
-      <CardContent className="p-6">
+    <Card className={cn("stat-card cursor-pointer", className)}>
+      <CardContent className="p-5">
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-2 flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>

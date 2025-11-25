@@ -31,7 +31,9 @@ import {
   History,
   Package,
   Truck,
-  Webhook
+  Webhook,
+  KeyRound,
+  Send
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 // @ts-ignore - Temporary workaround for Supabase types
@@ -92,7 +94,6 @@ interface UserProfile {
   updated_at?: string;
 }
 
-
 interface SettingsOption {
   id: string;
   label: string;
@@ -101,7 +102,6 @@ interface SettingsOption {
   adminOnly?: boolean;
 }
 
-// Fonction pour obtenir l'affichage du rôle
 const getRoleDisplay = (role: string) => {
   switch (role) {
     case 'super_admin':
@@ -135,13 +135,10 @@ const SettingsWithPermissions = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  // Hook d'authentification
   const { user: authUser } = useAuth();
 
-  // Hook des permissions (includes admin status)
   const { checkPermission, canAccessModule, getAccessibleModules, isAdmin, loading: permissionsLoading } = usePermissions();
 
-  // États pour les formulaires
   const [profileForm, setProfileForm] = useState({
     first_name: '',
     last_name: '',
@@ -159,14 +156,12 @@ const SettingsWithPermissions = () => {
     partenaire: ''
   });
 
-  // États pour les modales
   const [isPaymentMethodFormOpen, setIsPaymentMethodFormOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | undefined>();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [paymentMethodToDelete, setPaymentMethodToDelete] = useState<PaymentMethod | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // États pour la gestion des utilisateurs
   const [isUserFormOpen, setIsUserFormOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [userForm, setUserForm] = useState({
@@ -181,16 +176,28 @@ const SettingsWithPermissions = () => {
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
   const [isUserDeleting, setIsUserDeleting] = useState(false);
 
-  // États pour la gestion des permissions
   const [permissionsManagerOpen, setPermissionsManagerOpen] = useState(false);
   const [selectedUserForPermissions, setSelectedUserForPermissions] = useState<UserProfile | null>(null);
+
+  const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
+  const [userToResetPassword, setUserToResetPassword] = useState<UserProfile | null>(null);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [resetPasswordMethod, setResetPasswordMethod] = useState<'email' | 'manual'>('email');
+  const [manualPassword, setManualPassword] = useState('');
+
+  // États pour le changement de mot de passe personnel
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   useEffect(() => {
     const fetchUserAndProfile = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // Récupérer le rôle depuis admin_roles
           const { data: adminRole } = await supabase
             .from('admin_roles')
             .select('role')
@@ -266,13 +273,11 @@ const SettingsWithPermissions = () => {
         return;
       }
 
-      // Récupérer les rôles depuis admin_roles pour les admins
       const { data: adminRoles } = await supabase
         .from('admin_roles')
         .select('user_id, role')
         .eq('is_active', true);
 
-      // Fusionner les données
       const usersWithRoles = (profiles || []).map(profile => {
         const adminRole = adminRoles?.find(ar => ar.user_id === profile.id);
         return {
@@ -339,7 +344,6 @@ const SettingsWithPermissions = () => {
     }
   };
 
-  // Gestionnaires pour les utilisateurs
   const handleAddUser = () => {
     setSelectedUser(null);
     setUserForm({
@@ -377,7 +381,6 @@ const SettingsWithPermissions = () => {
   };
 
   const handlePermissionsApplied = () => {
-    // Rafraîchir la liste des utilisateurs pour mettre à jour les rôles
     fetchUsers();
   };
 
@@ -424,13 +427,11 @@ const SettingsWithPermissions = () => {
       }
 
       if (selectedUser) {
-        // Get current user for audit trail
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         if (!currentUser) throw new Error('Utilisateur non authentifié');
 
         const previousRole = selectedUser.role;
         
-        // Update basic profile info
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
@@ -442,24 +443,20 @@ const SettingsWithPermissions = () => {
 
         if (profileError) throw profileError;
 
-        // Handle role changes with atomic operations
         if (previousRole !== userForm.role) {
           if (userForm.role === 'admin' || userForm.role === 'super_admin') {
-            // Grant admin role
             await permissionConsolidationService.applyRoleAtomic(
               selectedUser.id,
               userForm.role,
               currentUser.id
             );
           } else if (previousRole === 'admin' || previousRole === 'super_admin') {
-            // Revoke admin role
             await permissionConsolidationService.revokeRoleAtomic(
               selectedUser.id,
               currentUser.id
             );
           }
 
-          // Force session refresh for the target user if they're the current user
           if (selectedUser.id === currentUser.id) {
             await supabase.auth.refreshSession();
           }
@@ -490,7 +487,6 @@ const SettingsWithPermissions = () => {
           .single();
         
         if (profile) {
-          // If creating admin/super_admin, apply role atomically
           if (userForm.role === 'admin' || userForm.role === 'super_admin') {
             const { data: { user: currentUser } } = await supabase.auth.getUser();
             if (currentUser) {
@@ -553,6 +549,113 @@ const SettingsWithPermissions = () => {
     } catch (error: any) {
       console.error('Error toggling user status:', error);
       showError(error.message || 'Erreur lors de la mise à jour du statut');
+    }
+  };
+
+  const handleResetPasswordClick = (user: UserProfile) => {
+    setUserToResetPassword(user);
+    setResetPasswordMethod('email');
+    setManualPassword('');
+    setResetPasswordDialogOpen(true);
+  };
+
+  const handleSendResetPasswordEmail = async () => {
+    if (!userToResetPassword) return;
+    
+    setIsResettingPassword(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        userToResetPassword.email,
+        {
+          redirectTo: `${window.location.origin}/reset-password`
+        }
+      );
+
+      if (error) throw error;
+
+      showSuccess(`Un email de réinitialisation a été envoyé à ${userToResetPassword.email}`);
+      setResetPasswordDialogOpen(false);
+    } catch (error: any) {
+      console.error('Error sending reset password email:', error);
+      showError(error.message || 'Erreur lors de l\'envoi de l\'email de réinitialisation');
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  const handleSetManualPassword = async () => {
+    if (!userToResetPassword || !manualPassword) return;
+    
+    if (manualPassword.length < 6) {
+      showError('Le mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      const result = await adminService.updateUserPassword(userToResetPassword.id, manualPassword);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Erreur lors de la mise à jour du mot de passe');
+      }
+
+      showSuccess(`Mot de passe mis à jour pour ${userToResetPassword.email}. Communiquez-le à l'utilisateur de manière sécurisée.`);
+      setResetPasswordDialogOpen(false);
+      setManualPassword('');
+    } catch (error: any) {
+      console.error('Error setting manual password:', error);
+      showError(error.message || 'Erreur lors de la mise à jour du mot de passe');
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  const handleChangeOwnPassword = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      showError('Veuillez remplir tous les champs');
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      showError('Le nouveau mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      showError('Les mots de passe ne correspondent pas');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      // D'abord, vérifier le mot de passe actuel en se reconnectant
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser?.email) throw new Error('Utilisateur non connecté');
+
+      // Vérifier le mot de passe actuel
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: currentUser.email,
+        password: passwordForm.currentPassword
+      });
+
+      if (signInError) {
+        throw new Error('Le mot de passe actuel est incorrect');
+      }
+
+      // Mettre à jour le mot de passe
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: passwordForm.newPassword
+      });
+
+      if (updateError) throw updateError;
+
+      showSuccess('Mot de passe modifié avec succès !');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      showError(error.message || 'Erreur lors du changement de mot de passe');
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -892,8 +995,18 @@ const SettingsWithPermissions = () => {
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => handleResetPasswordClick(user)}
+                              className="hover:bg-orange-50 hover:text-orange-600"
+                              title="Réinitialiser le mot de passe"
+                            >
+                              <KeyRound className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => handleEditUser(user)}
                               className="hover:bg-green-50 hover:text-green-600"
+                              title="Modifier l'utilisateur"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -902,6 +1015,7 @@ const SettingsWithPermissions = () => {
                               size="sm"
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               onClick={() => handleDeleteUser(user)}
+                              title="Supprimer l'utilisateur"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1120,6 +1234,8 @@ const SettingsWithPermissions = () => {
                         id="current_password"
                         type="password"
                         placeholder="Entrez votre mot de passe actuel"
+                        value={passwordForm.currentPassword}
+                        onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
                       />
                     </div>
 
@@ -1129,7 +1245,9 @@ const SettingsWithPermissions = () => {
                         <Input
                           id="new_password"
                           type="password"
-                          placeholder="Minimum 8 caractères"
+                          placeholder="Minimum 6 caractères"
+                          value={passwordForm.newPassword}
+                          onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
                         />
                       </div>
                       <div>
@@ -1138,13 +1256,29 @@ const SettingsWithPermissions = () => {
                           id="confirm_password"
                           type="password"
                           placeholder="Confirmez le nouveau mot de passe"
+                          value={passwordForm.confirmPassword}
+                          onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
                         />
                       </div>
                     </div>
 
-                    <Button variant="outline" className="border-green-500 text-green-600 hover:bg-green-50">
-                      <Lock className="mr-2 h-4 w-4" />
-                      Changer le mot de passe
+                    <Button 
+                      variant="outline" 
+                      className="border-green-500 text-green-600 hover:bg-green-50"
+                      onClick={handleChangeOwnPassword}
+                      disabled={isChangingPassword}
+                    >
+                      {isChangingPassword ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Modification en cours...
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="mr-2 h-4 w-4" />
+                          Changer le mot de passe
+                        </>
+                      )}
                     </Button>
                   </CardContent>
                 </Card>
@@ -1743,6 +1877,122 @@ const SettingsWithPermissions = () => {
         isConfirming={isUserDeleting}
         type="delete"
       />
+
+      {/* Reset Password Dialog */}
+      <Dialog open={resetPasswordDialogOpen} onOpenChange={setResetPasswordDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <KeyRound className="mr-2 h-5 w-5 text-orange-500" />
+              Réinitialiser le mot de passe
+            </DialogTitle>
+          </DialogHeader>
+          
+          {userToResetPassword && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-sm text-gray-600">Utilisateur :</p>
+                <p className="font-medium">{userToResetPassword.first_name} {userToResetPassword.last_name}</p>
+                <p className="text-sm text-gray-500">{userToResetPassword.email}</p>
+              </div>
+
+              <div className="space-y-3">
+                <Label>Méthode de réinitialisation</Label>
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input
+                      type="radio"
+                      name="resetMethod"
+                      value="email"
+                      checked={resetPasswordMethod === 'email'}
+                      onChange={() => setResetPasswordMethod('email')}
+                      className="text-green-500 focus:ring-green-500"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center">
+                        <Send className="h-4 w-4 mr-2 text-blue-500" />
+                        <span className="font-medium">Envoyer un lien par email</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        L'utilisateur recevra un email avec un lien sécurisé pour définir son nouveau mot de passe
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input
+                      type="radio"
+                      name="resetMethod"
+                      value="manual"
+                      checked={resetPasswordMethod === 'manual'}
+                      onChange={() => setResetPasswordMethod('manual')}
+                      className="text-green-500 focus:ring-green-500"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center">
+                        <Lock className="h-4 w-4 mr-2 text-orange-500" />
+                        <span className="font-medium">Définir manuellement</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Définir un mot de passe temporaire pour l'utilisateur
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {resetPasswordMethod === 'manual' && (
+                <div className="space-y-2">
+                  <Label htmlFor="manualPassword">Nouveau mot de passe</Label>
+                  <Input
+                    id="manualPassword"
+                    type="password"
+                    value={manualPassword}
+                    onChange={(e) => setManualPassword(e.target.value)}
+                    placeholder="Minimum 6 caractères"
+                    minLength={6}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Communiquez ce mot de passe à l'utilisateur de manière sécurisée. Il devra le changer après sa première connexion.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setResetPasswordDialogOpen(false)}
+                  disabled={isResettingPassword}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={resetPasswordMethod === 'email' ? handleSendResetPasswordEmail : handleSetManualPassword}
+                  disabled={isResettingPassword || (resetPasswordMethod === 'manual' && manualPassword.length < 6)}
+                  className="bg-orange-500 hover:bg-orange-600"
+                >
+                  {isResettingPassword ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {resetPasswordMethod === 'email' ? 'Envoi en cours...' : 'Mise à jour...'}
+                    </>
+                  ) : resetPasswordMethod === 'email' ? (
+                    <>
+                      <Send className="mr-2 h-4 w-4" />
+                      Envoyer le lien
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="mr-2 h-4 w-4" />
+                      Définir le mot de passe
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };

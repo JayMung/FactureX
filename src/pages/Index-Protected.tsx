@@ -62,28 +62,32 @@ const IndexProtected: React.FC = () => {
       value: isLoading ? '...' : (stats?.facturesCount || 0).toString(),
       change: stats?.facturesCount > 0 ? { value: 8, isPositive: true } : undefined,
       icon: <FileText className="h-6 w-6 text-white" />,
-      iconBg: 'bg-green-500'
+      iconBg: 'bg-green-500',
+      borderColor: 'border-l-green-400'
     },
     {
       title: 'Montant Facturé USD',
       value: isLoading ? '...' : formatCurrencyValue(stats?.facturesAmountUSD || 0, 'USD'),
       change: stats?.facturesAmountUSD > 0 ? { value: 12, isPositive: true } : undefined,
       icon: <DollarSign className="h-6 w-6 text-white" />,
-      iconBg: 'bg-blue-500'
+      iconBg: 'bg-blue-500',
+      borderColor: 'border-l-blue-400'
     },
     {
       title: 'Total Frais',
       value: isLoading ? '...' : formatCurrencyValue(stats?.totalFrais || 0, 'USD'),
       change: stats?.totalFrais > 0 ? { value: 8, isPositive: true } : undefined,
       icon: <DollarSign className="h-6 w-6 text-white" />,
-      iconBg: 'bg-purple-500'
+      iconBg: 'bg-purple-500',
+      borderColor: 'border-l-purple-400'
     },
     {
       title: 'Factures Validées',
       value: isLoading ? '...' : (stats?.facturesValidees || 0).toString(),
       change: stats?.facturesValidees > 0 ? { value: 10, isPositive: true } : undefined,
       icon: <TrendingUp className="h-6 w-6 text-white" />,
-      iconBg: 'bg-orange-500'
+      iconBg: 'bg-orange-500',
+      borderColor: 'border-l-orange-400'
     }
   ] : [
     // Stats pour opérateurs (uniquement factures de base, sans montants)
@@ -92,28 +96,32 @@ const IndexProtected: React.FC = () => {
       value: isLoading ? '...' : (stats?.facturesCount || 0).toString(),
       change: stats?.facturesCount > 0 ? { value: 5, isPositive: true } : undefined,
       icon: <FileText className="h-6 w-6 text-white" />,
-      iconBg: 'bg-green-500'
+      iconBg: 'bg-green-500',
+      borderColor: 'border-l-green-400'
     },
     {
       title: 'Factures Validées',
       value: isLoading ? '...' : (stats?.facturesValidees || 0).toString(),
       change: stats?.facturesValidees > 0 ? { value: 3, isPositive: true } : undefined,
       icon: <TrendingUp className="h-6 w-6 text-white" />,
-      iconBg: 'bg-blue-500'
+      iconBg: 'bg-blue-500',
+      borderColor: 'border-l-blue-400'
     },
     {
       title: 'Total Clients',
       value: isLoading ? '...' : (stats?.clientsCount || 0).toString(),
       change: stats?.clientsCount > 0 ? { value: 2, isPositive: true } : undefined,
       icon: <Users className="h-6 w-6 text-white" />,
-      iconBg: 'bg-orange-500'
+      iconBg: 'bg-orange-500',
+      borderColor: 'border-l-orange-400'
     },
     {
       title: 'Factures en Attente',
       value: isLoading ? '...' : (stats?.facturesEnAttente || 0).toString(),
       change: stats?.facturesEnAttente > 0 ? { value: 1, isPositive: false } : undefined,
       icon: <Activity className="h-6 w-6 text-white" />,
-      iconBg: 'bg-purple-500'
+      iconBg: 'bg-purple-500',
+      borderColor: 'border-l-purple-400'
     }
   ];
 
@@ -181,19 +189,21 @@ const IndexProtected: React.FC = () => {
   return (
     <ProtectedRouteEnhanced>
       <Layout>
-        <div className="space-y-6 animate-in fade-in duration-300">
-          {/* Welcome Section */}
-          <div className="banner-gradient-green">
-            <h1 className="text-2xl md:text-3xl font-bold mb-2">Bienvenue sur FactureX</h1>
-            <p className="text-green-100">Gérez vos transferts USD/CDF en toute simplicité</p>
+        <div className="space-y-5 animate-in fade-in duration-300">
+          {/* Welcome Section - Plus compact */}
+          <div className="banner-compact flex items-center justify-between">
+            <div>
+              <h1 className="text-xl md:text-2xl font-semibold">Bienvenue sur FactureX</h1>
+              <p className="text-green-100/90 text-sm mt-0.5">Gérez vos transferts USD/CDF en toute simplicité</p>
+            </div>
           </div>
 
-          {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+          {/* Tabs - Plus épuré */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
+            <TabsList className="inline-flex bg-gray-100/80 dark:bg-gray-800/50 p-1 rounded-lg gap-1">
               <TabsTrigger 
                 value="overview" 
-                className="flex items-center gap-2 data-[state=active]:bg-green-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all rounded-md"
+                className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-green-600 data-[state=active]:shadow-sm transition-all rounded-md text-gray-600 dark:text-gray-400"
               >
                 <Activity className="h-4 w-4" />
                 <span className="text-sm font-medium">Vue d'ensemble</span>
@@ -201,7 +211,7 @@ const IndexProtected: React.FC = () => {
               {isAdmin && (
                 <TabsTrigger 
                   value="analytics" 
-                  className="flex items-center gap-2 data-[state=active]:bg-green-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all rounded-md"
+                  className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-green-600 data-[state=active]:shadow-sm transition-all rounded-md text-gray-600 dark:text-gray-400"
                 >
                   <BarChart3 className="h-4 w-4" />
                   <span className="text-sm font-medium">Analytics avancés</span>
@@ -210,38 +220,33 @@ const IndexProtected: React.FC = () => {
             </TabsList>
 
             {/* Vue d'ensemble */}
-            <TabsContent value="overview" className="space-y-6">
-              {/* Stats avec icônes colorées */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <TabsContent value="overview" className="space-y-5">
+              {/* Stats - Design épuré avec bordures colorées */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {overviewStats.map((stat, index) => (
-                  <Card key={index} className="card-base transition-shadow-hover">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.title}</p>
-                          <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                            {stat.value}
-                          </p>
-                          {stat.change && (
-                            <div className="flex items-center gap-1 mt-2">
-                              {stat.change.isPositive ? (
-                                <TrendingUp className="h-4 w-4 text-success" />
-                              ) : (
-                                <TrendingDown className="h-4 w-4 text-error" />
-                              )}
-                              <span className={stat.change.isPositive ? "text-success text-xs font-medium" : "text-error text-xs font-medium"}>
-                                {stat.change.value}%
-                              </span>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">vs période précédente</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className={`p-3 rounded-full ${stat.iconBg} flex-shrink-0`}>
-                          {stat.icon}
-                        </div>
+                  <div key={index} className={`stat-card border-l-4 ${stat.borderColor}`}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{stat.title}</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                          {stat.value}
+                        </p>
+                        {stat.change && (
+                          <div className={`mt-2 ${stat.change.isPositive ? 'trend-positive' : 'trend-negative'}`}>
+                            {stat.change.isPositive ? (
+                              <TrendingUp className="h-3.5 w-3.5" />
+                            ) : (
+                              <TrendingDown className="h-3.5 w-3.5" />
+                            )}
+                            <span>{stat.change.value}%</span>
+                          </div>
+                        )}
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className={`p-2.5 rounded-xl ${stat.iconBg} flex-shrink-0`}>
+                        {stat.icon}
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
 

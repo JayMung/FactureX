@@ -282,8 +282,8 @@ export const useTransactions = (
               'high',
               { 
                 field, 
-            inputData: transactionData[field as keyof CreateTransactionData],
-            attackType: attackCheck.attackType 
+                inputData: transactionData[field as keyof CreateTransactionData],
+                attackType: attackCheck.attackType 
               }
             );
             
@@ -411,11 +411,11 @@ export const useTransactions = (
     setError(null);
 
     try {
-      // Si montant, devise ou motif changent, recalculer les frais et bénéfices
       let updatedData = { ...transactionData };
       
-      if (transactionData.montant || transactionData.devise || transactionData.motif) {
-        // Récupérer la transaction actuelle pour avoir toutes les valeurs
+      console.log(' updateTransaction called with:', { id, transactionData });
+      
+      if (transactionData.montant !== undefined || transactionData.devise || transactionData.motif) {
         const { data: currentTransaction } = await supabase
           .from('transactions')
           .select('*')
@@ -423,23 +423,14 @@ export const useTransactions = (
           .single();
 
         if (currentTransaction) {
-          // Récupérer les paramètres
           const { data: settings } = await supabase
             .from('settings')
             .select('cle, valeur, categorie')
             .in('categorie', ['taux_change', 'frais'])
             .in('cle', ['usdToCny', 'usdToCdf', 'transfert', 'commande', 'partenaire']);
-
-          const rates: Record<string, number> = {
-            usdToCny: 7.25,
-            usdToCdf: 2850
-          };
-
-          const fees: Record<string, number> = {
-            transfert: 5,
-            commande: 10,
-            partenaire: 3
-          };
+          
+          const rates: Record<string, number> = { usdToCny: 7.25, usdToCdf: 2850 };
+          const fees: Record<string, number> = { transfert: 5, commande: 10, partenaire: 3 };
 
           settings?.forEach((setting: any) => {
             if (setting.categorie === 'taux_change') {
@@ -449,23 +440,24 @@ export const useTransactions = (
             }
           });
 
-          // Utiliser les nouvelles valeurs ou les valeurs actuelles
           const montant = transactionData.montant ?? currentTransaction.montant;
           const devise = transactionData.devise ?? currentTransaction.devise;
           const motif = transactionData.motif ?? currentTransaction.motif;
 
           const tauxUSD = devise === 'USD' ? 1 : rates.usdToCdf;
-          const fraisUSD = montant * (fees[motif.toLowerCase() as keyof typeof fees] / 100);
-          const montantNet = montant - fraisUSD; // Montant après déduction des frais
+          const fraisRate = fees[motif?.toLowerCase() as keyof typeof fees] || 0;
+          const fraisUSD = montant * (fraisRate / 100);
+          const montantNet = montant - fraisUSD;
           const montantCNY = devise === 'USD' 
             ? montantNet * rates.usdToCny 
             : (montantNet / tauxUSD) * rates.usdToCny;
           const commissionPartenaire = montant * (fees.partenaire / 100);
           const benefice = fraisUSD - commissionPartenaire;
 
-          // Ajouter les champs calculés
           updatedData = {
             ...updatedData,
+            montant: montant,
+            devise: devise,
             taux_usd_cny: rates.usdToCny,
             taux_usd_cdf: rates.usdToCdf,
             montant_cny: montantCNY,
@@ -475,54 +467,34 @@ export const useTransactions = (
         }
       }
 
-      const updateResult = await supabase
+      // Exclure les champs de compte pour éviter les erreurs RLS
+      const { compte_source_id, compte_destination_id, ...safeData } = updatedData as any;
+      
+      const { data, error } = await supabase
         .from('transactions')
-        .update(updatedData)
+        .update(safeData)
         .eq('id', id)
-        .select('*');
+        .select('*')
+        .single();
 
-      let data = Array.isArray(updateResult.data) ? updateResult.data[0] : (updateResult as any).data;
-      const error = (updateResult as any).error;
+      if (error) throw error;
 
-      // If PostgREST returned 406/PGRST116 (no rows to return with .single semantics),
-      // or no row in the result array, fall back to fetching the row directly.
-      if ((error && (error.code === 'PGRST116' || error.message?.includes('Cannot coerce'))) || !data) {
-        const fetchAfterUpdate = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('id', id)
-          .single();
-        if (fetchAfterUpdate.error) throw fetchAfterUpdate.error;
-        data = fetchAfterUpdate.data as any;
-      } else if (error) {
-        throw error;
-      }
-
-      // Logger l'activité
       await activityLogger.logActivityWithChanges(
         'Modification Transaction',
         'transactions',
         id,
-        {
-          before: transactions.find(t => t.id === id),
-          after: data
-        }
+        { before: transactions.find(t => t.id === id), after: data }
       );
 
       showSuccess('Transaction mise à jour avec succès');
-      
-      // Forcer le refresh immédiatement
       setRefreshTrigger(prev => prev + 1);
-      setTimeout(() => {
-        fetchTransactions();
-        fetchGlobalTotals(); // Rafraîchir les totaux globaux
-      }, 100);
+      setTimeout(() => { fetchTransactions(); fetchGlobalTotals(); }, 100);
       
       return data;
     } catch (err: any) {
-      const friendlyMessage = getFriendlyErrorMessage(err, 'Erreur de mise à jour');
-      setError(`Une erreur est survenue lors de la mise à jour de la transaction. Veuillez réessayer.`);
-      showError(`Une erreur est survenue lors de la mise à jour de la transaction. Veuillez réessayer.`);
+      console.error('❌ Error updating:', err);
+      setError(err.message || 'Erreur');
+      showError(err.message || 'Erreur');
       throw err;
     } finally {
       setIsUpdating(false);
@@ -531,72 +503,22 @@ export const useTransactions = (
 
   const deleteTransaction = async (id: string) => {
     try {
-      console.log('Tentative de suppression de la transaction:', id);
-      
-      // Suppression directe sans vérifications complexes
       const { error, count } = await supabase
         .from('transactions')
         .delete({ count: 'exact' })
         .eq('id', id);
 
-      if (error) {
-        console.error('Erreur Supabase lors de la suppression:', error);
-        
-        // Si c'est une erreur RLS, essayer avec une approche différente
-        if (error.code === 'PGRST301' || error.message.includes('policy')) {
-          console.log('Erreur de politique détectée, tentative alternative...');
-          
-          // Essayer de marquer comme supprimé au lieu de supprimer réellement
-          const { error: updateError } = await supabase
-            .from('transactions')
-            .update({ 
-              statut: 'Annulé',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', id);
-            
-          if (updateError) {
-            throw updateError;
-          }
-          
-          await activityLogger.logActivity(
-            'Annulation Transaction (RLS)',
-            'transactions',
-            id
-          );
-          
-          return { message: 'Transaction annulée avec succès (restriction RLS)' };
-        }
-        
-        throw error;
-      }
-      
-      console.log('Suppression réussie, count:', count);
-      
-      if (count === 0) {
-        return { error: 'Transaction non trouvée ou déjà supprimée' };
-      }
+      if (error) throw error;
+      if (count === 0) return { error: 'Non trouvée' };
 
-      // Logger l'activité
-      await activityLogger.logActivity(
-        'Suppression Transaction',
-        'transactions',
-        id
-      );
-
-      showSuccess('Transaction supprimée avec succès');
-      
-      // Forcer le refresh immédiatement
+      await activityLogger.logActivity('Suppression Transaction', 'transactions', id);
+      showSuccess('Transaction supprimée');
       setRefreshTrigger(prev => prev + 1);
-      setTimeout(() => {
-        fetchTransactions();
-        fetchGlobalTotals(); // Rafraîchir les totaux globaux
-      }, 100);
+      setTimeout(() => { fetchTransactions(); fetchGlobalTotals(); }, 100);
       
-      return { message: 'Transaction supprimée avec succès' };
+      return { message: 'Supprimée' };
     } catch (error: any) {
-      console.error('Erreur complète lors de la suppression:', error);
-      return { error: error.message || 'Erreur lors de la suppression de la transaction' };
+      return { error: error.message };
     }
   };
 

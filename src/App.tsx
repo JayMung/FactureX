@@ -26,6 +26,7 @@ import EncaissementsProtected from "./pages/Encaissements-Protected";
 import ApiKeys from "./pages/ApiKeys";
 import Webhooks from "./pages/Webhooks";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import AdminSetup from "./pages/AdminSetup";
 import AdminInvitation from "./pages/AdminInvitation";
 import NotFound from "./pages/NotFound";
@@ -56,6 +57,7 @@ const App = () => (
                 <Route path="/admin-setup" element={<AdminSetup />} />
               )}
               <Route path="/login" element={<Login />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/admin-invitation" element={<AdminInvitation />} />
               <Route path="/security_audit" element={<SecurityAudit />} />
               <Route path="/" element={

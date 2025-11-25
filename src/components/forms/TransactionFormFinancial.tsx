@@ -230,9 +230,11 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
       }
 
       if (isEditing && transaction) {
-        console.log('🔄 Updating transaction:', transaction.id, transactionData);
-        await updateTransaction(transaction.id, transactionData);
-        console.log('✅ Transaction updated successfully');
+        console.log('🔄 Updating transaction:', transaction.id);
+        console.log('📊 Transaction data to update:', JSON.stringify(transactionData, null, 2));
+        console.log('💰 New montant value:', transactionData.montant, 'type:', typeof transactionData.montant);
+        const result = await updateTransaction(transaction.id, transactionData);
+        console.log('✅ Transaction updated successfully, result:', result);
       } else {
         console.log('➕ Creating new transaction:', transactionData);
         await createTransaction(transactionData);

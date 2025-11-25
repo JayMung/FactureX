@@ -116,7 +116,40 @@
 
 /* Banner/Header sections */
 .banner-gradient-green {
-  @apply bg-gradient-to-r from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 rounded-lg p-6 text-white shadow-md;
+  @apply bg-gradient-to-r from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 rounded-xl p-4 md:p-5 text-white shadow-sm;
+}
+
+/* Banner compact pour dashboard */
+.banner-compact {
+  @apply bg-gradient-to-r from-green-500 to-emerald-500 dark:from-green-600 dark:to-emerald-600 rounded-xl px-5 py-4 text-white;
+}
+
+/* Cards épurées */
+.card-clean {
+  @apply bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200;
+}
+
+/* Stats cards minimalistes avec hover */
+.stat-card {
+  @apply bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:border-green-200 dark:hover:border-green-800 hover:-translate-y-0.5;
+}
+
+/* Trend indicators plus visibles */
+.trend-positive {
+  @apply inline-flex items-center gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full;
+}
+
+.trend-negative {
+  @apply inline-flex items-center gap-1 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-full;
+}
+
+/* Section headers épurés */
+.section-header {
+  @apply flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800;
+}
+
+.section-title {
+  @apply text-lg font-semibold text-gray-900 dark:text-white;
 }
 
 /* Dividers */

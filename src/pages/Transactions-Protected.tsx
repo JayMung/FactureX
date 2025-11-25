@@ -117,7 +117,7 @@ const TransactionsProtected: React.FC = () => {
     updateTransaction,
     deleteTransaction,
     refetch
-  } = useTransactions(currentPage, memoFilters, sortColumn, sortDirection, { pageSize });
+  } = useTransactions(currentPage, memoFilters);
 
   // Les transactions sont déjà filtrées côté serveur (Commande/Transfert uniquement)
   const commercialTransactions = transactions;
@@ -269,9 +269,10 @@ const TransactionsProtected: React.FC = () => {
   };
 
   const handleFormSuccess = () => {
-    // Le hook useTransactions gère déjà le rafraîchissement automatique
-    // via setRefreshTrigger dans updateTransaction/createTransaction
-    console.log('📋 Form success - hook will auto-refresh');
+    // Forcer le rafraîchissement de la liste des transactions de cette page
+    console.log('📋 Form success - forcing refetch');
+    refetch();
+    setSelectedTransaction(undefined);
   };
 
   const handleStatusChange = async (transaction: Transaction, newStatus: string) => {

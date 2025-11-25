@@ -100,37 +100,43 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
     change?: { value: number; isPositive: boolean };
     icon: React.ReactNode;
     color: string;
-  }) => (
-    <Card className={cn("hover:shadow-lg transition-shadow", className)}>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-600">{title}</p>
-            <p className="text-2xl font-bold">{value}</p>
+  }) => {
+    // Mapper la couleur de fond à la couleur de bordure
+    const borderColorMap: Record<string, string> = {
+      'bg-green-600': 'border-l-green-400',
+      'bg-blue-600': 'border-l-blue-400',
+      'bg-purple-600': 'border-l-purple-400',
+      'bg-orange-600': 'border-l-orange-400',
+    };
+    const borderColor = borderColorMap[color] || 'border-l-green-400';
+    
+    return (
+      <div className={cn("stat-card border-l-4", borderColor, className)}>
+        <div className="flex items-start justify-between">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
             {change && (
-              <div className="flex items-center mt-2">
+              <div className={cn(
+                "mt-2",
+                change.isPositive ? "trend-positive" : "trend-negative"
+              )}>
                 {change.isPositive ? (
-                  <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+                  <TrendingUp className="h-3.5 w-3.5" />
                 ) : (
-                  <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
+                  <TrendingDown className="h-3.5 w-3.5" />
                 )}
-                <span className={cn(
-                  "text-sm font-medium",
-                  change.isPositive ? "text-green-600" : "text-red-600"
-                )}>
-                  {change.value}%
-                </span>
-                <span className="text-sm text-gray-500 ml-1">vs période précédente</span>
+                <span>{change.value}%</span>
               </div>
             )}
           </div>
-          <div className={cn("p-3 rounded-full", color)}>
+          <div className={cn("p-2.5 rounded-xl flex-shrink-0", color)}>
             {icon}
           </div>
         </div>
-      </CardContent>
-    </Card>
-  );
+      </div>
+    );
+  };
 
   const ChartTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;

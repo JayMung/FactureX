@@ -238,6 +238,33 @@ export class AdminService {
       return false;
     }
   }
+
+  // Update user password via Edge Function (admin only)
+  async updateUserPassword(userId: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        return { success: false, error: 'Non authentifié' };
+      }
+
+      const response = await supabase.functions.invoke('admin-update-password', {
+        body: { userId, newPassword }
+      });
+
+      if (response.error) {
+        return { success: false, error: response.error.message };
+      }
+
+      if (response.data?.error) {
+        return { success: false, error: response.data.error };
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Error updating user password:', error);
+      return { success: false, error: error.message || 'Erreur lors de la mise à jour du mot de passe' };
+    }
+  }
 }
 
 export const adminService = new AdminService();

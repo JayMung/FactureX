@@ -139,7 +139,7 @@ export const useTransactions = (
     } finally {
       setLoading(false);
     }
-  }, [page, filters.status, filters.currency, filters.modePaiement, filters.search, filters.motifCommercial, pagination.pageSize, refreshTrigger]);
+  }, [page, filters.status, filters.currency, filters.modePaiement, filters.search, filters.motifCommercial, JSON.stringify(filters.typeTransaction), JSON.stringify(filters.excludeMotifs), pagination.pageSize, refreshTrigger]);
 
   // Fonction pour calculer les totaux globaux (toutes pages confondues)
   const fetchGlobalTotals = useCallback(async () => {
@@ -177,7 +177,17 @@ export const useTransactions = (
       
       // Filtrer uniquement les transactions commerciales (Commande et Transfert)
       if (filters.motifCommercial) {
-        query = query.in('motif', ['Commande', 'Transfert']);
+        query = query.in('motif', ['Commande', 'Transfert', 'Paiement Colis']);
+      }
+      
+      // Filtrer par type de transaction
+      if (filters.typeTransaction && filters.typeTransaction.length > 0) {
+        query = query.in('type_transaction', filters.typeTransaction);
+      }
+      
+      // Exclure certains motifs
+      if (filters.excludeMotifs && filters.excludeMotifs.length > 0) {
+        query = query.not('motif', 'in', `(${filters.excludeMotifs.join(',')})`);
       }
       
       // Appliquer la recherche textuelle pour les totaux
@@ -193,7 +203,7 @@ export const useTransactions = (
       const totals = (data || []).reduce((acc, transaction: any) => {
         // Total USD/CDF ne compte QUE les transactions commerciales (Commande, Transfert)
         // PAS les dépenses/revenus internes
-        if (transaction.motif === 'Commande' || transaction.motif === 'Transfert') {
+        if (transaction.motif === 'Commande' || transaction.motif === 'Transfert' || transaction.motif === 'Paiement Colis') {
           if (transaction.devise === 'USD') {
             acc.totalUSD += transaction.montant || 0;
           } else if (transaction.devise === 'CDF') {
@@ -238,13 +248,13 @@ export const useTransactions = (
     } finally {
       setIsLoadingTotals(false);
     }
-  }, [filters.status, filters.currency, filters.modePaiement, filters.clientId, filters.dateFrom, filters.dateTo, filters.minAmount, filters.maxAmount, filters.motifCommercial]);
+  }, [filters.status, filters.currency, filters.modePaiement, filters.clientId, filters.dateFrom, filters.dateTo, filters.minAmount, filters.maxAmount, filters.motifCommercial, JSON.stringify(filters.typeTransaction), JSON.stringify(filters.excludeMotifs), filters.search]);
 
   useEffect(() => {
     fetchTransactions();
     // Charger les totaux de manière asynchrone (non bloquant)
     setTimeout(() => fetchGlobalTotals(), 0);
-  }, [page, filters.status, filters.currency, filters.modePaiement, filters.clientId, filters.dateFrom, filters.dateTo, filters.minAmount, filters.maxAmount, filters.search, filters.motifCommercial, sortColumn, sortDirection, refreshTrigger]);
+  }, [page, filters.status, filters.currency, filters.modePaiement, filters.clientId, filters.dateFrom, filters.dateTo, filters.minAmount, filters.maxAmount, filters.search, filters.motifCommercial, JSON.stringify(filters.typeTransaction), JSON.stringify(filters.excludeMotifs), sortColumn, sortDirection, refreshTrigger]);
 
   const createTransaction = async (transactionData: CreateTransactionData) => {
     setIsCreating(true);

@@ -34,7 +34,9 @@ import {
   TrendingDown,
   Receipt,
   Wallet,
-  ChevronDown
+  ChevronDown,
+  MoreHorizontal,
+  Copy
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTransactions } from '../hooks/useTransactions';
@@ -760,40 +762,57 @@ const TransactionsProtected: React.FC = () => {
                   isPartiallySelected: selectedTransactions.size > 0 && selectedTransactions.size < transactions.length
                 }}
                 actionsColumn={{
-                  header: 'Actions',
+                  header: '',
+                  className: 'w-10',
                   render: (transaction: Transaction) => (
-                    <div className="flex items-center space-x-2">
-                      <Button 
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleViewTransaction(transaction)}
-                        className="hover:bg-blue-50"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      
-                      <PermissionGuard module="finances" permission="update">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
                         <Button 
-                          variant="ghost"
+                          variant="ghost" 
                           size="icon"
-                          onClick={() => handleEditTransaction(transaction)}
-                          className="hover:bg-green-50"
+                          className="h-8 w-8 p-0 hover:bg-gray-100 rounded-full transition-all duration-200"
                         >
-                          <Edit className="h-4 w-4" />
+                          <MoreHorizontal className="h-4 w-4 text-gray-500" />
                         </Button>
-                      </PermissionGuard>
-                      
-                      <PermissionGuard module="finances" permission="delete">
-                        <Button 
-                          variant="ghost"
-                          size="icon" 
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleDeleteTransaction(transaction)}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48 animate-in fade-in-0 zoom-in-95">
+                        <DropdownMenuItem 
+                          onClick={() => handleViewTransaction(transaction)}
+                          className="cursor-pointer"
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </PermissionGuard>
-                    </div>
+                          <Eye className="h-4 w-4 mr-2 text-blue-600" />
+                          Voir les détails
+                        </DropdownMenuItem>
+                        {checkPermission('finances', 'update') && (
+                          <DropdownMenuItem 
+                            onClick={() => handleEditTransaction(transaction)}
+                            className="cursor-pointer"
+                          >
+                            <Edit className="h-4 w-4 mr-2 text-green-600" />
+                            Modifier
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem 
+                          onClick={() => handleDuplicateTransaction(transaction)}
+                          className="cursor-pointer"
+                        >
+                          <Copy className="h-4 w-4 mr-2 text-purple-600" />
+                          Dupliquer
+                        </DropdownMenuItem>
+                        {checkPermission('finances', 'delete') && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteTransaction(transaction)}
+                              className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Supprimer
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )
                 }}
                 columns={activeTab === 'clients' ? [

@@ -75,9 +75,19 @@ export const useTransactions = (
         query = query.lte('montant', parseFloat(filters.maxAmount));
       }
       
-      // Filtrer uniquement les transactions commerciales (Commande et Transfert)
+      // Filtrer uniquement les transactions commerciales (Commande, Transfert, Paiement Colis)
       if (filters.motifCommercial) {
-        query = query.in('motif', ['Commande', 'Transfert']);
+        query = query.in('motif', ['Commande', 'Transfert', 'Paiement Colis']);
+      }
+      
+      // Filtrer par type de transaction (pour les onglets)
+      if (filters.typeTransaction && filters.typeTransaction.length > 0) {
+        query = query.in('type_transaction', filters.typeTransaction);
+      }
+      
+      // Exclure certains motifs (pour les opérations internes)
+      if (filters.excludeMotifs && filters.excludeMotifs.length > 0) {
+        query = query.not('motif', 'in', `(${filters.excludeMotifs.join(',')})`);
       }
       
       // Appliquer le tri AVANT la pagination

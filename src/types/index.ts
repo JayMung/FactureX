@@ -192,6 +192,8 @@ export interface TransactionFilters {
   minAmount?: string;
   maxAmount?: string;
   motifCommercial?: boolean;
+  typeTransaction?: string[];
+  excludeMotifs?: string[];
 }
 
 export interface CreateClientData {

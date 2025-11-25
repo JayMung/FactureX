@@ -46,7 +46,9 @@ export const useTransactions = (
         .from('transactions')
         .select(`
           *,
-          client:clients(*)
+          client:clients(*),
+          compte_source:comptes_financiers!transactions_compte_source_id_fkey(id, nom, type_compte, devise),
+          compte_destination:comptes_financiers!transactions_compte_destination_id_fkey(id, nom, type_compte, devise)
         `, { count: 'exact' });
 
       // Appliquer les filtres

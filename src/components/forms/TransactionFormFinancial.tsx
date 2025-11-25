@@ -26,6 +26,7 @@ interface TransactionFormProps {
   onClose: () => void;
   onSuccess?: () => void;
   transaction?: Transaction | undefined;
+  defaultType?: 'revenue' | 'depense' | 'transfert';
 }
 
 // Catégories par type de transaction
@@ -56,10 +57,11 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   isOpen, 
   onClose, 
   onSuccess,
-  transaction 
+  transaction,
+  defaultType = 'revenue'
 }) => {
   const [formData, setFormData] = useState({
-    type_transaction: 'revenue' as 'revenue' | 'depense' | 'transfert',
+    type_transaction: defaultType as 'revenue' | 'depense' | 'transfert',
     client_id: '',
     montant: '',
     devise: 'USD' as 'USD' | 'CDF',
@@ -119,6 +121,13 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
       }
     }
   }, [transaction?.id, isEditing, isOpen]);
+
+  // Appliquer le defaultType quand le formulaire s'ouvre pour une nouvelle transaction
+  useEffect(() => {
+    if (isOpen && !isEditing) {
+      setFormData(prev => ({ ...prev, type_transaction: defaultType }));
+    }
+  }, [isOpen, isEditing, defaultType]);
 
   // Reset catégorie when type changes (only for new transactions)
   useEffect(() => {

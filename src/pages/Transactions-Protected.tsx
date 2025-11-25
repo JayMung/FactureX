@@ -394,6 +394,35 @@ const TransactionsProtected: React.FC = () => {
     );
   }
 
+  // Titre et bouton dynamiques selon l'onglet
+  const getTabConfig = () => {
+    switch (activeTab) {
+      case 'clients':
+        return {
+          title: 'Transactions Client',
+          buttonText: 'Nouvelle Transaction',
+          buttonTextMobile: 'Nouvelle',
+          defaultType: 'revenue' as const
+        };
+      case 'internes':
+        return {
+          title: 'Opérations Internes',
+          buttonText: 'Nouvelle Opération',
+          buttonTextMobile: 'Nouvelle',
+          defaultType: 'depense' as const
+        };
+      case 'swaps':
+        return {
+          title: 'Swaps entre Comptes',
+          buttonText: 'Nouveau Swap',
+          buttonTextMobile: 'Swap',
+          defaultType: 'transfert' as const
+        };
+    }
+  };
+
+  const tabConfig = getTabConfig();
+
   return (
     <ProtectedRouteEnhanced requiredModule="transactions" requiredPermission="read">
       <Layout>
@@ -457,7 +486,7 @@ const TransactionsProtected: React.FC = () => {
                         <DollarSign className="h-4 w-4 text-green-600" />
                         <span className="font-medium text-gray-700">Montant USD:</span>
                         <span className="font-bold text-green-600">
-                          {formatCurrencyValue(selectedTotals.totalUSD, 'USD')}
+                          {formatCurrency(selectedTotals.totalUSD, 'USD')}
                         </span>
                       </div>
                       {selectedTotals.totalCDF > 0 && (
@@ -465,7 +494,7 @@ const TransactionsProtected: React.FC = () => {
                           <Wallet className="h-4 w-4 text-blue-600" />
                           <span className="font-medium text-gray-700">Montant CDF:</span>
                           <span className="font-bold text-blue-600">
-                            {formatCurrencyValue(selectedTotals.totalCDF, 'CDF')}
+                            {formatCurrency(selectedTotals.totalCDF, 'CDF')}
                           </span>
                         </div>
                       )}
@@ -473,7 +502,7 @@ const TransactionsProtected: React.FC = () => {
                         <div className="flex items-center gap-2 sm:gap-4">
                           <span className="font-medium text-gray-700">CNY:</span>
                           <span className="font-bold text-purple-600">
-                            {formatCurrencyValue(selectedTotals.totalCNY, 'CNY')}
+                            {formatCurrency(selectedTotals.totalCNY, 'CNY')}
                           </span>
                         </div>
                       )}
@@ -481,14 +510,14 @@ const TransactionsProtected: React.FC = () => {
                         <TrendingUp className="h-4 w-4 text-orange-600" />
                         <span className="font-medium text-gray-700">Bénéfice:</span>
                         <span className="font-bold text-orange-600">
-                          {formatCurrencyValue(selectedTotals.totalBenefice, 'USD')}
+                          {formatCurrency(selectedTotals.totalBenefice, 'USD')}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 sm:gap-4">
                         <Receipt className="h-4 w-4 text-gray-600" />
                         <span className="font-medium text-gray-700">Frais:</span>
                         <span className="font-bold text-gray-600">
-                          {formatCurrencyValue(selectedTotals.totalFrais, 'USD')}
+                          {formatCurrency(selectedTotals.totalFrais, 'USD')}
                         </span>
                       </div>
                     </div>
@@ -589,7 +618,7 @@ const TransactionsProtected: React.FC = () => {
           <Card>
             <CardHeader>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <CardTitle>Liste des Transactions</CardTitle>
+                <CardTitle>{tabConfig.title}</CardTitle>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Button 
                     variant="outline" 
@@ -604,8 +633,8 @@ const TransactionsProtected: React.FC = () => {
                   <PermissionGuard module="finances" permission="create">
                     <Button className="bg-green-500 hover:bg-green-600 w-full sm:w-auto" onClick={handleAddTransaction}>
                       <Plus className="mr-2 h-4 w-4" />
-                      <span className="hidden sm:inline">Nouvelle Transaction</span>
-                      <span className="sm:hidden">Nouvelle</span>
+                      <span className="hidden sm:inline">{tabConfig.buttonText}</span>
+                      <span className="sm:hidden">{tabConfig.buttonTextMobile}</span>
                     </Button>
                   </PermissionGuard>
                 </div>
@@ -699,6 +728,7 @@ const TransactionsProtected: React.FC = () => {
             onClose={() => setIsFormOpen(false)}
             onSuccess={handleFormSuccess}
             transaction={selectedTransaction}
+            defaultType={tabConfig.defaultType}
           />
 
           {/* Delete Confirmation Dialogs */}
@@ -706,7 +736,7 @@ const TransactionsProtected: React.FC = () => {
             open={deleteDialogOpen}
             onOpenChange={setDeleteDialogOpen}
             title="Supprimer la transaction"
-            description={`Êtes-vous sûr de vouloir supprimer la transaction de ${formatCurrencyValue(transactionToDelete?.montant || 0, transactionToDelete?.devise || 'USD')} ? Cette action est irréversible.`}
+            description={`Êtes-vous sûr de vouloir supprimer la transaction de ${formatCurrency(transactionToDelete?.montant || 0, transactionToDelete?.devise || 'USD')} ? Cette action est irréversible.`}
             confirmText="Supprimer"
             cancelText="Annuler"
             onConfirm={confirmDeleteTransaction}
@@ -718,7 +748,7 @@ const TransactionsProtected: React.FC = () => {
             open={validateDialogOpen}
             onOpenChange={setValidateDialogOpen}
             title="Valider la transaction"
-            description={`Êtes-vous sûr de vouloir valider la transaction de ${formatCurrencyValue(transactionToValidate?.montant || 0, transactionToValidate?.devise || 'USD')} ? Le statut passera à "Servi".`}
+            description={`Êtes-vous sûr de vouloir valider la transaction de ${formatCurrency(transactionToValidate?.montant || 0, transactionToValidate?.devise || 'USD')} ? Le statut passera à "Servi".`}
             confirmText="Valider"
             cancelText="Annuler"
             onConfirm={confirmValidateTransaction}

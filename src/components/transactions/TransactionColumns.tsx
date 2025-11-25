@@ -53,9 +53,11 @@ export const getTransactionColumns = ({
 }: GetTransactionColumnsProps) => {
   
   const commonActionsColumn = {
-    header: '',
+    key: 'actions',
+    title: '',
+    sortable: false,
     className: 'w-10',
-    render: (transaction: Transaction) => (
+    render: (_: any, transaction: Transaction) => (
       <ActionMenu
         transaction={transaction}
         onView={onView}

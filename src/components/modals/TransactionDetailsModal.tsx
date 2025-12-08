@@ -23,7 +23,14 @@ import {
   User,
   FileText,
   TrendingUp,
-  Receipt
+  Receipt,
+  ArrowRightLeft,
+  Wallet,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Tag,
+  Building2,
+  StickyNote
 } from 'lucide-react';
 import type { Transaction } from '@/types';
 import { formatCurrency } from '@/utils/formatCurrency';
@@ -50,6 +57,14 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
   const [editedData, setEditedData] = useState<Partial<Transaction>>({});
   const [validatorName, setValidatorName] = useState<string>('');
   const [creatorName, setCreatorName] = useState<string>('');
+
+  // Vérifier si c'est un paiement colis (ne doit pas afficher CNY et bénéfice)
+  // Vérifier si c'est un paiement colis (ne doit pas afficher CNY et bénéfice)
+  const isPaiementColis = transaction ? (
+    (transaction.motif || '').toLowerCase().includes('paiement colis') ||
+    (transaction.motif || '').toLowerCase().includes('colis') ||
+    (transaction.categorie || '').toLowerCase().includes('paiement colis')
+  ) : false;
 
   useEffect(() => {
     if (transaction) {
@@ -157,6 +172,58 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
         return "bg-gray-100 text-gray-800";
     }
   };
+
+  // Configuration d'affichage selon le type de transaction
+  const getTransactionTypeConfig = () => {
+    const type = transaction?.type_transaction;
+    const isSwap = type === 'transfert';
+    const isExpense = type === 'depense';
+    const isRevenue = type === 'revenue';
+
+    if (isSwap) {
+      return {
+        icon: <ArrowRightLeft className="h-5 w-5 text-blue-600" />,
+        label: 'Swap entre comptes',
+        badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+        color: 'blue',
+        showClient: false,
+        showCNY: false,
+        showBenefice: false,
+        showFrais: true,
+        showSourceDest: true,
+        showCategorie: false
+      };
+    } else if (isExpense) {
+      return {
+        icon: <ArrowDownCircle className="h-5 w-5 text-orange-600" />,
+        label: 'Dépense',
+        badgeClass: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+        color: 'orange',
+        showClient: false,
+        showCNY: false,
+        showBenefice: false,
+        showFrais: false,
+        showSourceDest: true,
+        showCategorie: true
+      };
+    } else {
+      // Revenue
+      return {
+        icon: <ArrowUpCircle className="h-5 w-5 text-green-600" />,
+        label: isPaiementColis ? 'Paiement Colis' : 'Revenu',
+        badgeClass: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+        color: 'green',
+        showClient: true,
+        showCNY: !isPaiementColis,
+        showBenefice: !isPaiementColis,
+        showFrais: true,
+        showSourceDest: false,
+        showCategorie: true
+      };
+    }
+  };
+
+  const typeConfig = transaction ? getTransactionTypeConfig() : null;
 
   const handleSave = async () => {
     if (!transaction || !onUpdate) return;
@@ -298,10 +365,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
 
   if (!transaction) return null;
 
-  // Vérifier si c'est un paiement colis (ne doit pas afficher CNY et bénéfice)
-  const isPaiementColis = transaction?.motif?.toLowerCase().includes('paiement colis') ||
-    transaction?.motif?.toLowerCase().includes('colis') ||
-    transaction?.categorie?.toLowerCase().includes('paiement colis');
+  if (!transaction) return null;
 
   // Générer un ID lisible pour la transaction
   const generateReadableId = (id: string) => {
@@ -331,13 +395,26 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-4 sm:space-y-6 mt-4">
-          {/* Status Badge - Mobile Centered */}
+          {/* Status Badge and Type Badge - Mobile Centered */}
           <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-3">
-            <div className="flex items-center space-x-2">
-              {getStatusIcon(isEditMode ? editedData.statut! : transaction.statut)}
-              <Badge className={getStatusColor(isEditMode ? editedData.statut! : transaction.statut)}>
-                {isEditMode ? editedData.statut : transaction.statut}
-              </Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Status Badge */}
+              <div className="flex items-center space-x-2">
+                {getStatusIcon(isEditMode ? editedData.statut! : transaction.statut)}
+                <Badge className={getStatusColor(isEditMode ? editedData.statut! : transaction.statut)}>
+                  {isEditMode ? editedData.statut : transaction.statut}
+                </Badge>
+              </div>
+
+              {/* Type Badge */}
+              {typeConfig && (
+                <div className="flex items-center space-x-2">
+                  {typeConfig.icon}
+                  <Badge className={typeConfig.badgeClass}>
+                    {typeConfig.label}
+                  </Badge>
+                </div>
+              )}
             </div>
 
             {!isEditMode && (
@@ -362,14 +439,68 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
 
           {/* Transaction Information - Mobile Optimized */}
           <div className="space-y-4 sm:space-y-6">
-            {/* Client Info */}
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-              <Label className="text-xs text-gray-500 flex items-center gap-2 mb-2">
-                <User className="h-4 w-4" />
-                Client
-              </Label>
-              <p className="text-base sm:text-lg font-medium">{transaction.client?.nom || 'Client inconnu'}</p>
-            </div>
+            {/* Client Info - Only for revenues with client */}
+            {typeConfig?.showClient && transaction.client && (
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                <Label className="text-xs text-gray-500 flex items-center gap-2 mb-2">
+                  <User className="h-4 w-4" />
+                  Client
+                </Label>
+                <p className="text-base sm:text-lg font-medium">{transaction.client?.nom || 'Client inconnu'}</p>
+              </div>
+            )}
+
+            {/* Source and Destination Accounts - For swaps and expenses */}
+            {typeConfig?.showSourceDest && (transaction.compte_source || transaction.compte_destination) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Source Account */}
+                {transaction.compte_source && (
+                  <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4">
+                    <Label className="text-xs text-gray-500 flex items-center gap-2 mb-2">
+                      <Wallet className="h-4 w-4 text-red-500" />
+                      Compte Source (Débité)
+                    </Label>
+                    <p className="text-base sm:text-lg font-medium text-red-600 dark:text-red-400">
+                      {transaction.compte_source.nom}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {transaction.compte_source.type_compte === 'mobile_money' ? 'Mobile Money' :
+                        transaction.compte_source.type_compte === 'banque' ? 'Banque' : 'Cash'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Destination Account - Only for swaps */}
+                {transaction.type_transaction === 'transfert' && transaction.compte_destination && (
+                  <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+                    <Label className="text-xs text-gray-500 flex items-center gap-2 mb-2">
+                      <Wallet className="h-4 w-4 text-green-500" />
+                      Compte Destination (Crédité)
+                    </Label>
+                    <p className="text-base sm:text-lg font-medium text-green-600 dark:text-green-400">
+                      {transaction.compte_destination.nom}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {transaction.compte_destination.type_compte === 'mobile_money' ? 'Mobile Money' :
+                        transaction.compte_destination.type_compte === 'banque' ? 'Banque' : 'Cash'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Category - For expenses and internal revenues */}
+            {typeConfig?.showCategorie && transaction.categorie && (
+              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+                <Label className="text-xs text-gray-500 flex items-center gap-2 mb-2">
+                  <Tag className="h-4 w-4 text-purple-500" />
+                  Catégorie
+                </Label>
+                <p className="text-base sm:text-lg font-medium text-purple-600 dark:text-purple-400">
+                  {transaction.categorie}
+                </p>
+              </div>
+            )}
 
             {/* Montant - Centered on Mobile */}
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg p-6 text-center sm:text-left">
@@ -405,8 +536,8 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
               )}
             </div>
 
-            {/* Montant CNY - Ne pas afficher pour Paiement Colis */}
-            {!isPaiementColis && transaction.montant_cny && transaction.montant_cny > 0 && (
+            {/* Montant CNY - Only show if configured */}
+            {typeConfig?.showCNY && transaction.montant_cny && transaction.montant_cny > 0 && (
               <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                 <Label className="text-xs text-gray-500 mb-2 block">Montant CNY</Label>
                 {isEditMode ? (
@@ -512,70 +643,74 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
 
           <Separator className="my-4" />
 
-          {/* Calculation Details - Mobile Optimized */}
-          <div>
-            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
-              Détails de calcul
-            </h3>
-            <div className="grid grid-cols-3 gap-3 sm:gap-4">
-              {/* Frais */}
-              <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 sm:p-4 text-center">
-                <Label className="text-xs text-gray-500 mb-1 sm:mb-2 block">Frais</Label>
-                {isEditMode ? (
-                  <Input
-                    type="number"
-                    value={editedData.frais}
-                    onChange={(e) => setEditedData({ ...editedData, frais: parseFloat(e.target.value) })}
-                    className="text-center"
-                  />
-                ) : (
-                  <p className="text-base sm:text-lg font-bold text-orange-600">
-                    {formatCurrencyValue(transaction.frais, 'USD')}
-                  </p>
+          {/* Calculation Details - Mobile Optimized - Only show if there are relevant details */}
+          {(typeConfig?.showFrais || typeConfig?.showBenefice) && (
+            <div>
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
+                Détails de calcul
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                {/* Frais - Only show if configured */}
+                {typeConfig?.showFrais && (
+                  <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 sm:p-4 text-center">
+                    <Label className="text-xs text-gray-500 mb-1 sm:mb-2 block">Frais</Label>
+                    {isEditMode ? (
+                      <Input
+                        type="number"
+                        value={editedData.frais}
+                        onChange={(e) => setEditedData({ ...editedData, frais: parseFloat(e.target.value) })}
+                        className="text-center"
+                      />
+                    ) : (
+                      <p className="text-base sm:text-lg font-bold text-orange-600">
+                        {formatCurrencyValue(transaction.frais, 'USD')}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Bénéfice - Only show if configured */}
+                {typeConfig?.showBenefice && (
+                  <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 sm:p-4 text-center">
+                    <Label className="text-xs text-gray-500 mb-1 sm:mb-2 block">Bénéfice</Label>
+                    {isEditMode ? (
+                      <Input
+                        type="number"
+                        value={editedData.benefice}
+                        onChange={(e) => setEditedData({ ...editedData, benefice: parseFloat(e.target.value) })}
+                        className="text-center"
+                      />
+                    ) : (
+                      <p className="text-base sm:text-lg font-bold text-green-600">
+                        {formatCurrencyValue(transaction.benefice, 'USD')}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Taux USD/CNY - Only show if configured */}
+                {typeConfig?.showCNY && transaction.taux_usd_cny && transaction.montant_cny && transaction.montant_cny > 0 && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 sm:p-4 text-center">
+                    <Label className="text-xs text-gray-500 mb-1 sm:mb-2 block">Taux USD/CNY</Label>
+                    {isEditMode ? (
+                      <Input
+                        type="number"
+                        step="0.0001"
+                        value={editedData.taux_usd_cny || ''}
+                        onChange={(e) => setEditedData({ ...editedData, taux_usd_cny: parseFloat(e.target.value) || undefined })}
+                        className="text-center"
+                      />
+                    ) : (
+                      <p className="text-base sm:text-lg font-bold text-blue-600">
+                        {transaction.taux_usd_cny.toFixed(4)}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
-
-              {/* Bénéfice - Ne pas afficher pour Paiement Colis */}
-              {!isPaiementColis && (
-                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 sm:p-4 text-center">
-                  <Label className="text-xs text-gray-500 mb-1 sm:mb-2 block">Bénéfice</Label>
-                  {isEditMode ? (
-                    <Input
-                      type="number"
-                      value={editedData.benefice}
-                      onChange={(e) => setEditedData({ ...editedData, benefice: parseFloat(e.target.value) })}
-                      className="text-center"
-                    />
-                  ) : (
-                    <p className="text-base sm:text-lg font-bold text-green-600">
-                      {formatCurrencyValue(transaction.benefice, 'USD')}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Taux USD/CNY - Ne pas afficher pour Paiement Colis */}
-              {!isPaiementColis && transaction.taux_usd_cny && transaction.montant_cny && transaction.montant_cny > 0 && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 sm:p-4 text-center">
-                  <Label className="text-xs text-gray-500 mb-1 sm:mb-2 block">Taux USD/CNY</Label>
-                  {isEditMode ? (
-                    <Input
-                      type="number"
-                      step="0.0001"
-                      value={editedData.taux_usd_cny || ''}
-                      onChange={(e) => setEditedData({ ...editedData, taux_usd_cny: parseFloat(e.target.value) || undefined })}
-                      className="text-center"
-                    />
-                  ) : (
-                    <p className="text-base sm:text-lg font-bold text-blue-600">
-                      {transaction.taux_usd_cny.toFixed(4)}
-                    </p>
-                  )}
-                </div>
-              )}
             </div>
-          </div>
+          )}
 
           {/* Action Buttons in Edit Mode - Mobile Optimized */}
           {isEditMode && (

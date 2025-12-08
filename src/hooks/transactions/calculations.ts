@@ -36,7 +36,7 @@ export async function fetchRatesAndFees(): Promise<RatesAndFees> {
  */
 export function getFeeKey(motif: string): string {
   const motifLower = motif?.toLowerCase() || '';
-  
+
   // 1. Mapping exact
   if (MOTIF_TO_FEE_KEY[motifLower]) {
     return MOTIF_TO_FEE_KEY[motifLower];
@@ -67,25 +67,42 @@ export function calculateTransactionAmounts(
   rates: Record<string, number>,
   fees: Record<string, number>
 ) {
+  // Cas spécial: Paiement Colis n'a pas de frais, bénéfice, ni conversion CNY
+  // C'est un paiement interne pour un colis, pas un transfert commercial vers la Chine
+  const isPaiementColis = motif?.toLowerCase().includes('paiement colis') || motif?.toLowerCase().includes('colis');
+
+  if (isPaiementColis) {
+    return {
+      frais: 0,
+      benefice: 0,
+      montant_cny: 0,
+      taux_usd_cny: rates.usdToCny,
+      taux_usd_cdf: rates.usdToCdf
+    };
+  }
+
   const tauxUSD = devise === 'USD' ? 1 : rates.usdToCdf;
-  
+
   let fraisUSD = 0;
   let benefice = 0;
-  
+  let montantCNY = 0;
+
+  // Calcul pour les transactions revenue (Commande, Transfert)
   if (typeTransaction === 'revenue') {
     const feeKey = getFeeKey(motif);
     const fraisRate = fees[feeKey as keyof typeof fees] || 0;
-    
+
     fraisUSD = montant * (fraisRate / 100);
     const commissionPartenaire = montant * (fees.partenaire / 100);
     benefice = fraisUSD - commissionPartenaire;
+
+    // Calculer le montant CNY uniquement pour les transactions commerciales
+    const montantNet = montant - fraisUSD;
+    montantCNY = devise === 'USD'
+      ? montantNet * rates.usdToCny
+      : (montantNet / tauxUSD) * rates.usdToCny;
   }
-  // Pour les dépenses, frais et bénéfice restent à 0
-  
-  const montantNet = montant - fraisUSD;
-  const montantCNY = devise === 'USD' 
-    ? montantNet * rates.usdToCny 
-    : (montantNet / tauxUSD) * rates.usdToCny;
+  // Pour les dépenses, frais, bénéfice et CNY restent à 0
 
   return {
     frais: fraisUSD,

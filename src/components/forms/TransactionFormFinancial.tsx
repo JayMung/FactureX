@@ -31,9 +31,10 @@ interface TransactionFormProps {
 
 // Catégories par défaut (fallback si la base de données est vide)
 const DEFAULT_REVENUE_CATEGORIES = [
-  { value: 'Commande', label: 'Commande (Facture)' },
-  { value: 'Transfert', label: 'Transfert d\'argent' },
-  { value: 'Paiement Colis', label: 'Paiement Colis' }
+  { value: 'Commande (Facture)', label: 'Commande (Facture)' },
+  { value: 'Transfert (Argent)', label: 'Transfert (Argent)' },
+  { value: 'Paiement Colis', label: 'Paiement Colis' },
+  { value: 'Autres Paiements', label: 'Autres Paiements' }
 ];
 
 const DEFAULT_DEPENSE_CATEGORIES = [
@@ -47,9 +48,9 @@ const DEFAULT_DEPENSE_CATEGORIES = [
 // Codes de catégories qui ont des frais (pour les revenus)
 const CATEGORIES_WITH_FEES_CODES = ['COMMANDE', 'TRANSFERT_RECU'];
 
-const TransactionFormFinancial: React.FC<TransactionFormProps> = ({ 
-  isOpen, 
-  onClose, 
+const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
+  isOpen,
+  onClose,
   onSuccess,
   transaction,
   defaultType = 'revenue'
@@ -69,7 +70,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
     colis_id: '', // Pour Paiement Colis
     facture_id: '' // Pour Commande (Facture)
   });
-  
+
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -78,12 +79,12 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   const { createTransaction, updateTransaction, isCreating, isUpdating } = useTransactions();
   const { comptes } = useComptesFinanciers();
   const { paymentMethods } = usePaymentMethods();
-  
+
   // Charger les colis du client sélectionné (pour Paiement Colis)
-  const { data: clientColis = [] } = useColisList({ 
-    clientId: formData.client_id || undefined 
+  const { data: clientColis = [] } = useColisList({
+    clientId: formData.client_id || undefined
   });
-  
+
   // Charger les factures non payées du client (pour Commande/Facture)
   const { factures: clientFactures, loading: facturesLoading } = useClientUnpaidFactures({
     clientId: formData.client_id || undefined
@@ -94,25 +95,25 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
 
   const isEditing = !!transaction;
   const isLoading = isCreating || isUpdating;
-  
+
   // Déterminer les catégories à afficher (DB ou fallback) - memoized to prevent infinite loops
-  const displayRevenueCategories = useMemo(() => 
-    revenueCategories.length > 0 
+  const displayRevenueCategories = useMemo(() =>
+    revenueCategories.length > 0
       ? revenueCategories.map(c => ({ value: c.nom, label: c.nom, code: c.code, icon: c.icon, couleur: c.couleur }))
       : DEFAULT_REVENUE_CATEGORIES.map(c => ({ ...c, code: '', icon: '', couleur: '' }))
-  , [revenueCategories]);
-  
+    , [revenueCategories]);
+
   const displayDepenseCategories = useMemo(() =>
     depenseCategories.length > 0
       ? depenseCategories.map(c => ({ value: c.nom, label: c.nom, code: c.code, icon: c.icon, couleur: c.couleur }))
       : DEFAULT_DEPENSE_CATEGORIES.map(c => ({ ...c, code: '', icon: '', couleur: '' }))
-  , [depenseCategories]);
+    , [depenseCategories]);
 
   // Vérifier si la catégorie actuelle a des frais
-  const currentCategory = useMemo(() => 
+  const currentCategory = useMemo(() =>
     revenueCategories.find(c => c.nom === formData.categorie)
-  , [revenueCategories, formData.categorie]);
-  
+    , [revenueCategories, formData.categorie]);
+
   const hasFees = currentCategory ? CATEGORIES_WITH_FEES_CODES.includes(currentCategory.code) : false;
 
   // Charger les données de la transaction si en mode édition
@@ -159,13 +160,13 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   useEffect(() => {
     // Ne pas exécuter en mode édition ou si les catégories ne sont pas chargées
     if (isEditing || categoriesLoading) return;
-    
+
     // Ne déclencher que si le type a vraiment changé
     if (prevTypeRef.current === formData.type_transaction && initializedRef.current) return;
-    
+
     prevTypeRef.current = formData.type_transaction;
     initializedRef.current = true;
-    
+
     if (formData.type_transaction === 'revenue') {
       const defaultCat = displayRevenueCategories[0]?.value || 'Commande (Facture)';
       setFormData(prev => ({ ...prev, categorie: defaultCat, client_id: prev.client_id || '', mode_paiement: prev.mode_paiement || '' }));
@@ -252,9 +253,9 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     console.log('📋 Form submitted with formData:', formData);
-    
+
     if (!validateForm()) {
       toast.error('Veuillez corriger les erreurs du formulaire');
       return;
@@ -319,10 +320,10 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
         await createTransaction(transactionData);
         console.log('✅ Transaction created successfully');
       }
-      
+
       onSuccess?.();
       onClose();
-      
+
       // Reset form
       setFormData({
         type_transaction: 'revenue',
@@ -358,11 +359,11 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
 
   const activeComptes = comptes.filter(c => c.is_active);
   const activePaymentMethods = paymentMethods.filter(method => method.is_active);
-  const categories = formData.type_transaction === 'revenue' 
-    ? displayRevenueCategories 
+  const categories = formData.type_transaction === 'revenue'
+    ? displayRevenueCategories
     : formData.type_transaction === 'depense'
-    ? displayDepenseCategories
-    : [{ value: 'Transfert', label: 'Transfert entre comptes', code: '', icon: '', couleur: '' }];
+      ? displayDepenseCategories
+      : [{ value: 'Transfert', label: 'Transfert entre comptes', code: '', icon: '', couleur: '' }];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -387,9 +388,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
                 <Button
                   type="button"
                   variant={formData.type_transaction === 'revenue' ? 'default' : 'outline'}
-                  className={`flex flex-col items-center justify-center h-24 ${
-                    formData.type_transaction === 'revenue' ? 'bg-green-500 hover:bg-green-600' : ''
-                  }`}
+                  className={`flex flex-col items-center justify-center h-24 ${formData.type_transaction === 'revenue' ? 'bg-green-500 hover:bg-green-600' : ''
+                    }`}
                   onClick={() => handleChange('type_transaction', 'revenue')}
                 >
                   <TrendingUp className="h-6 w-6 mb-2" />
@@ -399,9 +399,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
                 <Button
                   type="button"
                   variant={formData.type_transaction === 'depense' ? 'default' : 'outline'}
-                  className={`flex flex-col items-center justify-center h-24 ${
-                    formData.type_transaction === 'depense' ? 'bg-red-500 hover:bg-red-600' : ''
-                  }`}
+                  className={`flex flex-col items-center justify-center h-24 ${formData.type_transaction === 'depense' ? 'bg-red-500 hover:bg-red-600' : ''
+                    }`}
                   onClick={() => handleChange('type_transaction', 'depense')}
                 >
                   <TrendingDown className="h-6 w-6 mb-2" />
@@ -411,9 +410,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
                 <Button
                   type="button"
                   variant={formData.type_transaction === 'transfert' ? 'default' : 'outline'}
-                  className={`flex flex-col items-center justify-center h-24 ${
-                    formData.type_transaction === 'transfert' ? 'bg-blue-500 hover:bg-blue-600' : ''
-                  }`}
+                  className={`flex flex-col items-center justify-center h-24 ${formData.type_transaction === 'transfert' ? 'bg-blue-500 hover:bg-blue-600' : ''
+                    }`}
                   onClick={() => handleChange('type_transaction', 'transfert')}
                 >
                   <ArrowRightLeft className="h-6 w-6 mb-2" />
@@ -445,8 +443,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
             {/* Catégorie */}
             <div className="space-y-2">
               <Label htmlFor="categorie">
-                {formData.type_transaction === 'revenue' ? 'Motif' : 
-                 formData.type_transaction === 'depense' ? 'Catégorie' : 'Type'} *
+                {formData.type_transaction === 'revenue' ? 'Motif' :
+                  formData.type_transaction === 'depense' ? 'Catégorie' : 'Type'} *
               </Label>
               <Select
                 value={formData.categorie}

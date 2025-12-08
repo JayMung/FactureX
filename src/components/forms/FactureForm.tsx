@@ -6,10 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Plus, 
-  Trash2, 
-  Upload, 
+import {
+  Plus,
+  Trash2,
+  Upload,
   Calculator
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,7 +37,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [shippingSettings, setShippingSettings] = useState({ aerien: 16, maritime: 450 });
   const [defaultConditionsVente, setDefaultConditionsVente] = useState('');
-  
+
   const [formData, setFormData] = useState({
     client_id: '',
     type: 'devis' as 'devis' | 'facture',
@@ -78,18 +78,18 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
           .from('settings')
           .select('cle, valeur')
           .in('cle', ['frais_livraison_aerien', 'frais_livraison_maritime', 'conditions_vente_defaut']);
-        
+
         if (settingsData) {
           const settings = settingsData.reduce((acc, setting) => {
             acc[setting.cle.replace('frais_livraison_', '')] = parseFloat(setting.valeur);
             return acc;
           }, {} as Record<string, number>);
-          
+
           setShippingSettings({
             aerien: settings.aerien || 16,
             maritime: settings.maritime || 450
           });
-          
+
           const conditionsVente = settingsData.find(s => s.cle === 'conditions_vente_defaut');
           setDefaultConditionsVente(conditionsVente?.valeur || '');
         }
@@ -124,7 +124,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
             .select('*')
             .eq('facture_id', facture.id)
             .order('numero_ligne');
-          
+
           if (itemsData && itemsData.length > 0) {
             const formattedItems = itemsData.map(item => ({
               tempId: item.id,
@@ -186,8 +186,8 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
   const calculateTotals = () => {
     const subtotal = items.reduce((sum, item) => sum + item.montant_total, 0);
     const totalPoids = items.reduce((sum, item) => sum + item.poids, 0);
-    const shippingFee = formData.mode_livraison === 'aerien' 
-      ? totalPoids * shippingSettings.aerien 
+    const shippingFee = formData.mode_livraison === 'aerien'
+      ? totalPoids * shippingSettings.aerien
       : totalPoids * shippingSettings.maritime;
     const fraisTransportDouane = shippingFee;
     const totalGeneral = subtotal + fraisTransportDouane;
@@ -241,12 +241,12 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
     const updatedItems = items.map(item => {
       if (item.tempId === tempId) {
         const updatedItem = { ...item, [field]: value };
-        
+
         // Recalculer le montant total si prix ou quantité change
         if (field === 'prix_unitaire' || field === 'quantite') {
           updatedItem.montant_total = updatedItem.prix_unitaire * updatedItem.quantite;
         }
-        
+
         return updatedItem;
       }
       return item;
@@ -310,7 +310,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
             {facture ? 'Modifier' : 'Créer'} {formData.type === 'devis' ? 'Devis' : 'Facture'}
           </DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-6">
           {/* Formulaire principal */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -323,7 +323,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
                 placeholder="Sélectionner un client"
               />
             </div>
-            
+
             <div>
               <Label>Type</Label>
               <select
@@ -335,7 +335,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
                 <option value="facture">Facture</option>
               </select>
             </div>
-            
+
             <div>
               <Label>Mode de livraison</Label>
               <select
@@ -347,7 +347,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
                 <option value="maritime">Maritime</option>
               </select>
             </div>
-            
+
             <div>
               <Label>Devise</Label>
               <select
@@ -360,7 +360,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
               </select>
             </div>
           </div>
-          
+
           {/* Info client */}
           {selectedClient && (
             <Card>
@@ -402,13 +402,16 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
                       <Label className="text-xs">N°</Label>
                       <div className="font-medium text-center">{item.numero_ligne}</div>
                     </div>
-                    
+
                     <div className="col-span-5">
                       <Label className="text-xs">Description *</Label>
-                      <Input
+                      <Textarea
+                        id={`description-${item.tempId}`}
                         value={item.description}
                         onChange={(e) => updateItem(item.tempId, 'description', e.target.value)}
                         placeholder="Description du produit"
+                        rows={3}
+                        className="resize-none"
                       />
                     </div>
 
@@ -535,7 +538,7 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
           <div className="flex justify-between">
             <div className="space-x-2">
               {facture && (
-                <Button variant="outline" onClick={() => {}}>
+                <Button variant="outline" onClick={() => { }}>
                   <Upload className="mr-2 h-4 w-4" />
                   Générer PDF
                 </Button>

@@ -312,9 +312,8 @@ const FacturesCreate: React.FC = () => {
         let sanitizedValue = value;
         
         // Sanitize text fields to prevent XSS
-        if (field === 'description') {
-          sanitizedValue = sanitizeHtml(value);
-        } else if (field === 'image_url' || field === 'product_url') {
+        // On évite la sanitisation en temps réel pour 'description' car cela bloque les espaces et sauts de ligne
+        if (field === 'image_url' || field === 'product_url') {
           sanitizedValue = sanitizeUrl(value);
         }
         
@@ -676,10 +675,11 @@ const FacturesCreate: React.FC = () => {
 
                           <div>
                             <Label>Description</Label>
-                            <Input
+                            <Textarea
                               value={item.description}
                               onChange={(e) => updateItem(item.tempId, 'description', e.target.value)}
                               placeholder="Description de l'article"
+                              rows={3}
                             />
                           </div>
 

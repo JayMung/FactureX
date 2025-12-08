@@ -10,19 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { 
   Plane,
   Ship,
-  Tag,
   Loader2,
-  Plus,
-  Trash2,
   FileText
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 
-interface ProductCategory {
-  id: string;
-  nom: string;
-  code: string;
-}
 
 export const SettingsFacture = () => {
   const [saving, setSaving] = useState(false);
@@ -43,15 +35,9 @@ export const SettingsFacture = () => {
   // État pour les informations bancaires
   const [informationsBancaires, setInformationsBancaires] = useState('');
 
-  // États pour les catégories
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
-  const [newCategory, setNewCategory] = useState({ nom: '', code: '' });
-  const [showCategoryForm, setShowCategoryForm] = useState(false);
-
   // Charger les paramètres depuis la base de données
   useEffect(() => {
     fetchSettings();
-    fetchCategories();
   }, []);
 
   const fetchSettings = async () => {
@@ -90,19 +76,6 @@ export const SettingsFacture = () => {
       showError('Erreur lors du chargement des paramètres');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const { data } = await supabase
-        .from('product_categories')
-        .select('*')
-        .order('nom');
-      
-      setCategories(data || []);
-    } catch (error: any) {
-      console.error('Error fetching categories:', error);
     }
   };
 
@@ -174,49 +147,6 @@ export const SettingsFacture = () => {
       showError(error.message || 'Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleAddCategory = async () => {
-    if (!newCategory.nom || !newCategory.code) {
-      showError('Veuillez remplir tous les champs');
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('product_categories')
-        .insert([{
-          nom: newCategory.nom,
-          code: newCategory.code.toUpperCase()
-        }]);
-
-      if (error) throw error;
-
-      showSuccess('Catégorie ajoutée');
-      setNewCategory({ nom: '', code: '' });
-      setShowCategoryForm(false);
-      fetchCategories();
-    } catch (error: any) {
-      showError(error.message || 'Erreur lors de l\'ajout');
-    }
-  };
-
-  const handleDeleteCategory = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette catégorie?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('product_categories')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      showSuccess('Catégorie supprimée');
-      fetchCategories();
-    } catch (error: any) {
-      showError(error.message || 'Erreur lors de la suppression');
     }
   };
 
@@ -344,71 +274,6 @@ export const SettingsFacture = () => {
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Sauvegarder les conditions
           </Button>
-        </CardContent>
-      </Card>
-
-      {/* Catégories de Produits */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center">
-              <Tag className="mr-2 h-5 w-5" />
-              Catégories de Produits
-            </CardTitle>
-            <Button
-              onClick={() => setShowCategoryForm(!showCategoryForm)}
-              className="bg-green-500 hover:bg-green-600"
-              size="sm"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Ajouter
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {showCategoryForm && (
-            <div className="p-4 border rounded-lg space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  placeholder="Nom (ex: Liquide)"
-                  value={newCategory.nom}
-                  onChange={(e) => setNewCategory(prev => ({ ...prev, nom: e.target.value }))}
-                />
-                <Input
-                  placeholder="Code (ex: LIQUIDE)"
-                  value={newCategory.code}
-                  onChange={(e) => setNewCategory(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                />
-              </div>
-              <div className="flex space-x-2">
-                <Button onClick={handleAddCategory} size="sm" className="bg-green-500 hover:bg-green-600">
-                  Ajouter
-                </Button>
-                <Button onClick={() => setShowCategoryForm(false)} size="sm" variant="outline">
-                  Annuler
-                </Button>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            {categories.map((category) => (
-              <div key={category.id} className="card-base transition-shadow-hover flex items-center justify-between p-3">
-                <div>
-                  <p className="font-medium">{category.nom}</p>
-                  <p className="text-sm text-gray-500">{category.code}</p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-600 hover:bg-red-50"
-                  onClick={() => handleDeleteCategory(category.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
         </CardContent>
       </Card>
     </div>

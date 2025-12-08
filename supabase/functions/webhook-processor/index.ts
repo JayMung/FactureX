@@ -47,9 +47,14 @@ function formatPayload(format: string, payload: any): any {
 // Format Discord Embed
 function formatDiscordEmbed(event: string, data: any) {
   const eventConfig: Record<string, { title: string; color: number }> = {
-    'transaction.created': { title: 'Nouvelle Transaction', color: 3447003 },
-    'transaction.validated': { title: 'Transaction Servie', color: 3066993 },
+    // Transactions - titres dynamiques selon le type
+    'transaction.created': { title: '💰 Nouvelle Transaction', color: 3447003 },
+    'transaction.validated': { title: '✅ Transaction Servie', color: 3066993 },
     'transaction.deleted': { title: '🗑️ Transaction Supprimée', color: 15158332 },
+    // Types spécifiques de transactions
+    'transaction.swap.created': { title: '🔄 Nouveau Swap', color: 3447003 },
+    'transaction.depense.created': { title: '💸 Nouvelle Dépense', color: 15105570 },
+    'transaction.revenue.created': { title: '💵 Nouveau Revenu', color: 5763719 },
     'paiement.created': { title: '💰 Encaissement Reçu', color: 5763719 },
     'paiement.updated': { title: '💰 Encaissement Modifié', color: 10181046 },
     'paiement.deleted': { title: '🗑️ Encaissement Supprimé', color: 15158332 },
@@ -73,64 +78,104 @@ function formatDiscordEmbed(event: string, data: any) {
   if (event.startsWith('transaction.')) {
     const parts: string[] = [];
     
-    // Type de transaction
+    // Déterminer le type de transaction pour adapter l'affichage
+    const isSwap = data.type_transaction === 'transfert' && !data.client_id;
+    const isInterne = (data.type_transaction === 'depense' || data.type_transaction === 'revenue') && !data.client_id;
+    const isCommercial = !!data.client_id;
+    
+    // Type de transaction avec labels améliorés
     if (data.type_transaction) {
-      const typeLabels: Record<string, string> = {
-        'revenue': '💵 Revenue',
-        'depense': '💸 Dépense',
-        'transfert': '🔄 Transfert'
-      };
-      parts.push(`**Type:** ${typeLabels[data.type_transaction] || data.type_transaction}`);
+      let typeLabel = '';
+      if (isSwap) {
+        typeLabel = '🔄 Swap entre Comptes';
+      } else if (data.type_transaction === 'depense') {
+        typeLabel = '💸 Dépense';
+      } else if (data.type_transaction === 'revenue' && isCommercial) {
+        typeLabel = '💵 Transaction Client';
+      } else if (data.type_transaction === 'revenue') {
+        typeLabel = '💵 Revenu Interne';
+      } else if (data.type_transaction === 'transfert' && isCommercial) {
+        typeLabel = '💵 Transfert Client';
+      } else {
+        typeLabel = data.type_transaction;
+      }
+      parts.push(`**Type:** ${typeLabel}`);
     }
     
-    // Catégorie si présente
-    if (data.categorie) {
+    // Catégorie si présente (pour transactions commerciales)
+    if (data.categorie && isCommercial) {
       parts.push(`**Catégorie:** ${data.categorie}`);
     }
     
-    // Client (pour transactions clients uniquement)
+    // Client (pour transactions commerciales uniquement)
     if (data.client?.nom) {
       parts.push(`**Client:** ${data.client.nom}`);
+      if (data.client.telephone) {
+        parts.push(`**Téléphone:** ${data.client.telephone}`);
+      }
     }
     
-    // Comptes (pour opérations internes)
-    if (data.compte_source_nom) {
-      parts.push(`**Compte Source:** ${data.compte_source_nom}`);
-    }
-    if (data.compte_destination_nom) {
-      parts.push(`**Compte Destination:** ${data.compte_destination_nom}`);
+    // Comptes (pour swaps et opérations internes)
+    if (isSwap || isInterne) {
+      if (data.compte_source_nom) {
+        parts.push(`**Compte Source:** ${data.compte_source_nom}`);
+      }
+      if (data.compte_destination_nom) {
+        parts.push(`**Compte Destination:** ${data.compte_destination_nom}`);
+      }
     }
     
+    // Montant - toujours affiché
     if (data.montant) {
-      parts.push(`**Montant:** $${data.montant} ${data.devise || 'USD'}`);
+      const devise = data.devise || 'USD';
+      const symbol = devise === 'USD' ? '$' : devise === 'CDF' ? '' : '';
+      const suffix = devise === 'CDF' ? ' CDF' : '';
+      parts.push(`**Montant:** ${symbol}${data.montant}${suffix}`);
     }
-    // Montant CNY si présent
-    if (data.montant_cny) {
+    
+    // Montant CNY (uniquement pour transactions commerciales)
+    if (data.montant_cny && isCommercial) {
       parts.push(`**Montant CNY:** ¥${data.montant_cny}`);
     }
-    // Taux de change si présent
-    if (data.taux) {
+    
+    // Taux de change (uniquement pour transactions commerciales)
+    if (data.taux && isCommercial) {
       parts.push(`**Taux:** ${data.taux}`);
     }
-    if (data.benefice) {
-      parts.push(`**Bénéfice:** $${data.benefice} ${data.devise || 'USD'}`);
+    
+    // Bénéfice (uniquement pour transactions commerciales, pas pour swaps/internes)
+    if (data.benefice && data.benefice !== 0 && isCommercial) {
+      parts.push(`**Bénéfice:** $${data.benefice}`);
     }
-    // Frais si présents
-    if (data.frais) {
-      parts.push(`**Frais:** $${data.frais}`);
+    
+    // Frais (pour transactions commerciales ET swaps si > 0)
+    if (data.frais && data.frais > 0) {
+      if (isCommercial || isSwap) {
+        parts.push(`**Frais:** $${data.frais}`);
+      }
     }
-    if (data.mode_paiement) {
-      parts.push(`**Mode:** ${data.mode_paiement}`);
+    
+    // Mode de paiement (pour transactions commerciales)
+    if (data.mode_paiement && isCommercial) {
+      parts.push(`**Compte:** ${data.mode_paiement}`);
     }
-    if (data.motif) {
+    
+    // Motif (pour opérations internes)
+    if (data.motif && isInterne) {
       parts.push(`**Motif:** ${data.motif}`);
     }
+    
+    // Notes si présentes
     if (data.notes) {
       parts.push(`**Notes:** ${data.notes}`);
     }
+    
+    // Statut
     if (data.statut) {
       parts.push(`**Statut:** ${data.statut}`);
     }
+    
+    // Utilisateur qui a effectué l'action
     if (data.user_info) {
       const userName = [data.user_info.prenom, data.user_info.nom].filter(Boolean).join(' ') || data.user_info.email || 'Utilisateur inconnu';
       parts.push(`\n**Effectué par:** ${userName}`);
@@ -396,6 +441,44 @@ serve(async (req: Request) => {
                   telephone: client.telephone,
                   ville: client.ville
                 }
+              }
+            };
+          }
+        }
+        
+        // Si compte_source_id existe, récupérer le nom du compte source
+        if (data.compte_source_id) {
+          const { data: compteSource } = await supabaseClient
+            .from('comptes_financiers')
+            .select('id, nom')
+            .eq('id', data.compte_source_id)
+            .single();
+          
+          if (compteSource) {
+            log.payload = {
+              ...log.payload,
+              data: {
+                ...log.payload.data,
+                compte_source_nom: compteSource.nom
+              }
+            };
+          }
+        }
+        
+        // Si compte_destination_id existe, récupérer le nom du compte destination
+        if (data.compte_destination_id) {
+          const { data: compteDest } = await supabaseClient
+            .from('comptes_financiers')
+            .select('id, nom')
+            .eq('id', data.compte_destination_id)
+            .single();
+          
+          if (compteDest) {
+            log.payload = {
+              ...log.payload,
+              data: {
+                ...log.payload.data,
+                compte_destination_nom: compteDest.nom
               }
             };
           }

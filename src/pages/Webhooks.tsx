@@ -269,14 +269,14 @@ export default function Webhooks() {
                     <Webhook className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <CardTitle className="text-lg">{webhook.name}</CardTitle>
-                      <CardDescription className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-1">
                         <Badge className={getFormatBadgeColor(webhook.format)}>
                           {webhook.format.toUpperCase()}
                         </Badge>
                         <Badge variant={webhook.is_active ? 'default' : 'secondary'}>
                           {webhook.is_active ? 'Actif' : 'Inactif'}
                         </Badge>
-                      </CardDescription>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

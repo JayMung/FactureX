@@ -1,7 +1,6 @@
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-// @ts-ignore - Temporary workaround for react-router-dom types
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { PageProvider } from "@/contexts/PageContext";
@@ -21,6 +20,7 @@ import SecurityDashboard from "./pages/SecurityDashboard";
 import SecurityAudit from "./pages/SecurityAudit";
 import PermissionDiagnosticPage from "./pages/Permission-Diagnostic";
 import ComptesFinancesProtected from "./pages/Comptes-Finances-Protected";
+import CategoriesFinances from "./pages/Categories-Finances";
 // Pages supprimées - fusionnées dans Transactions-Protected
 // import OperationsFinancieres from "./pages/Operations-Financieres";
 // import EncaissementsProtected from "./pages/Encaissements-Protected";
@@ -144,6 +144,11 @@ const App = () => (
               <Route path="/comptes" element={
                 <ProtectedRouteEnhanced requiredModule="finances">
                   <ComptesFinancesProtected />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/finances/categories" element={
+                <ProtectedRouteEnhanced requiredModule="finances">
+                  <CategoriesFinances />
                 </ProtectedRouteEnhanced>
               } />
               {/* Routes redirigées vers /transactions (pages fusionnées) */}

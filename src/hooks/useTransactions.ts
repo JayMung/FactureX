@@ -8,6 +8,18 @@ import { detectAttackPatterns } from '@/lib/security/validation';
 import { logSecurityEvent } from '@/lib/security/error-handling';
 import type { Transaction, UpdateTransactionData, CreateTransactionData, TransactionFilters } from '@/types';
 
+// Import des modules de transactions
+import { 
+  COMMERCIAL_MOTIFS,
+  fetchRatesAndFees, 
+  calculateTransactionAmounts,
+  applyBaseFilters,
+  applyCommercialFilters,
+  filterBySearch,
+  calculateGlobalTotals,
+  INITIAL_TOTALS
+} from './transactions';
+
 export const useTransactions = (
   page: number = 1, 
   filters: TransactionFilters = {},
@@ -77,9 +89,9 @@ export const useTransactions = (
         query = query.lte('montant', parseFloat(filters.maxAmount));
       }
       
-      // Filtrer uniquement les transactions commerciales (Commande, Transfert, Paiement Colis)
+      // Filtrer uniquement les transactions commerciales
       if (filters.motifCommercial) {
-        query = query.in('motif', ['Commande', 'Transfert', 'Paiement Colis']);
+        query = query.in('motif', COMMERCIAL_MOTIFS);
       }
       
       // Filtrer par type de transaction (pour les onglets)
@@ -90,6 +102,13 @@ export const useTransactions = (
       // Exclure certains motifs (pour les opérations internes)
       if (filters.excludeMotifs && filters.excludeMotifs.length > 0) {
         query = query.not('motif', 'in', `(${filters.excludeMotifs.join(',')})`);
+      }
+      
+      // Filtrer les swaps (transferts sans client) vs transactions commerciales (avec client)
+      if (filters.isSwap === true) {
+        query = query.is('client_id', null);
+      } else if (filters.isSwap === false) {
+        query = query.not('client_id', 'is', null);
       }
       
       // Appliquer le tri AVANT la pagination
@@ -177,9 +196,9 @@ export const useTransactions = (
         query = query.lte('montant', parseFloat(filters.maxAmount));
       }
       
-      // Filtrer uniquement les transactions commerciales (Commande et Transfert)
+      // Filtrer uniquement les transactions commerciales
       if (filters.motifCommercial) {
-        query = query.in('motif', ['Commande', 'Transfert', 'Paiement Colis']);
+        query = query.in('motif', COMMERCIAL_MOTIFS);
       }
       
       // Filtrer par type de transaction
@@ -192,6 +211,13 @@ export const useTransactions = (
         query = query.not('motif', 'in', `(${filters.excludeMotifs.join(',')})`);
       }
       
+      // Filtrer les swaps (transferts sans client) vs transactions commerciales (avec client)
+      if (filters.isSwap === true) {
+        query = query.is('client_id', null);
+      } else if (filters.isSwap === false) {
+        query = query.not('client_id', 'is', null);
+      }
+      
       // Appliquer la recherche textuelle pour les totaux
       if (filters.search) {
         query = query.or(`id.ilike.%${filters.search}%`);
@@ -201,35 +227,8 @@ export const useTransactions = (
 
       if (error) throw error;
 
-      // Calculer les totaux globaux
-      const totals = (data || []).reduce((acc, transaction: any) => {
-        // Total USD/CDF ne compte QUE les transactions commerciales (Commande, Transfert)
-        // PAS les dépenses/revenus internes
-        if (transaction.motif === 'Commande' || transaction.motif === 'Transfert' || transaction.motif === 'Paiement Colis') {
-          if (transaction.devise === 'USD') {
-            acc.totalUSD += transaction.montant || 0;
-          } else if (transaction.devise === 'CDF') {
-            acc.totalCDF += transaction.montant || 0;
-          }
-          acc.totalCNY += transaction.montant_cny || 0;
-          acc.totalFrais += transaction.frais || 0;
-          acc.totalBenefice += transaction.benefice || 0;
-        }
-        
-        // Calculer les dépenses séparément (toutes devises)
-        if (transaction.type_transaction === 'depense') {
-          acc.totalDepenses += transaction.montant || 0;
-        }
-        
-        return acc;
-      }, {
-        totalUSD: 0,
-        totalCDF: 0,
-        totalCNY: 0,
-        totalFrais: 0,
-        totalBenefice: 0,
-        totalDepenses: 0
-      });
+      // Calculer les totaux globaux en utilisant le module
+      const totals = calculateGlobalTotals(data || []);
 
       setGlobalTotals({
         ...totals,
@@ -264,15 +263,15 @@ export const useTransactions = (
 
     try {
       // Log input data for debugging
-      console.log('🔍 Creating transaction with data:', transactionData);
+      console.log(' Creating transaction with data:', transactionData);
       
       // SECURITY: Validate and sanitize input data
       const validation = validateTransactionInput(transactionData);
-      console.log('✅ Validation result:', validation);
+      console.log(' Validation result:', validation);
       
       if (!validation.isValid) {
         const errorMsg = `Validation error: ${validation.error}`;
-        console.error('❌ Validation failed:', errorMsg);
+        console.error(' Validation failed:', errorMsg);
         setError(errorMsg);
         showError(errorMsg);
         
@@ -345,29 +344,28 @@ export const useTransactions = (
 
       const tauxUSD = sanitizedData.devise === 'USD' ? 1 : rates.usdToCdf;
       
-      // Pour les dépenses et revenus (opérations financières), utiliser des frais fixes de 0%
-      let fraisUSD = 0;
-      let benefice = 0;
+      // Utiliser le module de calcul avec mapping des nouveaux noms de catégories
+      console.log(' Calculating fees for motif:', sanitizedData.motif, 'fees:', fees);
+      const amounts = calculateTransactionAmounts(
+        sanitizedData.montant,
+        sanitizedData.devise,
+        sanitizedData.motif,
+        sanitizedData.type_transaction,
+        rates,
+        fees
+      );
+      console.log(' Calculated amounts:', amounts);
       
-      if (sanitizedData.type_transaction === 'revenue') {
-        // Pour les revenus (Commande, Transfert), calculer les frais selon le motif
-        const fraisRate = fees[sanitizedData.motif.toLowerCase() as keyof typeof fees] || 0;
-        fraisUSD = sanitizedData.montant * (fraisRate / 100);
-        const commissionPartenaire = sanitizedData.montant * (fees.partenaire / 100);
-        benefice = fraisUSD - commissionPartenaire;
-      } else if (sanitizedData.type_transaction === 'depense') {
-        // Pour les dépenses, pas de frais ni de bénéfice (c'est une sortie d'argent)
-        fraisUSD = 0;
-        benefice = 0;
-      }
-      
-      const montantNet = sanitizedData.montant - fraisUSD; // Montant après déduction des frais
-      const montantCNY = sanitizedData.devise === 'USD' 
-        ? montantNet * rates.usdToCny 
-        : (montantNet / tauxUSD) * rates.usdToCny;
+      const fraisUSD = amounts.frais;
+      const benefice = amounts.benefice;
+      const montantCNY = amounts.montant_cny;
+
+      // Construire l'objet complet en s'assurant que frais et benefice ne sont pas écrasés
+      // On extrait les valeurs potentiellement problématiques de sanitizedData
+      const { frais, benefice: beneficeInput, ...cleanSanitizedData } = sanitizedData as any;
 
       const fullTransactionData = {
-        ...sanitizedData,
+        ...cleanSanitizedData,
         taux_usd_cny: rates.usdToCny,
         taux_usd_cdf: rates.usdToCdf,
         montant_cny: montantCNY,
@@ -376,6 +374,8 @@ export const useTransactions = (
         date_paiement: sanitizedData.date_paiement || new Date().toISOString(),
         statut: sanitizedData.statut || 'En attente'
       };
+
+      console.log(' FINAL data sending to Supabase:', fullTransactionData);
 
       const { data, error } = await supabase
         .from('transactions')
@@ -411,7 +411,7 @@ export const useTransactions = (
       
       return data;
     } catch (err: any) {
-      console.error('❌ Error creating operation:', err);
+      console.error(' Error creating operation:', err);
       console.error('Error details:', {
         message: err?.message,
         code: err?.code,
@@ -466,15 +466,18 @@ export const useTransactions = (
           const devise = transactionData.devise ?? currentTransaction.devise;
           const motif = transactionData.motif ?? currentTransaction.motif;
 
-          const tauxUSD = devise === 'USD' ? 1 : rates.usdToCdf;
-          const fraisRate = fees[motif?.toLowerCase() as keyof typeof fees] || 0;
-          const fraisUSD = montant * (fraisRate / 100);
-          const montantNet = montant - fraisUSD;
-          const montantCNY = devise === 'USD' 
-            ? montantNet * rates.usdToCny 
-            : (montantNet / tauxUSD) * rates.usdToCny;
-          const commissionPartenaire = montant * (fees.partenaire / 100);
-          const benefice = fraisUSD - commissionPartenaire;
+          // Utiliser le module de calcul avec mapping des nouveaux noms de catégories
+          const amounts = calculateTransactionAmounts(
+            montant,
+            devise,
+            motif,
+            currentTransaction.type_transaction,
+            rates,
+            fees
+          );
+          const fraisUSD = amounts.frais;
+          const benefice = amounts.benefice;
+          const montantCNY = amounts.montant_cny;
 
           updatedData = {
             ...updatedData,
@@ -514,7 +517,7 @@ export const useTransactions = (
       
       return data;
     } catch (err: any) {
-      console.error('❌ Error updating:', err);
+      console.error(' Error updating:', err);
       setError(err.message || 'Erreur');
       showError(err.message || 'Erreur');
       throw err;

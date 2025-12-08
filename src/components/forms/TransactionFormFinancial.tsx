@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,7 +17,7 @@ import { useExchangeRates } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
-import { useColisList } from '@/hooks/useColisList';
+import { useColisList, useClientUnpaidFactures, useFinanceCategories } from '@/hooks';
 import { toast } from 'sonner';
 import { formatDateForInput, getTodayDateString } from '@/utils/dateUtils';
 
@@ -29,29 +29,23 @@ interface TransactionFormProps {
   defaultType?: 'revenue' | 'depense' | 'transfert';
 }
 
-// Catégories par type de transaction
-// Commande et Transfert ont des frais, Paiement Colis n'a pas de frais
-const REVENUE_CATEGORIES = [
-  { value: 'Commande', label: 'Commande (Facture)', hasFees: true },
-  { value: 'Transfert', label: 'Transfert d\'argent', hasFees: true },
-  { value: 'Paiement Colis', label: 'Paiement Colis', hasFees: false }
+// Catégories par défaut (fallback si la base de données est vide)
+const DEFAULT_REVENUE_CATEGORIES = [
+  { value: 'Commande', label: 'Commande (Facture)' },
+  { value: 'Transfert', label: 'Transfert d\'argent' },
+  { value: 'Paiement Colis', label: 'Paiement Colis' }
 ];
 
-// Catégories qui ont des frais
-const CATEGORIES_WITH_FEES = ['Commande', 'Transfert'];
-
-const DEPENSE_CATEGORIES = [
+const DEFAULT_DEPENSE_CATEGORIES = [
   { value: 'Paiement Fournisseur', label: 'Paiement Fournisseur' },
   { value: 'Paiement Shipping', label: 'Paiement Shipping' },
   { value: 'Loyer', label: 'Loyer' },
   { value: 'Salaires', label: 'Salaires' },
-  { value: 'Frais Installation', label: 'Frais d\'Installation' },
-  { value: 'Achat Biens', label: 'Achat Biens' },
-  { value: 'Transport', label: 'Transport' },
-  { value: 'Maintenance', label: 'Maintenance' },
-  { value: 'Carburant', label: 'Carburant' },
   { value: 'Autre', label: 'Autre dépense' }
 ];
+
+// Codes de catégories qui ont des frais (pour les revenus)
+const CATEGORIES_WITH_FEES_CODES = ['COMMANDE', 'TRANSFERT_RECU'];
 
 const TransactionFormFinancial: React.FC<TransactionFormProps> = ({ 
   isOpen, 
@@ -72,7 +66,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
     compte_destination_id: '',
     notes: '',
     frais: '0',
-    colis_id: '' // Pour Paiement Colis
+    colis_id: '', // Pour Paiement Colis
+    facture_id: '' // Pour Commande (Facture)
   });
   
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -88,12 +83,37 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   const { data: clientColis = [] } = useColisList({ 
     clientId: formData.client_id || undefined 
   });
+  
+  // Charger les factures non payées du client (pour Commande/Facture)
+  const { factures: clientFactures, loading: facturesLoading } = useClientUnpaidFactures({
+    clientId: formData.client_id || undefined
+  });
+
+  // Charger les catégories depuis la base de données
+  const { revenueCategories, depenseCategories, loading: categoriesLoading } = useFinanceCategories();
 
   const isEditing = !!transaction;
   const isLoading = isCreating || isUpdating;
   
+  // Déterminer les catégories à afficher (DB ou fallback) - memoized to prevent infinite loops
+  const displayRevenueCategories = useMemo(() => 
+    revenueCategories.length > 0 
+      ? revenueCategories.map(c => ({ value: c.nom, label: c.nom, code: c.code, icon: c.icon, couleur: c.couleur }))
+      : DEFAULT_REVENUE_CATEGORIES.map(c => ({ ...c, code: '', icon: '', couleur: '' }))
+  , [revenueCategories]);
+  
+  const displayDepenseCategories = useMemo(() =>
+    depenseCategories.length > 0
+      ? depenseCategories.map(c => ({ value: c.nom, label: c.nom, code: c.code, icon: c.icon, couleur: c.couleur }))
+      : DEFAULT_DEPENSE_CATEGORIES.map(c => ({ ...c, code: '', icon: '', couleur: '' }))
+  , [depenseCategories]);
+
   // Vérifier si la catégorie actuelle a des frais
-  const hasFees = CATEGORIES_WITH_FEES.includes(formData.categorie);
+  const currentCategory = useMemo(() => 
+    revenueCategories.find(c => c.nom === formData.categorie)
+  , [revenueCategories, formData.categorie]);
+  
+  const hasFees = currentCategory ? CATEGORIES_WITH_FEES_CODES.includes(currentCategory.code) : false;
 
   // Charger les données de la transaction si en mode édition
   // Utiliser transaction.id au lieu de transaction pour éviter de réinitialiser
@@ -113,7 +133,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
         compte_destination_id: transaction.compte_destination_id || '',
         notes: transaction.notes || '',
         frais: transaction.frais?.toString() || '0',
-        colis_id: (transaction as any).colis_id || ''
+        colis_id: (transaction as any).colis_id || '',
+        facture_id: (transaction as any).facture_id || ''
       });
 
       if (transaction.date_paiement) {
@@ -122,33 +143,49 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
     }
   }, [transaction?.id, isEditing, isOpen]);
 
+  // Track previous type to detect actual changes
+  const prevTypeRef = useRef(formData.type_transaction);
+  const initializedRef = useRef(false);
+
   // Appliquer le defaultType quand le formulaire s'ouvre pour une nouvelle transaction
   useEffect(() => {
     if (isOpen && !isEditing) {
       setFormData(prev => ({ ...prev, type_transaction: defaultType }));
+      prevTypeRef.current = defaultType;
     }
   }, [isOpen, isEditing, defaultType]);
 
-  // Reset catégorie when type changes (only for new transactions)
+  // Reset catégorie when type ACTUALLY changes (only for new transactions)
   useEffect(() => {
-    // Ne pas exécuter cet effet en mode édition
-    if (isEditing) return;
+    // Ne pas exécuter en mode édition ou si les catégories ne sont pas chargées
+    if (isEditing || categoriesLoading) return;
+    
+    // Ne déclencher que si le type a vraiment changé
+    if (prevTypeRef.current === formData.type_transaction && initializedRef.current) return;
+    
+    prevTypeRef.current = formData.type_transaction;
+    initializedRef.current = true;
     
     if (formData.type_transaction === 'revenue') {
-      setFormData(prev => ({ ...prev, categorie: 'Commande', client_id: prev.client_id || '', mode_paiement: prev.mode_paiement || '' }));
+      const defaultCat = displayRevenueCategories[0]?.value || 'Commande (Facture)';
+      setFormData(prev => ({ ...prev, categorie: defaultCat, client_id: prev.client_id || '', mode_paiement: prev.mode_paiement || '' }));
     } else if (formData.type_transaction === 'depense') {
-      setFormData(prev => ({ ...prev, categorie: 'Paiement Fournisseur', client_id: '', mode_paiement: prev.mode_paiement || '' }));
+      const defaultCat = displayDepenseCategories[0]?.value || 'Paiement Fournisseur';
+      setFormData(prev => ({ ...prev, categorie: defaultCat, client_id: '', mode_paiement: prev.mode_paiement || '' }));
     } else if (formData.type_transaction === 'transfert') {
       setFormData(prev => ({ ...prev, categorie: 'Transfert', client_id: '', mode_paiement: '' }));
     }
-  }, [formData.type_transaction, isEditing]);
+  }, [formData.type_transaction, isEditing, categoriesLoading, displayRevenueCategories, displayDepenseCategories]);
 
-  // Reset frais à 0 quand la catégorie n'a pas de frais (Paiement Colis)
+  // Reset frais à 0 quand la catégorie n'a pas de frais (only if frais is not already 0)
   useEffect(() => {
-    if (!CATEGORIES_WITH_FEES.includes(formData.categorie)) {
-      setFormData(prev => ({ ...prev, frais: '0', colis_id: prev.colis_id }));
+    if (!hasFees) {
+      setFormData(prev => {
+        if (prev.frais === '0') return prev; // Prevent unnecessary update
+        return { ...prev, frais: '0' };
+      });
     }
-  }, [formData.categorie]);
+  }, [hasFees]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -261,14 +298,15 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
         transactionData.colis_id = formData.colis_id;
       }
 
-      // Calculer bénéfice selon le type
-      if (formData.type_transaction === 'revenue') {
-        transactionData.benefice = parseFloat(formData.frais) || 0;
-      } else if (formData.type_transaction === 'depense') {
-        transactionData.benefice = -parseFloat(formData.montant);
-      } else if (formData.type_transaction === 'transfert') {
-        transactionData.benefice = parseFloat(formData.frais) || 0;
+      // Ajouter facture_id si Commande avec facture liée
+      if (formData.facture_id && formData.categorie === 'Commande') {
+        transactionData.facture_id = formData.facture_id;
       }
+
+      // Ne PAS envoyer frais et benefice - ils seront calculés par useTransactions
+      // Supprimer les valeurs par défaut pour laisser le hook calculer
+      delete (transactionData as any).frais;
+      delete (transactionData as any).benefice;
 
       if (isEditing && transaction) {
         console.log('🔄 Updating transaction:', transaction.id);
@@ -298,7 +336,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
         compte_destination_id: '',
         notes: '',
         frais: '0',
-        colis_id: ''
+        colis_id: '',
+        facture_id: ''
       });
       setErrors({});
     } catch (error: any) {
@@ -320,10 +359,10 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   const activeComptes = comptes.filter(c => c.is_active);
   const activePaymentMethods = paymentMethods.filter(method => method.is_active);
   const categories = formData.type_transaction === 'revenue' 
-    ? REVENUE_CATEGORIES 
+    ? displayRevenueCategories 
     : formData.type_transaction === 'depense'
-    ? DEPENSE_CATEGORIES
-    : [{ value: 'Transfert', label: 'Transfert entre comptes' }];
+    ? displayDepenseCategories
+    : [{ value: 'Transfert', label: 'Transfert entre comptes', code: '', icon: '', couleur: '' }];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -429,21 +468,77 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
               )}
             </div>
 
+            {/* Sélecteur de Facture (uniquement pour Commande/Facture) */}
+            {formData.type_transaction === 'revenue' && (formData.categorie === 'Commande' || formData.categorie === 'Commande (Facture)') && formData.client_id && (
+              <div className="space-y-2">
+                <Label htmlFor="facture_id">Facture à payer (optionnel)</Label>
+                <Select
+                  value={formData.facture_id}
+                  onValueChange={(value) => {
+                    // Ignorer les valeurs spéciales
+                    if (value.startsWith('__')) {
+                      handleChange('facture_id', '');
+                      return;
+                    }
+                    handleChange('facture_id', value);
+                    // Auto-remplir le montant avec le solde restant de la facture
+                    const selectedFacture = clientFactures.find(f => f.id === value);
+                    if (selectedFacture && selectedFacture.solde_restant) {
+                      handleChange('montant', selectedFacture.solde_restant.toString());
+                      handleChange('devise', selectedFacture.devise);
+                    }
+                  }}
+                >
+                  <SelectTrigger className={errors.facture_id ? 'border-red-500' : ''}>
+                    <SelectValue placeholder={facturesLoading ? "Chargement..." : "Sélectionner une facture"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {facturesLoading ? (
+                      <SelectItem value="__loading__" disabled>Chargement des factures...</SelectItem>
+                    ) : clientFactures.length === 0 ? (
+                      <SelectItem value="__empty__" disabled>Aucune facture non payée</SelectItem>
+                    ) : (
+                      <>
+                        <SelectItem value="__none__">-- Aucune facture --</SelectItem>
+                        {clientFactures.map((facture) => (
+                          <SelectItem key={facture.id} value={facture.id}>
+                            {facture.facture_number} - Solde: {facture.solde_restant?.toFixed(2)} {facture.devise}
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+                {errors.facture_id && (
+                  <p className="text-sm text-red-600">{errors.facture_id}</p>
+                )}
+                <p className="text-xs text-gray-500">
+                  💡 Sélectionnez une facture pour lier ce paiement. Le montant sera auto-rempli.
+                </p>
+              </div>
+            )}
+
             {/* Sélecteur de Colis (uniquement pour Paiement Colis) */}
-            {formData.type_transaction === 'revenue' && formData.categorie === 'Paiement Colis' && (
+            {formData.type_transaction === 'revenue' && formData.categorie === 'Paiement Colis' && formData.client_id && (
               <div className="space-y-2">
                 <Label htmlFor="colis_id">Colis *</Label>
                 <Select
                   value={formData.colis_id}
-                  onValueChange={(value) => handleChange('colis_id', value)}
+                  onValueChange={(value) => {
+                    if (value.startsWith('__')) {
+                      handleChange('colis_id', '');
+                      return;
+                    }
+                    handleChange('colis_id', value);
+                  }}
                 >
                   <SelectTrigger className={errors.colis_id ? 'border-red-500' : ''}>
                     <SelectValue placeholder="Sélectionner un colis" />
                   </SelectTrigger>
                   <SelectContent>
                     {clientColis.length === 0 ? (
-                      <SelectItem value="" disabled>
-                        {formData.client_id ? 'Aucun colis trouvé pour ce client' : 'Sélectionnez d\'abord un client'}
+                      <SelectItem value="__empty__" disabled>
+                        Aucun colis trouvé pour ce client
                       </SelectItem>
                     ) : (
                       clientColis.map((colis: any) => (

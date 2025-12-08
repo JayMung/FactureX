@@ -17,3 +17,5 @@ export { useApprovalWorkflow, useTransactionApproval } from './useApprovalWorkfl
 export { useFinancialOperations } from './useFinancialOperations';
 export { useApiKeys } from './useApiKeys';
 export { useWebhooks } from './useWebhooks';
+export { useClientUnpaidFactures } from './useClientUnpaidFactures';
+export { useFinanceCategories } from './useFinanceCategories';

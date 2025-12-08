@@ -117,15 +117,17 @@ const TransactionsProtected: React.FC = () => {
     
     // Filtrer selon l'onglet
     if (activeTab === 'clients') {
-      // Transactions commerciales (Commande, Transfert, Paiement Colis)
+      // Transactions commerciales (Commande, Transfert, Paiement Colis) - AVEC client
       baseFilters.motifCommercial = true;
+      baseFilters.isSwap = false; // Exclure les swaps (transferts sans client)
     } else if (activeTab === 'internes') {
       // Opérations internes (dépenses et revenus sans client)
       baseFilters.typeTransaction = ['depense', 'revenue'];
-      baseFilters.excludeMotifs = ['Commande', 'Transfert', 'Paiement Colis'];
+      baseFilters.excludeMotifs = ['Commande', 'Commande (Facture)', 'Transfert', 'Transfert Reçu', 'Paiement Colis'];
     } else if (activeTab === 'swaps') {
-      // Swaps entre comptes
+      // Swaps entre comptes (transferts SANS client)
       baseFilters.typeTransaction = ['transfert'];
+      baseFilters.isSwap = true; // Uniquement les swaps (transferts sans client)
     }
     
     return baseFilters;
@@ -380,6 +382,31 @@ const TransactionsProtected: React.FC = () => {
     URL.revokeObjectURL(url);
     showSuccess('Transactions exportées avec succès');
   };
+
+  // Analyse temporaire des anciens transferts
+  useEffect(() => {
+    const analyzeOldTransfers = async () => {
+      console.log('🔍 Analysing old transfers...');
+      const { data } = await supabase
+        .from('transactions')
+        .select('created_at, motif, type_transaction, montant, frais, benefice')
+        .ilike('motif', 'Transfert') // Chercher exactement "Transfert" (anciens)
+        .eq('type_transaction', 'revenue')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (data) {
+        console.table(data.map(t => ({
+          ...t,
+          ratio_frais: t.montant ? (t.frais / t.montant * 100).toFixed(2) + '%' : 'N/A',
+          ratio_benefice: t.montant ? (t.benefice / t.montant * 100).toFixed(2) + '%' : 'N/A',
+          partenaire_estime: t.montant ? ((t.frais - t.benefice) / t.montant * 100).toFixed(2) + '%' : 'N/A'
+        })));
+      }
+    };
+    
+    analyzeOldTransfers();
+  }, []);
 
   if (error) {
     return (

@@ -194,6 +194,7 @@ export interface TransactionFilters {
   motifCommercial?: boolean;
   typeTransaction?: string[];
   excludeMotifs?: string[];
+  isSwap?: boolean; // true = swap interne (sans client), false = transfert commercial (avec client)
 }
 
 export interface CreateClientData {

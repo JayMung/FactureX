@@ -19,7 +19,8 @@ import {
   ChevronRight,
   ArrowLeftRight,
   DollarSign,
-  Key
+  Key,
+  Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -129,6 +130,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       icon: Wallet,
       label: 'Comptes & Mouvements',
       path: '/comptes',
+    },
+    {
+      icon: Tag,
+      label: 'Catégories',
+      path: '/finances/categories',
     },
   ];
 

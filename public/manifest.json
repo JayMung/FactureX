@@ -1,20 +1,43 @@
 {
-  "name": "FactureX",
+  "name": "FactureX - Gestion Financière",
   "short_name": "FactureX",
-  "description": "Gestion de facturation moderne et intuitive",
+  "description": "Application de gestion de facturation, transactions et finances moderne et intuitive",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#667eea",
-  "orientation": "portrait-primary",
+  "theme_color": "#22c55e",
+  "orientation": "any",
   "icons": [
     {
       "src": "/favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
+    },
+    {
+      "src": "/icons/icon-192x192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ],
   "categories": ["business", "finance", "productivity"],
   "lang": "fr",
-  "dir": "ltr"
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard FactureX"
+    }
+  ]
 }

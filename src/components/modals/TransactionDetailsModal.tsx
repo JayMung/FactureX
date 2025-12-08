@@ -8,11 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { 
-  X, 
-  Edit, 
-  Save, 
-  Printer, 
+import {
+  X,
+  Edit,
+  Save,
+  Printer,
   Copy,
   CheckCircle,
   Clock,
@@ -298,10 +298,26 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
 
   if (!transaction) return null;
 
+  // Vérifier si c'est un paiement colis (ne doit pas afficher CNY et bénéfice)
+  const isPaiementColis = transaction?.motif?.toLowerCase().includes('paiement colis') ||
+    transaction?.motif?.toLowerCase().includes('colis') ||
+    transaction?.categorie?.toLowerCase().includes('paiement colis');
+
   // Générer un ID lisible pour la transaction
   const generateReadableId = (id: string) => {
     const shortId = id.substring(0, 6).toUpperCase();
-    return `TX001-${shortId}`;
+    let prefix = 'TX';
+
+    // Essayer de déterminer le préfixe basé sur les propriétés puisque l'onglet n'est pas connu ici
+    if (transaction?.type_transaction === 'depense') prefix = 'OI';
+    else if (transaction?.type_transaction === 'transfert') prefix = 'SW';
+    else if (transaction?.type_transaction === 'revenue') {
+      // Si c'est un paiement colis ou sans client -> Interne
+      if (isPaiementColis || !transaction.client_id) prefix = 'OI';
+      else prefix = 'TC';
+    }
+
+    return `${prefix}001-${shortId}`;
   };
 
   return (
@@ -323,7 +339,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                 {isEditMode ? editedData.statut : transaction.statut}
               </Badge>
             </div>
-            
+
             {!isEditMode && (
               <div className="flex flex-wrap justify-center sm:justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={handlePrint} className="text-xs sm:text-sm">
@@ -369,8 +385,8 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                     onChange={(e) => setEditedData({ ...editedData, montant: parseFloat(e.target.value) })}
                     className="flex-1"
                   />
-                  <Select 
-                    value={editedData.devise} 
+                  <Select
+                    value={editedData.devise}
                     onValueChange={(value) => setEditedData({ ...editedData, devise: value })}
                   >
                     <SelectTrigger className="w-24 sm:w-32">
@@ -389,8 +405,8 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
               )}
             </div>
 
-            {/* Montant CNY */}
-            {transaction.montant_cny && (
+            {/* Montant CNY - Ne pas afficher pour Paiement Colis */}
+            {!isPaiementColis && transaction.montant_cny && transaction.montant_cny > 0 && (
               <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                 <Label className="text-xs text-gray-500 mb-2 block">Montant CNY</Label>
                 {isEditMode ? (
@@ -416,8 +432,8 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                   Motif
                 </Label>
                 {isEditMode ? (
-                  <Select 
-                    value={editedData.motif} 
+                  <Select
+                    value={editedData.motif}
                     onValueChange={(value) => setEditedData({ ...editedData, motif: value })}
                   >
                     <SelectTrigger>
@@ -520,25 +536,27 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                 )}
               </div>
 
-              {/* Bénéfice */}
-              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 sm:p-4 text-center">
-                <Label className="text-xs text-gray-500 mb-1 sm:mb-2 block">Bénéfice</Label>
-                {isEditMode ? (
-                  <Input
-                    type="number"
-                    value={editedData.benefice}
-                    onChange={(e) => setEditedData({ ...editedData, benefice: parseFloat(e.target.value) })}
-                    className="text-center"
-                  />
-                ) : (
-                  <p className="text-base sm:text-lg font-bold text-green-600">
-                    {formatCurrencyValue(transaction.benefice, 'USD')}
-                  </p>
-                )}
-              </div>
+              {/* Bénéfice - Ne pas afficher pour Paiement Colis */}
+              {!isPaiementColis && (
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 sm:p-4 text-center">
+                  <Label className="text-xs text-gray-500 mb-1 sm:mb-2 block">Bénéfice</Label>
+                  {isEditMode ? (
+                    <Input
+                      type="number"
+                      value={editedData.benefice}
+                      onChange={(e) => setEditedData({ ...editedData, benefice: parseFloat(e.target.value) })}
+                      className="text-center"
+                    />
+                  ) : (
+                    <p className="text-base sm:text-lg font-bold text-green-600">
+                      {formatCurrencyValue(transaction.benefice, 'USD')}
+                    </p>
+                  )}
+                </div>
+              )}
 
-              {/* Taux USD/CNY */}
-              {transaction.taux_usd_cny && (
+              {/* Taux USD/CNY - Ne pas afficher pour Paiement Colis */}
+              {!isPaiementColis && transaction.taux_usd_cny && transaction.montant_cny && transaction.montant_cny > 0 && (
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 sm:p-4 text-center">
                   <Label className="text-xs text-gray-500 mb-1 sm:mb-2 block">Taux USD/CNY</Label>
                   {isEditMode ? (
@@ -562,8 +580,8 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
           {/* Action Buttons in Edit Mode - Mobile Optimized */}
           {isEditMode && (
             <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-2 pt-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setIsEditMode(false);
                   setEditedData({
@@ -582,7 +600,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
               >
                 Annuler
               </Button>
-              <Button 
+              <Button
                 onClick={handleSave}
                 disabled={isSaving}
                 className="bg-green-500 hover:bg-green-600 w-full sm:w-auto"

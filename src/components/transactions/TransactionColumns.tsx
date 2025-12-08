@@ -18,15 +18,23 @@ const formatCurrencyValue = (amount: number, currency: string) => {
 };
 
 // Fonction utilitaire pour générer un ID lisible
-const generateReadableId = (transaction: Transaction, index: number) => {
+const generateReadableId = (transaction: Transaction, index: number, activeTab?: string) => {
   const shortId = transaction.id.slice(-6).toUpperCase();
   const paddedNumber = (index + 1).toString().padStart(3, '0');
+
   let prefix = 'TX';
-  
-  if (transaction.type_transaction === 'depense') prefix = 'DEP';
-  else if (transaction.type_transaction === 'revenue' && !transaction.client_id) prefix = 'REV'; // Revenu interne
-  else if (transaction.type_transaction === 'transfert') prefix = 'SWAP';
-  
+
+  if (activeTab === 'clients') prefix = 'TC';
+  else if (activeTab === 'internes') prefix = 'OI';
+  else if (activeTab === 'swaps') prefix = 'SW';
+  else {
+    // Fallback logic if activeTab is not provided (should depend on context)
+    if (transaction.type_transaction === 'depense') prefix = 'OI'; // Dépense -> Interne
+    else if (transaction.type_transaction === 'revenue' && !transaction.client_id) prefix = 'OI'; // Revenu interne -> Interne
+    else if (transaction.type_transaction === 'transfert') prefix = 'SW'; // Transfert -> Swap
+    else prefix = 'TC'; // Par défaut -> Client
+  }
+
   return `${prefix}${paddedNumber}-${shortId}`;
 };
 
@@ -51,7 +59,7 @@ export const getTransactionColumns = ({
   canUpdate,
   canDelete
 }: GetTransactionColumnsProps) => {
-  
+
   const commonActionsColumn = {
     key: 'actions',
     title: '',
@@ -82,7 +90,7 @@ export const getTransactionColumns = ({
             onClick={() => onView(transaction)}
             className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
           >
-            {generateReadableId(transaction, index)}
+            {generateReadableId(transaction, index, activeTab)}
           </button>
         )
       },
@@ -129,11 +137,11 @@ export const getTransactionColumns = ({
         title: 'Statut',
         sortable: true,
         render: (value: any, transaction: Transaction) => (
-          <StatusBadge 
-            status={value} 
-            transaction={transaction} 
-            onStatusChange={onStatusChange} 
-            canUpdate={canUpdate} 
+          <StatusBadge
+            status={value}
+            transaction={transaction}
+            onStatusChange={onStatusChange}
+            canUpdate={canUpdate}
           />
         )
       },
@@ -193,7 +201,7 @@ export const getTransactionColumns = ({
             onClick={() => onView(transaction)}
             className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
           >
-            {generateReadableId(transaction, index)}
+            {generateReadableId(transaction, index, activeTab)}
           </button>
         )
       },
@@ -271,7 +279,7 @@ export const getTransactionColumns = ({
           onClick={() => onView(transaction)}
           className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
         >
-          {generateReadableId(transaction, index)}
+          {generateReadableId(transaction, index, activeTab)}
         </button>
       )
     },

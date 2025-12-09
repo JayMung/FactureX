@@ -590,10 +590,12 @@ const TransactionsProtected: React.FC = () => {
             </div>
 
           {/* Stats Cards - Design System */}
-          <TransactionStats globalTotals={globalTotals} />
+          <div className="mb-6">
+            <TransactionStats globalTotals={globalTotals} />
+          </div>
 
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Eye, EyeOff, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { serverRateLimiter, getClientIdentifier, formatResetTime } from '@/lib/rate-limit-server';
 import {
   logLoginSuccess,
@@ -21,6 +21,11 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  
+  // États pour la récupération de mot de passe
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
+  
   const navigate = useNavigate();
 
   // Initialize session security
@@ -86,6 +91,25 @@ const Login = () => {
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/update-password`,
+      });
+
+      if (error) throw error;
+      setResetEmailSent(true);
+    } catch (error: any) {
+      setError(error.message || "Erreur lors de l'envoi de l'email de réinitialisation");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
       {/* Left Side - Hero Section */}
@@ -140,98 +164,186 @@ const Login = () => {
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">FactureX</h2>
           </div>
 
-          {/* Form Header */}
-          <div className="space-y-2 text-center md:text-left">
-            <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-              Bienvenue sur FactureX!
-            </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Connectez-vous à votre compte
-            </p>
-          </div>
+          {!showForgotPassword ? (
+            // --- LOGIN FORM ---
+            <>
+              {/* Form Header */}
+              <div className="space-y-2 text-center md:text-left">
+                <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
+                  Bienvenue sur FactureX!
+                </h1>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Connectez-vous à votre compte
+                </p>
+              </div>
 
-          {/* Error Alert */}
-          {error && (
-            <Alert className="border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800">
-              <AlertDescription className="text-red-800 dark:text-red-200 text-sm">
-                {error}
-              </AlertDescription>
-            </Alert>
+              {/* Error Alert */}
+              {error && (
+                <Alert className="border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800">
+                  <AlertDescription className="text-red-800 dark:text-red-200 text-sm">
+                    {error}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Form */}
+              <form onSubmit={handleSignIn} className="space-y-5">
+                {/* Email Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Votre Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="vous@exemple.com"
+                    className="h-12 border-gray-300 dark:border-gray-600 focus:border-green-500 focus:ring-green-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400"
+                  />
+                </div>
+
+                {/* Password Field */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Mot de passe
+                    </Label>
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPassword(true)}
+                      className="text-sm text-green-600 hover:text-green-700 dark:text-green-500 dark:hover:text-green-400 font-medium transition-colors"
+                    >
+                      Mot de passe oublié?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      placeholder="••••••••"
+                      className="h-12 pr-10 border-gray-300 dark:border-gray-600 focus:border-green-500 focus:ring-green-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Remember Me Checkbox */}
+                <div className="flex items-center">
+                  <input
+                    id="remember"
+                    type="checkbox"
+                    className="h-4 w-4 text-green-500 focus:ring-green-500 border-gray-300 rounded"
+                  />
+                  <Label htmlFor="remember" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                    Se souvenir de moi
+                  </Label>
+                </div>
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  className="w-full h-12 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 text-base font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                  disabled={loading}
+                >
+                  {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                  Connexion
+                </Button>
+              </form>
+            </>
+          ) : (
+            // --- FORGOT PASSWORD FORM ---
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+              <button
+                onClick={() => {
+                  setShowForgotPassword(false);
+                  setResetEmailSent(false);
+                  setError('');
+                }}
+                className="flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Retour à la connexion
+              </button>
+
+              <div className="space-y-2 text-center md:text-left">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  Mot de passe oublié
+                </h1>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Entrez votre adresse email et nous vous enverrons un lien pour réinitialiser votre mot de passe.
+                </p>
+              </div>
+
+              {error && (
+                <Alert className="border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800">
+                  <AlertDescription className="text-red-800 dark:text-red-200 text-sm">
+                    {error}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {resetEmailSent ? (
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6 text-center space-y-4">
+                  <div className="w-12 h-12 bg-green-100 dark:bg-green-800 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-300" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-green-900 dark:text-green-100">Email envoyé !</h3>
+                    <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                      Si un compte existe avec l'adresse {email}, vous recevrez les instructions de réinitialisation.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => {
+                        setShowForgotPassword(false);
+                        setResetEmailSent(false);
+                    }}
+                    variant="outline"
+                    className="w-full mt-2"
+                  >
+                    Retour à la connexion
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleResetPassword} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Votre Email
+                    </Label>
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      placeholder="vous@exemple.com"
+                      className="h-12 border-gray-300 dark:border-gray-600 focus:border-green-500 focus:ring-green-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400"
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full h-12 bg-green-600 hover:bg-green-700 text-white text-base font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                    disabled={loading}
+                  >
+                    {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                    Envoyer le lien
+                  </Button>
+                </form>
+              )}
+            </div>
           )}
-
-          {/* Form */}
-          <form onSubmit={handleSignIn} className="space-y-5">
-            {/* Email Field */}
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Votre Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="vous@exemple.com"
-                className="h-12 border-gray-300 dark:border-gray-600 focus:border-green-500 focus:ring-green-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400"
-              />
-            </div>
-
-            {/* Password Field */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Mot de passe
-                </Label>
-                <button
-                  type="button"
-                  className="text-sm text-green-600 hover:text-green-700 dark:text-green-500 dark:hover:text-green-400 font-medium"
-                >
-                  Mot de passe oublié?
-                </button>
-              </div>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  placeholder="••••••••"
-                  className="h-12 pr-10 border-gray-300 dark:border-gray-600 focus:border-green-500 focus:ring-green-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Remember Me Checkbox */}
-            <div className="flex items-center">
-              <input
-                id="remember"
-                type="checkbox"
-                className="h-4 w-4 text-green-500 focus:ring-green-500 border-gray-300 rounded"
-              />
-              <Label htmlFor="remember" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                Se souvenir de moi
-              </Label>
-            </div>
-
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full h-12 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 text-base font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-              disabled={loading}
-            >
-              {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-              Connexion
-            </Button>
-          </form>
         </div>
       </div>
     </div>

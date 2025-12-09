@@ -97,11 +97,30 @@ const Login = () => {
     setError('');
 
     try {
+      // Check local rate limit first to prevent spamming Supabase
+      const identifier = getClientIdentifier();
+      // Cast to any to bypass strict type check for now
+      const rateLimitResult = await serverRateLimiter.check('reset_password' as any, identifier);
+
+      if (!rateLimitResult.success) {
+        const resetTime = formatResetTime(rateLimitResult.reset);
+        await logRateLimitExceeded('reset_password', rateLimitResult.remaining);
+        throw new Error(
+          `Trop de tentatives. Veuillez patienter ${resetTime} avant de réessayer.`
+        );
+      }
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/update-password`,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Handle Supabase specific rate limit error (429 or generic message)
+        if (error.status === 429 || error.message?.toLowerCase().includes('rate limit')) {
+          throw new Error("Limite d'envoi d'emails atteinte. Pour des raisons de sécurité, veuillez attendre 60 secondes avant de réessayer.");
+        }
+        throw error;
+      }
       setResetEmailSent(true);
     } catch (error: any) {
       setError(error.message || "Erreur lors de l'envoi de l'email de réinitialisation");

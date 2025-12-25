@@ -7,12 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Search, 
-  Download, 
-  TrendingUp, 
-  TrendingDown, 
-  ArrowUpCircle, 
+import {
+  Search,
+  Download,
+  TrendingUp,
+  TrendingDown,
+  ArrowUpCircle,
   ArrowDownCircle,
   Calendar,
   Filter
@@ -23,6 +23,8 @@ import { fr } from 'date-fns/locale';
 import Pagination from '@/components/ui/pagination-custom';
 import { showSuccess } from '@/utils/toast';
 import type { MouvementCompte } from '@/types';
+import { getDateRange, PeriodFilter } from '@/utils/dateUtils';
+import { PeriodFilterTabs } from '@/components/ui/period-filter-tabs';
 
 const MouvementsComptes: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -31,6 +33,22 @@ const MouvementsComptes: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('month');
+
+  // Mettre à jour les dates quand la période change
+  React.useEffect(() => {
+    if (periodFilter !== 'all') {
+      const { current } = getDateRange(periodFilter);
+      if (current.start && current.end) {
+        setDateFrom(format(current.start, 'yyyy-MM-dd'));
+        setDateTo(format(current.end, 'yyyy-MM-dd'));
+      }
+    } else {
+      setDateFrom('');
+      setDateTo('');
+    }
+    setCurrentPage(1);
+  }, [periodFilter]);
 
   const { comptes } = useComptesFinanciers();
   const { mouvements, pagination, isLoading, error } = useMouvementsComptes(currentPage, {
@@ -58,9 +76,6 @@ const MouvementsComptes: React.FC = () => {
       mouvement.montant.toString().includes(search)
     );
   });
-
-  // Les statistiques globales viennent du hook useMouvementsComptesStats
-  // qui récupère TOUS les mouvements sans pagination
 
   const exportToCSV = () => {
     const headers = ['Date', 'Compte', 'Description', 'Débit', 'Crédit', 'Solde après'];
@@ -111,245 +126,253 @@ const MouvementsComptes: React.FC = () => {
 
   return (
     <div className="space-y-6">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Débits</CardTitle>
-              <TrendingDown className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              {statsLoading ? (
-                <div className="text-2xl font-bold text-gray-400">Chargement...</div>
-              ) : (
-                <>
-                  <div className="text-2xl font-bold text-red-600">
-                    {formatCurrency(globalStats.totalDebits, 'USD')}
-                  </div>
-                  <p className="text-xs text-muted-foreground">{globalStats.nombreDebits} mouvements</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
+      <div className="flex justify-end">
+        <PeriodFilterTabs
+          period={periodFilter}
+          onPeriodChange={setPeriodFilter}
+          showAllOption={true}
+        />
+      </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Crédits</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              {statsLoading ? (
-                <div className="text-2xl font-bold text-gray-400">Chargement...</div>
-              ) : (
-                <>
-                  <div className="text-2xl font-bold text-green-600">
-                    {formatCurrency(globalStats.totalCredits, 'USD')}
-                  </div>
-                  <p className="text-xs text-muted-foreground">{globalStats.nombreCredits} mouvements</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Solde Net</CardTitle>
-              <ArrowUpCircle className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              {statsLoading ? (
-                <div className="text-2xl font-bold text-gray-400">Chargement...</div>
-              ) : (
-                <>
-                  <div className="text-2xl font-bold text-blue-600">
-                    {formatCurrency(globalStats.soldeNet, 'USD')}
-                  </div>
-                  <p className="text-xs text-muted-foreground">Différence crédits - débits</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Mouvements</CardTitle>
-              <Calendar className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              {statsLoading ? (
-                <div className="text-2xl font-bold text-gray-400">...</div>
-              ) : (
-                <>
-                  <div className="text-2xl font-bold">{globalStats.nombreMouvements}</div>
-                  <p className="text-xs text-muted-foreground">Toutes pages confondues</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filters */}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              Filtres
-            </CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Débits</CardTitle>
+            <TrendingDown className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Rechercher..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-
-              <Select value={compteFilter} onValueChange={setCompteFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tous les comptes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les comptes</SelectItem>
-                  {comptes.map(compte => (
-                    <SelectItem key={compte.id} value={compte.id}>
-                      {compte.nom}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les types</SelectItem>
-                  <SelectItem value="debit">Débits</SelectItem>
-                  <SelectItem value="credit">Crédits</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                placeholder="Date début"
-              />
-
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                placeholder="Date fin"
-              />
-            </div>
-
-            <div className="flex justify-end mt-4">
-              <Button onClick={exportToCSV} variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Exporter CSV
-              </Button>
-            </div>
+            {statsLoading ? (
+              <div className="text-2xl font-bold text-gray-400">Chargement...</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-red-600">
+                  {formatCurrency(globalStats.totalDebits, 'USD')}
+                </div>
+                <p className="text-xs text-muted-foreground">{globalStats.nombreDebits} mouvements</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
-        {/* Table */}
         <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-800">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Date
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Compte
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Description
-                    </th>
-                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Type
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Débit
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Crédit
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {compteFilter === 'all' ? 'Solde Global' : 'Solde Compte'}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
-                      </td>
-                    </tr>
-                  ) : filteredMouvements.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                        Aucun mouvement trouvé
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredMouvements.map((mouvement) => (
-                      <tr key={mouvement.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <td className="px-4 py-3 text-sm">
-                          {format(new Date(mouvement.date_mouvement), 'dd/MM/yyyy HH:mm', { locale: fr })}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {mouvement.compte?.nom}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                          {mouvement.description}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {getTypeBadge(mouvement.type_mouvement)}
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm font-medium text-red-600">
-                          {mouvement.type_mouvement === 'debit' 
-                            ? formatCurrency(mouvement.montant, mouvement.compte?.devise || 'USD')
-                            : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm font-medium text-green-600">
-                          {mouvement.type_mouvement === 'credit' 
-                            ? formatCurrency(mouvement.montant, mouvement.compte?.devise || 'USD')
-                            : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm font-bold">
-                          {formatCurrency(
-                            compteFilter === 'all' && (mouvement as any).solde_global !== undefined
-                              ? (mouvement as any).solde_global
-                              : mouvement.solde_apres,
-                            'USD'
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Crédits</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            {statsLoading ? (
+              <div className="text-2xl font-bold text-gray-400">Chargement...</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-green-600">
+                  {formatCurrency(globalStats.totalCredits, 'USD')}
+                </div>
+                <p className="text-xs text-muted-foreground">{globalStats.nombreCredits} mouvements</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
-        {/* Pagination */}
-        {pagination && pagination.totalPages > 1 && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={pagination.totalPages}
-            onPageChange={setCurrentPage}
-          />
-        )}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Solde Net</CardTitle>
+            <ArrowUpCircle className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            {statsLoading ? (
+              <div className="text-2xl font-bold text-gray-400">Chargement...</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-blue-600">
+                  {formatCurrency(globalStats.soldeNet, 'USD')}
+                </div>
+                <p className="text-xs text-muted-foreground">Différence crédits - débits</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Mouvements</CardTitle>
+            <Calendar className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            {statsLoading ? (
+              <div className="text-2xl font-bold text-gray-400">...</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{globalStats.nombreMouvements}</div>
+                <p className="text-xs text-muted-foreground">Toutes pages confondues</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filtres
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Rechercher..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            <Select value={compteFilter} onValueChange={setCompteFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Tous les comptes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les comptes</SelectItem>
+                {comptes.map(compte => (
+                  <SelectItem key={compte.id} value={compte.id}>
+                    {compte.nom}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les types</SelectItem>
+                <SelectItem value="debit">Débits</SelectItem>
+                <SelectItem value="credit">Crédits</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              placeholder="Date début"
+            />
+
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              placeholder="Date fin"
+            />
+          </div>
+
+          <div className="flex justify-end mt-4">
+            <Button onClick={exportToCSV} variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Exporter CSV
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Date
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Compte
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Description
+                  </th>
+                  <th className="px-4 py-3 text-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Type
+                  </th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Débit
+                  </th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Crédit
+                  </th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {compteFilter === 'all' ? 'Solde Global' : 'Solde Compte'}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+                    </td>
+                  </tr>
+                ) : filteredMouvements.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                      Aucun mouvement trouvé
+                    </td>
+                  </tr>
+                ) : (
+                  filteredMouvements.map((mouvement) => (
+                    <tr key={mouvement.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <td className="px-4 py-3 text-sm">
+                        {format(new Date(mouvement.date_mouvement), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium">
+                        {mouvement.compte?.nom}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                        {mouvement.description}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {getTypeBadge(mouvement.type_mouvement)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-medium text-red-600">
+                        {mouvement.type_mouvement === 'debit'
+                          ? formatCurrency(mouvement.montant, mouvement.compte?.devise || 'USD')
+                          : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-medium text-green-600">
+                        {mouvement.type_mouvement === 'credit'
+                          ? formatCurrency(mouvement.montant, mouvement.compte?.devise || 'USD')
+                          : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-bold">
+                        {formatCurrency(
+                          compteFilter === 'all' && (mouvement as any).solde_global !== undefined
+                            ? (mouvement as any).solde_global
+                            : mouvement.solde_apres,
+                          'USD'
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pagination */}
+      {pagination && pagination.totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={pagination.totalPages}
+          onPageChange={setCurrentPage}
+        />
+      )}
     </div>
   );
 };

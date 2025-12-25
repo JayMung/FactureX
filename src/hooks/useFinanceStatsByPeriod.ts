@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subWeeks, subMonths, subYears } from 'date-fns';
-
-export type PeriodFilter = 'day' | 'week' | 'month' | 'year';
+import { getDateRange, getPeriodLabel, PeriodFilter } from '@/utils/dateUtils';
+export type { PeriodFilter };
 
 interface FinanceStats {
     totalRevenue: number;
@@ -12,11 +11,7 @@ interface FinanceStats {
     revenueChange: number;
     depensesChange: number;
     transactionsCount: number;
-}
-
-interface DateRange {
-    start: Date;
-    end: Date;
+    transactions: any[];
 }
 
 // Motifs de revenus (entrées d'argent - paiements clients)
@@ -45,57 +40,6 @@ const INTERNAL_TRANSFER_MOTIFS = [
     'Swap'  // Uniquement les swaps entre comptes
 ];
 
-const getDateRange = (period: PeriodFilter): { current: DateRange; previous: DateRange } => {
-    const now = new Date();
-
-    switch (period) {
-        case 'day':
-            return {
-                current: { start: startOfDay(now), end: endOfDay(now) },
-                previous: { start: startOfDay(subDays(now, 1)), end: endOfDay(subDays(now, 1)) }
-            };
-        case 'week':
-            return {
-                current: { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) },
-                previous: { start: startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 }), end: endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 }) }
-            };
-        case 'month':
-            return {
-                current: { start: startOfMonth(now), end: endOfMonth(now) },
-                previous: { start: startOfMonth(subMonths(now, 1)), end: endOfMonth(subMonths(now, 1)) }
-            };
-        case 'year':
-            return {
-                current: { start: startOfYear(now), end: endOfYear(now) },
-                previous: { start: startOfYear(subYears(now, 1)), end: endOfYear(subYears(now, 1)) }
-            };
-        default:
-            return {
-                current: { start: startOfMonth(now), end: endOfMonth(now) },
-                previous: { start: startOfMonth(subMonths(now, 1)), end: endOfMonth(subMonths(now, 1)) }
-            };
-    }
-};
-
-const getPeriodLabel = (period: PeriodFilter): string => {
-    const now = new Date();
-    const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
-
-    switch (period) {
-        case 'day':
-            return now.toLocaleDateString('fr-FR', options);
-        case 'week':
-            const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-            const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
-            return `${weekStart.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })} - ${weekEnd.toLocaleDateString('fr-FR', options)}`;
-        case 'month':
-            return now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-        case 'year':
-            return now.getFullYear().toString();
-        default:
-            return '';
-    }
-};
 
 const classifyTransaction = (t: { montant?: number; motif?: string; type_transaction?: string; benefice?: number }) => {
     const montant = Math.abs(t.montant || 0);
@@ -226,7 +170,8 @@ export const useFinanceStatsByPeriod = (period: PeriodFilter = 'month') => {
                     soldeNet: currentRevenue - currentDepenses,
                     revenueChange,
                     depensesChange,
-                    transactionsCount: (currentData || []).length
+                    transactionsCount: (currentData || []).length,
+                    transactions: currentData || []
                 });
             } catch (err: any) {
                 console.error('❌ Error fetching finance stats:', err);
@@ -241,6 +186,7 @@ export const useFinanceStatsByPeriod = (period: PeriodFilter = 'month') => {
 
     return {
         stats,
+        transactions: stats?.transactions || [],
         isLoading,
         error,
         periodLabel,

@@ -27,6 +27,7 @@ import CategoriesFinances from "./pages/Categories-Finances";
 import ApiKeys from "./pages/ApiKeys";
 import Webhooks from "./pages/Webhooks";
 import FinanceStatistics from "./pages/Finance-Statistics";
+import ColisMaritimePage from './pages/Colis-Maritime';
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import AdminSetup from "./pages/AdminSetup";
@@ -115,6 +116,11 @@ const App = () => (
               <Route path="/colis/aeriens/:id/modifier" element={
                 <ProtectedRouteEnhanced>
                   <ColisAeriensCreate />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/colis/maritime" element={
+                <ProtectedRouteEnhanced>
+                  <ColisMaritimePage />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/settings" element={

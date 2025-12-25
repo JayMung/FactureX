@@ -44,7 +44,7 @@ const getPeriodTitle = (period: PeriodFilter): string => {
 
 const FinanceStatisticsPage: React.FC = () => {
     const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>('month');
-    const { stats, isLoading, periodLabel, dateRange } = useFinanceStatsByPeriod(selectedPeriod);
+    const { stats, transactions, isLoading, periodLabel, dateRange } = useFinanceStatsByPeriod(selectedPeriod);
 
     const [generatingPDF, setGeneratingPDF] = useState(false);
     const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
@@ -78,6 +78,7 @@ const FinanceStatisticsPage: React.FC = () => {
                 revenueChange: stats.revenueChange,
                 depensesChange: stats.depensesChange,
                 transactionsCount: stats.transactionsCount,
+                transactions: transactions
             }, true);
 
             if (pdfBlob instanceof Blob) {

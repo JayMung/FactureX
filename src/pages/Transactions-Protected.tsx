@@ -10,16 +10,16 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
-import { 
-  Search, 
-  Plus, 
+import {
+  Search,
+  Plus,
   Filter,
   Eye,
   CheckCircle,
@@ -56,13 +56,16 @@ import type { Transaction } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { formatCurrency } from '../utils/formatCurrency';
 import { supabase } from '@/integrations/supabase/client';
-import { 
-  sanitizeUserContent, 
+import {
+  sanitizeUserContent,
   validateContentSecurity,
   sanitizeTransactionMotif,
   sanitizePaymentMethod,
   sanitizeCSV
 } from '@/lib/security/content-sanitization';
+
+import { getDateRange, PeriodFilter } from '@/utils/dateUtils';
+import { PeriodFilterTabs } from '@/components/ui/period-filter-tabs';
 
 const TransactionsProtected: React.FC = () => {
   usePageSetup({
@@ -72,6 +75,7 @@ const TransactionsProtected: React.FC = () => {
 
   // État pour l'onglet actif
   const [activeTab, setActiveTab] = useState<'clients' | 'internes' | 'swaps'>('clients');
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('month');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -84,7 +88,7 @@ const TransactionsProtected: React.FC = () => {
   const [bulkActionOpen, setBulkActionOpen] = useState(false);
   const [sortColumn, setSortColumn] = useState('date_paiement');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  
+
   // États pour les modales de confirmation
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
@@ -107,14 +111,23 @@ const TransactionsProtected: React.FC = () => {
     getCurrentUser();
   }, []);
 
-  // Filtrer selon l'onglet actif
+  // Filtrer selon l'onglet actif et la période
   const memoFilters = useMemo(() => {
     const baseFilters: any = {
       status: statusFilter === 'all' ? undefined : statusFilter,
       currency: currencyFilter === 'all' ? undefined : currencyFilter,
       search: searchTerm || undefined,
     };
-    
+
+    // Ajouter le filtre de période
+    if (periodFilter !== 'all') {
+      const { current } = getDateRange(periodFilter);
+      if (current.start && current.end) {
+        baseFilters.dateFrom = current.start.toISOString();
+        baseFilters.dateTo = current.end.toISOString();
+      }
+    }
+
     // Filtrer selon l'onglet
     if (activeTab === 'clients') {
       // Transactions commerciales (Commande, Transfert, Paiement Colis) - AVEC client
@@ -129,9 +142,9 @@ const TransactionsProtected: React.FC = () => {
       baseFilters.typeTransaction = ['transfert'];
       baseFilters.isSwap = true; // Uniquement les swaps (transferts sans client)
     }
-    
+
     return baseFilters;
-  }, [statusFilter, currencyFilter, searchTerm, activeTab]);
+  }, [statusFilter, currencyFilter, searchTerm, activeTab, periodFilter]);
 
   const {
     transactions,
@@ -170,13 +183,13 @@ const TransactionsProtected: React.FC = () => {
 
   const confirmDeleteTransaction = async () => {
     if (!transactionToDelete) return;
-    
+
     setIsDeleting(true);
     try {
       await deleteTransaction(transactionToDelete.id);
       setDeleteDialogOpen(false);
       setTransactionToDelete(null);
-      
+
       // La mise à jour optimiste dans useTransactions gère déjà l'actualisation
     } catch (error: any) {
       console.error('Erreur lors de la suppression:', error);
@@ -193,7 +206,7 @@ const TransactionsProtected: React.FC = () => {
 
   const confirmValidateTransaction = async () => {
     if (!transactionToValidate) return;
-    
+
     setIsValidating(true);
     try {
       await updateTransaction(transactionToValidate.id, {
@@ -203,7 +216,7 @@ const TransactionsProtected: React.FC = () => {
       });
       setValidateDialogOpen(false);
       setTransactionToValidate(null);
-      
+
       // La mutation dans useTransactions gère déjà l'actualisation
     } catch (error: any) {
       console.error('Erreur lors de la validation:', error);
@@ -287,7 +300,7 @@ const TransactionsProtected: React.FC = () => {
 
   const handleBulkDelete = async () => {
     if (selectedTransactions.size === 0) return;
-    
+
     try {
       setIsDeleting(true);
       const promises = Array.from(selectedTransactions).map(id => deleteTransaction(id));
@@ -304,9 +317,9 @@ const TransactionsProtected: React.FC = () => {
 
   const handleBulkStatusChange = async (newStatus: string) => {
     if (selectedTransactions.size === 0) return;
-    
+
     try {
-      const promises = Array.from(selectedTransactions).map(id => 
+      const promises = Array.from(selectedTransactions).map(id =>
         updateTransaction(id, {
           statut: newStatus,
           ...(newStatus === 'Servi' ? {
@@ -327,24 +340,24 @@ const TransactionsProtected: React.FC = () => {
   // Calculer les totaux des transactions sélectionnées
   const calculateSelectedTotals = () => {
     const selectedTxs = transactions.filter(t => selectedTransactions.has(t.id));
-    
+
     const totalUSD = selectedTxs
       .filter(t => t.devise === 'USD')
       .reduce((sum, t) => sum + t.montant, 0);
-    
+
     const totalCDF = selectedTxs
       .filter(t => t.devise === 'CDF')
       .reduce((sum, t) => sum + t.montant, 0);
-    
+
     const totalCNY = selectedTxs
       .reduce((sum, t) => sum + (t.montant_cny || 0), 0);
-    
+
     const totalFrais = selectedTxs
       .reduce((sum, t) => sum + t.frais, 0);
-    
+
     const totalBenefice = selectedTxs
       .reduce((sum, t) => sum + t.benefice, 0);
-    
+
     return { totalUSD, totalCDF, totalCNY, totalFrais, totalBenefice };
   };
 
@@ -404,7 +417,7 @@ const TransactionsProtected: React.FC = () => {
         })));
       }
     };
-    
+
     analyzeOldTransfers();
   }, []);
 
@@ -506,7 +519,7 @@ const TransactionsProtected: React.FC = () => {
                         </PermissionGuard>
                       </div>
                     </div>
-                    
+
                     {/* Deuxième ligne: Résumé des montants */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm border-t border-blue-200 pt-3">
                       <div className="flex items-center gap-2 sm:gap-4">
@@ -562,24 +575,24 @@ const TransactionsProtected: React.FC = () => {
           }} className="w-full">
             <div className="flex justify-center mb-6">
               <TabsList className="grid w-full max-w-3xl grid-cols-3 h-14 p-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                <TabsTrigger 
-                  value="clients" 
+                <TabsTrigger
+                  value="clients"
                   className="flex items-center justify-center gap-2 h-full text-base font-semibold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-green-600 transition-all border-r border-gray-200 dark:border-gray-700 last:border-r-0 data-[state=active]:border-transparent"
                 >
                   <DollarSign className="h-5 w-5" />
                   <span className="hidden sm:inline">Transactions Client</span>
                   <span className="sm:hidden">Clients</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="internes" 
+                <TabsTrigger
+                  value="internes"
                   className="flex items-center justify-center gap-2 h-full text-base font-semibold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-orange-600 transition-all border-r border-gray-200 dark:border-gray-700 last:border-r-0 data-[state=active]:border-transparent"
                 >
                   <Receipt className="h-5 w-5" />
                   <span className="hidden sm:inline">Opérations Internes</span>
                   <span className="sm:hidden">Internes</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="swaps" 
+                <TabsTrigger
+                  value="swaps"
                   className="flex items-center justify-center gap-2 h-full text-base font-semibold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 transition-all border-r border-gray-200 dark:border-gray-700 last:border-r-0 data-[state=active]:border-transparent"
                 >
                   <Wallet className="h-5 w-5" />
@@ -589,213 +602,221 @@ const TransactionsProtected: React.FC = () => {
               </TabsList>
             </div>
 
-          {/* Stats Cards - Design System */}
-          <div className="mb-6">
-            <TransactionStats globalTotals={globalTotals} />
-          </div>
 
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Rechercher par client, ID ou mode de paiement..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-10"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={(value) => {
-              setStatusFilter(value);
-              setCurrentPage(1);
-            }}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="Servi">Servi</SelectItem>
-                <SelectItem value="En attente">En attente</SelectItem>
-                <SelectItem value="Remboursé">Remboursé</SelectItem>
-                <SelectItem value="Annulé">Annulé</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={currencyFilter} onValueChange={(value) => {
-              setCurrencyFilter(value);
-              setCurrentPage(1);
-            }}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Devise" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes devises</SelectItem>
-                <SelectItem value="USD">USD</SelectItem>
-                <SelectItem value="CDF">CDF</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" className="w-full sm:w-auto">
-              <Filter className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Plus de filtres</span>
-              <span className="sm:hidden">Filtres</span>
-            </Button>
-          </div>
-
-          {/* Transactions Table */}
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <CardTitle>{tabConfig.title}</CardTitle>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={exportTransactions}
-                    disabled={transactions.length === 0}
-                    className="w-full sm:w-auto"
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Exporter
-                  </Button>
-                  
-                  <PermissionGuard module="finances" permission="create">
-                    <Button className="bg-green-500 hover:bg-green-600 w-full sm:w-auto" onClick={handleAddTransaction}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      <span className="hidden sm:inline">{tabConfig.buttonText}</span>
-                      <span className="sm:hidden">{tabConfig.buttonTextMobile}</span>
-                    </Button>
-                  </PermissionGuard>
-                </div>
+            {/* Stats Cards - Design System */}
+            <div className="mb-6 space-y-4">
+              <div className="flex justify-end">
+                <PeriodFilterTabs
+                  period={periodFilter}
+                  onPeriodChange={setPeriodFilter}
+                  showAllOption={true}
+                />
               </div>
-            </CardHeader>
-            <CardContent>
-              <EnhancedTable
-                data={commercialTransactions}
-                loading={loading}
-                emptyMessage="Aucune transaction"
-                emptySubMessage="Commencez par créer votre première transaction"
-                onSort={handleSort}
-                sortKey={sortColumn}
-                sortDirection={sortDirection}
-                bulkSelect={{
-                  selected: Array.from(selectedTransactions),
-                  onSelectAll: handleSelectAll,
-                  onSelectItem: (id, checked) => handleSelectTransaction(id),
-                  getId: (transaction: Transaction) => transaction.id,
-                  isAllSelected: selectedTransactions.size === transactions.length && transactions.length > 0,
-                  isPartiallySelected: selectedTransactions.size > 0 && selectedTransactions.size < transactions.length
-                }}
-                columns={getTransactionColumns({
-                  activeTab,
-                  onView: handleViewTransaction,
-                  onEdit: handleEditTransaction,
-                  onDuplicate: handleDuplicateTransaction,
-                  onDelete: handleDeleteTransaction,
-                  onStatusChange: handleStatusChange,
-                  canUpdate: checkPermission('finances', 'update'),
-                  canDelete: checkPermission('finances', 'delete')
-                })}
-              />
+              <TransactionStats globalTotals={globalTotals} />
+            </div>
 
-              {/* Pagination avec sélecteur de taille */}
-              {pagination && (
-                <div className="mt-6 space-y-4">
-                  {/* Informations et sélecteur de taille - Stack sur mobile */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-600">Afficher</span>
-                        <Select
-                          value={String(pageSize)}
-                          onValueChange={(value) => {
-                            const nextSize = parseInt(value, 10);
-                            if (!Number.isNaN(nextSize)) {
-                              setPageSize(nextSize);
-                              setCurrentPage(1);
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="w-20 h-8">
-                            <SelectValue placeholder="10" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="10">10</SelectItem>
-                            <SelectItem value="20">20</SelectItem>
-                            <SelectItem value="25">25</SelectItem>
-                            <SelectItem value="50">50</SelectItem>
-                            <SelectItem value="100">100</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <span className="text-sm text-gray-600">par page</span>
-                      </div>
-                      <span className="text-sm text-gray-500 sm:ml-4">
-                        {pagination.count} transaction{pagination.count > 1 ? 's' : ''} au total
-                      </span>
-                    </div>
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Rechercher par client, ID ou mode de paiement..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={(value) => {
+                setStatusFilter(value);
+                setCurrentPage(1);
+              }}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="Servi">Servi</SelectItem>
+                  <SelectItem value="En attente">En attente</SelectItem>
+                  <SelectItem value="Remboursé">Remboursé</SelectItem>
+                  <SelectItem value="Annulé">Annulé</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={currencyFilter} onValueChange={(value) => {
+                setCurrencyFilter(value);
+                setCurrentPage(1);
+              }}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Devise" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes devises</SelectItem>
+                  <SelectItem value="USD">USD</SelectItem>
+                  <SelectItem value="CDF">CDF</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" className="w-full sm:w-auto">
+                <Filter className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Plus de filtres</span>
+                <span className="sm:hidden">Filtres</span>
+              </Button>
+            </div>
+
+            {/* Transactions Table */}
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                  <CardTitle>{tabConfig.title}</CardTitle>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={exportTransactions}
+                      disabled={transactions.length === 0}
+                      className="w-full sm:w-auto"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Exporter
+                    </Button>
+
+                    <PermissionGuard module="finances" permission="create">
+                      <Button className="bg-green-500 hover:bg-green-600 w-full sm:w-auto" onClick={handleAddTransaction}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        <span className="hidden sm:inline">{tabConfig.buttonText}</span>
+                        <span className="sm:hidden">{tabConfig.buttonTextMobile}</span>
+                      </Button>
+                    </PermissionGuard>
                   </div>
-                  
-                  {/* Pagination - Centrée et responsive */}
-                  {pagination.totalPages > 1 && (
-                    <div className="flex justify-center">
-                      <Pagination
-                        currentPage={currentPage}
-                        totalPages={pagination.totalPages}
-                        onPageChange={setCurrentPage}
-                        className="w-full max-w-full overflow-x-auto"
-                      />
-                    </div>
-                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent>
+                <EnhancedTable
+                  data={commercialTransactions}
+                  loading={loading}
+                  emptyMessage="Aucune transaction"
+                  emptySubMessage="Commencez par créer votre première transaction"
+                  onSort={handleSort}
+                  sortKey={sortColumn}
+                  sortDirection={sortDirection}
+                  bulkSelect={{
+                    selected: Array.from(selectedTransactions),
+                    onSelectAll: handleSelectAll,
+                    onSelectItem: (id, checked) => handleSelectTransaction(id),
+                    getId: (transaction: Transaction) => transaction.id,
+                    isAllSelected: selectedTransactions.size === transactions.length && transactions.length > 0,
+                    isPartiallySelected: selectedTransactions.size > 0 && selectedTransactions.size < transactions.length
+                  }}
+                  columns={getTransactionColumns({
+                    activeTab,
+                    onView: handleViewTransaction,
+                    onEdit: handleEditTransaction,
+                    onDuplicate: handleDuplicateTransaction,
+                    onDelete: handleDeleteTransaction,
+                    onStatusChange: handleStatusChange,
+                    canUpdate: checkPermission('finances', 'update'),
+                    canDelete: checkPermission('finances', 'delete')
+                  })}
+                />
 
-          {/* Transaction Form Modal */}
-          <TransactionFormFinancial
-            isOpen={isFormOpen}
-            onClose={() => setIsFormOpen(false)}
-            onSuccess={handleFormSuccess}
-            transaction={selectedTransaction}
-            defaultType={tabConfig.defaultType}
-          />
+                {/* Pagination avec sélecteur de taille */}
+                {pagination && (
+                  <div className="mt-6 space-y-4">
+                    {/* Informations et sélecteur de taille - Stack sur mobile */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-gray-600">Afficher</span>
+                          <Select
+                            value={String(pageSize)}
+                            onValueChange={(value) => {
+                              const nextSize = parseInt(value, 10);
+                              if (!Number.isNaN(nextSize)) {
+                                setPageSize(nextSize);
+                                setCurrentPage(1);
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="w-20 h-8">
+                              <SelectValue placeholder="10" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="10">10</SelectItem>
+                              <SelectItem value="20">20</SelectItem>
+                              <SelectItem value="25">25</SelectItem>
+                              <SelectItem value="50">50</SelectItem>
+                              <SelectItem value="100">100</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <span className="text-sm text-gray-600">par page</span>
+                        </div>
+                        <span className="text-sm text-gray-500 sm:ml-4">
+                          {pagination.count} transaction{pagination.count > 1 ? 's' : ''} au total
+                        </span>
+                      </div>
+                    </div>
 
-          {/* Delete Confirmation Dialogs */}
-          <ConfirmDialog
-            open={deleteDialogOpen}
-            onOpenChange={setDeleteDialogOpen}
-            title="Supprimer la transaction"
-            description={`Êtes-vous sûr de vouloir supprimer la transaction de ${formatCurrency(transactionToDelete?.montant || 0, transactionToDelete?.devise || 'USD')} ? Cette action est irréversible.`}
-            confirmText="Supprimer"
-            cancelText="Annuler"
-            onConfirm={confirmDeleteTransaction}
-            isConfirming={isDeleting}
-            type="delete"
-          />
+                    {/* Pagination - Centrée et responsive */}
+                    {pagination.totalPages > 1 && (
+                      <div className="flex justify-center">
+                        <Pagination
+                          currentPage={currentPage}
+                          totalPages={pagination.totalPages}
+                          onPageChange={setCurrentPage}
+                          className="w-full max-w-full overflow-x-auto"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-          <ConfirmDialog
-            open={validateDialogOpen}
-            onOpenChange={setValidateDialogOpen}
-            title="Valider la transaction"
-            description={`Êtes-vous sûr de vouloir valider la transaction de ${formatCurrency(transactionToValidate?.montant || 0, transactionToValidate?.devise || 'USD')} ? Le statut passera à "Servi".`}
-            confirmText="Valider"
-            cancelText="Annuler"
-            onConfirm={confirmValidateTransaction}
-            isConfirming={isValidating}
-            type="warning"
-          />
+            {/* Transaction Form Modal */}
+            <TransactionFormFinancial
+              isOpen={isFormOpen}
+              onClose={() => setIsFormOpen(false)}
+              onSuccess={handleFormSuccess}
+              transaction={selectedTransaction}
+              defaultType={tabConfig.defaultType}
+            />
 
-          {/* Transaction Details Modal */}
-          <TransactionDetailsModal
-            transaction={transactionToView}
-            isOpen={detailsModalOpen}
-            onClose={() => {
-              setDetailsModalOpen(false);
-              setTransactionToView(null);
-            }}
-            onUpdate={updateTransaction}
-            onDuplicate={handleDuplicateTransaction}
-          />
+            {/* Delete Confirmation Dialogs */}
+            <ConfirmDialog
+              open={deleteDialogOpen}
+              onOpenChange={setDeleteDialogOpen}
+              title="Supprimer la transaction"
+              description={`Êtes-vous sûr de vouloir supprimer la transaction de ${formatCurrency(transactionToDelete?.montant || 0, transactionToDelete?.devise || 'USD')} ? Cette action est irréversible.`}
+              confirmText="Supprimer"
+              cancelText="Annuler"
+              onConfirm={confirmDeleteTransaction}
+              isConfirming={isDeleting}
+              type="delete"
+            />
+
+            <ConfirmDialog
+              open={validateDialogOpen}
+              onOpenChange={setValidateDialogOpen}
+              title="Valider la transaction"
+              description={`Êtes-vous sûr de vouloir valider la transaction de ${formatCurrency(transactionToValidate?.montant || 0, transactionToValidate?.devise || 'USD')} ? Le statut passera à "Servi".`}
+              confirmText="Valider"
+              cancelText="Annuler"
+              onConfirm={confirmValidateTransaction}
+              isConfirming={isValidating}
+              type="warning"
+            />
+
+            {/* Transaction Details Modal */}
+            <TransactionDetailsModal
+              transaction={transactionToView}
+              isOpen={detailsModalOpen}
+              onClose={() => {
+                setDetailsModalOpen(false);
+                setTransactionToView(null);
+              }}
+              onUpdate={updateTransaction}
+              onDuplicate={handleDuplicateTransaction}
+            />
           </Tabs>
         </div>
       </Layout>

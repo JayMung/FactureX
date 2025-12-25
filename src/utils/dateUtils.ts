@@ -1,43 +1,77 @@
-/**
- * Utility functions for date handling
- * Fixes timezone issues when converting Date to YYYY-MM-DD format
- */
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subWeeks, subMonths, subYears, format } from 'date-fns';
 
-/**
- * Converts a Date object to YYYY-MM-DD format in local timezone
- * Avoids the common issue where toISOString() shifts the date by one day
- * 
- * @param date - The date to format
- * @returns Date string in YYYY-MM-DD format (local timezone)
- * 
- * @example
- * const date = new Date('2025-11-04');
- * formatDateForInput(date); // Returns "2025-11-04" (not "2025-11-03")
- */
-export function formatDateForInput(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  
-  return `${year}-${month}-${day}`;
+export type PeriodFilter = 'day' | 'week' | 'month' | 'year' | 'all';
+
+export interface DateRange {
+  start: Date | null;
+  end: Date | null;
 }
 
-/**
- * Gets today's date in YYYY-MM-DD format (local timezone)
- * 
- * @returns Today's date string in YYYY-MM-DD format
- */
-export function getTodayDateString(): string {
+export const getDateRange = (period: PeriodFilter): { current: DateRange; previous: DateRange } => {
+  const now = new Date();
+
+  if (period === 'all') {
+    return {
+      current: { start: null, end: null },
+      previous: { start: null, end: null }
+    };
+  }
+
+  switch (period) {
+    case 'day':
+      return {
+        current: { start: startOfDay(now), end: endOfDay(now) },
+        previous: { start: startOfDay(subDays(now, 1)), end: endOfDay(subDays(now, 1)) }
+      };
+    case 'week':
+      return {
+        current: { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) },
+        previous: { start: startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 }), end: endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 }) }
+      };
+    case 'month':
+      return {
+        current: { start: startOfMonth(now), end: endOfMonth(now) },
+        previous: { start: startOfMonth(subMonths(now, 1)), end: endOfMonth(subMonths(now, 1)) }
+      };
+    case 'year':
+      return {
+        current: { start: startOfYear(now), end: endOfYear(now) },
+        previous: { start: startOfYear(subYears(now, 1)), end: endOfYear(subYears(now, 1)) }
+      };
+    default:
+      return {
+        current: { start: startOfMonth(now), end: endOfMonth(now) },
+        previous: { start: startOfMonth(subMonths(now, 1)), end: endOfMonth(subMonths(now, 1)) }
+      };
+  }
+};
+
+export const getPeriodLabel = (period: PeriodFilter): string => {
+  if (period === 'all') return 'Tout le temps';
+
+  const now = new Date();
+  const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
+
+  switch (period) {
+    case 'day':
+      return now.toLocaleDateString('fr-FR', options);
+    case 'week':
+      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+      return `${weekStart.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })} - ${weekEnd.toLocaleDateString('fr-FR', options)}`;
+    case 'month':
+      return now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    case 'year':
+      return now.getFullYear().toString();
+    default:
+      return '';
+  }
+};
+
+export const formatDateForInput = (date: Date): string => {
+  return format(date, 'yyyy-MM-dd');
+};
+
+export const getTodayDateString = (): string => {
   return formatDateForInput(new Date());
-}
-
-/**
- * Parses a YYYY-MM-DD string to a Date object at midnight local time
- * 
- * @param dateString - Date string in YYYY-MM-DD format
- * @returns Date object at midnight local time
- */
-export function parseDateString(dateString: string): Date {
-  const [year, month, day] = dateString.split('-').map(Number);
-  return new Date(year, month - 1, day);
-}
+};

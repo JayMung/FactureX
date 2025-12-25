@@ -27,6 +27,8 @@ import Layout from '../components/layout/Layout';
 import { useSorting } from '../hooks/useSorting';
 import { usePageSetup } from '../hooks/use-page-setup';
 import Pagination from '@/components/ui/pagination-custom';
+import { getDateRange, PeriodFilter } from '@/utils/dateUtils';
+import { PeriodFilterTabs } from '@/components/ui/period-filter-tabs';
 
 // Error Boundary component
 class ErrorBoundary extends React.Component<
@@ -81,21 +83,36 @@ const ColisAeriens: React.FC = () => {
   const [transitaireFilter, setTransitaireFilter] = useState<string>('tous');
   const [fournisseurFilter, setFournisseurFilter] = useState<string>('tous');
   const [currentPage, setCurrentPage] = useState(1);
+
   const PAGE_SIZE = 10;
+
+  // Filtre de période
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('month');
+  const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
+
+  // Mettre à jour les dates quand la période change
+  useEffect(() => {
+    if (periodFilter !== 'all') {
+      const { current } = getDateRange(periodFilter);
+      setDateRange({ start: current.start, end: current.end });
+    } else {
+      setDateRange({ start: null, end: null });
+    }
+  }, [periodFilter]);
 
   // Hook pour mettre à jour la date d'arrivée
   const updateDateArrivee = async (colisId: string, date: Date | null) => {
     try {
       const { error } = await supabase
         .from('colis')
-        .update({ 
+        .update({
           date_arrivee_agence: date ? date.toISOString() : null,
           updated_at: new Date().toISOString()
         })
         .eq('id', colisId);
 
       if (error) throw error;
-      
+
       // Recharger les colis
       loadColis();
       toast.success('Date d\'arrivée mise à jour avec succès');
@@ -122,15 +139,15 @@ const ColisAeriens: React.FC = () => {
     subtitle: 'Gestion des colis par voie aérienne'
   });
 
-  // Charger les colis aériens
+  // Charger les colis aériens quand la plage de date change
   useEffect(() => {
     loadColis();
-  }, []);
+  }, [dateRange]);
 
   const loadColis = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('colis')
         .select(`
           *,
@@ -140,6 +157,15 @@ const ColisAeriens: React.FC = () => {
         .eq('type_livraison', 'aerien')
         .order('created_at', { ascending: false });
 
+      // Appliquer le filtre de date
+      if (dateRange.start && dateRange.end) {
+        query = query
+          .gte('created_at', dateRange.start.toISOString())
+          .lte('created_at', dateRange.end.toISOString());
+      }
+
+      const { data, error } = await query;
+
       // Charger les informations des créateurs séparément
       if (data && data.length > 0) {
         const creatorIds = [...new Set(data.map(c => c.created_by).filter(Boolean))];
@@ -148,7 +174,7 @@ const ColisAeriens: React.FC = () => {
             .from('profiles')
             .select('id, first_name, last_name, email')
             .in('id', creatorIds);
-          
+
           // Ajouter les informations du créateur à chaque colis
           if (creators) {
             data.forEach((colis: any) => {
@@ -162,7 +188,7 @@ const ColisAeriens: React.FC = () => {
       }
 
       if (error) throw error;
-      
+
       setColis(data || []);
 
       // Calculer les totaux globaux (tous les colis aériens, non filtrés)
@@ -188,16 +214,16 @@ const ColisAeriens: React.FC = () => {
 
   // Filtrer les colis
   const filteredColis = sortedData.filter(c => {
-    const matchesSearch = 
+    const matchesSearch =
       c.client?.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.tracking_chine?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.numero_commande?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.fournisseur.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatut = statutFilter === 'tous' || c.statut === statutFilter;
     const matchesTransitaire = transitaireFilter === 'tous' || c.transitaire?.nom === transitaireFilter;
     const matchesFournisseur = fournisseurFilter === 'tous' || c.fournisseur === fournisseurFilter;
-    
+
     return matchesSearch && matchesStatut && matchesTransitaire && matchesFournisseur;
   });
 
@@ -336,7 +362,7 @@ const ColisAeriens: React.FC = () => {
       showSuccess('Colis supprimé avec succès');
       setDeleteDialogOpen(false);
       setColisToDelete(null);
-      
+
       // Recharger pour synchroniser avec la base de données
       setTimeout(() => loadColis(), 500);
     } catch (error) {
@@ -360,780 +386,788 @@ const ColisAeriens: React.FC = () => {
       <Layout>
         <ErrorBoundary>
           <div className="space-y-6">
-          {/* En-tête avec statistiques */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">Total Colis</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-                  </div>
-                  <Package className="h-8 w-8 text-blue-500" />
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex justify-end">
+              <PeriodFilterTabs
+                period={periodFilter}
+                onPeriodChange={setPeriodFilter}
+                showAllOption={true}
+              />
+            </div>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">En Transit</p>
-                    <p className="text-2xl font-bold text-yellow-600">{stats.enTransit}</p>
+            {/* En-tête avec statistiques */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Total Colis</p>
+                      <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                    </div>
+                    <Package className="h-8 w-8 text-blue-500" />
                   </div>
-                  <Plane className="h-8 w-8 text-yellow-500" />
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">Arrivés</p>
-                    <p className="text-2xl font-bold text-green-600">{stats.arrives}</p>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">En Transit</p>
+                      <p className="text-2xl font-bold text-yellow-600">{stats.enTransit}</p>
+                    </div>
+                    <Plane className="h-8 w-8 text-yellow-500" />
                   </div>
-                  <Package className="h-8 w-8 text-green-500" />
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">Total Poids</p>
-                    <p className="text-2xl font-bold text-red-600">{stats.poidsTotal ? `${stats.poidsTotal.toFixed(2)} kg` : '0.00 kg'}</p>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Arrivés</p>
+                      <p className="text-2xl font-bold text-green-600">{stats.arrives}</p>
+                    </div>
+                    <Package className="h-8 w-8 text-green-500" />
                   </div>
-                  <Package className="h-8 w-8 text-red-500" />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Total Poids</p>
+                      <p className="text-2xl font-bold text-red-600">{stats.poidsTotal ? `${stats.poidsTotal.toFixed(2)} kg` : '0.00 kg'}</p>
+                    </div>
+                    <Package className="h-8 w-8 text-red-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Tableau des colis */}
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <Plane className="h-5 w-5 text-blue-500" />
+                    Liste des Colis Aériens ({filteredColis.length})
+                  </CardTitle>
+                  <Button
+                    onClick={() => navigate('/colis/aeriens/nouveau')}
+                    className="bg-green-500 hover:bg-green-600"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouveau Colis
+                  </Button>
                 </div>
+
+                {/* Filtres et recherche */}
+                <div className="flex flex-col gap-4 mt-4">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Rechercher par client, tracking, commande..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <select
+                      value={statutFilter}
+                      onChange={(e) => setStatutFilter(e.target.value)}
+                      className="px-4 py-2 border rounded-md bg-white"
+                    >
+                      <option value="tous">Tous les statuts</option>
+                      <option value="en_preparation">En préparation</option>
+                      <option value="expedie_chine">Expédié Chine</option>
+                      <option value="en_transit">En transit</option>
+                      <option value="arrive_congo">Arrivé Congo</option>
+                      <option value="recupere_client">Récupéré</option>
+                      <option value="livre">Livré</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <select
+                      value={transitaireFilter}
+                      onChange={(e) => setTransitaireFilter(e.target.value)}
+                      className="flex-1 px-4 py-2 border rounded-md bg-white"
+                    >
+                      <option value="tous">Tous les transitaires</option>
+                      {transitaires.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={fournisseurFilter}
+                      onChange={(e) => setFournisseurFilter(e.target.value)}
+                      className="flex-1 px-4 py-2 border rounded-md bg-white"
+                    >
+                      <option value="tous">Tous les fournisseurs</option>
+                      {fournisseurs.map(f => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
+                    <p className="mt-4 text-gray-500">Chargement des colis...</p>
+                  </div>
+                ) : filteredColis.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Package className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                    <p className="text-gray-500 text-lg">Aucun colis trouvé</p>
+                    <p className="text-gray-400 text-sm mt-2">
+                      {searchTerm || statutFilter !== 'tous' || transitaireFilter !== 'tous' || fournisseurFilter !== 'tous'
+                        ? 'Essayez de modifier vos filtres'
+                        : 'Commencez par créer un nouveau colis'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl shadow-sm border border-gray-100">
+                    <table className="w-full min-w-[900px]">
+                      <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+                        <tr>
+                          <SortableHeader
+                            title="ID Colis"
+                            sortKey="id"
+                            currentSort={sortConfig}
+                            onSort={handleSort}
+                            className="text-left py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
+                          />
+                          <SortableHeader
+                            title="Client"
+                            sortKey="client.nom"
+                            currentSort={sortConfig}
+                            onSort={handleSort}
+                            className="text-left py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
+                          />
+                          <SortableHeader
+                            title="Fournisseur"
+                            sortKey="fournisseur"
+                            currentSort={sortConfig}
+                            onSort={handleSort}
+                            className="hidden md:table-cell py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
+                          />
+                          <SortableHeader
+                            title="Tracking"
+                            sortKey="tracking_chine"
+                            currentSort={sortConfig}
+                            onSort={handleSort}
+                            className="hidden lg:table-cell py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
+                          />
+                          <SortableHeader
+                            title="Qté"
+                            sortKey="quantite"
+                            currentSort={sortConfig}
+                            onSort={handleSort}
+                            className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
+                          />
+                          <SortableHeader
+                            title="Poids"
+                            sortKey="poids"
+                            currentSort={sortConfig}
+                            onSort={handleSort}
+                            className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
+                          />
+                          <SortableHeader
+                            title="Tarif/kg"
+                            sortKey="tarif_kg"
+                            currentSort={sortConfig}
+                            onSort={handleSort}
+                            className="hidden md:table-cell py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
+                          />
+                          <SortableHeader
+                            title="Montant"
+                            sortKey="montant_a_payer"
+                            currentSort={sortConfig}
+                            onSort={handleSort}
+                            className="text-right py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
+                          />
+                          <SortableHeader
+                            title="Transitaire"
+                            sortKey="transitaire.nom"
+                            currentSort={sortConfig}
+                            onSort={handleSort}
+                            className="hidden lg:table-cell py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
+                          />
+                          <SortableHeader
+                            title="Statut"
+                            sortKey="statut"
+                            currentSort={sortConfig}
+                            onSort={handleSort}
+                            className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
+                          />
+                          <SortableHeader
+                            title="Paiement"
+                            sortKey="statut_paiement"
+                            currentSort={sortConfig}
+                            onSort={handleSort}
+                            className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
+                          />
+                          <SortableHeader
+                            title="Date Arrivée"
+                            sortKey="date_arrivee_agence"
+                            currentSort={sortConfig}
+                            onSort={handleSort}
+                            className="hidden md:table-cell py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
+                          />
+                          <th className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm w-16">
+                            <span className="flex items-center justify-center">
+                              <MoreVertical className="h-4 w-4" />
+                            </span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {paginatedColis.map((c, index) => (
+                          <tr
+                            key={c.id}
+                            className="hover:bg-gradient-to-r hover:from-blue-50/30 hover:to-indigo-50/30 transition-all duration-200 border-b border-gray-50"
+                          >
+                            <td className="py-4 px-3 md:px-4">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-400 font-mono">#{startIndex + index + 1}</span>
+                                <button
+                                  onClick={(e) => handleViewDetails(c, e)}
+                                  className="text-blue-600 hover:text-blue-800 font-mono text-sm font-semibold hover:bg-blue-50 px-2 py-1 rounded transition-colors"
+                                  title="Voir les détails du colis"
+                                  type="button"
+                                >
+                                  {generateColisId(c)}
+                                </button>
+                              </div>
+                              <div className="mt-3 space-y-1 lg:hidden">
+                                <p className="text-xs uppercase tracking-wide text-gray-500">Tracking</p>
+                                <p className="text-sm font-mono text-gray-800 bg-gray-50 px-2 py-1 rounded">
+                                  {c.tracking_chine || '-'}
+                                </p>
+                                {c.numero_commande && (
+                                  <p className="text-[11px] text-gray-500">Cmd: {c.numero_commande}</p>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-4 px-3 md:px-4">
+                              <div className="flex flex-col">
+                                <p className="font-semibold text-gray-900">{c.client?.nom}</p>
+                                <p className="text-xs text-gray-500 flex items-center gap-1">
+                                  <Package className="h-3 w-3" />
+                                  {c.client?.telephone}
+                                </p>
+                              </div>
+                            </td>
+                            <td className="hidden md:table-cell py-4 px-3 md:px-4">
+                              <Badge className="text-xs bg-purple-50 text-purple-700 border-purple-200 font-medium" {...({ variant: 'outline' } as any)}>
+                                {c.fournisseur}
+                              </Badge>
+                            </td>
+                            <td className="hidden lg:table-cell py-4 px-3 md:px-4">
+                              <div className="text-sm space-y-1">
+                                <p className="text-sm font-mono text-gray-700 bg-gray-50 px-2 py-1 rounded">
+                                  {c.tracking_chine || '-'}
+                                </p>
+                                {c.numero_commande && (
+                                  <p className="text-xs text-gray-500">Cmd: {c.numero_commande}</p>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-4 px-3 md:px-4 text-center">
+                              <div className="inline-flex items-center justify-center bg-blue-50 text-blue-700 rounded-lg px-3 py-1 font-bold text-sm">
+                                {c.quantite || 1}
+                              </div>
+                            </td>
+                            <td className="py-4 px-3 md:px-4 text-center">
+                              <div className="inline-flex items-center justify-center bg-orange-50 text-orange-700 rounded-lg px-3 py-1 font-bold text-sm">
+                                {c.poids} kg
+                              </div>
+                            </td>
+                            <td className="hidden md:table-cell py-4 px-3 md:px-4 text-center">
+                              <span className="text-sm font-mono bg-gray-50 px-2 py-1 rounded">${c.tarif_kg}</span>
+                            </td>
+                            <td className="py-4 px-3 md:px-4 text-right">
+                              <div className="flex items-center justify-end">
+                                <span className="font-bold text-green-700 bg-green-50 px-3 py-1 rounded-lg text-sm">
+                                  {formatCurrency(c.montant_a_payer, 'USD')}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="hidden lg:table-cell py-4 px-3 md:px-4">
+                              <div className="flex items-center gap-2">
+                                <Truck className="h-4 w-4 text-gray-400" />
+                                <span className="text-sm text-gray-600">
+                                  {c.transitaire?.nom || '-'}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-2 md:px-4 text-center">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 flex items-center gap-2 hover:bg-gray-50"
+                                    {...({ variant: 'outline', size: 'sm' } as any)}
+                                  >
+                                    {getStatutBadge(c.statut)}
+                                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="center" className="w-48">
+                                  <DropdownMenuItem
+                                    onClick={() => handleStatutChange(c.id, 'en_preparation')}
+                                    className="cursor-pointer"
+                                  >
+                                    <Clock className="h-4 w-4 text-gray-600 mr-2" />
+                                    En préparation
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleStatutChange(c.id, 'expedie_chine')}
+                                    className="cursor-pointer"
+                                  >
+                                    <Plane className="h-4 w-4 text-blue-600 mr-2" />
+                                    Expédié Chine
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleStatutChange(c.id, 'en_transit')}
+                                    className="cursor-pointer"
+                                  >
+                                    <Truck className="h-4 w-4 text-yellow-600 mr-2" />
+                                    En transit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleStatutChange(c.id, 'arrive_congo')}
+                                    className="cursor-pointer"
+                                  >
+                                    <MapPin className="h-4 w-4 text-green-600 mr-2" />
+                                    Arrivé Congo
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleStatutChange(c.id, 'recupere_client')}
+                                    className="cursor-pointer"
+                                  >
+                                    <PackageCheck className="h-4 w-4 text-purple-600 mr-2" />
+                                    Récupéré
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleStatutChange(c.id, 'livre')}
+                                    className="cursor-pointer"
+                                  >
+                                    <CheckCircle className="h-4 w-4 text-emerald-600 mr-2" />
+                                    Livré
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                            <td className="py-3 px-2 md:px-4 text-center">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 flex items-center gap-2 hover:bg-gray-50"
+                                    {...({ variant: 'outline', size: 'sm' } as any)}
+                                  >
+                                    {getStatutPaiementBadge(c.statut_paiement)}
+                                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="center" className="w-48">
+                                  <DropdownMenuItem
+                                    onClick={() => handleStatutPaiementChange(c.id, 'non_paye')}
+                                    className="cursor-pointer"
+                                  >
+                                    <X className="h-4 w-4 text-red-600 mr-2" />
+                                    Non payé
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleStatutPaiementChange(c.id, 'partiellement_paye')}
+                                    className="cursor-pointer"
+                                  >
+                                    <Clock className="h-4 w-4 text-orange-600 mr-2" />
+                                    Partiellement payé
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleStatutPaiementChange(c.id, 'paye')}
+                                    className="cursor-pointer"
+                                  >
+                                    <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                                    Payé
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                            <td className="hidden md:table-cell py-4 px-3 md:px-4">
+                              <input
+                                type="date"
+                                value={c.date_arrivee_agence ? new Date(c.date_arrivee_agence).toISOString().split('T')[0] : ''}
+                                onChange={(e) => {
+                                  const date = e.target.value ? new Date(e.target.value) : null;
+                                  updateDateArrivee(c.id, date);
+                                }}
+                                className="w-full text-center text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-pointer"
+                                placeholder="JJ/MM/AAAA"
+                              />
+                            </td>
+                            <td className="py-4 px-3 md:px-4">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground"
+                                  >
+                                    <MoreVertical className="h-4 w-4" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={(e) => handleViewDetails(c, e)}
+                                    className="cursor-pointer"
+                                  >
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    Voir détails
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setColisForPaiement(c);
+                                      setPaiementDialogOpen(true);
+                                    }}
+                                    className="cursor-pointer"
+                                  >
+                                    <CreditCard className="h-4 w-4 mr-2 text-blue-600" />
+                                    Enregistrer paiement
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => navigate(`/colis/aeriens/${c.id}/modifier`)}
+                                    className="cursor-pointer"
+                                  >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Modifier
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleDelete(c.id, generateColisId(c))}
+                                    className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Supprimer
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                            <td className="md:hidden py-3 px-2 md:px-4 text-center">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground"
+                                  >
+                                    <MoreVertical className="h-4 w-4" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={(e) => handleViewDetails(c, e)}
+                                    className="cursor-pointer"
+                                  >
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    Voir détails
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => navigate(`/colis/aeriens/${c.id}/modifier`)}
+                                    className="cursor-pointer"
+                                  >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Modifier
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleDelete(c.id, generateColisId(c))}
+                                    className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Supprimer
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Pagination */}
+                {!loading && filteredColis.length > 0 && totalPages > 1 && (
+                  <div className="mt-6 flex justify-center">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                      className="w-full max-w-full overflow-x-auto"
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Tableau des colis */}
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <CardTitle className="flex items-center gap-2">
-                  <Plane className="h-5 w-5 text-blue-500" />
-                  Liste des Colis Aériens ({filteredColis.length})
-                </CardTitle>
-                <Button
-                  onClick={() => navigate('/colis/aeriens/nouveau')}
-                  className="bg-green-500 hover:bg-green-600"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nouveau Colis
-                </Button>
-              </div>
+          {/* Modal de détails du colis */}
+          <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-blue-500" />
+                  Détails du Colis - {selectedColis ? generateColisId(selectedColis) : ''}
+                </DialogTitle>
+              </DialogHeader>
 
-              {/* Filtres et recherche */}
-              <div className="flex flex-col gap-4 mt-4">
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Rechercher par client, tracking, commande..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
+              {selectedColis && (
+                <div className="space-y-6">
+                  {/* Informations principales */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Informations Client</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div>
+                          <span className="text-sm text-gray-500">Nom du client:</span>
+                          <p className="font-medium">{selectedColis.client?.nom}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Téléphone:</span>
+                          <p className="font-medium">{selectedColis.client?.telephone}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Ville:</span>
+                          <p className="font-medium">{selectedColis.client?.ville || '-'}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Informations Fournisseur</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div>
+                          <span className="text-sm text-gray-500">Fournisseur:</span>
+                          <p className="font-medium">{selectedColis.fournisseur}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Tracking Chine:</span>
+                          <p className="font-medium">{selectedColis.tracking_chine || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">N° Commande:</span>
+                          <p className="font-medium">{selectedColis.numero_commande || '-'}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
-                  <select
-                    value={statutFilter}
-                    onChange={(e) => setStatutFilter(e.target.value)}
-                    className="px-4 py-2 border rounded-md bg-white"
-                  >
-                    <option value="tous">Tous les statuts</option>
-                    <option value="en_preparation">En préparation</option>
-                    <option value="expedie_chine">Expédié Chine</option>
-                    <option value="en_transit">En transit</option>
-                    <option value="arrive_congo">Arrivé Congo</option>
-                    <option value="recupere_client">Récupéré</option>
-                    <option value="livre">Livré</option>
-                  </select>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <select
-                    value={transitaireFilter}
-                    onChange={(e) => setTransitaireFilter(e.target.value)}
-                    className="flex-1 px-4 py-2 border rounded-md bg-white"
-                  >
-                    <option value="tous">Tous les transitaires</option>
-                    {transitaires.map(t => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                  
-                  <select
-                    value={fournisseurFilter}
-                    onChange={(e) => setFournisseurFilter(e.target.value)}
-                    className="flex-1 px-4 py-2 border rounded-md bg-white"
-                  >
-                    <option value="tous">Tous les fournisseurs</option>
-                    {fournisseurs.map(f => (
-                      <option key={f} value={f}>{f}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </CardHeader>
 
-            <CardContent>
-              {loading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
-                  <p className="mt-4 text-gray-500">Chargement des colis...</p>
-                </div>
-              ) : filteredColis.length === 0 ? (
-                <div className="text-center py-12">
-                  <Package className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-                  <p className="text-gray-500 text-lg">Aucun colis trouvé</p>
-                  <p className="text-gray-400 text-sm mt-2">
-                    {searchTerm || statutFilter !== 'tous' || transitaireFilter !== 'tous' || fournisseurFilter !== 'tous'
-                      ? 'Essayez de modifier vos filtres'
-                      : 'Commencez par créer un nouveau colis'}
-                  </p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto rounded-xl shadow-sm border border-gray-100">
-                  <table className="w-full min-w-[900px]">
-                    <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
-                      <tr>
-                        <SortableHeader
-                          title="ID Colis"
-                          sortKey="id"
-                          currentSort={sortConfig}
-                          onSort={handleSort}
-                          className="text-left py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                        />
-                        <SortableHeader
-                          title="Client"
-                          sortKey="client.nom"
-                          currentSort={sortConfig}
-                          onSort={handleSort}
-                          className="text-left py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                        />
-                        <SortableHeader
-                          title="Fournisseur"
-                          sortKey="fournisseur"
-                          currentSort={sortConfig}
-                          onSort={handleSort}
-                          className="hidden md:table-cell py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                        />
-                        <SortableHeader
-                          title="Tracking"
-                          sortKey="tracking_chine"
-                          currentSort={sortConfig}
-                          onSort={handleSort}
-                          className="hidden lg:table-cell py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                        />
-                        <SortableHeader
-                          title="Qté"
-                          sortKey="quantite"
-                          currentSort={sortConfig}
-                          onSort={handleSort}
-                          className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                        />
-                        <SortableHeader
-                          title="Poids"
-                          sortKey="poids"
-                          currentSort={sortConfig}
-                          onSort={handleSort}
-                          className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                        />
-                        <SortableHeader
-                          title="Tarif/kg"
-                          sortKey="tarif_kg"
-                          currentSort={sortConfig}
-                          onSort={handleSort}
-                          className="hidden md:table-cell py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                        />
-                        <SortableHeader
-                          title="Montant"
-                          sortKey="montant_a_payer"
-                          currentSort={sortConfig}
-                          onSort={handleSort}
-                          className="text-right py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                        />
-                        <SortableHeader
-                          title="Transitaire"
-                          sortKey="transitaire.nom"
-                          currentSort={sortConfig}
-                          onSort={handleSort}
-                          className="hidden lg:table-cell py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                        />
-                        <SortableHeader
-                          title="Statut"
-                          sortKey="statut"
-                          currentSort={sortConfig}
-                          onSort={handleSort}
-                          className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                        />
-                        <SortableHeader
-                          title="Paiement"
-                          sortKey="statut_paiement"
-                          currentSort={sortConfig}
-                          onSort={handleSort}
-                          className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                        />
-                        <SortableHeader
-                          title="Date Arrivée"
-                          sortKey="date_arrivee_agence"
-                          currentSort={sortConfig}
-                          onSort={handleSort}
-                          className="hidden md:table-cell py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                        />
-                        <th className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm w-16">
-                          <span className="flex items-center justify-center">
-                            <MoreVertical className="h-4 w-4" />
-                          </span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {paginatedColis.map((c, index) => (
-                        <tr 
-                          key={c.id} 
-                          className="hover:bg-gradient-to-r hover:from-blue-50/30 hover:to-indigo-50/30 transition-all duration-200 border-b border-gray-50"
-                        >
-                          <td className="py-4 px-3 md:px-4">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-400 font-mono">#{startIndex + index + 1}</span>
-                              <button
-                                onClick={(e) => handleViewDetails(c, e)}
-                                className="text-blue-600 hover:text-blue-800 font-mono text-sm font-semibold hover:bg-blue-50 px-2 py-1 rounded transition-colors"
-                                title="Voir les détails du colis"
-                                type="button"
-                              >
-                                {generateColisId(c)}
-                              </button>
-                            </div>
-                            <div className="mt-3 space-y-1 lg:hidden">
-                              <p className="text-xs uppercase tracking-wide text-gray-500">Tracking</p>
-                              <p className="text-sm font-mono text-gray-800 bg-gray-50 px-2 py-1 rounded">
-                                {c.tracking_chine || '-'}
-                              </p>
-                              {c.numero_commande && (
-                                <p className="text-[11px] text-gray-500">Cmd: {c.numero_commande}</p>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-4 px-3 md:px-4">
-                            <div className="flex flex-col">
-                              <p className="font-semibold text-gray-900">{c.client?.nom}</p>
-                              <p className="text-xs text-gray-500 flex items-center gap-1">
-                                <Package className="h-3 w-3" />
-                                {c.client?.telephone}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="hidden md:table-cell py-4 px-3 md:px-4">
-                            <Badge className="text-xs bg-purple-50 text-purple-700 border-purple-200 font-medium" {...({ variant: 'outline' } as any)}>
-                              {c.fournisseur}
-                            </Badge>
-                          </td>
-                          <td className="hidden lg:table-cell py-4 px-3 md:px-4">
-                            <div className="text-sm space-y-1">
-                              <p className="text-sm font-mono text-gray-700 bg-gray-50 px-2 py-1 rounded">
-                                {c.tracking_chine || '-'}
-                              </p>
-                              {c.numero_commande && (
-                                <p className="text-xs text-gray-500">Cmd: {c.numero_commande}</p>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-4 px-3 md:px-4 text-center">
-                            <div className="inline-flex items-center justify-center bg-blue-50 text-blue-700 rounded-lg px-3 py-1 font-bold text-sm">
-                              {c.quantite || 1}
-                            </div>
-                          </td>
-                          <td className="py-4 px-3 md:px-4 text-center">
-                            <div className="inline-flex items-center justify-center bg-orange-50 text-orange-700 rounded-lg px-3 py-1 font-bold text-sm">
-                              {c.poids} kg
-                            </div>
-                          </td>
-                          <td className="hidden md:table-cell py-4 px-3 md:px-4 text-center">
-                            <span className="text-sm font-mono bg-gray-50 px-2 py-1 rounded">${c.tarif_kg}</span>
-                          </td>
-                          <td className="py-4 px-3 md:px-4 text-right">
-                            <div className="flex items-center justify-end">
-                              <span className="font-bold text-green-700 bg-green-50 px-3 py-1 rounded-lg text-sm">
-                                {formatCurrency(c.montant_a_payer, 'USD')}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="hidden lg:table-cell py-4 px-3 md:px-4">
-                            <div className="flex items-center gap-2">
-                              <Truck className="h-4 w-4 text-gray-400" />
-                              <span className="text-sm text-gray-600">
-                                {c.transitaire?.nom || '-'}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-2 md:px-4 text-center">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 flex items-center gap-2 hover:bg-gray-50"
-                                  {...({ variant: 'outline', size: 'sm' } as any)}
-                                >
-                                  {getStatutBadge(c.statut)}
-                                  <ChevronDown className="h-4 w-4 text-gray-500" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="center" className="w-48">
-                                <DropdownMenuItem
-                                  onClick={() => handleStatutChange(c.id, 'en_preparation')}
-                                  className="cursor-pointer"
-                                >
-                                  <Clock className="h-4 w-4 text-gray-600 mr-2" />
-                                  En préparation
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleStatutChange(c.id, 'expedie_chine')}
-                                  className="cursor-pointer"
-                                >
-                                  <Plane className="h-4 w-4 text-blue-600 mr-2" />
-                                  Expédié Chine
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleStatutChange(c.id, 'en_transit')}
-                                  className="cursor-pointer"
-                                >
-                                  <Truck className="h-4 w-4 text-yellow-600 mr-2" />
-                                  En transit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleStatutChange(c.id, 'arrive_congo')}
-                                  className="cursor-pointer"
-                                >
-                                  <MapPin className="h-4 w-4 text-green-600 mr-2" />
-                                  Arrivé Congo
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleStatutChange(c.id, 'recupere_client')}
-                                  className="cursor-pointer"
-                                >
-                                  <PackageCheck className="h-4 w-4 text-purple-600 mr-2" />
-                                  Récupéré
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => handleStatutChange(c.id, 'livre')}
-                                  className="cursor-pointer"
-                                >
-                                  <CheckCircle className="h-4 w-4 text-emerald-600 mr-2" />
-                                  Livré
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </td>
-                          <td className="py-3 px-2 md:px-4 text-center">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 flex items-center gap-2 hover:bg-gray-50"
-                                  {...({ variant: 'outline', size: 'sm' } as any)}
-                                >
-                                  {getStatutPaiementBadge(c.statut_paiement)}
-                                  <ChevronDown className="h-4 w-4 text-gray-500" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="center" className="w-48">
-                                <DropdownMenuItem
-                                  onClick={() => handleStatutPaiementChange(c.id, 'non_paye')}
-                                  className="cursor-pointer"
-                                >
-                                  <X className="h-4 w-4 text-red-600 mr-2" />
-                                  Non payé
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleStatutPaiementChange(c.id, 'partiellement_paye')}
-                                  className="cursor-pointer"
-                                >
-                                  <Clock className="h-4 w-4 text-orange-600 mr-2" />
-                                  Partiellement payé
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleStatutPaiementChange(c.id, 'paye')}
-                                  className="cursor-pointer"
-                                >
-                                  <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                                  Payé
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </td>
-                          <td className="hidden md:table-cell py-4 px-3 md:px-4">
-                            <input
-                              type="date"
-                              value={c.date_arrivee_agence ? new Date(c.date_arrivee_agence).toISOString().split('T')[0] : ''}
-                              onChange={(e) => {
-                                const date = e.target.value ? new Date(e.target.value) : null;
-                                updateDateArrivee(c.id, date);
-                              }}
-                              className="w-full text-center text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-pointer"
-                              placeholder="JJ/MM/AAAA"
-                            />
-                          </td>
-                          <td className="py-4 px-3 md:px-4">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground"
-                                >
-                                  <MoreVertical className="h-4 w-4" />
-                                </button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={(e) => handleViewDetails(c, e)}
-                                  className="cursor-pointer"
-                                >
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  Voir détails
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setColisForPaiement(c);
-                                    setPaiementDialogOpen(true);
-                                  }}
-                                  className="cursor-pointer"
-                                >
-                                  <CreditCard className="h-4 w-4 mr-2 text-blue-600" />
-                                  Enregistrer paiement
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => navigate(`/colis/aeriens/${c.id}/modifier`)}
-                                  className="cursor-pointer"
-                                >
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Modifier
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => handleDelete(c.id, generateColisId(c))}
-                                  className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Supprimer
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </td>
-                          <td className="md:hidden py-3 px-2 md:px-4 text-center">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground"
-                                >
-                                  <MoreVertical className="h-4 w-4" />
-                                </button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={(e) => handleViewDetails(c, e)}
-                                  className="cursor-pointer"
-                                >
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  Voir détails
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => navigate(`/colis/aeriens/${c.id}/modifier`)}
-                                  className="cursor-pointer"
-                                >
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Modifier
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => handleDelete(c.id, generateColisId(c))}
-                                  className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Supprimer
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  {/* Calcul et logistique */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Calcul des Frais</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div>
+                          <span className="text-sm text-gray-500">Quantité:</span>
+                          <p className="font-medium">{selectedColis.quantite || 1} colis</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Poids:</span>
+                          <p className="font-medium">{selectedColis.poids} kg</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Tarif/kg:</span>
+                          <p className="font-medium">${selectedColis.tarif_kg}</p>
+                        </div>
+                        <div className="pt-3 border-t">
+                          <span className="text-sm text-gray-500">Montant Total:</span>
+                          <p className="text-2xl font-bold text-green-600">
+                            {formatCurrency(selectedColis.montant_a_payer, 'USD')}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Logistique</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div>
+                          <span className="text-sm text-gray-500">Transitaire:</span>
+                          <p className="font-medium">{selectedColis.transitaire?.nom || 'Aucun'}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Date Expédition:</span>
+                          <p className="font-medium">
+                            {selectedColis.date_expedition
+                              ? new Date(selectedColis.date_expedition).toLocaleDateString('fr-FR')
+                              : '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Date Arrivée:</span>
+                          <p className="font-medium">
+                            {selectedColis.date_arrivee_agence
+                              ? new Date(selectedColis.date_arrivee_agence).toLocaleDateString('fr-FR')
+                              : '-'}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Statuts</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div>
+                          <span className="text-sm text-gray-500">Statut livraison:</span>
+                          <div className="mt-1">{getStatutBadge(selectedColis.statut)}</div>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Statut paiement:</span>
+                          <div className="mt-1">{getStatutPaiementBadge(selectedColis.statut_paiement)}</div>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Créé le:</span>
+                          <p className="font-medium">
+                            {new Date(selectedColis.created_at || '').toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Créé par:</span>
+                          <p className="font-medium">
+                            {(selectedColis as any).creator
+                              ? `${(selectedColis as any).creator.first_name} ${(selectedColis as any).creator.last_name}`
+                              : '-'}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Détails supplémentaires */}
+                  {(selectedColis.contenu_description || selectedColis.notes) && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Détails Supplémentaires</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {selectedColis.contenu_description && (
+                          <div>
+                            <span className="text-sm text-gray-500">Description du contenu:</span>
+                            <p className="mt-1 text-gray-700">{selectedColis.contenu_description}</p>
+                          </div>
+                        )}
+                        {selectedColis.notes && (
+                          <div>
+                            <span className="text-sm text-gray-500">Notes internes:</span>
+                            <p className="mt-1 text-gray-700">{selectedColis.notes}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex justify-end gap-3 pt-4 border-t">
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                      onClick={() => setIsDetailModalOpen(false)}
+                    >
+                      Fermer
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-green-500 text-white hover:bg-green-600 h-10 px-4 py-2"
+                      onClick={() => {
+                        setIsDetailModalOpen(false);
+                        navigate(`/colis/aeriens/${selectedColis.id}/modifier`);
+                      }}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Modifier le colis
+                    </button>
+                  </div>
                 </div>
               )}
+            </DialogContent>
+          </Dialog>
 
-              {/* Pagination */}
-              {!loading && filteredColis.length > 0 && totalPages > 1 && (
-                <div className="mt-6 flex justify-center">
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={setCurrentPage}
-                    className="w-full max-w-full overflow-x-auto"
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+          {/* Dialogue Paiement */}
+          {colisForPaiement && (
+            <PaiementDialog
+              open={paiementDialogOpen}
+              onOpenChange={setPaiementDialogOpen}
+              type="colis"
+              colisId={colisForPaiement.id}
+              clientId={colisForPaiement.client_id}
+              clientNom={colisForPaiement.client?.nom || 'N/A'}
+              montantTotal={colisForPaiement.montant_a_payer}
+              montantRestant={colisForPaiement.montant_a_payer}
+              numeroFacture={generateColisId(colisForPaiement)}
+              onSuccess={() => {
+                loadColis(); // Recharger les colis
+                setColisForPaiement(null);
+              }}
+            />
+          )}
 
-        {/* Modal de détails du colis */}
-        <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-blue-500" />
-                Détails du Colis - {selectedColis ? generateColisId(selectedColis) : ''}
-              </DialogTitle>
-            </DialogHeader>
-            
-            {selectedColis && (
-              <div className="space-y-6">
-                {/* Informations principales */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Informations Client</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <span className="text-sm text-gray-500">Nom du client:</span>
-                        <p className="font-medium">{selectedColis.client?.nom}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500">Téléphone:</span>
-                        <p className="font-medium">{selectedColis.client?.telephone}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500">Ville:</span>
-                        <p className="font-medium">{selectedColis.client?.ville || '-'}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Informations Fournisseur</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <span className="text-sm text-gray-500">Fournisseur:</span>
-                        <p className="font-medium">{selectedColis.fournisseur}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500">Tracking Chine:</span>
-                        <p className="font-medium">{selectedColis.tracking_chine || '-'}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500">N° Commande:</span>
-                        <p className="font-medium">{selectedColis.numero_commande || '-'}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Calcul et logistique */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Calcul des Frais</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <span className="text-sm text-gray-500">Quantité:</span>
-                        <p className="font-medium">{selectedColis.quantite || 1} colis</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500">Poids:</span>
-                        <p className="font-medium">{selectedColis.poids} kg</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500">Tarif/kg:</span>
-                        <p className="font-medium">${selectedColis.tarif_kg}</p>
-                      </div>
-                      <div className="pt-3 border-t">
-                        <span className="text-sm text-gray-500">Montant Total:</span>
-                        <p className="text-2xl font-bold text-green-600">
-                          {formatCurrency(selectedColis.montant_a_payer, 'USD')}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Logistique</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <span className="text-sm text-gray-500">Transitaire:</span>
-                        <p className="font-medium">{selectedColis.transitaire?.nom || 'Aucun'}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500">Date Expédition:</span>
-                        <p className="font-medium">
-                          {selectedColis.date_expedition 
-                            ? new Date(selectedColis.date_expedition).toLocaleDateString('fr-FR')
-                            : '-'}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500">Date Arrivée:</span>
-                        <p className="font-medium">
-                          {selectedColis.date_arrivee_agence 
-                            ? new Date(selectedColis.date_arrivee_agence).toLocaleDateString('fr-FR')
-                            : '-'}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Statuts</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <span className="text-sm text-gray-500">Statut livraison:</span>
-                        <div className="mt-1">{getStatutBadge(selectedColis.statut)}</div>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500">Statut paiement:</span>
-                        <div className="mt-1">{getStatutPaiementBadge(selectedColis.statut_paiement)}</div>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500">Créé le:</span>
-                        <p className="font-medium">
-                          {new Date(selectedColis.created_at || '').toLocaleDateString('fr-FR')}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500">Créé par:</span>
-                        <p className="font-medium">
-                          {(selectedColis as any).creator 
-                            ? `${(selectedColis as any).creator.first_name} ${(selectedColis as any).creator.last_name}`
-                            : '-'}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Détails supplémentaires */}
-                {(selectedColis.contenu_description || selectedColis.notes) && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Détails Supplémentaires</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {selectedColis.contenu_description && (
-                        <div>
-                          <span className="text-sm text-gray-500">Description du contenu:</span>
-                          <p className="mt-1 text-gray-700">{selectedColis.contenu_description}</p>
-                        </div>
-                      )}
-                      {selectedColis.notes && (
-                        <div>
-                          <span className="text-sm text-gray-500">Notes internes:</span>
-                          <p className="mt-1 text-gray-700">{selectedColis.notes}</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Actions */}
-                <div className="flex justify-end gap-3 pt-4 border-t">
+          {/* Dialogue de confirmation de suppression */}
+          <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-red-600">Confirmer la suppression</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600">
+                  Êtes-vous sûr de vouloir supprimer le colis <strong>{colisToDelete?.name}</strong> ?
+                </p>
+                <p className="text-sm text-red-600 font-medium">
+                  ⚠️ Cette action est irréversible.
+                </p>
+                <div className="flex justify-end space-x-2 pt-4">
                   <button
                     type="button"
                     className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
-                    onClick={() => setIsDetailModalOpen(false)}
+                    onClick={() => {
+                      setDeleteDialogOpen(false);
+                      setColisToDelete(null);
+                    }}
                   >
-                    Fermer
+                    Annuler
                   </button>
                   <button
                     type="button"
-                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-green-500 text-white hover:bg-green-600 h-10 px-4 py-2"
-                    onClick={() => {
-                      setIsDetailModalOpen(false);
-                      navigate(`/colis/aeriens/${selectedColis.id}/modifier`);
-                    }}
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2"
+                    onClick={handleConfirmDelete}
                   >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Modifier le colis
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer
                   </button>
                 </div>
               </div>
-            )}
-          </DialogContent>
-        </Dialog>
-
-        {/* Dialogue Paiement */}
-        {colisForPaiement && (
-          <PaiementDialog
-            open={paiementDialogOpen}
-            onOpenChange={setPaiementDialogOpen}
-            type="colis"
-            colisId={colisForPaiement.id}
-            clientId={colisForPaiement.client_id}
-            clientNom={colisForPaiement.client?.nom || 'N/A'}
-            montantTotal={colisForPaiement.montant_a_payer}
-            montantRestant={colisForPaiement.montant_a_payer}
-            numeroFacture={generateColisId(colisForPaiement)}
-            onSuccess={() => {
-              loadColis(); // Recharger les colis
-              setColisForPaiement(null);
-            }}
-          />
-        )}
-
-        {/* Dialogue de confirmation de suppression */}
-        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-red-600">Confirmer la suppression</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                Êtes-vous sûr de vouloir supprimer le colis <strong>{colisToDelete?.name}</strong> ?
-              </p>
-              <p className="text-sm text-red-600 font-medium">
-                ⚠️ Cette action est irréversible.
-              </p>
-              <div className="flex justify-end space-x-2 pt-4">
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
-                  onClick={() => {
-                    setDeleteDialogOpen(false);
-                    setColisToDelete(null);
-                  }}
-                >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2"
-                  onClick={handleConfirmDelete}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Supprimer
-                </button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
         </ErrorBoundary>
       </Layout>
     </ProtectedRouteEnhanced>

@@ -8,10 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  DollarSign, 
-  Users, 
-  Receipt, 
+import {
+  DollarSign,
+  Users,
+  Receipt,
   TrendingUp,
   TrendingDown,
   Activity,
@@ -27,8 +27,12 @@ import {
 
 import { useDashboardWithPermissions } from '../hooks/useDashboardWithPermissions';
 import { useActivityLogs } from '../hooks/useActivityLogs';
+
 import { usePermissions } from '../hooks/usePermissions';
 import { formatCurrency } from '../utils/formatCurrency';
+import { getDateRange, PeriodFilter } from '@/utils/dateUtils';
+import { PeriodFilterTabs } from '@/components/ui/period-filter-tabs';
+import { format } from 'date-fns';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import ActivityFeed from '../components/activity/ActivityFeed';
@@ -37,13 +41,30 @@ import AdvancedDashboard from '../components/dashboard/AdvancedDashboard';
 const IndexProtected: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const { isAdmin } = usePermissions();
-  
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('month');
+  const [dateRange, setDateRange] = useState<{ dateFrom?: string; dateTo?: string }>({});
+
+  // Mettre à jour les dates quand la période change
+  React.useEffect(() => {
+    if (periodFilter !== 'all') {
+      const { current } = getDateRange(periodFilter);
+      if (current.start && current.end) {
+        setDateRange({
+          dateFrom: format(current.start, 'yyyy-MM-dd'),
+          dateTo: format(current.end, 'yyyy-MM-dd')
+        });
+      }
+    } else {
+      setDateRange({});
+    }
+  }, [periodFilter]);
+
   usePageSetup({
     title: 'Tableau de bord',
     subtitle: "Vue d'ensemble de votre activité"
   });
 
-  const { stats, isLoading, error } = useDashboardWithPermissions();
+  const { stats, isLoading, error } = useDashboardWithPermissions(dateRange);
   const { logs, isLoading: logsLoading } = useActivityLogs(1, 5);
 
   const formatCurrencyValue = (amount: number, currency: string = 'USD') => {
@@ -174,7 +195,7 @@ const IndexProtected: React.FC = () => {
             <p className="text-gray-600 mb-4">
               Impossible de charger les données du tableau de bord.
             </p>
-            <Button 
+            <Button
               onClick={() => window.location.reload()}
               className="btn-primary px-6 py-3"
             >
@@ -201,16 +222,16 @@ const IndexProtected: React.FC = () => {
           {/* Tabs - Plus épuré */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
             <TabsList className="inline-flex bg-gray-100/80 dark:bg-gray-800/50 p-1 rounded-lg gap-1">
-              <TabsTrigger 
-                value="overview" 
+              <TabsTrigger
+                value="overview"
                 className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-green-600 data-[state=active]:shadow-sm transition-all rounded-md text-gray-600 dark:text-gray-400"
               >
                 <Activity className="h-4 w-4" />
                 <span className="text-sm font-medium">Vue d'ensemble</span>
               </TabsTrigger>
               {isAdmin && (
-                <TabsTrigger 
-                  value="analytics" 
+                <TabsTrigger
+                  value="analytics"
                   className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-green-600 data-[state=active]:shadow-sm transition-all rounded-md text-gray-600 dark:text-gray-400"
                 >
                   <BarChart3 className="h-4 w-4" />
@@ -221,6 +242,14 @@ const IndexProtected: React.FC = () => {
 
             {/* Vue d'ensemble */}
             <TabsContent value="overview" className="space-y-5">
+              <div className="flex justify-end">
+                <PeriodFilterTabs
+                  period={periodFilter}
+                  onPeriodChange={setPeriodFilter}
+                  showAllOption={true}
+                />
+              </div>
+
               {/* Stats - Design épuré avec bordures colorées */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {overviewStats.map((stat, index) => (
@@ -256,7 +285,7 @@ const IndexProtected: React.FC = () => {
                 <div className="lg:col-span-2">
                   <ActivityFeed showViewAll={true} />
                 </div>
-                
+
                 {/* Quick Actions */}
                 <Card className="card-base">
                   <CardHeader className="p-4 pb-3">

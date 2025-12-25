@@ -1,11 +1,11 @@
 import { supabase } from '@/integrations/supabase/client';
 import { fieldLevelSecurityService } from '@/lib/security/field-level-security';
-import type { 
-  Client, 
-  Transaction, 
-  Setting, 
-  ActivityLog, 
-  PaymentMethod, 
+import type {
+  Client,
+  Transaction,
+  Setting,
+  ActivityLog,
+  PaymentMethod,
   UserProfile,
   PaginatedResponse,
   ApiResponse,
@@ -24,7 +24,7 @@ export class SupabaseService {
     try {
       // SECURITY: Use field-level security to prevent sensitive data exposure
       const secureSelect = await fieldLevelSecurityService.buildSecureSelect('clients');
-      
+
       let query = supabase
         .from('clients')
         .select(secureSelect, { count: 'exact' })
@@ -35,7 +35,7 @@ export class SupabaseService {
         // SECURITY: Only search in allowed fields
         const allowedFields = await fieldLevelSecurityService.getFilteredFields('clients');
         const searchFields = allowedFields.filter(field => ['nom', 'telephone'].includes(field));
-        
+
         if (searchFields.length > 0) {
           const searchConditions = searchFields.map(field => `${field}.ilike.%${filters.search}%`).join(',');
           query = query.or(searchConditions);
@@ -56,7 +56,7 @@ export class SupabaseService {
       // Compute total_paye per client from transactions (USD only, exclude canceled)
       // SECURITY: Only add financial data if user has permission
       const canSeeFinancialData = await fieldLevelSecurityService.isFieldAllowed('clients', 'total_paye');
-      
+
       if (filteredClients.length > 0 && canSeeFinancialData) {
         const clientIds = filteredClients.map(c => c.id);
         const { data: txData, error: txError } = await supabase
@@ -172,8 +172,8 @@ export class SupabaseService {
       return { data, message: 'Client créé avec succès' };
     } catch (error: any) {
       // Traduire les erreurs Postgres en messages conviviaux
-      if (error.message?.includes('clients_telephone_organization_unique') || 
-          error.code === '23505') {
+      if (error.message?.includes('clients_telephone_organization_unique') ||
+        error.code === '23505') {
         return { error: 'Un client avec ce numéro de téléphone existe déjà' };
       }
       return { error: error.message };
@@ -234,7 +234,7 @@ export class SupabaseService {
       // SECURITY: Use field-level security for both transactions and client data
       const secureTransactionSelect = await fieldLevelSecurityService.buildSecureSelect('transactions');
       const secureClientSelect = await fieldLevelSecurityService.buildSecureSelect('clients');
-      
+
       let query = supabase
         .from('transactions')
         .select(`
@@ -270,7 +270,7 @@ export class SupabaseService {
 
       // SECURITY: Only allow amount filtering if user can see sensitive financial data
       const canSeeFinancialData = await fieldLevelSecurityService.isFieldAllowed('transactions', 'montant');
-      
+
       if (filters.minAmount && canSeeFinancialData) {
         query = query.gte('montant', parseFloat(filters.minAmount));
       }
@@ -323,7 +323,7 @@ export class SupabaseService {
     try {
       const rates = await this.getExchangeRates();
       const fees = await this.getFees();
-      
+
       if (rates.error || fees.error) {
         throw new Error('Impossible de récupérer les taux ou frais');
       }
@@ -331,8 +331,8 @@ export class SupabaseService {
       const tauxUSD = transactionData.devise === 'USD' ? 1 : rates.data!.usdToCdf;
       const fraisUSD = transactionData.montant * (fees.data![transactionData.motif.toLowerCase() as keyof Fees] / 100);
       const montantNet = transactionData.montant - fraisUSD; // Montant après déduction des frais
-      const montantCNY = transactionData.devise === 'USD' 
-        ? montantNet * rates.data!.usdToCny 
+      const montantCNY = transactionData.devise === 'USD'
+        ? montantNet * rates.data!.usdToCny
         : (montantNet / tauxUSD) * rates.data!.usdToCny;
       const benefice = fraisUSD;
 
@@ -393,7 +393,7 @@ export class SupabaseService {
   async deleteTransaction(id: string): Promise<ApiResponse<void>> {
     try {
       console.log('Tentative de suppression de la transaction:', id);
-      
+
       // Suppression directe sans vérifications complexes
       const { error, count } = await supabase
         .from('transactions')
@@ -402,33 +402,33 @@ export class SupabaseService {
 
       if (error) {
         console.error('Erreur Supabase lors de la suppression:', error);
-        
+
         // Si c'est une erreur RLS, essayer avec une approche différente
         if (error.code === 'PGRST301' || error.message.includes('policy')) {
           console.log('Erreur de politique détectée, tentative alternative...');
-          
+
           // Essayer de marquer comme supprimé au lieu de supprimer réellement
           const { error: updateError } = await supabase
             .from('transactions')
-            .update({ 
+            .update({
               statut: 'Annulé',
               updated_at: new Date().toISOString()
             })
             .eq('id', id);
-            
+
           if (updateError) {
             throw updateError;
           }
-          
+
           await this.logActivity('Annulation transaction (RLS)', 'Transaction', id);
           return { message: 'Transaction annulée avec succès (restriction RLS)' };
         }
-        
+
         throw error;
       }
 
       console.log('Suppression réussie, count:', count);
-      
+
       if (count === 0) {
         return { error: 'Transaction non trouvée ou déjà supprimée' };
       }
@@ -445,7 +445,7 @@ export class SupabaseService {
   async getSettings(categorie?: string): Promise<ApiResponse<Setting[]>> {
     try {
       let query = supabase.from('settings').select('*').order('cle');
-      
+
       if (categorie) {
         query = query.eq('categorie', categorie);
       }
@@ -633,7 +633,7 @@ export class SupabaseService {
     try {
       // SECURITY: Use field-level security to prevent sensitive data exposure
       const secureSelect = await fieldLevelSecurityService.buildSecureSelect('profiles');
-      
+
       const { data, error } = await supabase
         .from('profiles')
         .select(secureSelect)
@@ -642,17 +642,17 @@ export class SupabaseService {
       if (error) throw error;
 
       const profiles = data || [];
-      
+
       // SECURITY: Filter response data to ensure no sensitive information leaks
       const filteredProfiles = await fieldLevelSecurityService.filterResponseData('profiles', profiles);
-      
+
       // Pour la table profiles, l'email est directement dans la table
       // SECURITY: Only include email if user has permission
       const canSeeEmail = await fieldLevelSecurityService.isFieldAllowed('profiles', 'email');
-      
+
       const profilesWithEmail = filteredProfiles.map(profile => ({
         ...profile,
-        user: { 
+        user: {
           email: canSeeEmail && profile.email ? profile.email : '[MASQUÉ]'
         }
       }));
@@ -666,7 +666,7 @@ export class SupabaseService {
   async ensureCurrentUserProfile(): Promise<ApiResponse<UserProfile>> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         return { error: 'Utilisateur non connecté' };
       }
@@ -798,7 +798,7 @@ export class SupabaseService {
   async logActivity(action: string, entityType?: string, entityId?: string, additionalDetails?: any): Promise<void> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) return;
 
       await supabase
@@ -820,12 +820,31 @@ export class SupabaseService {
   }
 
   // Dashboard Stats
-  async getDashboardStats(): Promise<ApiResponse<any>> {
+  async getDashboardStats(filters?: { dateFrom?: string; dateTo?: string }): Promise<ApiResponse<any>> {
     try {
+      let transactionsQuery = supabase
+        .from('transactions')
+        .select('montant, devise, benefice, montant_cny, frais, created_at', { count: 'exact' });
+
+      let facturesQuery = supabase
+        .from('factures')
+        .select('id, type, statut, total_general, devise, created_at', { count: 'exact' });
+
+      // Appliquer les filtres de date si présents
+      if (filters?.dateFrom) {
+        transactionsQuery = transactionsQuery.gte('created_at', filters.dateFrom);
+        facturesQuery = facturesQuery.gte('created_at', filters.dateFrom);
+      }
+
+      if (filters?.dateTo) {
+        transactionsQuery = transactionsQuery.lte('created_at', filters.dateTo);
+        facturesQuery = facturesQuery.lte('created_at', filters.dateTo);
+      }
+
       const [clientsResult, transactionsResult, facturesResult] = await Promise.all([
         supabase.from('clients').select('id', { count: 'exact', head: true }),
-        supabase.from('transactions').select('montant, devise, benefice, montant_cny, frais, created_at', { count: 'exact' }),
-        supabase.from('factures').select('id, type, statut, total_general, devise, created_at', { count: 'exact' })
+        transactionsQuery,
+        facturesQuery
       ]);
 
       if (clientsResult.error) throw clientsResult.error;
@@ -835,11 +854,11 @@ export class SupabaseService {
       const transactions = transactionsResult.data || [];
       const factures = facturesResult.data || [];
       const today = new Date().toISOString().split('T')[0];
-      
+
       const totalUSD = transactions
         .filter(t => t.devise === 'USD')
         .reduce((sum, t) => sum + (t.montant || 0), 0);
-      
+
       const totalCDF = transactions
         .filter(t => t.devise === 'CDF')
         .reduce((sum, t) => sum + (t.montant || 0), 0);
@@ -859,11 +878,11 @@ export class SupabaseService {
 
       // Statistiques des factures (validées ET payées)
       const facturesValidees = factures.filter(f => f.statut === 'validee' || f.statut === 'payee');
-      
+
       const facturesAmountUSD = facturesValidees
         .filter(f => f.devise === 'USD')
         .reduce((sum, f) => sum + (f.total_general || 0), 0);
-      
+
       const facturesAmountCDF = facturesValidees
         .filter(f => f.devise === 'CDF')
         .reduce((sum, f) => sum + (f.total_general || 0), 0);

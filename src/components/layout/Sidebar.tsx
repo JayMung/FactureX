@@ -5,23 +5,26 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
-  LayoutDashboard,
   Users,
   Receipt,
   Settings,
   Package,
   FileText,
+  LayoutDashboard,
   LogOut,
-  Plane,
-  Ship,
+  ChevronLeft,
+  Menu,
+  Box,
   Wallet,
-  ChevronDown,
-  ChevronRight,
-  ArrowLeftRight,
-  DollarSign,
-  Key,
+  ArrowRightLeft,
+  Bell,
+  Shield,
+  BarChart3,
+  Ship,
+  Plane,
   Tag,
-  BarChart3
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -109,9 +112,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       {
         icon: Ship,
         label: 'Colis Maritimes',
-        path: '/colis/maritimes',
-        module: 'colis',
-        disabled: true // Désactivé pour l'instant
+        path: '/colis/maritime',
+        module: 'colis'
       }
     ];
 

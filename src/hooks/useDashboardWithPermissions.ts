@@ -3,7 +3,7 @@ import { supabaseService } from '@/services/supabase';
 import type { ApiResponse } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 
-export const useDashboardWithPermissions = () => {
+export const useDashboardWithPermissions = (filters?: { dateFrom?: string; dateTo?: string }) => {
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -12,8 +12,8 @@ export const useDashboardWithPermissions = () => {
     const fetchStats = async () => {
       try {
         setIsLoading(true);
-        const response = await supabaseService.getDashboardStats();
-        
+        const response = await supabaseService.getDashboardStats(filters);
+
         if (response.error) {
           setError(response.error);
         } else {
@@ -27,7 +27,7 @@ export const useDashboardWithPermissions = () => {
     };
 
     fetchStats();
-  }, []);
+  }, [filters?.dateFrom, filters?.dateTo]);
 
   return { stats, isLoading, error };
 };

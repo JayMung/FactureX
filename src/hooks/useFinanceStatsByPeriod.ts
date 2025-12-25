@@ -19,6 +19,32 @@ interface DateRange {
     end: Date;
 }
 
+// Motifs de revenus (entrées d'argent)
+const REVENUE_MOTIFS = [
+    'Commande (Facture)',
+    'Transfert Reçu',
+    'Autres Paiements',
+    'Encaissement',
+    'Commande', // Legacy
+    'Paiement Colis'
+];
+
+// Motifs de dépenses (sorties d'argent)
+const EXPENSE_MOTIFS = [
+    'Depense',
+    'Dépense',
+    'depense',
+    'Achat',
+    'Sortie'
+];
+
+// Motifs de transferts (mouvements entre comptes)
+const TRANSFER_MOTIFS = [
+    'Transfert (Argent)',
+    'Swap',
+    'Transfert'
+];
+
 const getDateRange = (period: PeriodFilter): { current: DateRange; previous: DateRange } => {
     const now = new Date();
 
@@ -71,6 +97,39 @@ const getPeriodLabel = (period: PeriodFilter): string => {
     }
 };
 
+const classifyTransaction = (t: { montant?: number; motif?: string; type_transaction?: string; benefice?: number }) => {
+    const montant = Math.abs(t.montant || 0);
+    const motif = (t.motif || '').toLowerCase();
+    const typeTransaction = (t.type_transaction || '').toLowerCase();
+    const benefice = t.benefice || 0;
+
+    // Check for transfers/swaps first
+    if (TRANSFER_MOTIFS.some(m => motif.includes(m.toLowerCase())) ||
+        motif.includes('swap') ||
+        typeTransaction === 'swap') {
+        return { type: 'transfert', montant, benefice };
+    }
+
+    // Check for expenses
+    if (EXPENSE_MOTIFS.some(m => motif.includes(m.toLowerCase())) ||
+        typeTransaction === 'depense' ||
+        typeTransaction === 'sortie') {
+        return { type: 'depense', montant, benefice };
+    }
+
+    // Check for revenue (default for commercial transactions)
+    if (REVENUE_MOTIFS.some(m => motif.includes(m.toLowerCase())) ||
+        typeTransaction === 'commande' ||
+        typeTransaction === 'entree' ||
+        typeTransaction === 'commercial' ||
+        typeTransaction === 'paiement') {
+        return { type: 'revenue', montant, benefice };
+    }
+
+    // Default: treat as revenue if positive montant
+    return { type: 'revenue', montant, benefice };
+};
+
 export const useFinanceStatsByPeriod = (period: PeriodFilter = 'month') => {
     const [stats, setStats] = useState<FinanceStats | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -85,50 +144,70 @@ export const useFinanceStatsByPeriod = (period: PeriodFilter = 'month') => {
             setError(null);
 
             try {
+                console.log('📊 Fetching finance stats for period:', period);
+                console.log('📅 Date range:', currentRange.start.toISOString(), 'to', currentRange.end.toISOString());
+
                 // Fetch transactions for current period
                 const { data: currentData, error: currentError } = await supabase
                     .from('transactions')
-                    .select('montant, type_operation, motif, devise')
+                    .select('montant, motif, type_transaction, devise, benefice')
                     .gte('created_at', currentRange.start.toISOString())
                     .lte('created_at', currentRange.end.toISOString());
 
-                if (currentError) throw currentError;
+                if (currentError) {
+                    console.error('❌ Error fetching current data:', currentError);
+                    throw currentError;
+                }
+
+                console.log('📦 Current period transactions:', currentData?.length || 0);
+                if (currentData?.length) {
+                    console.log('📋 Sample transaction:', currentData[0]);
+                }
 
                 // Fetch transactions for previous period
                 const { data: previousData, error: previousError } = await supabase
                     .from('transactions')
-                    .select('montant, type_operation, motif')
+                    .select('montant, motif, type_transaction, devise, benefice')
                     .gte('created_at', previousRange.start.toISOString())
                     .lte('created_at', previousRange.end.toISOString());
 
-                if (previousError) throw previousError;
+                if (previousError) {
+                    console.error('❌ Error fetching previous data:', previousError);
+                    throw previousError;
+                }
 
                 // Calculate current stats
                 let currentRevenue = 0;
                 let currentDepenses = 0;
                 let currentTransferts = 0;
+                let totalBenefice = 0;
 
                 (currentData || []).forEach(t => {
-                    const montant = Math.abs(t.montant || 0);
-                    if (t.type_operation === 'entree' || t.motif === 'Encaissement' || t.motif === 'Commande') {
-                        currentRevenue += montant;
-                    } else if (t.type_operation === 'sortie' || t.motif === 'Depense') {
-                        currentDepenses += montant;
-                    } else if (t.motif === 'Transfert' || t.motif === 'Swap') {
-                        currentTransferts += montant;
+                    const classified = classifyTransaction(t);
+
+                    if (classified.type === 'revenue') {
+                        currentRevenue += classified.montant;
+                        totalBenefice += classified.benefice;
+                    } else if (classified.type === 'depense') {
+                        currentDepenses += classified.montant;
+                    } else if (classified.type === 'transfert') {
+                        currentTransferts += classified.montant;
                     }
                 });
+
+                console.log('💰 Calculated:', { currentRevenue, currentDepenses, currentTransferts, totalBenefice });
 
                 // Calculate previous stats
                 let previousRevenue = 0;
                 let previousDepenses = 0;
 
                 (previousData || []).forEach(t => {
-                    const montant = Math.abs(t.montant || 0);
-                    if (t.type_operation === 'entree' || t.motif === 'Encaissement' || t.motif === 'Commande') {
-                        previousRevenue += montant;
-                    } else if (t.type_operation === 'sortie' || t.motif === 'Depense') {
-                        previousDepenses += montant;
+                    const classified = classifyTransaction(t);
+
+                    if (classified.type === 'revenue') {
+                        previousRevenue += classified.montant;
+                    } else if (classified.type === 'depense') {
+                        previousDepenses += classified.montant;
                     }
                 });
 
@@ -150,7 +229,7 @@ export const useFinanceStatsByPeriod = (period: PeriodFilter = 'month') => {
                     transactionsCount: (currentData || []).length
                 });
             } catch (err: any) {
-                console.error('Error fetching finance stats:', err);
+                console.error('❌ Error fetching finance stats:', err);
                 setError(err.message || 'Erreur lors du chargement des statistiques');
             } finally {
                 setIsLoading(false);
@@ -158,7 +237,7 @@ export const useFinanceStatsByPeriod = (period: PeriodFilter = 'month') => {
         };
 
         fetchStats();
-    }, [currentRange, previousRange]);
+    }, [currentRange, previousRange, period]);
 
     return {
         stats,

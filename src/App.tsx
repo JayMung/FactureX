@@ -26,6 +26,7 @@ import CategoriesFinances from "./pages/Categories-Finances";
 // import EncaissementsProtected from "./pages/Encaissements-Protected";
 import ApiKeys from "./pages/ApiKeys";
 import Webhooks from "./pages/Webhooks";
+import FinanceStatistics from "./pages/Finance-Statistics";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import AdminSetup from "./pages/AdminSetup";
@@ -149,6 +150,11 @@ const App = () => (
               <Route path="/finances/categories" element={
                 <ProtectedRouteEnhanced requiredModule="finances">
                   <CategoriesFinances />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/finances/statistiques" element={
+                <ProtectedRouteEnhanced requiredModule="finances">
+                  <FinanceStatistics />
                 </ProtectedRouteEnhanced>
               } />
               {/* Routes redirigées vers /transactions (pages fusionnées) */}

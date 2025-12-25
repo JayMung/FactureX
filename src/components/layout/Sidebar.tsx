@@ -4,12 +4,12 @@ import React, { useState, useEffect } from 'react';
 // @ts-ignore - Temporary workaround for react-router-dom types
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Receipt, 
+import {
+  LayoutDashboard,
+  Users,
+  Receipt,
   Settings,
-  Package, 
+  Package,
   FileText,
   LogOut,
   Plane,
@@ -20,7 +20,8 @@ import {
   ArrowLeftRight,
   DollarSign,
   Key,
-  Tag
+  Tag,
+  BarChart3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -33,18 +34,18 @@ interface SidebarProps {
   currentPath?: string;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ 
-  currentPath 
+const Sidebar: React.FC<SidebarProps> = ({
+  currentPath
 }) => {
   const { user } = useAuth();
   const { getAccessibleModules, checkPermission, isAdmin } = usePermissions();
   const [colisMenuOpen, setColisMenuOpen] = useState(false);
-  
+
   // Garder le menu Finances ouvert si on est sur une page de finances
-  const isOnFinancesPage = currentPath?.startsWith('/finances') || 
-                           currentPath?.startsWith('/transactions') || 
-                           currentPath?.startsWith('/operations-financieres') || 
-                           currentPath?.startsWith('/comptes');
+  const isOnFinancesPage = currentPath?.startsWith('/finances') ||
+    currentPath?.startsWith('/transactions') ||
+    currentPath?.startsWith('/operations-financieres') ||
+    currentPath?.startsWith('/comptes');
   const [financesMenuOpen, setFinancesMenuOpen] = useState(isOnFinancesPage);
 
   // Synchroniser l'état du menu Finances avec le currentPath
@@ -65,31 +66,31 @@ const Sidebar: React.FC<SidebarProps> = ({
     module: string | null;
     disabled?: boolean;
   }> = [
-    { 
-      icon: LayoutDashboard, 
-      label: 'Tableau de bord', 
-      path: '/',
-      module: null // Toujours accessible
-    },
-    { 
-      icon: Users, 
-      label: 'Clients', 
-      path: '/clients',
-      module: 'clients'
-    },
-    { 
-      icon: Settings, 
-      label: 'Paramètres', 
-      path: '/settings',
-      module: 'settings'
-    },
-    { 
-      icon: FileText, 
-      label: 'Factures', 
-      path: '/factures',
-      module: 'factures'
-    },
-  ];
+      {
+        icon: LayoutDashboard,
+        label: 'Tableau de bord',
+        path: '/',
+        module: null // Toujours accessible
+      },
+      {
+        icon: Users,
+        label: 'Clients',
+        path: '/clients',
+        module: 'clients'
+      },
+      {
+        icon: Settings,
+        label: 'Paramètres',
+        path: '/settings',
+        module: 'settings'
+      },
+      {
+        icon: FileText,
+        label: 'Factures',
+        path: '/factures',
+        module: 'factures'
+      },
+    ];
 
   // Sous-menus pour Colis
   const colisSubMenuItems: Array<{
@@ -99,20 +100,20 @@ const Sidebar: React.FC<SidebarProps> = ({
     module: string;
     disabled?: boolean;
   }> = [
-    {
-      icon: Plane,
-      label: 'Colis Aériens',
-      path: '/colis/aeriens',
-      module: 'colis'
-    },
-    {
-      icon: Ship,
-      label: 'Colis Maritimes',
-      path: '/colis/maritimes',
-      module: 'colis',
-      disabled: true // Désactivé pour l'instant
-    }
-  ];
+      {
+        icon: Plane,
+        label: 'Colis Aériens',
+        path: '/colis/aeriens',
+        module: 'colis'
+      },
+      {
+        icon: Ship,
+        label: 'Colis Maritimes',
+        path: '/colis/maritimes',
+        module: 'colis',
+        disabled: true // Désactivé pour l'instant
+      }
+    ];
 
   // Sous-menus pour Finances (simplifié après fusion)
   const financesSubMenuItems: Array<{
@@ -121,34 +122,39 @@ const Sidebar: React.FC<SidebarProps> = ({
     path: string;
     permission?: string;
   }> = [
-    {
-      icon: Receipt,
-      label: 'Transactions',
-      path: '/transactions',
-    },
-    {
-      icon: Wallet,
-      label: 'Comptes & Mouvements',
-      path: '/comptes',
-    },
-    {
-      icon: Tag,
-      label: 'Catégories',
-      path: '/finances/categories',
-    },
-  ];
+      {
+        icon: Receipt,
+        label: 'Transactions',
+        path: '/transactions',
+      },
+      {
+        icon: Wallet,
+        label: 'Comptes & Mouvements',
+        path: '/comptes',
+      },
+      {
+        icon: Tag,
+        label: 'Catégories',
+        path: '/finances/categories',
+      },
+      {
+        icon: BarChart3,
+        label: 'Statistiques',
+        path: '/finances/statistiques',
+      },
+    ];
 
   // Filtrer les items du menu selon les permissions
   const filteredMenuItems = menuItems.filter(item => {
     // Si l'item est désactivé, le masquer
     if (item.disabled) return false;
-    
+
     // Si pas de module requis, toujours afficher
     if (!item.module) return true;
-    
+
     // Vérifier si le module est accessible ou si l'utilisateur est admin
-    return accessibleModules.some(module => module.id === item.module) || 
-           (user?.app_metadata?.role === 'admin' || user?.app_metadata?.role === 'super_admin');
+    return accessibleModules.some(module => module.id === item.module) ||
+      (user?.app_metadata?.role === 'admin' || user?.app_metadata?.role === 'super_admin');
   });
 
   // Vérifier si l'utilisateur a accès au module finances
@@ -168,7 +174,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const settingsItem = filteredMenuItems.find(item => item.label === 'Paramètres');
 
   const handleLogout = async () => {
-    await supabase.auth.signOut(); 
+    await supabase.auth.signOut();
     showSuccess('Déconnexion réussie');
   };
 
@@ -192,22 +198,22 @@ const Sidebar: React.FC<SidebarProps> = ({
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
         <ul className="space-y-2">
           {mainNavItems.map((item) => (
-              <li key={item.path}>
-                <Button
-                  variant={"ghost" as any}
-                  asChild
-                  className={cn(
-                    "w-full justify-start text-white/90 hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-[0.98] rounded-lg h-10 px-3",
-                    currentPath === item.path && "bg-white text-green-600 shadow-sm font-medium hover:bg-white hover:text-green-600"
-                  )}
-                >
-                  <Link to={item.path}>
-                    <item.icon className="h-5 w-5 flex-shrink-0" />
-                    <span className="ml-3 truncate text-base font-medium">{item.label}</span>
-                  </Link>
-                </Button>
-              </li>
-            ))}
+            <li key={item.path}>
+              <Button
+                variant={"ghost" as any}
+                asChild
+                className={cn(
+                  "w-full justify-start text-white/90 hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-[0.98] rounded-lg h-10 px-3",
+                  currentPath === item.path && "bg-white text-green-600 shadow-sm font-medium hover:bg-white hover:text-green-600"
+                )}
+              >
+                <Link to={item.path}>
+                  <item.icon className="h-5 w-5 flex-shrink-0" />
+                  <span className="ml-3 truncate text-base font-medium">{item.label}</span>
+                </Link>
+              </Button>
+            </li>
+          ))}
 
           {/* Menu Finances avec sous-menus */}
           {hasFinancesAccess && (
@@ -334,14 +340,14 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
           <div className="ml-3 text-left flex-1">
             <p className="text-white text-sm font-medium truncate">
-              {user?.user_metadata?.first_name ? 
-                `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}` : 
+              {user?.user_metadata?.first_name ?
+                `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}` :
                 user?.email || 'Utilisateur'
               }
             </p>
             <p className="text-xs text-green-100 dark:text-green-200 truncate">
-              {user?.app_metadata?.role === 'super_admin' ? '👑 Super Admin' : 
-               user?.app_metadata?.role === 'admin' ? '👑 Admin' : 'Opérateur'}
+              {user?.app_metadata?.role === 'super_admin' ? '👑 Super Admin' :
+                user?.app_metadata?.role === 'admin' ? '👑 Admin' : 'Opérateur'}
             </p>
           </div>
         </div>

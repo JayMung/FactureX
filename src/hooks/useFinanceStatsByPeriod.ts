@@ -19,13 +19,15 @@ interface DateRange {
     end: Date;
 }
 
-// Motifs de revenus (entrées d'argent)
+// Motifs de revenus (entrées d'argent - paiements clients)
 const REVENUE_MOTIFS = [
     'Commande (Facture)',
-    'Transfert Reçu',
+    'Transfert (Argent)',    // Paiement transfert = REVENU
+    'Transfert Reçu',        // Paiement transfert = REVENU
     'Autres Paiements',
     'Encaissement',
-    'Commande', // Legacy
+    'Commande',              // Legacy
+    'Transfert',             // Legacy transfert = revenu
     'Paiement Colis'
 ];
 
@@ -38,11 +40,9 @@ const EXPENSE_MOTIFS = [
     'Sortie'
 ];
 
-// Motifs de transferts (mouvements entre comptes)
-const TRANSFER_MOTIFS = [
-    'Transfert (Argent)',
-    'Swap',
-    'Transfert'
+// Motifs de transferts INTERNES (échanges entre comptes seulement)
+const INTERNAL_TRANSFER_MOTIFS = [
+    'Swap'  // Uniquement les swaps entre comptes
 ];
 
 const getDateRange = (period: PeriodFilter): { current: DateRange; previous: DateRange } => {
@@ -103,30 +103,30 @@ const classifyTransaction = (t: { montant?: number; motif?: string; type_transac
     const typeTransaction = (t.type_transaction || '').toLowerCase();
     const benefice = t.benefice || 0;
 
-    // Check for transfers/swaps first
-    if (TRANSFER_MOTIFS.some(m => motif.includes(m.toLowerCase())) ||
-        motif.includes('swap') ||
-        typeTransaction === 'swap') {
-        return { type: 'transfert', montant, benefice };
-    }
-
-    // Check for expenses
+    // Check for expenses first
     if (EXPENSE_MOTIFS.some(m => motif.includes(m.toLowerCase())) ||
         typeTransaction === 'depense' ||
         typeTransaction === 'sortie') {
         return { type: 'depense', montant, benefice };
     }
 
-    // Check for revenue (default for commercial transactions)
+    // Check for INTERNAL swaps ONLY (not regular transfers which are revenue)
+    if (INTERNAL_TRANSFER_MOTIFS.some(m => motif.includes(m.toLowerCase())) ||
+        typeTransaction === 'swap') {
+        return { type: 'transfert', montant, benefice };
+    }
+
+    // Check for revenue (includes Transfert payments which are client payments)
     if (REVENUE_MOTIFS.some(m => motif.includes(m.toLowerCase())) ||
         typeTransaction === 'commande' ||
         typeTransaction === 'entree' ||
         typeTransaction === 'commercial' ||
-        typeTransaction === 'paiement') {
+        typeTransaction === 'paiement' ||
+        typeTransaction === 'transfert') {  // transfert type = revenue
         return { type: 'revenue', montant, benefice };
     }
 
-    // Default: treat as revenue if positive montant
+    // Default: treat as revenue
     return { type: 'revenue', montant, benefice };
 };
 

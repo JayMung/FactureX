@@ -26,7 +26,7 @@ export const TransactionStats: React.FC<TransactionStatsProps> = ({ globalTotals
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total USD</p>
-              <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate mt-2">
                 {formatCurrency(totalUSD, 'USD')}
               </p>
             </div>
@@ -43,7 +43,7 @@ export const TransactionStats: React.FC<TransactionStatsProps> = ({ globalTotals
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Frais</p>
-              <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate mt-2">
                 {formatCurrency(totalFrais, 'USD')}
               </p>
             </div>
@@ -60,7 +60,7 @@ export const TransactionStats: React.FC<TransactionStatsProps> = ({ globalTotals
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Bénéfice total</p>
-              <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate mt-2">
                 {formatCurrency(totalBenefice, 'USD')}
               </p>
             </div>
@@ -77,7 +77,7 @@ export const TransactionStats: React.FC<TransactionStatsProps> = ({ globalTotals
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Dépenses</p>
-              <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate mt-2">
                 {formatCurrency(totalDepenses, 'USD')}
               </p>
             </div>
@@ -94,7 +94,7 @@ export const TransactionStats: React.FC<TransactionStatsProps> = ({ globalTotals
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Transactions</p>
-              <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate mt-2">
                 {totalCount || 0}
               </p>
               <p className="text-xs text-muted-foreground mt-1">Toutes pages confondues</p>

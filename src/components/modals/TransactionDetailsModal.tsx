@@ -243,117 +243,20 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
   const handlePrint = () => {
     if (!transaction) return;
 
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+    // Import dynamique du template de reçu
+    import('@/utils/receiptTemplate').then(({ generateReceiptHTML }) => {
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) return;
 
-    const receiptHTML = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Reçu Transaction - ${transaction.id}</title>
-          <style>
-            body {
-              font-family: 'Courier New', monospace;
-              max-width: 300px;
-              margin: 0 auto;
-              padding: 20px;
-            }
-            .header {
-              text-align: center;
-              border-bottom: 2px dashed #000;
-              padding-bottom: 10px;
-              margin-bottom: 10px;
-            }
-            .row {
-              display: flex;
-              justify-content: space-between;
-              margin: 5px 0;
-            }
-            .bold {
-              font-weight: bold;
-            }
-            .center {
-              text-align: center;
-            }
-            .footer {
-              margin-top: 20px;
-              padding-top: 10px;
-              border-top: 2px dashed #000;
-              text-align: center;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h2>FACTUREX</h2>
-            <p>Reçu de Transaction</p>
-          </div>
-          
-          <div class="row">
-            <span>Date:</span>
-            <span>${new Date(transaction.created_at).toLocaleString('fr-FR')}</span>
-          </div>
-          
-          <div class="row">
-            <span>Client:</span>
-            <span>${transaction.client?.nom || 'N/A'}</span>
-          </div>
-          
-          <div class="row">
-            <span>Montant:</span>
-            <span class="bold">${formatCurrencyValue(transaction.montant, transaction.devise)}</span>
-          </div>
-          
-          ${transaction.montant_cny ? `
-            <div class="row">
-              <span>Montant CNY:</span>
-              <span class="bold">${formatCurrencyValue(transaction.montant_cny, 'CNY')}</span>
-            </div>
-            <div class="row">
-              <span>Taux:</span>
-              <span>${transaction.taux_usd_cny?.toFixed(4) || 'N/A'}</span>
-            </div>
-          ` : ''}
-          
-          <div class="row">
-            <span>Motif:</span>
-            <span>${transaction.motif}</span>
-          </div>
-          
-          <div class="row">
-            <span>Mode paiement:</span>
-            <span>${transaction.mode_paiement}</span>
-          </div>
-          
-          <div class="row">
-            <span>Frais:</span>
-            <span>${formatCurrencyValue(transaction.frais, 'USD')}</span>
-          </div>
-          
-          <div class="row">
-            <span>Statut:</span>
-            <span class="bold">${transaction.statut}</span>
-          </div>
-          
-          <div class="footer">
-            <p>Merci de votre confiance!</p>
-            <p class="center">www.facturex.com</p>
-          </div>
-          
-          <script>
-            window.onload = function() {
-              window.print();
-              window.onafterprint = function() {
-                window.close();
-              };
-            };
-          </script>
-        </body>
-      </html>
-    `;
+      const receiptHTML = generateReceiptHTML({
+        transaction,
+        client: transaction.client || null,
+        creatorName: creatorName || undefined
+      });
 
-    printWindow.document.write(receiptHTML);
-    printWindow.document.close();
+      printWindow.document.write(receiptHTML);
+      printWindow.document.close();
+    });
   };
 
   const handleDuplicate = () => {

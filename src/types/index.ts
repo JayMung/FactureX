@@ -31,7 +31,7 @@ export interface Transaction {
   updated_at?: string;
   created_by?: string;
   client?: Client;
-  
+
   // New financial fields
   type_transaction: 'revenue' | 'depense' | 'transfert';
   categorie?: string;
@@ -40,7 +40,7 @@ export interface Transaction {
   colis_id?: string;
   notes?: string;
   organization_id: string;
-  
+
   // Related objects
   compte_source?: CompteFinancier;
   compte_destination?: CompteFinancier;
@@ -53,7 +53,7 @@ export interface CompteFinancier {
   type_compte: 'mobile_money' | 'banque' | 'cash';
   numero_compte?: string;
   solde_actuel: number;
-  devise: 'USD' | 'CDF';
+  devise: 'USD' | 'CDF' | 'CNY';
   is_active: boolean;
   description?: string;
   organization_id: string;
@@ -67,7 +67,7 @@ export interface CreateCompteFinancierData {
   type_compte: 'mobile_money' | 'banque' | 'cash';
   numero_compte?: string;
   solde_actuel: number;
-  devise: 'USD' | 'CDF';
+  devise: 'USD' | 'CDF' | 'CNY';
   description?: string;
 }
 
@@ -76,7 +76,7 @@ export interface UpdateCompteFinancierData {
   type_compte?: 'mobile_money' | 'banque' | 'cash';
   numero_compte?: string;
   solde_actuel?: number;
-  devise?: 'USD' | 'CDF';
+  devise?: 'USD' | 'CDF' | 'CNY';
   is_active?: boolean;
   description?: string;
 }
@@ -94,7 +94,7 @@ export interface MouvementCompte {
   organization_id: string;
   created_at: string;
   updated_at?: string;
-  
+
   // Relations
   compte?: CompteFinancier;
   transaction?: Transaction;
@@ -270,7 +270,7 @@ export interface Facture {
   date_validation?: string;
   valide_par?: string;
   mode_livraison: 'aerien' | 'maritime';
-  devise: 'USD' | 'CDF';
+  devise: 'USD' | 'CDF' | 'CNY';
   shipping_fee: number;
   subtotal: number;
   total_poids: number;
@@ -307,7 +307,7 @@ export interface CreateFactureData {
   client_id: string;
   type: 'devis' | 'facture';
   mode_livraison: 'aerien' | 'maritime';
-  devise: 'USD' | 'CDF';
+  devise: 'USD' | 'CDF' | 'CNY';
   date_emission: string;
   statut?: 'brouillon' | 'en_attente' | 'validee' | 'annulee';
   conditions_vente?: string;
@@ -325,7 +325,7 @@ export interface CreateFactureData {
 export interface UpdateFactureData {
   client_id?: string;
   mode_livraison?: 'aerien' | 'maritime';
-  devise?: 'USD' | 'CDF';
+  devise?: 'USD' | 'CDF' | 'CNY';
   date_emission?: string;
   statut?: 'brouillon' | 'en_attente' | 'validee' | 'annulee';
   conditions_vente?: string;
@@ -415,7 +415,7 @@ export interface TarifColis {
   poids_min: number;
   poids_max: number;
   tarif_par_kg: number;
-  devise: 'USD' | 'CDF';
+  devise: 'USD' | 'CDF' | 'CNY';
   description?: string;
   conditions?: string;
   actif: boolean;
@@ -429,7 +429,7 @@ export interface PaiementColis {
   colis_id: string;
   client_id: string;
   montant_paye: number;
-  devise: 'USD' | 'CDF';
+  devise: 'USD' | 'CDF' | 'CNY';
   mode_paiement: string;
   reference_paiement?: string;
   date_paiement: string;

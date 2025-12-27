@@ -15,12 +15,12 @@ import { cn } from '@/lib/utils';
 import CompteDetailModal from '@/components/comptes/CompteDetailModal';
 
 const Comptes: React.FC = () => {
-  const { 
-    comptes, 
-    loading, 
-    error, 
-    createCompte, 
-    updateCompte, 
+  const {
+    comptes,
+    loading,
+    error,
+    createCompte,
+    updateCompte,
     deleteCompte,
     getComptesByType,
     getTotalBalance,
@@ -54,7 +54,7 @@ const Comptes: React.FC = () => {
         await createCompte(formData);
         showSuccess('Compte créé avec succès');
       }
-      
+
       // Reset form
       setFormData({
         nom: '',
@@ -131,7 +131,7 @@ const Comptes: React.FC = () => {
 
   const getAccountColor = (nom: string, type: string) => {
     const nomLower = nom.toLowerCase();
-    
+
     // Couleurs spécifiques par opérateur
     if (nomLower.includes('airtel')) {
       return {
@@ -160,7 +160,7 @@ const Comptes: React.FC = () => {
         badge: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
       };
     }
-    
+
     // Couleurs par type de compte
     switch (type) {
       case 'banque':
@@ -193,6 +193,7 @@ const Comptes: React.FC = () => {
   const activeComptes = getActiveComptes();
   const totalUSD = getTotalBalance('USD');
   const totalCDF = getTotalBalance('CDF');
+  const totalCNY = getTotalBalance('CNY');
   const mobileMoneyComptes = getComptesByType('mobile_money');
   const banqueComptes = getComptesByType('banque');
   const cashComptes = getComptesByType('cash');
@@ -215,8 +216,8 @@ const Comptes: React.FC = () => {
 
   return (
     <div className="space-y-4 md:space-y-6">
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-3">
+      {/* Actions */}
+      <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-3">
         <div className="flex items-center gap-3">
           {/* View Toggle */}
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
@@ -224,8 +225,8 @@ const Comptes: React.FC = () => {
               type="button"
               className={cn(
                 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0',
-                viewMode === 'grid' 
-                  ? 'bg-primary text-primary-foreground shadow-sm' 
+                viewMode === 'grid'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'hover:bg-accent hover:text-accent-foreground'
               )}
               onClick={() => setViewMode('grid')}
@@ -236,8 +237,8 @@ const Comptes: React.FC = () => {
               type="button"
               className={cn(
                 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0',
-                viewMode === 'list' 
-                  ? 'bg-primary text-primary-foreground shadow-sm' 
+                viewMode === 'list'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'hover:bg-accent hover:text-accent-foreground'
               )}
               onClick={() => setViewMode('list')}
@@ -245,7 +246,7 @@ const Comptes: React.FC = () => {
               <List className="h-4 w-4" />
             </button>
           </div>
-          
+
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
               <button
@@ -257,108 +258,109 @@ const Comptes: React.FC = () => {
                 <span className="sm:hidden">Nouveau</span>
               </button>
             </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Créer un nouveau compte</DialogTitle>
-              <DialogDescription>
-                Ajoutez un nouveau compte financier pour gérer vos transactions.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="nom">Nom du compte</Label>
-                <Input
-                  id="nom"
-                  value={formData.nom}
-                  onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                  placeholder="Ex: Airtel Money, Orange Money, Banque BCDC"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="type_compte">Type de compte</Label>
-                <Select
-                  value={formData.type_compte}
-                  onValueChange={(value: 'mobile_money' | 'banque' | 'cash') =>
-                    setFormData({ ...formData, type_compte: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez un type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="mobile_money">Mobile Money</SelectItem>
-                    <SelectItem value="banque">Banque</SelectItem>
-                    <SelectItem value="cash">Cash</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="numero_compte">Numéro de compte</Label>
-                <Input
-                  id="numero_compte"
-                  value={formData.numero_compte}
-                  onChange={(e) => setFormData({ ...formData, numero_compte: e.target.value })}
-                  placeholder="Numéro de téléphone ou numéro de compte bancaire"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Créer un nouveau compte</DialogTitle>
+                <DialogDescription>
+                  Ajoutez un nouveau compte financier pour gérer vos transactions.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <Label htmlFor="solde_actuel">Solde actuel</Label>
+                  <Label htmlFor="nom">Nom du compte</Label>
                   <Input
-                    id="solde_actuel"
-                    type="number"
-                    step="0.01"
-                    value={formData.solde_actuel}
-                    onChange={(e) => setFormData({ ...formData, solde_actuel: parseFloat(e.target.value) || 0 })}
+                    id="nom"
+                    value={formData.nom}
+                    onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
+                    placeholder="Ex: Airtel Money, Orange Money, Banque BCDC"
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="devise">Devise</Label>
+                  <Label htmlFor="type_compte">Type de compte</Label>
                   <Select
-                    value={formData.devise}
-                    onValueChange={(value: 'USD' | 'CDF') =>
-                      setFormData({ ...formData, devise: value })
+                    value={formData.type_compte}
+                    onValueChange={(value: 'mobile_money' | 'banque' | 'cash') =>
+                      setFormData({ ...formData, type_compte: value })
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Devise" />
+                      <SelectValue placeholder="Sélectionnez un type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="CDF">CDF</SelectItem>
+                      <SelectItem value="mobile_money">Mobile Money</SelectItem>
+                      <SelectItem value="banque">Banque</SelectItem>
+                      <SelectItem value="cash">Cash</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Description optionnelle du compte"
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row justify-end gap-2">
-                <button 
-                  type="button" 
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full sm:w-auto"
-                  onClick={() => setIsCreateDialogOpen(false)}
-                >
-                  Annuler
-                </button>
-                <button 
-                  type="submit" 
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full sm:w-auto"
-                >
-                  Créer
-                </button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <div>
+                  <Label htmlFor="numero_compte">Numéro de compte</Label>
+                  <Input
+                    id="numero_compte"
+                    value={formData.numero_compte}
+                    onChange={(e) => setFormData({ ...formData, numero_compte: e.target.value })}
+                    placeholder="Numéro de téléphone ou numéro de compte bancaire"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="solde_actuel">Solde actuel</Label>
+                    <Input
+                      id="solde_actuel"
+                      type="number"
+                      step="0.01"
+                      value={formData.solde_actuel}
+                      onChange={(e) => setFormData({ ...formData, solde_actuel: parseFloat(e.target.value) || 0 })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="devise">Devise</Label>
+                    <Select
+                      value={formData.devise}
+                      onValueChange={(value: 'USD' | 'CDF' | 'CNY') =>
+                        setFormData({ ...formData, devise: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Devise" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="CDF">CDF</SelectItem>
+                        <SelectItem value="CNY">CNY (RMB)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Description optionnelle du compte"
+                  />
+                </div>
+                <div className="flex flex-col sm:flex-row justify-end gap-2">
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full sm:w-auto"
+                    onClick={() => setIsCreateDialogOpen(false)}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full sm:w-auto"
+                  >
+                    Créer
+                  </button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -396,12 +398,12 @@ const Comptes: React.FC = () => {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Mobile Money</CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Solde Total CNY</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold">{mobileMoneyComptes.length}</div>
-            <p className="text-xs text-muted-foreground">Comptes mobile money</p>
+            <div className="text-xl sm:text-2xl font-bold">¥{totalCNY.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">En yuan chinois (RMB)</p>
           </CardContent>
         </Card>
       </div>
@@ -412,8 +414,8 @@ const Comptes: React.FC = () => {
           {comptes.map((compte) => {
             const colors = getAccountColor(compte.nom, compte.type_compte);
             return (
-              <Card 
-                key={compte.id} 
+              <Card
+                key={compte.id}
                 className={cn(
                   'border-2 transition-all hover:shadow-lg',
                   colors.bg,
@@ -474,7 +476,7 @@ const Comptes: React.FC = () => {
                   <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-900 rounded-lg border">
                     <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Solde:</span>
                     <span className={cn('text-xl sm:text-2xl font-bold', colors.text)}>
-                      {compte.devise === 'USD' ? '$' : ''}{compte.solde_actuel.toFixed(2)} {compte.devise === 'CDF' ? 'FC' : ''}
+                      {compte.devise === 'USD' ? '$' : compte.devise === 'CNY' ? '¥' : ''}{compte.solde_actuel.toFixed(2)} {compte.devise === 'CDF' ? 'FC' : ''}
                     </span>
                   </div>
                   {!compte.is_active && (
@@ -495,7 +497,7 @@ const Comptes: React.FC = () => {
           {comptes.map((compte) => {
             const colors = getAccountColor(compte.nom, compte.type_compte);
             return (
-              <Card 
+              <Card
                 key={compte.id}
                 className={cn(
                   'border-l-4 transition-all hover:shadow-md',
@@ -535,7 +537,7 @@ const Comptes: React.FC = () => {
                       <div className="text-right">
                         <div className="text-sm text-gray-600 dark:text-gray-400">Solde</div>
                         <div className={cn('text-xl sm:text-2xl font-bold', colors.text)}>
-                          {compte.devise === 'USD' ? '$' : ''}{compte.solde_actuel.toFixed(2)} {compte.devise === 'CDF' ? 'FC' : ''}
+                          {compte.devise === 'USD' ? '$' : compte.devise === 'CNY' ? '¥' : ''}{compte.solde_actuel.toFixed(2)} {compte.devise === 'CDF' ? 'FC' : ''}
                         </div>
                       </div>
                       <div className="flex gap-1">
@@ -634,7 +636,7 @@ const Comptes: React.FC = () => {
                 <Label htmlFor="edit_devise">Devise</Label>
                 <Select
                   value={formData.devise}
-                  onValueChange={(value: 'USD' | 'CDF') =>
+                  onValueChange={(value: 'USD' | 'CDF' | 'CNY') =>
                     setFormData({ ...formData, devise: value })
                   }
                 >
@@ -644,6 +646,7 @@ const Comptes: React.FC = () => {
                   <SelectContent>
                     <SelectItem value="USD">USD</SelectItem>
                     <SelectItem value="CDF">CDF</SelectItem>
+                    <SelectItem value="CNY">CNY (RMB)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -657,15 +660,15 @@ const Comptes: React.FC = () => {
               />
             </div>
             <div className="flex justify-end space-x-2">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full sm:w-auto"
                 onClick={() => setIsEditDialogOpen(false)}
               >
                 Annuler
               </button>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full sm:w-auto"
               >
                 Mettre à jour

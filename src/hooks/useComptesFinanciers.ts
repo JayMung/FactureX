@@ -97,7 +97,7 @@ export const useComptesFinanciers = () => {
       if (!updatedCompte) throw new Error('Failed to update compte');
 
       // Update local state
-      setComptes(prev => prev.map(compte => 
+      setComptes(prev => prev.map(compte =>
         compte.id === id ? updatedCompte : compte
       ));
 
@@ -132,12 +132,12 @@ export const useComptesFinanciers = () => {
   };
 
   // Get accounts by currency
-  const getComptesByDevise = (devise: 'USD' | 'CDF') => {
+  const getComptesByDevise = (devise: 'USD' | 'CDF' | 'CNY') => {
     return comptes.filter(compte => compte.devise === devise && compte.is_active);
   };
 
   // Get total balance by currency
-  const getTotalBalance = (devise: 'USD' | 'CDF') => {
+  const getTotalBalance = (devise: 'USD' | 'CDF' | 'CNY') => {
     return comptes
       .filter(compte => compte.devise === devise && compte.is_active)
       .reduce((total, compte) => total + parseFloat(compte.solde_actuel.toString()), 0);

@@ -20,7 +20,7 @@ export class InputValidator {
 
   // Allowed values for enums
   private static readonly ALLOWED_VALUES = {
-    devise: ['USD', 'CDF'],
+    devise: ['USD', 'CDF', 'CNY'],
     motif: ['Commande', 'Transfert'],
     statut: ['En attente', 'Servi', 'Remboursé', 'Annulé']
   };
@@ -55,8 +55,8 @@ export class InputValidator {
     // Validate montant (numeric)
     if (data.montant !== undefined) {
       const montantResult = this.validateNumeric(
-        data.montant, 
-        'montant', 
+        data.montant,
+        'montant',
         this.NUMERIC_CONSTRAINTS.montant
       );
       if (!montantResult.isValid) {
@@ -69,8 +69,8 @@ export class InputValidator {
     // Validate devise (enum)
     if (data.devise) {
       const deviseResult = this.validateEnum(
-        data.devise, 
-        'devise', 
+        data.devise,
+        'devise',
         this.ALLOWED_VALUES.devise
       );
       if (!deviseResult.isValid) {
@@ -83,8 +83,8 @@ export class InputValidator {
     // Validate motif (text - description libre)
     if (data.motif) {
       const motifResult = this.validateText(
-        data.motif, 
-        'motif', 
+        data.motif,
+        'motif',
         500 // Max 500 caractères pour la description
       );
       if (!motifResult.isValid) {
@@ -97,8 +97,8 @@ export class InputValidator {
     // Validate mode_paiement (text)
     if (data.mode_paiement) {
       const paiementResult = this.validateText(
-        data.mode_paiement, 
-        'mode_paiement', 
+        data.mode_paiement,
+        'mode_paiement',
         this.MAX_LENGTHS.mode_paiement
       );
       if (!paiementResult.isValid) {
@@ -111,8 +111,8 @@ export class InputValidator {
     // Validate statut (enum)
     if (data.statut) {
       const statutResult = this.validateEnum(
-        data.statut, 
-        'statut', 
+        data.statut,
+        'statut',
         this.ALLOWED_VALUES.statut
       );
       if (!statutResult.isValid) {
@@ -140,8 +140,8 @@ export class InputValidator {
     // Validate categorie (text)
     if (data.categorie) {
       const categorieResult = this.validateText(
-        data.categorie, 
-        'categorie', 
+        data.categorie,
+        'categorie',
         100
       );
       if (categorieResult.isValid) {
@@ -152,8 +152,8 @@ export class InputValidator {
     // Validate notes (text)
     if (data.notes) {
       const notesResult = this.validateText(
-        data.notes, 
-        'notes', 
+        data.notes,
+        'notes',
         1000
       );
       if (notesResult.isValid) {
@@ -180,8 +180,8 @@ export class InputValidator {
     // Validate frais (numeric)
     if (data.frais !== undefined) {
       const fraisResult = this.validateNumeric(
-        data.frais, 
-        'frais', 
+        data.frais,
+        'frais',
         { min: 0, max: 1000000, decimals: 2 }
       );
       if (fraisResult.isValid) {
@@ -201,7 +201,7 @@ export class InputValidator {
    */
   private static validateUUID(value: string, fieldName: string): ValidationResult {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    
+
     if (!value || typeof value !== 'string') {
       return { isValid: false, error: `${fieldName} is required`, sanitizedValue: '' };
     }
@@ -221,21 +221,21 @@ export class InputValidator {
    * Validate numeric values
    */
   private static validateNumeric(
-    value: any, 
-    fieldName: string, 
+    value: any,
+    fieldName: string,
     constraints: { min: number; max: number; decimals: number }
   ): ValidationResult {
     const numValue = parseFloat(value);
-    
+
     if (isNaN(numValue)) {
       return { isValid: false, error: `${fieldName} must be a number`, sanitizedValue: '' };
     }
 
     if (numValue < constraints.min || numValue > constraints.max) {
-      return { 
-        isValid: false, 
+      return {
+        isValid: false,
         error: `${fieldName} must be between ${constraints.min} and ${constraints.max}`,
-        sanitizedValue: '' 
+        sanitizedValue: ''
       };
     }
 
@@ -258,10 +258,10 @@ export class InputValidator {
     }
 
     if (!allowedValues.includes(value)) {
-      return { 
-        isValid: false, 
+      return {
+        isValid: false,
         error: `${fieldName} must be one of: ${allowedValues.join(', ')}`,
-        sanitizedValue: '' 
+        sanitizedValue: ''
       };
     }
 

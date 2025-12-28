@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -40,7 +40,11 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import PermissionGuard from '../components/auth/PermissionGuard';
-import EnhancedTable from '@/components/ui/enhanced-table';
+import { UnifiedDataTable } from '@/components/ui/unified-data-table';
+import { FilterTabs } from '@/components/ui/filter-tabs';
+import { ColumnSelector, type ColumnConfig } from '@/components/ui/column-selector';
+import { ExportDropdown } from '@/components/ui/export-dropdown';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { usePermissions } from '../hooks/usePermissions';
 import { useFactures } from '../hooks/useFactures';
 import Pagination from '../components/ui/pagination-custom';
@@ -49,8 +53,8 @@ import ConfirmDialog from '@/components/ui/confirm-dialog';
 import type { Facture } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { cn } from '@/lib/utils';
-import { 
-  sanitizeUserContent, 
+import {
+  sanitizeUserContent,
   validateContentSecurity,
   sanitizeCSV
 } from '@/lib/security/content-sanitization';
@@ -74,11 +78,22 @@ const FacturesProtected: React.FC = () => {
   const [factureToDelete, setFactureToDelete] = useState<string | null>(null);
   const navigate = useNavigate();
   const { checkPermission, isAdmin } = usePermissions();
+  const isMobile = useIsMobile();
+  const [viewMode, setViewMode] = useState<'table' | 'cards' | 'auto'>('auto');
+  const [columnsConfig, setColumnsConfig] = useState<ColumnConfig[]>([
+    { key: 'mode_livraison', label: 'Mode', visible: true },
+    { key: 'facture_number', label: 'N° Facture', visible: true, required: true },
+    { key: 'clients', label: 'Client', visible: true, required: true }, // Key matches data field
+    { key: 'date_emission', label: 'Date', visible: true },
+    { key: 'total_general', label: 'Montant', visible: true },
+    { key: 'statut', label: 'Statut', visible: true },
+    { key: 'actions', label: 'Actions', visible: true, required: true }
+  ]);
 
-  const { 
-    factures, 
-    pagination, 
-    isLoading, 
+  const {
+    factures,
+    pagination,
+    isLoading,
     error,
     globalTotals,
     deleteFacture,
@@ -118,7 +133,7 @@ const FacturesProtected: React.FC = () => {
       payee: { variant: 'default' as const, className: 'bg-blue-500 text-white', label: 'Payée' },
       annulee: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800', label: 'Annulée' }
     };
-    
+
     const config = variants[statut] || variants.brouillon;
     return (
       <Badge variant={config.variant} className={config.className}>
@@ -129,14 +144,14 @@ const FacturesProtected: React.FC = () => {
 
   const handleStatutChange = async (facture: Facture, newStatut: string) => {
     try {
-      await updateFacture(facture.id, { 
+      await updateFacture(facture.id, {
         statut: newStatut as any,
         // Ajouter la date de validation si le statut devient "validée" ou "payee"
-        ...(newStatut === 'validee' || newStatut === 'payee' ? { 
-          date_validation: new Date().toISOString() 
+        ...(newStatut === 'validee' || newStatut === 'payee' ? {
+          date_validation: new Date().toISOString()
         } : {})
       });
-      
+
       showSuccess(`Statut de la facture mis à jour: ${getStatutBadge(newStatut).props.children}`);
       refetch();
     } catch (error: any) {
@@ -147,7 +162,7 @@ const FacturesProtected: React.FC = () => {
 
   const handleConvertToFacture = async (facture: Facture) => {
     if (facture.type !== 'devis') return;
-    
+
     try {
       await convertToFacture(facture.id);
       refetch();
@@ -163,7 +178,7 @@ const FacturesProtected: React.FC = () => {
 
   const handleConfirmDelete = async () => {
     if (!factureToDelete) return;
-    
+
     try {
       await deleteFacture(factureToDelete);
       refetch();
@@ -189,7 +204,7 @@ const FacturesProtected: React.FC = () => {
     try {
       // Récupérer la facture complète avec les items
       const factureComplete = await getFactureWithItems(facture.id);
-      
+
       if (!factureComplete) {
         showError('Impossible de récupérer la facture');
         return;
@@ -237,7 +252,7 @@ const FacturesProtected: React.FC = () => {
 
   const handleBulkDelete = async () => {
     if (selectedFactures.size === 0) return;
-    
+
     try {
       const promises = Array.from(selectedFactures).map(id => deleteFacture(id));
       await Promise.all(promises);
@@ -250,9 +265,9 @@ const FacturesProtected: React.FC = () => {
 
   const handleBulkStatusChange = async (newStatut: string) => {
     if (selectedFactures.size === 0) return;
-    
+
     try {
-      const promises = Array.from(selectedFactures).map(id => 
+      const promises = Array.from(selectedFactures).map(id =>
         updateFacture(id, { statut: newStatut as any })
       );
       await Promise.all(promises);
@@ -266,18 +281,18 @@ const FacturesProtected: React.FC = () => {
   // Calculer les totaux des factures sélectionnées
   const calculateSelectedTotals = () => {
     const selectedFacts = factures.filter(f => selectedFactures.has(f.id));
-    
+
     const totalUSD = selectedFacts
       .filter(f => f.devise === 'USD')
       .reduce((sum, f) => sum + f.total_general, 0);
-    
+
     const totalCDF = selectedFacts
       .filter(f => f.devise === 'CDF')
       .reduce((sum, f) => sum + f.total_general, 0);
-    
+
     const totalFrais = selectedFacts
       .reduce((sum, f) => sum + (f.frais || 0), 0);
-    
+
     return { totalUSD, totalCDF, totalFrais };
   };
 
@@ -361,7 +376,7 @@ const FacturesProtected: React.FC = () => {
                         </PermissionGuard>
                       </div>
                     </div>
-                    
+
                     {/* Deuxième ligne: Résumé des montants (admin uniquement) */}
                     {isAdmin && (
                       <div className="flex items-center justify-center space-x-6 text-sm border-t border-blue-200 pt-3">
@@ -395,84 +410,111 @@ const FacturesProtected: React.FC = () => {
             );
           })()}
 
-          {/* Stats Cards - Design System */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          {/* Stats Cards - Modern Gradient Design */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             {/* Total USD (admin uniquement) */}
             {isAdmin && (
-              <Card className="card-base transition-shadow-hover">
-                <CardContent className="p-6">
+              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 shadow-lg">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+                <div className="relative">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total USD</p>
-                      <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                        {formatCurrency(globalTotals.totalUSD, 'USD')}
-                      </p>
+                    <div className="rounded-lg bg-white/20 p-2">
+                      <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-white" />
                     </div>
-                    <div className="p-3 rounded-full bg-green-500 flex-shrink-0">
-                      <DollarSign className="h-6 w-6 text-white" />
-                    </div>
+                    <span className="text-[10px] md:text-xs font-medium text-emerald-100">USD</span>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="mt-3">
+                    <p className="text-lg md:text-2xl font-bold text-white">
+                      {formatCurrency(globalTotals.totalUSD, 'USD')}
+                    </p>
+                    <p className="mt-0.5 text-xs md:text-sm text-emerald-100">Total USD</p>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Total CDF (admin uniquement) */}
             {isAdmin && (
-              <Card className="card-base transition-shadow-hover">
-                <CardContent className="p-6">
+              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 md:p-5 shadow-lg">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+                <div className="relative">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total CDF</p>
-                      <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                        {formatCurrency(globalTotals.totalCDF, 'CDF')}
-                      </p>
+                    <div className="rounded-lg bg-white/20 p-2">
+                      <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-white" />
                     </div>
-                    <div className="p-3 rounded-full bg-blue-500 flex-shrink-0">
-                      <TrendingUp className="h-6 w-6 text-white" />
-                    </div>
+                    <span className="text-[10px] md:text-xs font-medium text-blue-100">CDF</span>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="mt-3">
+                    <p className="text-lg md:text-2xl font-bold text-white">
+                      {formatCurrency(globalTotals.totalCDF, 'CDF')}
+                    </p>
+                    <p className="mt-0.5 text-xs md:text-sm text-blue-100">Total CDF</p>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Total Factures */}
-            <Card className="card-base transition-shadow-hover">
-              <CardContent className="p-6">
+            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-4 md:p-5 shadow-lg">
+              <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+              <div className="relative">
                 <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Factures</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {globalTotals.totalCount || 0}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">Toutes pages confondues</p>
+                  <div className="rounded-lg bg-white/20 p-2">
+                    <FileText className="h-4 w-4 md:h-5 md:w-5 text-white" />
                   </div>
-                  <div className="p-3 rounded-full bg-purple-500 flex-shrink-0">
-                    <FileText className="h-6 w-6 text-white" />
-                  </div>
+                  <span className="text-[10px] md:text-xs font-medium text-purple-100">Total</span>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="mt-3">
+                  <p className="text-lg md:text-2xl font-bold text-white">
+                    {globalTotals.totalCount || 0}
+                  </p>
+                  <p className="mt-0.5 text-xs md:text-sm text-purple-100">Factures</p>
+                </div>
+              </div>
+            </div>
 
             {/* Frais */}
-            <Card className="card-base transition-shadow-hover">
-              <CardContent className="p-6">
+            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 p-4 md:p-5 shadow-lg">
+              <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+              <div className="relative">
                 <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Frais Totals</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {formatCurrency(globalTotals.totalFrais, 'USD')}
-                    </p>
+                  <div className="rounded-lg bg-white/20 p-2">
+                    <AlertCircle className="h-4 w-4 md:h-5 md:w-5 text-white" />
                   </div>
-                  <div className="p-3 rounded-full bg-orange-500 flex-shrink-0">
-                    <AlertCircle className="h-6 w-6 text-white" />
-                  </div>
+                  <span className="text-[10px] md:text-xs font-medium text-orange-100">Frais</span>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="mt-3">
+                  <p className="text-lg md:text-2xl font-bold text-white">
+                    {formatCurrency(globalTotals.totalFrais, 'USD')}
+                  </p>
+                  <p className="mt-0.5 text-xs md:text-sm text-orange-100">Total Frais</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Status Filter Tabs */}
+          <div className="mb-6">
+            <FilterTabs
+              tabs={[
+                { id: 'all', label: 'Tous', count: globalTotals.totalCount || 0 }, // You might want to filter counts properly if available
+                { id: 'brouillon', label: 'Brouillon' },
+                { id: 'en_attente', label: 'En attente' },
+                { id: 'validee', label: 'Validée' },
+                { id: 'payee', label: 'Payée' },
+                { id: 'annulee', label: 'Annulée' }
+              ]}
+              activeTab={statutFilter}
+              onTabChange={(id) => {
+                setStatutFilter(id);
+                setCurrentPage(1);
+              }}
+              variant="pills"
+            />
           </div>
 
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
@@ -498,105 +540,49 @@ const FacturesProtected: React.FC = () => {
                 <SelectItem value="facture">Facture</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={statutFilter} onValueChange={(value) => {
-              setStatutFilter(value);
-              setCurrentPage(1);
-            }}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="brouillon">Brouillon</SelectItem>
-                <SelectItem value="en_attente">En attente</SelectItem>
-                <SelectItem value="validee">Validée</SelectItem>
-                <SelectItem value="payee">Payée</SelectItem>
-                <SelectItem value="annulee">Annulée</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Status Select removed in favor of FilterTabs */}
           </div>
 
           {/* Factures Table */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
                 <CardTitle>Liste des Factures et Devis</CardTitle>
-                <PermissionGuard module="factures" permission="create">
-                  <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddNew}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Nouvelle Facture/Devis
-                  </Button>
-                </PermissionGuard>
+                <div className="flex items-center gap-2">
+                  <ColumnSelector
+                    columns={columnsConfig}
+                    onColumnsChange={setColumnsConfig}
+                  />
+                  <ExportDropdown
+                    onExport={(format) => {
+                      console.log('Exporting as', format);
+                      // TODO: Implement actual export logic based on format
+                    }}
+                    disabled={factures.length === 0}
+                    selectedCount={selectedFactures.size}
+                  />
+                  <PermissionGuard module="factures" permission="create">
+                    <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddNew}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Nouvelle Facture/Devis
+                    </Button>
+                  </PermissionGuard>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <EnhancedTable
+              <UnifiedDataTable
                 data={sortedData}
                 loading={isLoading && factures.length === 0}
-                emptyMessage="Aucune facture"
-                emptySubMessage="Commencez par créer votre première facture"
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+                emptyMessage="Aucune facture trouvée"
+                emptySubMessage="Commencez par créer votre première facture ou ajustez vos filtres."
                 onSort={handleSort}
                 sortKey={sortConfig?.key}
                 sortDirection={sortConfig?.direction}
-                bulkSelect={{
-                  selected: Array.from(selectedFactures),
-                  onSelectAll: handleSelectAll,
-                  onSelectItem: (id, checked) => handleSelectFacture(id, checked),
-                  getId: (facture: Facture) => facture.id,
-                  isAllSelected: selectedFactures.size === factures.length && factures.length > 0,
-                  isPartiallySelected: selectedFactures.size > 0 && selectedFactures.size < factures.length
-                }}
-                actionsColumn={{
-                  header: 'Actions',
-                  render: (facture: Facture) => (
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        {...({ variant: "ghost" } as any)}
-                        size="sm"
-                        onClick={() => handleViewDetails(facture)}
-                        title="Voir les détails"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      
-                      <PermissionGuard module="factures" permission="create">
-                        <Button
-                          {...({ variant: "ghost" } as any)}
-                          size="sm"
-                          onClick={() => handleDuplicate(facture)}
-                          title="Dupliquer"
-                          className="text-blue-600 hover:bg-blue-50"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </PermissionGuard>
-                      
-                      <PermissionGuard module="factures" permission="update">
-                        <Button
-                          {...({ variant: "ghost" } as any)}
-                          size="sm"
-                          onClick={() => handleEdit(facture)}
-                          title="Modifier"
-                          className="hover:bg-green-50"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </PermissionGuard>
-                      
-                      <PermissionGuard module="factures" permission="delete">
-                        <Button
-                          {...({ variant: "ghost" } as any)}
-                          size="sm"
-                          className="text-red-600 hover:bg-red-50"
-                          onClick={() => handleDelete(facture.id)}
-                          title="Supprimer"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </PermissionGuard>
-                    </div>
-                  )
-                }}
+                selectedIds={Array.from(selectedFactures)}
+                onSelectionChange={(ids) => setSelectedFactures(new Set(ids))}
                 columns={[
                   {
                     key: 'mode_livraison',
@@ -657,17 +643,17 @@ const FacturesProtected: React.FC = () => {
                       checkPermission('factures', 'update') ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button 
+                            <Button
                               {...({ variant: "outline" } as any)}
                               size="sm"
-                              className="h-8 flex items-center gap-2 hover:bg-gray-50"
+                              className="h-8 flex items-center gap-2 hover:bg-gray-50 bg-transparent border-gray-200"
                             >
                               {getStatutBadge(value)}
                               <ChevronDown className="h-4 w-4 text-gray-500" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start" className="w-48">
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => handleStatutChange(facture, 'brouillon')}
                               className={cn(
                                 "cursor-pointer",
@@ -677,7 +663,7 @@ const FacturesProtected: React.FC = () => {
                               <FileText className="mr-2 h-4 w-4" />
                               Brouillon
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => handleStatutChange(facture, 'envoyee')}
                               className={cn(
                                 "cursor-pointer",
@@ -687,7 +673,7 @@ const FacturesProtected: React.FC = () => {
                               <Send className="mr-2 h-4 w-4" />
                               Envoyée
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => handleStatutChange(facture, 'payee')}
                               className={cn(
                                 "cursor-pointer",
@@ -697,7 +683,7 @@ const FacturesProtected: React.FC = () => {
                               <CheckCircle className="mr-2 h-4 w-4" />
                               Payée
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => handleStatutChange(facture, 'annulee')}
                               className={cn(
                                 "cursor-pointer",
@@ -713,8 +699,81 @@ const FacturesProtected: React.FC = () => {
                         getStatutBadge(value)
                       )
                     )
+                  },
+                  {
+                    key: 'actions',
+                    title: 'Actions',
+                    align: 'right' as const,
+                    render: (value: any, facture: Facture) => (
+                      <div className="flex items-center justify-end space-x-2">
+                        <Button
+                          {...({ variant: "ghost" } as any)}
+                          size="sm"
+                          onClick={() => handleViewDetails(facture)}
+                          title="Voir les détails"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+
+                        <PermissionGuard module="factures" permission="create">
+                          <Button
+                            {...({ variant: "ghost" } as any)}
+                            size="sm"
+                            onClick={() => handleDuplicate(facture)}
+                            title="Dupliquer"
+                            className="text-blue-600 hover:bg-blue-50"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </PermissionGuard>
+
+                        <PermissionGuard module="factures" permission="update">
+                          <Button
+                            {...({ variant: "ghost" } as any)}
+                            size="sm"
+                            onClick={() => handleEdit(facture)}
+                            title="Modifier"
+                            className="hover:bg-green-50"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </PermissionGuard>
+
+                        <PermissionGuard module="factures" permission="delete">
+                          <Button
+                            {...({ variant: "ghost" } as any)}
+                            size="sm"
+                            className="text-red-600 hover:bg-red-50"
+                            onClick={() => handleDelete(facture.id)}
+                            title="Supprimer"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </PermissionGuard>
+                      </div>
+                    )
                   }
-                ]}
+                ].filter(col => columnsConfig.find(c => c.key === col.key)?.visible)}
+                cardConfig={{
+                  titleKey: 'facture_number',
+                  titleRender: (item) => (
+                    <span
+                      onClick={() => handleViewDetails(item)}
+                      className="font-bold text-lg text-green-600 cursor-pointer"
+                    >
+                      {item.facture_number}
+                    </span>
+                  ),
+                  subtitleKey: 'clients',
+                  subtitleRender: (item) => <span className="text-gray-600">{item.clients?.nom || 'N/A'}</span>,
+                  badgeKey: 'statut',
+                  badgeRender: (item) => getStatutBadge(item.statut),
+                  infoFields: [
+                    { key: 'date_emission', label: 'Date', render: (val) => new Date(val).toLocaleDateString('fr-FR') },
+                    { key: 'total_general', label: 'Montant', render: (val, item) => formatCurrency(val, item.devise) },
+                    { key: 'mode_livraison', label: 'Mode', render: (val) => val === 'aerien' ? '✈️ Aérien' : '🚢 Maritime' }
+                  ]
+                }}
               />
 
               {/* Pagination avec sélecteur de taille */}
@@ -755,7 +814,7 @@ const FacturesProtected: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                  
+
                   {/* Pagination - Centrée et responsive */}
                   {pagination.totalPages > 1 && (
                     <div className="flex justify-center">

@@ -12,6 +12,18 @@ import { Plus, Edit2, Trash2, Wallet, Building, DollarSign, Grid3x3, List, Smart
 import { showSuccess, showError } from '@/utils/toast';
 import type { CompteFinancier, CreateCompteFinancierData, UpdateCompteFinancierData } from '@/types';
 import { cn } from '@/lib/utils';
+import { UnifiedDataTable } from '@/components/ui/unified-data-table';
+import { ColumnSelector } from '@/components/ui/column-selector';
+import { ExportDropdown } from '@/components/ui/export-dropdown';
+import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
+import { MoreHorizontal, FileDown } from 'lucide-react';
 import CompteDetailModal from '@/components/comptes/CompteDetailModal';
 
 const Comptes: React.FC = () => {
@@ -30,7 +42,9 @@ const Comptes: React.FC = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedCompte, setSelectedCompte] = useState<CompteFinancier | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [viewMode, setViewMode] = useState<'table' | 'cards' | 'auto'>('auto');
+  const [columnsConfig, setColumnsConfig] = useState<Record<string, boolean>>({});
+  const isMobile = useIsMobile();
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [compteForDetail, setCompteForDetail] = useState<CompteFinancier | null>(null);
   const [formData, setFormData] = useState<CreateCompteFinancierData>({
@@ -198,6 +212,77 @@ const Comptes: React.FC = () => {
   const banqueComptes = getComptesByType('banque');
   const cashComptes = getComptesByType('cash');
 
+  const compteColumns = [
+    {
+      key: 'nom',
+      title: 'Compte',
+      sortable: true,
+      render: (value: string, item: CompteFinancier) => {
+        const colors = getAccountColor(item.nom, item.type_compte);
+        return (
+          <div className="flex items-center gap-3">
+            <div className={cn('p-2 rounded-lg', colors.icon)}>
+              {getAccountIcon(item.type_compte)}
+            </div>
+            <div className="flex flex-col">
+              <span className="font-bold">{value}</span>
+              <span className="text-xs text-gray-500">{item.numero_compte}</span>
+            </div>
+          </div>
+        );
+      }
+    },
+    {
+      key: 'type_compte',
+      title: 'Type',
+      sortable: true,
+      render: (value: string, item: CompteFinancier) => {
+        const colors = getAccountColor(item.nom, item.type_compte);
+        return <Badge className={colors.badge}>{getAccountTypeLabel(value)}</Badge>
+      }
+    },
+    {
+      key: 'solde_actuel',
+      title: 'Solde',
+      sortable: true,
+      align: 'right' as const,
+      render: (value: number, item: CompteFinancier) => {
+        const colors = getAccountColor(item.nom, item.type_compte);
+        return (
+          <span className={cn('font-bold', colors.text)}>
+            {item.devise === 'USD' ? '$' : item.devise === 'CNY' ? '¥' : ''}{value.toFixed(2)} {item.devise === 'CDF' ? 'FC' : ''}
+          </span>
+        )
+      }
+    },
+    {
+      key: 'actions',
+      title: '',
+      align: 'right' as const,
+      render: (_: any, item: CompteFinancier) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleViewDetail(item)}>
+              <Eye className="mr-2 h-4 w-4" /> Voir détails
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleEdit(item)}>
+              <Edit2 className="mr-2 h-4 w-4" /> Modifier
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => handleDelete(item)} className="text-red-600">
+              <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    }
+  ];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -218,18 +303,19 @@ const Comptes: React.FC = () => {
     <div className="space-y-4 md:space-y-6">
       {/* Actions */}
       <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           {/* View Toggle */}
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
             <button
               type="button"
               className={cn(
                 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0',
-                viewMode === 'grid'
+                viewMode === 'cards'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'hover:bg-accent hover:text-accent-foreground'
               )}
-              onClick={() => setViewMode('grid')}
+              onClick={() => setViewMode('cards')}
+              title="Vue Grille"
             >
               <Grid3x3 className="h-4 w-4" />
             </button>
@@ -237,16 +323,28 @@ const Comptes: React.FC = () => {
               type="button"
               className={cn(
                 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0',
-                viewMode === 'list'
+                viewMode === 'table'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'hover:bg-accent hover:text-accent-foreground'
               )}
-              onClick={() => setViewMode('list')}
+              onClick={() => setViewMode('table')}
+              title="Vue Liste"
             >
               <List className="h-4 w-4" />
             </button>
           </div>
 
+          <div className="h-8 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block" />
+
+          <ExportDropdown
+            onExport={(format) => {
+              showSuccess(`Export ${format} non implémenté`);
+            }}
+          />
+          <ColumnSelector
+            columns={compteColumns.map(c => ({ key: c.key as string, label: c.title, visible: columnsConfig[c.key as string] !== false }))}
+            onColumnsChange={(cols) => setColumnsConfig(cols.reduce((acc, c) => ({ ...acc, [c.key]: c.visible }), {}))}
+          />
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
               <button
@@ -364,216 +462,131 @@ const Comptes: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Comptes</CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold">{activeComptes.length}</div>
-            <p className="text-xs text-muted-foreground">Comptes actifs</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Solde Total USD</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold">${totalUSD.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">En dollars américains</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Solde Total CDF</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold">{totalCDF.toFixed(2)} CDF</div>
-            <p className="text-xs text-muted-foreground">En francs congolais</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Solde Total CNY</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold">¥{totalCNY.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">En yuan chinois (RMB)</p>
-          </CardContent>
-        </Card>
+      {/* Summary Cards - Enhanced Design */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Comptes Card */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 p-5 shadow-lg">
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/5"></div>
+          <div className="relative">
+            <div className="flex items-center justify-between">
+              <div className="rounded-lg bg-white/10 p-2.5">
+                <Wallet className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xs font-medium text-slate-400">Actifs</span>
+            </div>
+            <div className="mt-4">
+              <p className="text-3xl font-bold text-white">{activeComptes.length}</p>
+              <p className="mt-1 text-sm text-slate-400">Comptes financiers</p>
+            </div>
+          </div>
+        </div>
+
+        {/* USD Balance Card */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-5 shadow-lg">
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10"></div>
+          <div className="relative">
+            <div className="flex items-center justify-between">
+              <div className="rounded-lg bg-white/20 p-2.5">
+                <DollarSign className="h-5 w-5 text-white" />
+              </div>
+              <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
+                USD
+              </span>
+            </div>
+            <div className="mt-4">
+              <p className="text-3xl font-bold text-white">${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="mt-1 text-sm text-emerald-100">Dollars américains</p>
+            </div>
+          </div>
+        </div>
+
+        {/* CDF Balance Card */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-5 shadow-lg">
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10"></div>
+          <div className="relative">
+            <div className="flex items-center justify-between">
+              <div className="rounded-lg bg-white/20 p-2.5">
+                <Banknote className="h-5 w-5 text-white" />
+              </div>
+              <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
+                CDF
+              </span>
+            </div>
+            <div className="mt-4">
+              <p className="text-3xl font-bold text-white">{totalCDF.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} FC</p>
+              <p className="mt-1 text-sm text-blue-100">Francs congolais</p>
+            </div>
+          </div>
+        </div>
+
+        {/* CNY Balance Card */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-5 shadow-lg">
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10"></div>
+          <div className="relative">
+            <div className="flex items-center justify-between">
+              <div className="rounded-lg bg-white/20 p-2.5">
+                <CreditCard className="h-5 w-5 text-white" />
+              </div>
+              <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
+                CNY
+              </span>
+            </div>
+            <div className="mt-4">
+              <p className="text-3xl font-bold text-white">¥{totalCNY.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="mt-1 text-sm text-purple-100">Yuan chinois (RMB)</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Accounts List */}
-      {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {comptes.map((compte) => {
-            const colors = getAccountColor(compte.nom, compte.type_compte);
+      <UnifiedDataTable
+        data={comptes}
+        loading={loading}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        emptyMessage="Aucun compte trouvé"
+        emptySubMessage="Créez votre premier compte financier"
+        columns={compteColumns.filter(c => columnsConfig[c.key] !== false)}
+        cardConfig={{
+          titleKey: 'nom',
+          titleRender: (item) => {
+            const colors = getAccountColor(item.nom, item.type_compte);
             return (
-              <Card
-                key={compte.id}
-                className={cn(
-                  'border-2 transition-all hover:shadow-lg',
-                  colors.bg,
-                  colors.border,
-                  !compte.is_active && 'opacity-50'
-                )}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={cn('p-2 rounded-lg', colors.icon)}>
-                        {React.cloneElement(getAccountIcon(compte.type_compte) as React.ReactElement, {
-                          className: 'h-5 w-5 text-white'
-                        })}
-                      </div>
-                      <div>
-                        <CardTitle className="text-lg font-bold">{compte.nom}</CardTitle>
-                        <Badge className={cn('mt-1', colors.badge)}>
-                          {getAccountTypeLabel(compte.type_compte)}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground"
-                        onClick={() => handleViewDetail(compte)}
-                        title="Voir détails"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground"
-                        onClick={() => handleEdit(compte)}
-                        title="Modifier"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => handleDelete(compte)}
-                        title="Supprimer"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2 sm:space-y-3">
-                  {compte.numero_compte && (
-                    <div className="flex items-center justify-between p-2 bg-white/50 dark:bg-gray-900/50 rounded">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Numéro:</span>
-                      <span className="text-sm font-mono font-medium">{compte.numero_compte}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-900 rounded-lg border">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Solde:</span>
-                    <span className={cn('text-xl sm:text-2xl font-bold', colors.text)}>
-                      {compte.devise === 'USD' ? '$' : compte.devise === 'CNY' ? '¥' : ''}{compte.solde_actuel.toFixed(2)} {compte.devise === 'CDF' ? 'FC' : ''}
-                    </span>
-                  </div>
-                  {!compte.is_active && (
-                    <Badge className="w-full justify-center bg-destructive text-destructive-foreground" {...({ variant: 'destructive' } as any)}>
-                      Inactif
-                    </Badge>
-                  )}
-                  {compte.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 italic">{compte.description}</p>
-                  )}
-                </CardContent>
-              </Card>
+              <div className="flex items-center gap-2">
+                <span className={cn('p-1 rounded bg-gray-100 dark:bg-gray-800', colors.text)}>
+                  {getAccountIcon(item.type_compte)}
+                </span>
+                <span className={cn('font-bold', colors.text)}>{item.nom}</span>
+              </div>
             );
-          })}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {comptes.map((compte) => {
-            const colors = getAccountColor(compte.nom, compte.type_compte);
-            return (
-              <Card
-                key={compte.id}
-                className={cn(
-                  'border-l-4 transition-all hover:shadow-md',
-                  colors.border,
-                  !compte.is_active && 'opacity-50'
-                )}
-              >
-                <CardContent className="p-3 sm:p-4">
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 sm:gap-4 flex-1">
-                      <div className={cn('p-3 rounded-lg', colors.icon)}>
-                        {React.cloneElement(getAccountIcon(compte.type_compte) as React.ReactElement, {
-                          className: 'h-6 w-6 text-white'
-                        })}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3">
-                          <h3 className="text-lg font-bold">{compte.nom}</h3>
-                          <Badge className={cn(colors.badge)}>
-                            {getAccountTypeLabel(compte.type_compte)}
-                          </Badge>
-                          {!compte.is_active && (
-                            <Badge className="bg-destructive text-destructive-foreground" {...({ variant: 'destructive' } as any)}>Inactif</Badge>
-                          )}
-                        </div>
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-6 mt-2 text-sm text-gray-600 dark:text-gray-400">
-                          {compte.numero_compte && (
-                            <span className="font-mono">{compte.numero_compte}</span>
-                          )}
-                          {compte.description && (
-                            <span className="italic">{compte.description}</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6">
-                      <div className="text-right">
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Solde</div>
-                        <div className={cn('text-xl sm:text-2xl font-bold', colors.text)}>
-                          {compte.devise === 'USD' ? '$' : compte.devise === 'CNY' ? '¥' : ''}{compte.solde_actuel.toFixed(2)} {compte.devise === 'CDF' ? 'FC' : ''}
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <button
-                          type="button"
-                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-9 w-9 p-0 hover:bg-accent hover:text-accent-foreground"
-                          onClick={() => handleViewDetail(compte)}
-                          title="Voir détails"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-9 w-9 p-0 hover:bg-accent hover:text-accent-foreground"
-                          onClick={() => handleEdit(compte)}
-                          title="Modifier"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-9 w-9 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleDelete(compte)}
-                          title="Supprimer"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+          },
+          subtitleRender: (item) => (
+            <div className="flex flex-col gap-1">
+              <span className="text-sm text-gray-500">{getAccountTypeLabel(item.type_compte)}</span>
+              {item.numero_compte && <span className="font-mono text-xs text-gray-400">{item.numero_compte}</span>}
+            </div>
+          ),
+          badgeKey: 'type_compte',
+          badgeRender: (item) => {
+            const colors = getAccountColor(item.nom, item.type_compte);
+            return <Badge className={colors.badge}>{getAccountTypeLabel(item.type_compte)}</Badge>
+          },
+          infoFields: [
+            {
+              key: 'solde_actuel',
+              label: 'Solde',
+              render: (val, item) => {
+                const colors = getAccountColor(item.nom, item.type_compte);
+                return (
+                  <span className={cn('text-lg font-bold', colors.text)}>
+                    {item.devise === 'USD' ? '$' : item.devise === 'CNY' ? '¥' : ''}{val.toFixed(2)} {item.devise === 'CDF' ? 'FC' : ''}
+                  </span>
+                )
+              }
+            }
+          ]
+        }}
+      />
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

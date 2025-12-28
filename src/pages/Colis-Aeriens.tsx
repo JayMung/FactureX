@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Plus, Search, Filter, Package, Calendar, DollarSign, Eye, Edit, Trash2, MoreVertical, ChevronDown, CheckCircle, Clock, X, Truck, MapPin, AlertCircle, Plane, PackageCheck, CreditCard } from 'lucide-react';
+import { Plus, Search, Filter, Package, Calendar, DollarSign, Eye, Edit, Trash2, MoreVertical, ChevronDown, CheckCircle, Clock, X, Truck, MapPin, AlertCircle, Plane, PackageCheck, CreditCard, QrCode, ShoppingCart, User, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,11 @@ import { usePageSetup } from '../hooks/use-page-setup';
 import Pagination from '@/components/ui/pagination-custom';
 import { getDateRange, PeriodFilter } from '@/utils/dateUtils';
 import { PeriodFilterTabs } from '@/components/ui/period-filter-tabs';
+import { UnifiedDataTable } from '@/components/ui/unified-data-table';
+import { FilterTabs } from '@/components/ui/filter-tabs';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { ColumnSelector } from '@/components/ui/column-selector';
+import { ExportDropdown } from '@/components/ui/export-dropdown';
 
 // Error Boundary component
 class ErrorBoundary extends React.Component<
@@ -83,6 +88,9 @@ const ColisAeriens: React.FC = () => {
   const [transitaireFilter, setTransitaireFilter] = useState<string>('tous');
   const [fournisseurFilter, setFournisseurFilter] = useState<string>('tous');
   const [currentPage, setCurrentPage] = useState(1);
+  const isMobile = useIsMobile();
+  const [viewMode, setViewMode] = useState<'table' | 'cards' | 'auto'>('auto');
+  const [columnsConfig, setColumnsConfig] = useState<Record<string, boolean>>({});
 
   const PAGE_SIZE = 10;
 
@@ -371,6 +379,291 @@ const ColisAeriens: React.FC = () => {
     }
   };
 
+
+
+  const tableColumns = [
+    {
+      key: 'id',
+      title: 'ID Colis',
+      sortable: true,
+      render: (value: any, c: any, index: number) => (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400 font-mono">#{startIndex + index + 1}</span>
+          <button
+            onClick={(e) => handleViewDetails(c, e)}
+            className="text-blue-600 hover:text-blue-800 font-mono text-sm font-semibold hover:bg-blue-50 px-2 py-1 rounded transition-colors"
+            title="Voir les détails du colis"
+            type="button"
+          >
+            {generateColisId(c)}
+          </button>
+        </div>
+      )
+    },
+    {
+      key: 'client.nom',
+      title: 'Client',
+      sortable: true,
+      render: (value: any, c: any) => (
+        <div className="flex flex-col">
+          <p className="font-semibold text-gray-900">{c.client?.nom}</p>
+          <p className="text-xs text-gray-500 flex items-center gap-1">
+            <Package className="h-3 w-3" />
+            {c.client?.telephone}
+          </p>
+        </div>
+      )
+    },
+    {
+      key: 'fournisseur',
+      title: 'Fournisseur',
+      sortable: true,
+      hiddenOn: 'sm' as const,
+      render: (value: any) => (
+        <Badge className="text-xs bg-purple-50 text-purple-700 border-purple-200 font-medium" variant="outline">
+          {value}
+        </Badge>
+      )
+    },
+    {
+      key: 'tracking_chine',
+      title: 'Tracking',
+      sortable: true,
+      hiddenOn: 'sm' as const,
+      render: (value: any, c: any) => (
+        <div className="flex flex-col gap-1">
+          {value ? (
+            <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100 w-fit">
+              <QrCode className="h-3 w-3" />
+              <span className="font-mono text-xs cursor-pointer hover:underline" title={value}>
+                {value.length > 12 ? value.substring(0, 12) + '...' : value}
+              </span>
+            </div>
+          ) : (
+            <span className="text-gray-400 italic text-xs">Non défini</span>
+          )}
+          {c.numero_commande && (
+            <div className="text-[10px] text-gray-500 flex items-center gap-1">
+              <ShoppingCart className="h-3 w-3" />
+              {c.numero_commande}
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'quantite',
+      title: 'Qté',
+      sortable: true,
+      align: 'center' as const,
+      render: (value: any) => <span className="font-medium">{value}</span>
+    },
+    {
+      key: 'poids',
+      title: 'Poids',
+      sortable: true,
+      align: 'center' as const,
+      render: (value: any) => (
+        <Badge variant="secondary" className="font-mono">
+          {value} kg
+        </Badge>
+      )
+    },
+    {
+      key: 'tarif_kg',
+      title: 'Tarif/kg',
+      sortable: true,
+      hiddenOn: 'sm' as const,
+      render: (value: any) => (
+        <span className="text-sm font-medium text-gray-600">
+          {value}$
+        </span>
+      )
+    },
+    {
+      key: 'montant_a_payer',
+      title: 'Montant',
+      sortable: true,
+      align: 'right' as const,
+      render: (value: any) => (
+        <div className="font-bold text-gray-900 bg-green-50 px-2.5 py-1 rounded-lg border border-green-100 inline-block">
+          {value?.toLocaleString()} $
+        </div>
+      )
+    },
+    {
+      key: 'transitaire.nom',
+      title: 'Transitaire',
+      sortable: true,
+      hiddenOn: 'lg' as const,
+      render: (value: any, c: any) => (
+        c.transitaire && (
+          <div className="flex items-center gap-1.5 text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md text-xs font-medium">
+            <User className="h-3 w-3" />
+            {c.transitaire.nom}
+          </div>
+        )
+      )
+    },
+    {
+      key: 'statut',
+      title: 'Statut',
+      sortable: true,
+      align: 'center' as const,
+      render: (value: any, c: any) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 hover:bg-transparent"
+            >
+              {getStatutBadge(value)}
+              <ChevronDown className="h-3 w-3 ml-1 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" className="w-48">
+            <DropdownMenuItem onClick={() => handleStatutChange(c.id, 'en_preparation')} className="cursor-pointer">
+              <Clock className="h-4 w-4 text-gray-600 mr-2" /> En préparation
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleStatutChange(c.id, 'expedie_chine')} className="cursor-pointer">
+              <Plane className="h-4 w-4 text-blue-600 mr-2" /> Expédié Chine
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleStatutChange(c.id, 'en_transit')} className="cursor-pointer">
+              <Truck className="h-4 w-4 text-yellow-600 mr-2" /> En transit
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleStatutChange(c.id, 'arrive_congo')} className="cursor-pointer">
+              <MapPin className="h-4 w-4 text-green-600 mr-2" /> Arrivé Congo
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleStatutChange(c.id, 'recupere_client')} className="cursor-pointer">
+              <PackageCheck className="h-4 w-4 text-purple-600 mr-2" /> Récupéré
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => handleStatutChange(c.id, 'livre')} className="cursor-pointer">
+              <CheckCircle className="h-4 w-4 text-emerald-600 mr-2" /> Livré
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    },
+    {
+      key: 'statut_paiement',
+      title: 'Paiement',
+      sortable: true,
+      align: 'center' as const,
+      render: (value: any, c: any) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 flex items-center gap-2 hover:bg-gray-50"
+            >
+              {getStatutPaiementBadge(value)}
+              <ChevronDown className="h-4 w-4 text-gray-500" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" className="w-48">
+            <DropdownMenuItem onClick={() => handleStatutPaiementChange(c.id, 'non_paye')} className="cursor-pointer">
+              <X className="h-4 w-4 text-red-600 mr-2" /> Non payé
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleStatutPaiementChange(c.id, 'partiellement_paye')} className="cursor-pointer">
+              <Clock className="h-4 w-4 text-orange-600 mr-2" /> Partiellement payé
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleStatutPaiementChange(c.id, 'paye')} className="cursor-pointer">
+              <CheckCircle className="h-4 w-4 text-green-600 mr-2" /> Payé
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    },
+    {
+      key: 'date_arrivee_agence',
+      title: 'Date Arrivée',
+      sortable: true,
+      hiddenOn: 'sm' as const,
+      render: (value: any, c: any) => (
+        <input
+          type="date"
+          value={value ? new Date(value).toISOString().split('T')[0] : ''}
+          onChange={(e) => {
+            const date = e.target.value ? new Date(e.target.value) : null;
+            updateDateArrivee(c.id, date);
+          }}
+          className="w-full text-center text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-pointer"
+          placeholder="JJ/MM/AAAA"
+        />
+      )
+    },
+    {
+      key: 'actions',
+      title: '',
+      align: 'right',
+      render: (value: any, c: any) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Open menu</span>
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => handleViewDetails(c)}
+              className="cursor-pointer"
+            >
+              <Eye className="mr-2 h-4 w-4" />
+              Voir détails
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                const msg = `*FactureX - Colis Aérien*\n\n` +
+                  `📅 Date: ${new Date().toLocaleDateString('fr-FR')}\n` +
+                  `📦 Colis: ${generateColisId(c)}\n` +
+                  `👤 Client: ${c.client?.nom || 'N/A'}\n` +
+                  `⚖️ Poids: ${c.poids} kg\n` +
+                  `💰 À payer: ${c.montant_a_payer} $\n\n` +
+                  `Connectez-vous pour plus de détails.`;
+
+                const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+                window.open(url, '_blank');
+              }}
+              className="cursor-pointer"
+            >
+              <Send className="mr-2 h-4 w-4" />
+              Partager via WhatsApp
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-red-600 cursor-pointer"
+              onClick={() => handleDelete(c.id, generateColisId(c))}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Supprimer
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    }
+  ];
+
+  const visibleColumns = tableColumns.filter(col => columnsConfig[col.key] !== false);
+
+  const selectorColumns = tableColumns.map(col => ({
+    key: col.key,
+    label: col.title,
+    visible: columnsConfig[col.key] !== false,
+    required: col.key === 'id' || col.key === 'actions' || col.key === 'tracking_chine'
+  }));
+
+  const onColumnsChange = (newColumns: any[]) => {
+    const newConfig = newColumns.reduce((acc, col) => {
+      if (!col.visible) acc[col.key] = false;
+      return acc;
+    }, {} as Record<string, boolean>);
+    setColumnsConfig(newConfig);
+  };
+
   // Statistiques rapides
   const stats = {
     total: globalTotals.total,
@@ -394,79 +687,138 @@ const ColisAeriens: React.FC = () => {
               />
             </div>
 
-            {/* En-tête avec statistiques */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-              <Card>
-                <CardContent className="pt-6">
+            {/* En-tête avec statistiques - Modern Gradient Design */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+              {/* Total Colis */}
+              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 md:p-5 shadow-lg">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+                <div className="relative">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-500">Total Colis</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                    <div className="rounded-lg bg-white/20 p-2">
+                      <Package className="h-4 w-4 md:h-5 md:w-5 text-white" />
                     </div>
-                    <Package className="h-8 w-8 text-blue-500" />
+                    <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] md:text-xs font-medium text-white">
+                      Total
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="mt-3">
+                    <p className="text-lg md:text-2xl font-bold text-white">{stats.total}</p>
+                    <p className="mt-0.5 text-xs md:text-sm text-blue-100">Colis aériens</p>
+                  </div>
+                </div>
+              </div>
 
-              <Card>
-                <CardContent className="pt-6">
+              {/* En Transit */}
+              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-500 to-amber-500 p-4 md:p-5 shadow-lg">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+                <div className="relative">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-500">En Transit</p>
-                      <p className="text-2xl font-bold text-yellow-600">{stats.enTransit}</p>
+                    <div className="rounded-lg bg-white/20 p-2">
+                      <Plane className="h-4 w-4 md:h-5 md:w-5 text-white" />
                     </div>
-                    <Plane className="h-8 w-8 text-yellow-500" />
+                    <span className="text-[10px] md:text-xs font-medium text-yellow-100">En vol</span>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="mt-3">
+                    <p className="text-lg md:text-2xl font-bold text-white">{stats.enTransit}</p>
+                    <p className="mt-0.5 text-xs md:text-sm text-yellow-100">En transit</p>
+                  </div>
+                </div>
+              </div>
 
-              <Card>
-                <CardContent className="pt-6">
+              {/* Arrivés */}
+              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 shadow-lg">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+                <div className="relative">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-500">Arrivés</p>
-                      <p className="text-2xl font-bold text-green-600">{stats.arrives}</p>
+                    <div className="rounded-lg bg-white/20 p-2">
+                      <Package className="h-4 w-4 md:h-5 md:w-5 text-white" />
                     </div>
-                    <Package className="h-8 w-8 text-green-500" />
+                    <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] md:text-xs font-medium text-white">
+                      ✓
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="mt-3">
+                    <p className="text-lg md:text-2xl font-bold text-white">{stats.arrives}</p>
+                    <p className="mt-0.5 text-xs md:text-sm text-emerald-100">Arrivés</p>
+                  </div>
+                </div>
+              </div>
 
-              <Card>
-                <CardContent className="pt-6">
+              {/* Total Poids */}
+              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-red-500 to-red-600 p-4 md:p-5 shadow-lg">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+                <div className="relative">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-500">Total Poids</p>
-                      <p className="text-2xl font-bold text-red-600">{stats.poidsTotal ? `${stats.poidsTotal.toFixed(2)} kg` : '0.00 kg'}</p>
+                    <div className="rounded-lg bg-white/20 p-2">
+                      <Package className="h-4 w-4 md:h-5 md:w-5 text-white" />
                     </div>
-                    <Package className="h-8 w-8 text-red-500" />
+                    <span className="text-[10px] md:text-xs font-medium text-red-100">kg</span>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="mt-3">
+                    <p className="text-lg md:text-2xl font-bold text-white">{stats.poidsTotal ? `${stats.poidsTotal.toFixed(1)}` : '0'}</p>
+                    <p className="mt-0.5 text-xs md:text-sm text-red-100">Poids total (kg)</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Tableau des colis */}
             <Card>
               <CardHeader>
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                   <CardTitle className="flex items-center gap-2">
                     <Plane className="h-5 w-5 text-blue-500" />
                     Liste des Colis Aériens ({filteredColis.length})
                   </CardTitle>
-                  <Button
-                    onClick={() => navigate('/colis/aeriens/nouveau')}
-                    className="bg-green-500 hover:bg-green-600"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nouveau Colis
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <ColumnSelector
+                      columns={selectorColumns}
+                      onColumnsChange={onColumnsChange}
+                      className="w-full sm:w-auto"
+                    />
+                    <ExportDropdown
+                      onExport={(format) => {
+                        console.log(`Exporting ${format}`);
+                        toast.success(`Export ${format.toUpperCase()} lancé`);
+                      }}
+                      disabled={filteredColis.length === 0}
+                      selectedCount={0}
+                      className="w-full sm:w-auto"
+                    />
+                    <Button
+                      onClick={() => navigate('/colis/aeriens/nouveau')}
+                      className="bg-green-500 hover:bg-green-600"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Nouveau Colis
+                    </Button>
+                  </div>
                 </div>
 
-                {/* Filtres et recherche */}
-                <div className="flex flex-col gap-4 mt-4">
+                <div className="flex flex-col gap-6">
+                  {/* Status Filter Tabs */}
+                  <div>
+                    <FilterTabs
+                      tabs={[
+                        { id: 'tous', label: 'Tous', count: globalTotals.total },
+                        { id: 'en_preparation', label: 'En prép.', count: sortedData.filter(c => c.statut === 'en_preparation').length },
+                        { id: 'en_transit', label: 'En transit', count: globalTotals.enTransit },
+                        { id: 'arrive_congo', label: 'Arrivés', count: globalTotals.arrives },
+                        { id: 'recupere_client', label: 'Récupérés' },
+                        { id: 'livre', label: 'Livrés' }
+                      ]}
+                      activeTab={statutFilter}
+                      onTabChange={(id) => {
+                        setStatutFilter(id);
+                        setCurrentPage(1);
+                      }}
+                      variant="pills"
+                    />
+                  </div>
+
                   <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1 relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                       <Input
                         placeholder="Rechercher par client, tracking, commande..."
                         value={searchTerm}
@@ -474,438 +826,68 @@ const ColisAeriens: React.FC = () => {
                         className="pl-10"
                       />
                     </div>
-                    <select
-                      value={statutFilter}
-                      onChange={(e) => setStatutFilter(e.target.value)}
-                      className="px-4 py-2 border rounded-md bg-white"
-                    >
-                      <option value="tous">Tous les statuts</option>
-                      <option value="en_preparation">En préparation</option>
-                      <option value="expedie_chine">Expédié Chine</option>
-                      <option value="en_transit">En transit</option>
-                      <option value="arrive_congo">Arrivé Congo</option>
-                      <option value="recupere_client">Récupéré</option>
-                      <option value="livre">Livré</option>
-                    </select>
-                  </div>
 
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <select
-                      value={transitaireFilter}
-                      onChange={(e) => setTransitaireFilter(e.target.value)}
-                      className="flex-1 px-4 py-2 border rounded-md bg-white"
-                    >
-                      <option value="tous">Tous les transitaires</option>
-                      {transitaires.map(t => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </select>
+                    {/* Transitaire & Fournisseur Filters */}
+                    <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
+                      <select
+                        value={transitaireFilter}
+                        onChange={(e) => setTransitaireFilter(e.target.value)}
+                        className="px-4 py-2 border rounded-md bg-white min-w-[150px]"
+                      >
+                        <option value="tous">Tous les transitaires</option>
+                        {transitaires.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
 
-                    <select
-                      value={fournisseurFilter}
-                      onChange={(e) => setFournisseurFilter(e.target.value)}
-                      className="flex-1 px-4 py-2 border rounded-md bg-white"
-                    >
-                      <option value="tous">Tous les fournisseurs</option>
-                      {fournisseurs.map(f => (
-                        <option key={f} value={f}>{f}</option>
-                      ))}
-                    </select>
+                      <select
+                        value={fournisseurFilter}
+                        onChange={(e) => setFournisseurFilter(e.target.value)}
+                        className="px-4 py-2 border rounded-md bg-white min-w-[150px]"
+                      >
+                        <option value="tous">Tous les fournisseurs</option>
+                        {fournisseurs.map(f => (
+                          <option key={f} value={f}>{f}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
               </CardHeader>
 
               <CardContent>
-                {loading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
-                    <p className="mt-4 text-gray-500">Chargement des colis...</p>
-                  </div>
-                ) : filteredColis.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Package className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-500 text-lg">Aucun colis trouvé</p>
-                    <p className="text-gray-400 text-sm mt-2">
-                      {searchTerm || statutFilter !== 'tous' || transitaireFilter !== 'tous' || fournisseurFilter !== 'tous'
-                        ? 'Essayez de modifier vos filtres'
-                        : 'Commencez par créer un nouveau colis'}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto rounded-xl shadow-sm border border-gray-100">
-                    <table className="w-full min-w-[900px]">
-                      <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
-                        <tr>
-                          <SortableHeader
-                            title="ID Colis"
-                            sortKey="id"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
-                            className="text-left py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                          />
-                          <SortableHeader
-                            title="Client"
-                            sortKey="client.nom"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
-                            className="text-left py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                          />
-                          <SortableHeader
-                            title="Fournisseur"
-                            sortKey="fournisseur"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
-                            className="hidden md:table-cell py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                          />
-                          <SortableHeader
-                            title="Tracking"
-                            sortKey="tracking_chine"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
-                            className="hidden lg:table-cell py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                          />
-                          <SortableHeader
-                            title="Qté"
-                            sortKey="quantite"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
-                            className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                          />
-                          <SortableHeader
-                            title="Poids"
-                            sortKey="poids"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
-                            className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                          />
-                          <SortableHeader
-                            title="Tarif/kg"
-                            sortKey="tarif_kg"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
-                            className="hidden md:table-cell py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                          />
-                          <SortableHeader
-                            title="Montant"
-                            sortKey="montant_a_payer"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
-                            className="text-right py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                          />
-                          <SortableHeader
-                            title="Transitaire"
-                            sortKey="transitaire.nom"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
-                            className="hidden lg:table-cell py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                          />
-                          <SortableHeader
-                            title="Statut"
-                            sortKey="statut"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
-                            className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                          />
-                          <SortableHeader
-                            title="Paiement"
-                            sortKey="statut_paiement"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
-                            className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                          />
-                          <SortableHeader
-                            title="Date Arrivée"
-                            sortKey="date_arrivee_agence"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
-                            className="hidden md:table-cell py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm"
-                          />
-                          <th className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm w-16">
-                            <span className="flex items-center justify-center">
-                              <MoreVertical className="h-4 w-4" />
-                            </span>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {paginatedColis.map((c, index) => (
-                          <tr
-                            key={c.id}
-                            className="hover:bg-gradient-to-r hover:from-blue-50/30 hover:to-indigo-50/30 transition-all duration-200 border-b border-gray-50"
-                          >
-                            <td className="py-4 px-3 md:px-4">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-400 font-mono">#{startIndex + index + 1}</span>
-                                <button
-                                  onClick={(e) => handleViewDetails(c, e)}
-                                  className="text-blue-600 hover:text-blue-800 font-mono text-sm font-semibold hover:bg-blue-50 px-2 py-1 rounded transition-colors"
-                                  title="Voir les détails du colis"
-                                  type="button"
-                                >
-                                  {generateColisId(c)}
-                                </button>
-                              </div>
-                              <div className="mt-3 space-y-1 lg:hidden">
-                                <p className="text-xs uppercase tracking-wide text-gray-500">Tracking</p>
-                                <p className="text-sm font-mono text-gray-800 bg-gray-50 px-2 py-1 rounded">
-                                  {c.tracking_chine || '-'}
-                                </p>
-                                {c.numero_commande && (
-                                  <p className="text-[11px] text-gray-500">Cmd: {c.numero_commande}</p>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-4 px-3 md:px-4">
-                              <div className="flex flex-col">
-                                <p className="font-semibold text-gray-900">{c.client?.nom}</p>
-                                <p className="text-xs text-gray-500 flex items-center gap-1">
-                                  <Package className="h-3 w-3" />
-                                  {c.client?.telephone}
-                                </p>
-                              </div>
-                            </td>
-                            <td className="hidden md:table-cell py-4 px-3 md:px-4">
-                              <Badge className="text-xs bg-purple-50 text-purple-700 border-purple-200 font-medium" {...({ variant: 'outline' } as any)}>
-                                {c.fournisseur}
-                              </Badge>
-                            </td>
-                            <td className="hidden lg:table-cell py-4 px-3 md:px-4">
-                              <div className="text-sm space-y-1">
-                                <p className="text-sm font-mono text-gray-700 bg-gray-50 px-2 py-1 rounded">
-                                  {c.tracking_chine || '-'}
-                                </p>
-                                {c.numero_commande && (
-                                  <p className="text-xs text-gray-500">Cmd: {c.numero_commande}</p>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-4 px-3 md:px-4 text-center">
-                              <div className="inline-flex items-center justify-center bg-blue-50 text-blue-700 rounded-lg px-3 py-1 font-bold text-sm">
-                                {c.quantite || 1}
-                              </div>
-                            </td>
-                            <td className="py-4 px-3 md:px-4 text-center">
-                              <div className="inline-flex items-center justify-center bg-orange-50 text-orange-700 rounded-lg px-3 py-1 font-bold text-sm">
-                                {c.poids} kg
-                              </div>
-                            </td>
-                            <td className="hidden md:table-cell py-4 px-3 md:px-4 text-center">
-                              <span className="text-sm font-mono bg-gray-50 px-2 py-1 rounded">${c.tarif_kg}</span>
-                            </td>
-                            <td className="py-4 px-3 md:px-4 text-right">
-                              <div className="flex items-center justify-end">
-                                <span className="font-bold text-green-700 bg-green-50 px-3 py-1 rounded-lg text-sm">
-                                  {formatCurrency(c.montant_a_payer, 'USD')}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="hidden lg:table-cell py-4 px-3 md:px-4">
-                              <div className="flex items-center gap-2">
-                                <Truck className="h-4 w-4 text-gray-400" />
-                                <span className="text-sm text-gray-600">
-                                  {c.transitaire?.nom || '-'}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-3 px-2 md:px-4 text-center">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 flex items-center gap-2 hover:bg-gray-50"
-                                    {...({ variant: 'outline', size: 'sm' } as any)}
-                                  >
-                                    {getStatutBadge(c.statut)}
-                                    <ChevronDown className="h-4 w-4 text-gray-500" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="center" className="w-48">
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatutChange(c.id, 'en_preparation')}
-                                    className="cursor-pointer"
-                                  >
-                                    <Clock className="h-4 w-4 text-gray-600 mr-2" />
-                                    En préparation
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatutChange(c.id, 'expedie_chine')}
-                                    className="cursor-pointer"
-                                  >
-                                    <Plane className="h-4 w-4 text-blue-600 mr-2" />
-                                    Expédié Chine
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatutChange(c.id, 'en_transit')}
-                                    className="cursor-pointer"
-                                  >
-                                    <Truck className="h-4 w-4 text-yellow-600 mr-2" />
-                                    En transit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatutChange(c.id, 'arrive_congo')}
-                                    className="cursor-pointer"
-                                  >
-                                    <MapPin className="h-4 w-4 text-green-600 mr-2" />
-                                    Arrivé Congo
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatutChange(c.id, 'recupere_client')}
-                                    className="cursor-pointer"
-                                  >
-                                    <PackageCheck className="h-4 w-4 text-purple-600 mr-2" />
-                                    Récupéré
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatutChange(c.id, 'livre')}
-                                    className="cursor-pointer"
-                                  >
-                                    <CheckCircle className="h-4 w-4 text-emerald-600 mr-2" />
-                                    Livré
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </td>
-                            <td className="py-3 px-2 md:px-4 text-center">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 flex items-center gap-2 hover:bg-gray-50"
-                                    {...({ variant: 'outline', size: 'sm' } as any)}
-                                  >
-                                    {getStatutPaiementBadge(c.statut_paiement)}
-                                    <ChevronDown className="h-4 w-4 text-gray-500" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="center" className="w-48">
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatutPaiementChange(c.id, 'non_paye')}
-                                    className="cursor-pointer"
-                                  >
-                                    <X className="h-4 w-4 text-red-600 mr-2" />
-                                    Non payé
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatutPaiementChange(c.id, 'partiellement_paye')}
-                                    className="cursor-pointer"
-                                  >
-                                    <Clock className="h-4 w-4 text-orange-600 mr-2" />
-                                    Partiellement payé
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatutPaiementChange(c.id, 'paye')}
-                                    className="cursor-pointer"
-                                  >
-                                    <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                                    Payé
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </td>
-                            <td className="hidden md:table-cell py-4 px-3 md:px-4">
-                              <input
-                                type="date"
-                                value={c.date_arrivee_agence ? new Date(c.date_arrivee_agence).toISOString().split('T')[0] : ''}
-                                onChange={(e) => {
-                                  const date = e.target.value ? new Date(e.target.value) : null;
-                                  updateDateArrivee(c.id, date);
-                                }}
-                                className="w-full text-center text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-pointer"
-                                placeholder="JJ/MM/AAAA"
-                              />
-                            </td>
-                            <td className="py-4 px-3 md:px-4">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <button
-                                    type="button"
-                                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground"
-                                  >
-                                    <MoreVertical className="h-4 w-4" />
-                                  </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={(e) => handleViewDetails(c, e)}
-                                    className="cursor-pointer"
-                                  >
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    Voir détails
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setColisForPaiement(c);
-                                      setPaiementDialogOpen(true);
-                                    }}
-                                    className="cursor-pointer"
-                                  >
-                                    <CreditCard className="h-4 w-4 mr-2 text-blue-600" />
-                                    Enregistrer paiement
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => navigate(`/colis/aeriens/${c.id}/modifier`)}
-                                    className="cursor-pointer"
-                                  >
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Modifier
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => handleDelete(c.id, generateColisId(c))}
-                                    className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Supprimer
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </td>
-                            <td className="md:hidden py-3 px-2 md:px-4 text-center">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <button
-                                    type="button"
-                                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground"
-                                  >
-                                    <MoreVertical className="h-4 w-4" />
-                                  </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={(e) => handleViewDetails(c, e)}
-                                    className="cursor-pointer"
-                                  >
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    Voir détails
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => navigate(`/colis/aeriens/${c.id}/modifier`)}
-                                    className="cursor-pointer"
-                                  >
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Modifier
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => handleDelete(c.id, generateColisId(c))}
-                                    className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Supprimer
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <UnifiedDataTable
+                  data={paginatedColis}
+                  loading={loading}
+                  viewMode={viewMode}
+                  onViewModeChange={setViewMode}
+                  emptyMessage="Aucun colis trouvé"
+                  emptySubMessage={searchTerm || statutFilter !== 'tous' || transitaireFilter !== 'tous' || fournisseurFilter !== 'tous'
+                    ? 'Essayez de modifier vos filtres'
+                    : 'Commencez par créer un nouveau colis'}
+                  onSort={handleSort}
+                  sortKey={sortConfig?.key}
+                  sortDirection={sortConfig?.direction}
+                  columns={visibleColumns}
+                  cardConfig={{
+                    titleKey: 'tracking_chine',
+                    titleRender: (item) => (
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold">{item.tracking_chine || 'Sans Tracking'}</span>
+                      </div>
+                    ),
+                    subtitleKey: 'clients',
+                    subtitleRender: (item) => <span className="text-gray-600">{item.client?.nom || 'N/A'}</span>,
+                    badgeKey: 'statut',
+                    badgeRender: (item) => getStatutBadge(item.statut),
+                    infoFields: [
+                      { key: 'poids', label: 'Poids', render: (val) => `${val || 0} Kg` },
+                      { key: 'montant_a_payer', label: 'Montant', render: (val) => `${val || 0}$` },
+                      { key: 'statut_paiement', label: 'Paiement', render: (val) => getStatutPaiementBadge(val) }
+                    ]
+                  }}
+                />
+
 
                 {/* Pagination */}
                 {!loading && filteredColis.length > 0 && totalPages > 1 && (
@@ -1170,7 +1152,7 @@ const ColisAeriens: React.FC = () => {
           </Dialog>
         </ErrorBoundary>
       </Layout>
-    </ProtectedRouteEnhanced>
+    </ProtectedRouteEnhanced >
   );
 };
 

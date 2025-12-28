@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { Button } from '@/components/ui/button';
@@ -8,18 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Search, 
-  Plus, 
-  Filter,
+import {
+  Search,
+  Plus,
   Eye,
   Edit,
   Trash2,
-  Download,
   Users,
   DollarSign,
   MapPin,
-  CheckSquare
+  CheckSquare,
+  Phone
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import SortableHeader from '../components/ui/sortable-header';
@@ -30,7 +29,10 @@ import ConfirmDialog from '@/components/ui/confirm-dialog';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import { usePermissions } from '../hooks/usePermissions';
-import EnhancedTable from '@/components/ui/enhanced-table';
+import { UnifiedDataTable, type TableColumn } from '@/components/ui/unified-data-table';
+import { FilterTabs, type FilterTab } from '@/components/ui/filter-tabs';
+import { ColumnSelector, type ColumnConfig } from '@/components/ui/column-selector';
+import { ExportDropdown } from '@/components/ui/export-dropdown';
 import { useClients } from '../hooks/useClients';
 import { useSorting } from '../hooks/useSorting';
 import { useBulkOperations } from '../hooks/useBulkOperations';
@@ -38,8 +40,8 @@ import Pagination from '../components/ui/pagination-custom';
 import type { Client } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { cn } from '@/lib/utils';
-import { 
-  sanitizeUserContent, 
+import {
+  sanitizeUserContent,
   validateContentSecurity,
   sanitizeClientName,
   sanitizePhoneNumber,
@@ -59,7 +61,16 @@ const ClientsProtected: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | undefined>();
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
-  
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [columnsConfig, setColumnsConfig] = useState<ColumnConfig[]>([
+    { key: 'id', label: 'ID', visible: true, required: true },
+    { key: 'nom', label: 'Nom', visible: true, required: true },
+    { key: 'telephone', label: 'Téléphone', visible: true },
+    { key: 'ville', label: 'Ville', visible: true },
+    { key: 'total_paye', label: 'Total Payé', visible: true },
+    { key: 'created_at', label: 'Date', visible: true }
+  ]);
+
   // États pour les modales
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [clientForHistory, setClientForHistory] = useState<Client | null>(null);
@@ -85,7 +96,7 @@ const ClientsProtected: React.FC = () => {
   });
 
   const { sortedData, sortConfig, handleSort } = useSorting(clients);
-  const { 
+  const {
     isProcessing,
     deleteMultipleClients,
     exportSelectedClients,
@@ -99,13 +110,13 @@ const ClientsProtected: React.FC = () => {
 
   const confirmDeleteClient = async () => {
     if (!clientToDelete) return;
-    
+
     setIsDeleting(true);
     try {
       await deleteClient(clientToDelete.id);
       setDeleteDialogOpen(false);
       setClientToDelete(null);
-      
+
       setTimeout(() => {
         refetch();
       }, 100);
@@ -119,13 +130,13 @@ const ClientsProtected: React.FC = () => {
 
   const handleBulkDelete = async () => {
     if (selectedClients.length === 0) return;
-    
+
     setIsDeleting(true);
     try {
       const results = await deleteMultipleClients(selectedClients);
       setBulkDeleteDialogOpen(false);
       setSelectedClients([]);
-      
+
       setTimeout(() => {
         refetch();
       }, 100);
@@ -137,8 +148,8 @@ const ClientsProtected: React.FC = () => {
   };
 
   const handleClientSelection = (clientId: string, checked: boolean) => {
-    setSelectedClients(prev => 
-      checked 
+    setSelectedClients(prev =>
+      checked
         ? [...prev, clientId]
         : prev.filter(id => id !== clientId)
     );
@@ -182,10 +193,10 @@ const ClientsProtected: React.FC = () => {
   };
 
   const exportClients = () => {
-    const dataToExport = selectedClients.length > 0 
+    const dataToExport = selectedClients.length > 0
       ? sortedData.filter((client: Client) => selectedClients.includes(client.id))
       : sortedData;
-      
+
     const csv = [
       ['nom', 'telephone', 'ville', 'total_paye', 'created_at'],
       ...dataToExport.map((client: Client) => [
@@ -204,7 +215,7 @@ const ClientsProtected: React.FC = () => {
     a.download = `clients-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    
+
     showSuccess(`${dataToExport.length} client(s) exporté(s) avec succès`);
   };
 
@@ -227,94 +238,97 @@ const ClientsProtected: React.FC = () => {
     <ProtectedRouteEnhanced requiredModule="clients" requiredPermission="read">
       <Layout>
         <div className="space-y-6 animate-in fade-in duration-300">
-          {/* Stats Cards - Design System */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          {/* Stats Cards - Modern Gradient Design */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             {/* Total Clients Card */}
-            <Card className="card-base transition-shadow-hover">
-              <CardContent className="p-6">
+            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 shadow-lg">
+              <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+              <div className="relative">
                 <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Clients</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {globalTotals.totalCount || 0}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">Toutes pages confondues</p>
+                  <div className="rounded-lg bg-white/20 p-2">
+                    <Users className="h-4 w-4 md:h-5 md:w-5 text-white" />
                   </div>
-                  <div className="p-3 rounded-full bg-green-500 flex-shrink-0">
-                    <Users className="h-6 w-6 text-white" />
-                  </div>
+                  <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] md:text-xs font-medium text-white">
+                    Total
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="mt-3">
+                  <p className="text-lg md:text-2xl font-bold text-white">{globalTotals.totalCount || 0}</p>
+                  <p className="mt-0.5 text-xs md:text-sm text-emerald-100">Clients</p>
+                </div>
+              </div>
+            </div>
 
             {/* Carte conditionnelle - Admin voit Total Payé, Opérateurs voit Pays */}
             {isAdmin ? (
-              <Card className="card-base Transition-shadow-hover">
-                <CardContent className="p-6">
+              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 md:p-5 shadow-lg">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+                <div className="relative">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Payé</p>
-                      <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                        {formatCurrency(globalTotals.totalPaye)}
-                      </p>
+                    <div className="rounded-lg bg-white/20 p-2">
+                      <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-white" />
                     </div>
-                    <div className="p-3 rounded-full bg-blue-500 flex-shrink-0">
-                      <DollarSign className="h-6 w-6 text-white" />
-                    </div>
+                    <span className="text-[10px] md:text-xs font-medium text-blue-100">USD</span>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="mt-3">
+                    <p className="text-lg md:text-2xl font-bold text-white truncate">{formatCurrency(globalTotals.totalPaye)}</p>
+                    <p className="mt-0.5 text-xs md:text-sm text-blue-100">Total Payé</p>
+                  </div>
+                </div>
+              </div>
             ) : (
-              <Card className="card-base Transition-shadow-hover">
-                <CardContent className="p-6">
+              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 md:p-5 shadow-lg">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+                <div className="relative">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pays</p>
-                      <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                        {new Set(sortedData.map((c: Client) => c.pays)).size}
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-full bg-green-500 flex-shrink-0">
-                      <MapPin className="h-6 w-6 text-white" />
+                    <div className="rounded-lg bg-white/20 p-2">
+                      <MapPin className="h-4 w-4 md:h-5 md:w-5 text-white" />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="mt-3">
+                    <p className="text-lg md:text-2xl font-bold text-white">{new Set(sortedData.map((c: Client) => c.pays)).size}</p>
+                    <p className="mt-0.5 text-xs md:text-sm text-blue-100">Pays</p>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Villes Card */}
-            <Card className="card-base transition-shadow-hover">
-              <CardContent className="p-6">
+            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-4 md:p-5 shadow-lg">
+              <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+              <div className="relative">
                 <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Villes</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {new Set(sortedData.map((c: Client) => c.ville)).size}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-full bg-purple-500 flex-shrink-0">
-                    <MapPin className="h-6 w-6 text-white" />
+                  <div className="rounded-lg bg-white/20 p-2">
+                    <MapPin className="h-4 w-4 md:h-5 md:w-5 text-white" />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="mt-3">
+                  <p className="text-lg md:text-2xl font-bold text-white">{new Set(sortedData.map((c: Client) => c.ville)).size}</p>
+                  <p className="mt-0.5 text-xs md:text-sm text-purple-100">Villes</p>
+                </div>
+              </div>
+            </div>
 
             {/* Sélectionnés Card */}
-            <Card className="card-base transition-shadow-hover">
-              <CardContent className="p-6">
+            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 p-4 md:p-5 shadow-lg">
+              <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+              <div className="relative">
                 <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Sélectionnés</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                      {selectedClients.length}
-                    </p>
+                  <div className="rounded-lg bg-white/20 p-2">
+                    <CheckSquare className="h-4 w-4 md:h-5 md:w-5 text-white" />
                   </div>
-                  <div className="p-3 rounded-full bg-orange-500 flex-shrink-0">
-                    <CheckSquare className="h-6 w-6 text-white" />
-                  </div>
+                  {selectedClients.length > 0 && (
+                    <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] md:text-xs font-medium text-white">
+                      Actif
+                    </span>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+                <div className="mt-3">
+                  <p className="text-lg md:text-2xl font-bold text-white">{selectedClients.length}</p>
+                  <p className="mt-0.5 text-xs md:text-sm text-orange-100">Sélectionnés</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Bulk Actions */}
@@ -325,6 +339,23 @@ const ClientsProtected: React.FC = () => {
             onExportSelected={() => exportSelectedClients(sortedData.filter((c: Client) => selectedClients.includes(c.id)))}
             onEmailSelected={() => emailSelectedClients(sortedData.filter((c: Client) => selectedClients.includes(c.id)))}
             isDeleting={isDeleting}
+          />
+
+          {/* City Filter Tabs */}
+          <FilterTabs
+            tabs={[
+              { id: 'all', label: 'Tous', count: globalTotals.totalCount || 0 },
+              { id: 'LUBUMBASHI', label: 'Lubumbashi', count: sortedData.filter((c: Client) => c.ville?.toUpperCase() === 'LUBUMBASHI').length },
+              { id: 'KINSHASA', label: 'Kinshasa', count: sortedData.filter((c: Client) => c.ville?.toUpperCase() === 'KINSHASA').length },
+              { id: 'LIKASI', label: 'Likasi', count: sortedData.filter((c: Client) => c.ville?.toUpperCase() === 'LIKASI').length },
+            ]}
+            activeTab={cityFilter}
+            onTabChange={(tab) => {
+              setCityFilter(tab);
+              setCurrentPage(1);
+            }}
+            variant="pills"
+            className="mb-4"
           />
 
           {/* Filters */}
@@ -341,24 +372,6 @@ const ClientsProtected: React.FC = () => {
                 className="pl-10"
               />
             </div>
-            <Select value={cityFilter} onValueChange={(value) => {
-              setCityFilter(value);
-              setCurrentPage(1);
-            }}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Toutes les villes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes les villes</SelectItem>
-                {Array.from(new Set(sortedData.map((c: Client) => sanitizeCityName(c.ville || '')))).map((city: string) => (
-                  <SelectItem key={city} value={city}>{city}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="outline">
-              <Filter className="mr-2 h-4 w-4" />
-              Plus de filtres
-            </Button>
           </div>
 
           {/* Clients Table */}
@@ -374,15 +387,20 @@ const ClientsProtected: React.FC = () => {
                   )}
                 </div>
                 <div className="flex space-x-2">
-                  <Button 
-                    variant="outline"
-                    onClick={exportClients}
+                  <ExportDropdown
+                    onExport={(format) => {
+                      if (format === 'csv') exportClients();
+                      // Excel and PDF can be implemented later
+                    }}
                     disabled={sortedData.length === 0}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Exporter
-                  </Button>
-                  
+                    selectedCount={selectedClients.length}
+                  />
+
+                  <ColumnSelector
+                    columns={columnsConfig}
+                    onColumnsChange={setColumnsConfig}
+                  />
+
                   <PermissionGuard module="clients" permission="create">
                     <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddClient}>
                       <Plus className="mr-2 h-4 w-4" />
@@ -393,14 +411,55 @@ const ClientsProtected: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <EnhancedTable
+              <UnifiedDataTable<Client>
                 data={sortedData}
                 loading={isLoading && clients.length === 0}
                 emptyMessage="Aucun client"
                 emptySubMessage="Commencez par ajouter votre premier client"
+                emptyIcon={<Users className="h-8 w-8 text-gray-400" />}
                 onSort={handleSort}
                 sortKey={sortConfig?.key}
                 sortDirection={sortConfig?.direction}
+                viewMode="auto"
+                onViewModeChange={setViewMode}
+                showViewToggle={true}
+                cardConfig={{
+                  titleKey: 'nom',
+                  titleRender: (client) => sanitizeClientName(client.nom || ''),
+                  subtitleKey: 'telephone',
+                  subtitleRender: (client) => (
+                    <div className="flex items-center gap-1 text-gray-500">
+                      <Phone className="h-3 w-3" />
+                      {sanitizePhoneNumber(client.telephone || '')}
+                    </div>
+                  ),
+                  badgeRender: (client) => (
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                      <MapPin className="h-3 w-3 mr-1" />
+                      {sanitizeCityName(client.ville || '')}
+                    </Badge>
+                  ),
+                  infoFields: isAdmin ? [
+                    {
+                      key: 'total_paye',
+                      label: 'Total Payé',
+                      render: (value) => (
+                        <span className="font-bold text-emerald-600">{formatCurrency(value || 0)}</span>
+                      )
+                    },
+                    {
+                      key: 'created_at',
+                      label: 'Date',
+                      render: (value) => new Date(value).toLocaleDateString('fr-FR')
+                    }
+                  ] : [
+                    {
+                      key: 'created_at',
+                      label: 'Date',
+                      render: (value) => new Date(value).toLocaleDateString('fr-FR')
+                    }
+                  ]
+                }}
                 bulkSelect={{
                   selected: selectedClients,
                   onSelectAll: handleSelectAll,
@@ -412,18 +471,18 @@ const ClientsProtected: React.FC = () => {
                 actionsColumn={{
                   render: (client: Client, index: number) => (
                     <div className="flex items-center space-x-2">
-                      <Button 
-                        {...({ variant: "ghost" } as any)}
+                      <Button
+                        variant="ghost"
                         size="icon"
                         onClick={() => handleViewClientHistory(client)}
                         title="Voir l'historique"
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      
+
                       <PermissionGuard module="clients" permission="update">
-                        <Button 
-                          {...({ variant: "ghost" } as any)}
+                        <Button
+                          variant="ghost"
                           size="icon"
                           onClick={() => handleEditClient(client)}
                           className="hover:bg-green-50"
@@ -431,11 +490,11 @@ const ClientsProtected: React.FC = () => {
                           <Edit className="h-4 w-4" />
                         </Button>
                       </PermissionGuard>
-                      
+
                       <PermissionGuard module="clients" permission="delete">
-                        <Button 
-                          {...({ variant: "ghost" } as any)}
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="text-red-600 hover:bg-red-50"
                           onClick={() => handleDeleteClient(client)}
                         >
@@ -467,7 +526,7 @@ const ClientsProtected: React.FC = () => {
                         className="text-left hover:text-green-500 hover:underline transition-colors cursor-pointer font-medium"
                         title={sanitizeClientName(client.nom || '')}
                       >
-                        {sanitizeClientName(client.nom || '').split(' ').map(word => 
+                        {sanitizeClientName(client.nom || '').split(' ').map(word =>
                           word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
                         ).join(' ')}
                       </button>
@@ -479,7 +538,7 @@ const ClientsProtected: React.FC = () => {
                     sortable: true,
                     render: (value: any) => (
                       <div className="flex items-center space-x-1">
-                        <span className="text-gray-400">📞</span>
+                        <Phone className="h-4 w-4 text-gray-400" />
                         <span>{sanitizePhoneNumber(value || '')}</span>
                       </div>
                     )
@@ -490,7 +549,7 @@ const ClientsProtected: React.FC = () => {
                     sortable: true,
                     render: (value: any) => (
                       <div className="flex items-center space-x-1">
-                        <span className="text-gray-400">📍</span>
+                        <MapPin className="h-4 w-4 text-gray-400" />
                         <span>{sanitizeCityName(value || '')}</span>
                       </div>
                     )
@@ -516,7 +575,7 @@ const ClientsProtected: React.FC = () => {
                       </span>
                     )
                   }
-                ]}
+                ].filter(col => columnsConfig.find(c => c.key === col.key)?.visible)}
               />
 
               {/* Pagination avec sélecteur de taille */}
@@ -544,7 +603,7 @@ const ClientsProtected: React.FC = () => {
                       {pagination.count} client{pagination.count > 1 ? 's' : ''} au total
                     </span>
                   </div>
-                  
+
                   {pagination.totalPages > 1 && (
                     <Pagination
                       currentPage={currentPage}

@@ -182,64 +182,64 @@ const Sidebar: React.FC<SidebarProps> = ({
 
 
   return (
-    <div className="bg-green-500 dark:bg-green-600 text-white flex flex-col h-full w-64 shadow-lg">
+    <div className="bg-gradient-to-b from-emerald-600 via-emerald-600 to-emerald-700 dark:from-emerald-700 dark:via-emerald-800 dark:to-emerald-900 text-white flex flex-col h-full w-64 shadow-xl">
       {/* Logo */}
-      <div className="p-6 border-b border-green-600 dark:border-green-700">
+      <div className="p-5 border-b border-white/10">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-white dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
-            <span className="text-green-600 dark:text-green-700 font-bold">F</span>
+          <div className="w-11 h-11 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+            <span className="text-emerald-600 font-bold text-xl">F</span>
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-bold truncate">FactureX</h1>
-            <p className="text-xs text-green-100 dark:text-green-200 truncate">Transferts simplifiés</p>
+            <h1 className="text-xl font-bold tracking-tight">FactureX</h1>
+            <p className="text-xs text-emerald-200/80">Transferts simplifiés</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
-        <ul className="space-y-2">
+        <ul className="space-y-1">
           {mainNavItems.map((item) => (
             <li key={item.path}>
-              <Button
-                variant={"ghost" as any}
-                asChild
+              <Link
+                to={item.path}
                 className={cn(
-                  "w-full justify-start text-white/90 hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-[0.98] rounded-lg h-10 px-3",
-                  currentPath === item.path && "bg-white text-green-600 shadow-sm font-medium hover:bg-white hover:text-green-600"
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+                  currentPath === item.path
+                    ? "bg-white text-emerald-700 shadow-lg shadow-emerald-900/20"
+                    : "text-white/80 hover:bg-white/10 hover:text-white"
                 )}
               >
-                <Link to={item.path}>
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
-                  <span className="ml-3 truncate text-base font-medium">{item.label}</span>
-                </Link>
-              </Button>
+                <item.icon className="h-5 w-5 flex-shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </Link>
             </li>
           ))}
 
           {/* Menu Finances avec sous-menus */}
           {hasFinancesAccess && (
             <li>
-              <Button
-                variant={"ghost" as any}
+              <button
                 className={cn(
-                  "w-full justify-start text-white/90 hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-[0.98] rounded-lg h-10 px-3",
-                  (currentPath?.startsWith('/finances') || currentPath?.startsWith('/transactions') || currentPath?.startsWith('/operations-financieres') || currentPath?.startsWith('/comptes')) && "bg-white/15"
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+                  isOnFinancesPage
+                    ? "bg-white/15 text-white"
+                    : "text-white/80 hover:bg-white/10 hover:text-white"
                 )}
                 onClick={() => setFinancesMenuOpen(!financesMenuOpen)}
               >
                 <Wallet className="h-5 w-5 flex-shrink-0" />
-                <span className="ml-3 truncate text-base font-medium flex-1 text-left">Finances</span>
+                <span className="flex-1 text-left truncate">Finances</span>
                 {financesMenuOpen ? (
-                  <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                  <ChevronDown className="h-4 w-4 flex-shrink-0 opacity-60" />
                 ) : (
-                  <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 flex-shrink-0 opacity-60" />
                 )}
-              </Button>
+              </button>
 
               {/* Sous-menus Finances */}
               {financesMenuOpen && (
-                <ul className="mt-2 ml-4 space-y-1">
+                <ul className="mt-1 ml-3 pl-3 border-l-2 border-white/10 space-y-0.5">
                   {financesSubMenuItems.map((subItem) => {
                     // Vérifier les permissions pour chaque sous-menu
                     if (subItem.permission && !isAdmin) {
@@ -247,19 +247,18 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }
                     return (
                       <li key={subItem.path}>
-                        <Button
-                          variant={"ghost" as any}
-                          asChild
+                        <Link
+                          to={subItem.path}
                           className={cn(
-                            "w-full justify-start text-white/80 hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-[0.98] rounded-lg h-9 px-3 text-sm",
-                            currentPath === subItem.path && "bg-white text-green-600 shadow-sm font-medium hover:bg-white hover:text-green-600"
+                            "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200",
+                            currentPath === subItem.path
+                              ? "bg-white text-emerald-700 font-medium shadow-md"
+                              : "text-white/70 hover:bg-white/10 hover:text-white"
                           )}
                         >
-                          <Link to={subItem.path}>
-                            <subItem.icon className="h-4 w-4 flex-shrink-0" />
-                            <span className="ml-2 truncate">{subItem.label}</span>
-                          </Link>
-                        </Button>
+                          <subItem.icon className="h-4 w-4 flex-shrink-0" />
+                          <span className="truncate">{subItem.label}</span>
+                        </Link>
                       </li>
                     );
                   })}
@@ -270,41 +269,41 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Menu Colis avec sous-menus */}
           <li>
-            <Button
-              variant={"ghost" as any}
+            <button
               className={cn(
-                "w-full justify-start text-white/90 hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-[0.98] rounded-lg h-10 px-3",
-                (currentPath?.startsWith('/colis')) && "bg-white/15"
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+                currentPath?.startsWith('/colis')
+                  ? "bg-white/15 text-white"
+                  : "text-white/80 hover:bg-white/10 hover:text-white"
               )}
               onClick={() => setColisMenuOpen(!colisMenuOpen)}
             >
               <Package className="h-5 w-5 flex-shrink-0" />
-              <span className="ml-3 truncate text-base font-medium flex-1 text-left">Colis</span>
+              <span className="flex-1 text-left truncate">Colis</span>
               {colisMenuOpen ? (
-                <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                <ChevronDown className="h-4 w-4 flex-shrink-0 opacity-60" />
               ) : (
-                <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                <ChevronRight className="h-4 w-4 flex-shrink-0 opacity-60" />
               )}
-            </Button>
+            </button>
 
             {/* Sous-menus Colis */}
             {colisMenuOpen && (
-              <ul className="mt-2 ml-4 space-y-1">
+              <ul className="mt-1 ml-3 pl-3 border-l-2 border-white/10 space-y-0.5">
                 {colisSubMenuItems.filter(subItem => !subItem.disabled).map((subItem) => (
                   <li key={subItem.path}>
-                    <Button
-                      variant={"ghost" as any}
-                      asChild
+                    <Link
+                      to={subItem.path}
                       className={cn(
-                        "w-full justify-start text-white/80 hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-[0.98] rounded-lg h-9 px-3 text-sm",
-                        currentPath === subItem.path && "bg-white text-green-600 shadow-sm font-medium hover:bg-white hover:text-green-600"
+                        "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200",
+                        currentPath === subItem.path
+                          ? "bg-white text-emerald-700 font-medium shadow-md"
+                          : "text-white/70 hover:bg-white/10 hover:text-white"
                       )}
                     >
-                      <Link to={subItem.path}>
-                        <subItem.icon className="h-4 w-4 flex-shrink-0" />
-                        <span className="ml-2 truncate">{subItem.label}</span>
-                      </Link>
-                    </Button>
+                      <subItem.icon className="h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">{subItem.label}</span>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -315,39 +314,38 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Paramètres placé en bas, au-dessus des infos utilisateur */}
       {settingsItem && (
-        <div className="px-3 pb-3">
-          <Button
-            variant={"ghost" as any}
-            asChild
+        <div className="px-3 pb-2">
+          <Link
+            to={settingsItem.path}
             className={cn(
-              "w-full justify-start text-white/90 hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-[0.98] rounded-lg h-10 px-3",
-              currentPath === settingsItem.path && "bg-white text-green-600 shadow-sm font-medium hover:bg-white hover:text-green-600"
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+              currentPath === settingsItem.path
+                ? "bg-white text-emerald-700 shadow-lg"
+                : "text-white/80 hover:bg-white/10 hover:text-white"
             )}
           >
-            <Link to={settingsItem.path}>
-              <settingsItem.icon className="h-5 w-5 flex-shrink-0" />
-              <span className="ml-3 truncate text-base font-medium">{settingsItem.label}</span>
-            </Link>
-          </Button>
+            <settingsItem.icon className="h-5 w-5 flex-shrink-0" />
+            <span className="truncate">{settingsItem.label}</span>
+          </Link>
         </div>
       )}
 
       {/* User Info */}
-      <div className="p-4 border-t border-green-600 dark:border-green-700">
+      <div className="p-4 border-t border-white/10 bg-black/10">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-white dark:bg-gray-100 rounded-full flex items-center justify-center shadow-sm">
-            <span className="text-green-600 dark:text-green-700 font-bold text-xs">
+          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-md">
+            <span className="text-emerald-600 font-bold text-sm">
               {user?.email?.charAt(0).toUpperCase() || 'U'}
             </span>
           </div>
-          <div className="ml-3 text-left flex-1">
+          <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-medium truncate">
               {user?.user_metadata?.first_name ?
                 `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}` :
                 user?.email || 'Utilisateur'
               }
             </p>
-            <p className="text-xs text-green-100 dark:text-green-200 truncate">
+            <p className="text-xs text-emerald-200/70 truncate">
               {user?.app_metadata?.role === 'super_admin' ? '👑 Super Admin' :
                 user?.app_metadata?.role === 'admin' ? '👑 Admin' : 'Opérateur'}
             </p>

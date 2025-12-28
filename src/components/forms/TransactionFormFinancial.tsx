@@ -34,7 +34,7 @@ const DEFAULT_REVENUE_CATEGORIES = [
   { value: 'Commande (Facture)', label: 'Commande (Facture)' },
   { value: 'Transfert (Argent)', label: 'Transfert (Argent)' },
   { value: 'Paiement Colis', label: 'Paiement Colis' },
-  { value: 'Autres Paiements', label: 'Autres Paiements' }
+  { value: 'Autres Paiement', label: 'Autres Paiement' }
 ];
 
 const DEFAULT_DEPENSE_CATEGORIES = [
@@ -97,11 +97,18 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   const isLoading = isCreating || isUpdating;
 
   // Déterminer les catégories à afficher (DB ou fallback) - memoized to prevent infinite loops
-  const displayRevenueCategories = useMemo(() =>
-    revenueCategories.length > 0
+  const displayRevenueCategories = useMemo(() => {
+    let categories = revenueCategories.length > 0
       ? revenueCategories.map(c => ({ value: c.nom, label: c.nom, code: c.code, icon: c.icon, couleur: c.couleur }))
-      : DEFAULT_REVENUE_CATEGORIES.map(c => ({ ...c, code: '', icon: '', couleur: '' }))
-    , [revenueCategories]);
+      : DEFAULT_REVENUE_CATEGORIES.map(c => ({ ...c, code: '', icon: '', couleur: '' }));
+
+    // Ensure "Autres Paiement" is always present for revenue
+    if (!categories.find(c => c.value === 'Autres Paiement')) {
+      categories.push({ value: 'Autres Paiement', label: 'Autres Paiement', code: 'AUTRE_PAIEMENT', icon: '', couleur: '' });
+    }
+
+    return categories;
+  }, [revenueCategories]);
 
   const displayDepenseCategories = useMemo(() =>
     depenseCategories.length > 0
@@ -192,7 +199,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
     const newErrors: Record<string, string> = {};
 
     // Validation client (requis seulement pour revenue)
-    if (formData.type_transaction === 'revenue' && !formData.client_id) {
+    // Validation client (requis pour revenue sauf Autres Paiement)
+    if (formData.type_transaction === 'revenue' && !formData.client_id && formData.categorie !== 'Autres Paiement') {
       newErrors.client_id = 'Le client est requis pour un revenue';
     }
 
@@ -423,8 +431,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
 
             <div className="border-t pt-4"></div>
 
-            {/* Client (seulement pour revenue) */}
-            {formData.type_transaction === 'revenue' && (
+            {/* Client (seulement pour revenue, sauf Autres Paiement) */}
+            {formData.type_transaction === 'revenue' && formData.categorie !== 'Autres Paiement' && (
               <div className="space-y-2">
                 <Label htmlFor="client_id">Client *</Label>
                 <ClientCombobox

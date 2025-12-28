@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { 
-  User as UserIcon, 
-  CreditCard, 
-  Settings as SettingsIcon, 
+import {
+  User as UserIcon,
+  CreditCard,
+  Settings as SettingsIcon,
   DollarSign,
   Users,
   FileText,
@@ -31,7 +31,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { Button } from '@/components/ui/button';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -163,16 +163,16 @@ const Settings = () => {
             avatar_url: user.user_metadata?.avatar_url || '',
             is_active: true
           });
-          
+
           // Fetch profile data from profiles table
           const { data: profileData } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', user.id)
             .single();
-          
+
           setProfile(profileData);
-          
+
           // Pré-remplir le formulaire avec les données disponibles
           if (profileData) {
             setProfileForm({
@@ -210,7 +210,7 @@ const Settings = () => {
     setUsersLoading(true);
     try {
       console.log('Fetching users from profiles table...');
-      
+
       const { data: users, error } = await supabase
         .from('profiles')
         .select('*')
@@ -238,7 +238,7 @@ const Settings = () => {
         .from('payment_methods')
         .select('*')
         .order('name');
-      
+
       setPaymentMethods(data || []);
     } catch (error) {
       console.error('Error fetching payment methods:', error);
@@ -253,7 +253,7 @@ const Settings = () => {
         .select('*')
         .order('date', { ascending: false })
         .limit(50);
-      
+
       setActivityLogs(data || []);
     } catch (error) {
       console.error('Error fetching activity logs:', error);
@@ -266,7 +266,7 @@ const Settings = () => {
       const { data } = await supabase
         .from('settings')
         .select('*');
-      
+
       if (data) {
         // Extraire les taux de change
         const rates = data.filter(s => s.categorie === 'taux_change');
@@ -321,7 +321,7 @@ const Settings = () => {
 
   const confirmDeleteUser = async () => {
     if (!userToDelete) return;
-    
+
     setIsUserDeleting(true);
     try {
       // Vérifier si c'est le dernier admin
@@ -343,10 +343,10 @@ const Settings = () => {
         .eq('id', userToDelete.id);
 
       if (error) throw error;
-      
+
       // Mettre à jour l'état local
       setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
-      
+
       setUserDeleteDialogOpen(false);
       setUserToDelete(null);
       showSuccess('Utilisateur supprimé avec succès');
@@ -363,7 +363,7 @@ const Settings = () => {
     try {
       console.log('💾 Début de la sauvegarde de l\'utilisateur...');
       console.log('📝 Données du formulaire:', userForm);
-      
+
       if (!userForm.email || !userForm.password) {
         throw new Error('L\'email et le mot de passe sont requis');
       }
@@ -384,7 +384,7 @@ const Settings = () => {
         if (error) throw error;
         console.log('✅ Utilisateur mis à jour avec succès');
         showSuccess('Utilisateur mis à jour avec succès');
-        
+
         // Rafraîchir immédiatement la liste
         await fetchUsers();
       } else {
@@ -409,14 +409,14 @@ const Settings = () => {
         }
 
         console.log('✅ Utilisateur créé dans Auth avec succès:', authData);
-        
+
         // Vérifier immédiatement si le profil a été créé par le trigger
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
           .eq('email', userForm.email)
           .single();
-        
+
         if (profile) {
           console.log('✅ Profil trouvé immédiatement!');
           showSuccess('Utilisateur créé avec succès');
@@ -437,7 +437,7 @@ const Settings = () => {
             }])
             .select()
             .single();
-          
+
           if (manualError) {
             console.error('❌ Erreur création manuelle:', manualError);
             showError('Utilisateur créé mais erreur lors de la création du profil');
@@ -447,7 +447,7 @@ const Settings = () => {
             await fetchUsers();
           }
         }
-        
+
         // Fermer le formulaire
         setIsUserFormOpen(false);
         return; // Sortir ici pour éviter le fetchUsers() en double
@@ -471,7 +471,7 @@ const Settings = () => {
 
       if (error) throw error;
 
-      setUsers(prev => prev.map(u => 
+      setUsers(prev => prev.map(u =>
         u.id === user.id ? { ...u, is_active: !user.is_active } : u
       ));
 
@@ -573,7 +573,7 @@ const Settings = () => {
 
   const confirmDeletePaymentMethod = async () => {
     if (!paymentMethodToDelete) return;
-    
+
     setIsDeleting(true);
     try {
       const { error } = await supabase
@@ -582,7 +582,7 @@ const Settings = () => {
         .eq('id', paymentMethodToDelete.id);
 
       if (error) throw error;
-      
+
       setPaymentMethods(prev => prev.filter(pm => pm.id !== paymentMethodToDelete.id));
       setDeleteDialogOpen(false);
       setPaymentMethodToDelete(null);
@@ -604,7 +604,7 @@ const Settings = () => {
 
       if (error) throw error;
 
-      setPaymentMethods(prev => prev.map(pm => 
+      setPaymentMethods(prev => prev.map(pm =>
         pm.id === paymentMethod.id ? { ...pm, is_active: !paymentMethod.is_active } : pm
       ));
 
@@ -666,7 +666,7 @@ const Settings = () => {
     }
   ];
 
-  const filteredOptions = settingsOptions.filter(option => 
+  const filteredOptions = settingsOptions.filter(option =>
     !option.adminOnly || profile?.role === 'admin'
   );
 
@@ -674,31 +674,41 @@ const Settings = () => {
     <Layout>
       <div className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar */}
+          {/* Sidebar - Modern Design */}
           <div className="lg:col-span-1">
-            <Card>
-              <CardContent className="p-4">
-                <nav className="space-y-2">
-                  {filteredOptions.map((option) => (
-                    <button
-                      key={option.id}
-                      onClick={() => setActiveTab(option.id)}
-                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
-                        activeTab === option.id
-                          ? 'bg-green-100 text-green-600'
-                          : 'text-gray-600 hover:bg-gray-100'
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <div className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-emerald-500 to-emerald-600">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <SettingsIcon className="h-5 w-5" />
+                  Paramètres
+                </h3>
+              </div>
+              <nav className="p-2 space-y-1">
+                {filteredOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => setActiveTab(option.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-all ${activeTab === option.id
+                      ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-100 dark:border-emerald-800'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
                       }`}
-                    >
+                  >
+                    <div className={`p-2 rounded-lg ${activeTab === option.id
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                      }`}>
                       {option.icon}
-                      <div>
-                        <p className="font-medium">{option.label}</p>
-                        <p className="text-xs text-gray-500">{option.description}</p>
-                      </div>
-                    </button>
-                  ))}
-                </nav>
-              </CardContent>
-            </Card>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-medium text-sm ${activeTab === option.id ? 'text-emerald-700 dark:text-emerald-300' : ''}`}>
+                        {option.label}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{option.description}</p>
+                    </div>
+                  </button>
+                ))}
+              </nav>
+            </div>
           </div>
 
           {/* Content */}
@@ -740,7 +750,7 @@ const Settings = () => {
                               <p className="font-medium">{user.first_name} {user.last_name}</p>
                               <p className="text-sm text-gray-500">{user.email}</p>
                               <div className="flex items-center space-x-2 mt-1">
-                                <Badge 
+                                <Badge
                                   variant={user.role === 'admin' ? 'default' : 'secondary'}
                                   className={user.role === 'admin' ? 'bg-green-500 hover:bg-green-600' : ''}
                                 >
@@ -756,7 +766,7 @@ const Settings = () => {
                                     </>
                                   )}
                                 </Badge>
-                                <Badge 
+                                <Badge
                                   variant={user.is_active ? 'default' : 'secondary'}
                                   className={user.is_active ? 'bg-green-500 hover:bg-green-600' : ''}
                                 >
@@ -801,318 +811,329 @@ const Settings = () => {
                   )}
                 </CardContent>
               </Card>
-            )}
+            )
+            }
 
             {/* Profile Tab */}
-            {activeTab === 'profile' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <UserIcon className="mr-2 h-5 w-5" />
-                    Profil
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Avatar */}
-                  <div className="flex items-center space-x-4">
-                    <div className="relative">
-                      <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center overflow-hidden">
-                        {profile?.avatar_url ? (
-                          <img
-                            src={profile.avatar_url}
-                            alt="Avatar"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <UserIcon className="h-10 w-10 text-green-500" />
-                        )}
+            {
+              activeTab === 'profile' && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <UserIcon className="mr-2 h-5 w-5" />
+                      Profil
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Avatar */}
+                    <div className="flex items-center space-x-4">
+                      <div className="relative">
+                        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center overflow-hidden">
+                          {profile?.avatar_url ? (
+                            <img
+                              src={profile.avatar_url}
+                              alt="Avatar"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <UserIcon className="h-10 w-10 text-green-500" />
+                          )}
+                        </div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarUpload}
+                          className="hidden"
+                        />
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploading}
+                          className="absolute bottom-0 right-0 p-1 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:opacity-50"
+                        >
+                          {uploading ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Camera className="h-3 w-3" />
+                          )}
+                        </button>
                       </div>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarUpload}
-                        className="hidden"
-                      />
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploading}
-                        className="absolute bottom-0 right-0 p-1 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:opacity-50"
-                      >
-                        {uploading ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Camera className="h-3 w-3" />
-                        )}
-                      </button>
+                      <div>
+                        <h3 className="font-medium">{user?.email}</h3>
+                        <p className="text-sm text-gray-500">
+                          {profile?.role === 'admin' ? 'Administrateur' : 'Opérateur'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-medium">{user?.email}</h3>
-                      <p className="text-sm text-gray-500">
-                        {profile?.role === 'admin' ? 'Administrateur' : 'Opérateur'}
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Profile Form */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="first_name">Prénom</Label>
-                      <Input
-                        id="first_name"
-                        value={profileForm.first_name}
-                        onChange={(e) => setProfileForm(prev => ({ ...prev, first_name: e.target.value }))}
-                      />
+                    {/* Profile Form */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="first_name">Prénom</Label>
+                        <Input
+                          id="first_name"
+                          value={profileForm.first_name}
+                          onChange={(e) => setProfileForm(prev => ({ ...prev, first_name: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="last_name">Nom</Label>
+                        <Input
+                          id="last_name"
+                          value={profileForm.last_name}
+                          onChange={(e) => setProfileForm(prev => ({ ...prev, last_name: e.target.value }))}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <Label htmlFor="last_name">Nom</Label>
-                      <Input
-                        id="last_name"
-                        value={profileForm.last_name}
-                        onChange={(e) => setProfileForm(prev => ({ ...prev, last_name: e.target.value }))}
-                      />
-                    </div>
-                  </div>
 
-                  <Button onClick={handleSaveProfile} disabled={saving} className="bg-green-500 hover:bg-green-600">
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Sauvegarde...
-                      </>
-                    ) : (
-                      'Sauvegarder les modifications'
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+                    <Button onClick={handleSaveProfile} disabled={saving} className="bg-green-500 hover:bg-green-600">
+                      {saving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sauvegarde...
+                        </>
+                      ) : (
+                        'Sauvegarder les modifications'
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )
+            }
 
             {/* Payment Methods Tab */}
-            {activeTab === 'payment-methods' && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center">
-                      <CreditCard className="mr-2 h-5 w-5" />
-                      Moyens de paiement
-                    </CardTitle>
-                    <Button 
-                      onClick={() => {
-                        setSelectedPaymentMethod(undefined);
-                        setIsPaymentMethodFormOpen(true);
-                      }}
-                      className="bg-green-500 hover:bg-green-600"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Ajouter un moyen
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {paymentMethods.map((method) => (
-                      <div key={method.id} className="card-base transition-shadow-hover flex items-center justify-between p-4">
-                        <div className="flex items-center space-x-4">
-                          <div className="p-2.5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-                            <CreditCard className="h-5 w-5 text-white" />
+            {
+              activeTab === 'payment-methods' && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center">
+                        <CreditCard className="mr-2 h-5 w-5" />
+                        Moyens de paiement
+                      </CardTitle>
+                      <Button
+                        onClick={() => {
+                          setSelectedPaymentMethod(undefined);
+                          setIsPaymentMethodFormOpen(true);
+                        }}
+                        className="bg-green-500 hover:bg-green-600"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Ajouter un moyen
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {paymentMethods.map((method) => (
+                        <div key={method.id} className="card-base transition-shadow-hover flex items-center justify-between p-4">
+                          <div className="flex items-center space-x-4">
+                            <div className="p-2.5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                              <CreditCard className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{method.name}</p>
+                              <p className="text-sm text-gray-500">{method.description}</p>
+                              <Badge
+                                variant={method.is_active ? 'default' : 'secondary'}
+                                className={method.is_active ? 'bg-green-500 hover:bg-green-600' : ''}
+                              >
+                                {method.is_active ? 'Actif' : 'Inactif'}
+                              </Badge>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium">{method.name}</p>
-                            <p className="text-sm text-gray-500">{method.description}</p>
-                            <Badge 
-                              variant={method.is_active ? 'default' : 'secondary'}
-                              className={method.is_active ? 'bg-green-500 hover:bg-green-600' : ''}
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleTogglePaymentMethod(method)}
+                              className="hover:bg-green-50 hover:text-green-600"
                             >
-                              {method.is_active ? 'Actif' : 'Inactif'}
-                            </Badge>
+                              {method.is_active ? 'Désactiver' : 'Activer'}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedPaymentMethod(method);
+                                setIsPaymentMethodFormOpen(true);
+                              }}
+                              className="hover:bg-green-50 hover:text-green-600"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleDeletePaymentMethod(method)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleTogglePaymentMethod(method)}
-                            className="hover:bg-green-50 hover:text-green-600"
-                          >
-                            {method.is_active ? 'Désactiver' : 'Activer'}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedPaymentMethod(method);
-                              setIsPaymentMethodFormOpen(true);
-                            }}
-                            className="hover:bg-green-50 hover:text-green-600"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => handleDeletePaymentMethod(method)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            }
 
             {/* Exchange Rates Tab */}
-            {activeTab === 'exchange-rates' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <DollarSign className="mr-2 h-5 w-5" />
-                    Taux de change
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="usdToCdf">USD vers CDF</Label>
-                      <Input
-                        id="usdToCdf"
-                        type="number"
-                        value={exchangeRates.usdToCdf}
-                        onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCdf: e.target.value }))}
-                        placeholder="2850"
-                      />
+            {
+              activeTab === 'exchange-rates' && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <DollarSign className="mr-2 h-5 w-5" />
+                      Taux de change
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="usdToCdf">USD vers CDF</Label>
+                        <Input
+                          id="usdToCdf"
+                          type="number"
+                          value={exchangeRates.usdToCdf}
+                          onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCdf: e.target.value }))}
+                          placeholder="2850"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="usdToCny">USD vers CNY</Label>
+                        <Input
+                          id="usdToCny"
+                          type="number"
+                          value={exchangeRates.usdToCny}
+                          onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCny: e.target.value }))}
+                          placeholder="7.25"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <Label htmlFor="usdToCny">USD vers CNY</Label>
-                      <Input
-                        id="usdToCny"
-                        type="number"
-                        value={exchangeRates.usdToCny}
-                        onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCny: e.target.value }))}
-                        placeholder="7.25"
-                      />
-                    </div>
-                  </div>
-                  <Button 
-                    onClick={() => handleSaveSettings('taux_change', exchangeRates)}
-                    disabled={saving}
-                    className="bg-green-500 hover:bg-green-600"
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Sauvegarde...
-                      </>
-                    ) : (
-                      'Sauvegarder les taux'
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+                    <Button
+                      onClick={() => handleSaveSettings('taux_change', exchangeRates)}
+                      disabled={saving}
+                      className="bg-green-500 hover:bg-green-600"
+                    >
+                      {saving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sauvegarde...
+                        </>
+                      ) : (
+                        'Sauvegarder les taux'
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )
+            }
 
             {/* Transaction Fees Tab */}
-            {activeTab === 'transaction-fees' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <SettingsIcon className="mr-2 h-5 w-5" />
-                    Frais de transaction
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="transfert">Transfert (%)</Label>
-                      <Input
-                        id="transfert"
-                        type="number"
-                        value={transactionFees.transfert}
-                        onChange={(e) => setTransactionFees(prev => ({ ...prev, transfert: e.target.value }))}
-                        placeholder="5"
-                      />
+            {
+              activeTab === 'transaction-fees' && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <SettingsIcon className="mr-2 h-5 w-5" />
+                      Frais de transaction
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="transfert">Transfert (%)</Label>
+                        <Input
+                          id="transfert"
+                          type="number"
+                          value={transactionFees.transfert}
+                          onChange={(e) => setTransactionFees(prev => ({ ...prev, transfert: e.target.value }))}
+                          placeholder="5"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="commande">Commande (%)</Label>
+                        <Input
+                          id="commande"
+                          type="number"
+                          value={transactionFees.commande}
+                          onChange={(e) => setTransactionFees(prev => ({ ...prev, commande: e.target.value }))}
+                          placeholder="10"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="partenaire">Partenaire (%)</Label>
+                        <Input
+                          id="partenaire"
+                          type="number"
+                          value={transactionFees.partenaire}
+                          onChange={(e) => setTransactionFees(prev => ({ ...prev, partenaire: e.target.value }))}
+                          placeholder="3"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <Label htmlFor="commande">Commande (%)</Label>
-                      <Input
-                        id="commande"
-                        type="number"
-                        value={transactionFees.commande}
-                        onChange={(e) => setTransactionFees(prev => ({ ...prev, commande: e.target.value }))}
-                        placeholder="10"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="partenaire">Partenaire (%)</Label>
-                      <Input
-                        id="partenaire"
-                        type="number"
-                        value={transactionFees.partenaire}
-                        onChange={(e) => setTransactionFees(prev => ({ ...prev, partenaire: e.target.value }))}
-                        placeholder="3"
-                      />
-                    </div>
-                  </div>
-                  <Button 
-                    onClick={() => handleSaveSettings('frais', transactionFees)}
-                    disabled={saving}
-                    className="bg-green-500 hover:bg-green-600"
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Sauvegarde...
-                      </>
-                    ) : (
-                      'Sauvegarder les frais'
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+                    <Button
+                      onClick={() => handleSaveSettings('frais', transactionFees)}
+                      disabled={saving}
+                      className="bg-green-500 hover:bg-green-600"
+                    >
+                      {saving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sauvegarde...
+                        </>
+                      ) : (
+                        'Sauvegarder les frais'
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )
+            }
 
             {/* Activity Logs Tab */}
-            {activeTab === 'activity-logs' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <FileText className="mr-2 h-5 w-5" />
-                    Logs d'activité
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {activityLogs.map((log) => (
-                      <div key={log.id} className="card-base transition-shadow-hover flex items-center justify-between p-4">
-                        <div className="flex items-center space-x-4">
-                          <div className="p-2.5 rounded-full bg-purple-500 flex items-center justify-center flex-shrink-0">
-                            <FileText className="h-5 w-5 text-white" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{log.action}</p>
-                            <p className="text-sm text-gray-500">
-                              {log.cible} - {new Date(log.created_at).toLocaleString('fr-FR')}
-                            </p>
+            {
+              activeTab === 'activity-logs' && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <FileText className="mr-2 h-5 w-5" />
+                      Logs d'activité
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {activityLogs.map((log) => (
+                        <div key={log.id} className="card-base transition-shadow-hover flex items-center justify-between p-4">
+                          <div className="flex items-center space-x-4">
+                            <div className="p-2.5 rounded-full bg-purple-500 flex items-center justify-center flex-shrink-0">
+                              <FileText className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{log.action}</p>
+                              <p className="text-sm text-gray-500">
+                                {log.cible} - {new Date(log.created_at).toLocaleString('fr-FR')}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            }
 
             {/* Factures Settings Tab */}
             {activeTab === 'factures' && <SettingsFacture />}
-          </div>
-        </div>
-      </div>
+          </div >
+        </div >
+      </div >
 
       {/* User Form Modal */}
-      <Dialog open={isUserFormOpen} onOpenChange={setIsUserFormOpen}>
+      < Dialog open={isUserFormOpen} onOpenChange={setIsUserFormOpen} >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
@@ -1203,10 +1224,10 @@ const Settings = () => {
             </div>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Payment Method Form Modal */}
-      <PaymentMethodForm
+      < PaymentMethodForm
         paymentMethod={selectedPaymentMethod}
         isOpen={isPaymentMethodFormOpen}
         onClose={() => setIsPaymentMethodFormOpen(false)}

@@ -21,7 +21,7 @@ export default defineConfig(() => ({
     strictPort: true,
     allowedHosts: ['facturex.coccinelledrc.com', '.easypanel.host']
   },
-  plugins: [dyadComponentTagger(), react()],
+  plugins: [/* dyadComponentTagger(), */ react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

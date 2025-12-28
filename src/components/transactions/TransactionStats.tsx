@@ -1,5 +1,4 @@
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { DollarSign, Wallet, TrendingUp, TrendingDown, Receipt } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatCurrency';
 
@@ -19,92 +18,95 @@ export const TransactionStats: React.FC<TransactionStatsProps> = ({ globalTotals
   const { totalUSD, totalFrais, totalBenefice, totalDepenses, totalCount } = globalTotals;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
       {/* Total USD Card */}
-      <Card className="card-base transition-shadow-hover">
-        <CardContent className="p-4 sm:p-6">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 shadow-lg">
+        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+        <div className="relative">
           <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total USD</p>
-              <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                {formatCurrency(totalUSD, 'USD')}
-              </p>
+            <div className="rounded-lg bg-white/20 p-2">
+              <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-white" />
             </div>
-            <div className="p-3 rounded-full bg-green-500 flex-shrink-0">
-              <DollarSign className="h-6 w-6 text-white" />
-            </div>
+            <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] md:text-xs font-medium text-white">
+              USD
+            </span>
           </div>
-        </CardContent>
-      </Card>
+          <div className="mt-3">
+            <p className="text-lg md:text-2xl font-bold text-white truncate">{formatCurrency(totalUSD, 'USD')}</p>
+            <p className="mt-0.5 text-xs md:text-sm text-emerald-100">Total encaissé</p>
+          </div>
+        </div>
+      </div>
 
       {/* Total Frais Card */}
-      <Card className="card-base transition-shadow-hover">
-        <CardContent className="p-4 sm:p-6">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 md:p-5 shadow-lg">
+        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+        <div className="relative">
           <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Frais</p>
-              <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                {formatCurrency(totalFrais, 'USD')}
-              </p>
+            <div className="rounded-lg bg-white/20 p-2">
+              <Wallet className="h-4 w-4 md:h-5 md:w-5 text-white" />
             </div>
-            <div className="p-3 rounded-full bg-blue-500 flex-shrink-0">
-              <Wallet className="h-6 w-6 text-white" />
-            </div>
+            <span className="text-[10px] md:text-xs font-medium text-blue-100">Frais</span>
           </div>
-        </CardContent>
-      </Card>
+          <div className="mt-3">
+            <p className="text-lg md:text-2xl font-bold text-white truncate">{formatCurrency(totalFrais, 'USD')}</p>
+            <p className="mt-0.5 text-xs md:text-sm text-blue-100">Total perçu</p>
+          </div>
+        </div>
+      </div>
 
       {/* Bénéfice Card */}
-      <Card className="card-base transition-shadow-hover">
-        <CardContent className="p-4 sm:p-6">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-4 md:p-5 shadow-lg">
+        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+        <div className="relative">
           <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Bénéfice total</p>
-              <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                {formatCurrency(totalBenefice, 'USD')}
-              </p>
+            <div className="rounded-lg bg-white/20 p-2">
+              <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-white" />
             </div>
-            <div className="p-3 rounded-full bg-purple-500 flex-shrink-0">
-              <TrendingUp className="h-6 w-6 text-white" />
-            </div>
+            <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] md:text-xs font-medium text-white">
+              +{((totalBenefice / (totalUSD || 1)) * 100).toFixed(1)}%
+            </span>
           </div>
-        </CardContent>
-      </Card>
+          <div className="mt-3">
+            <p className="text-lg md:text-2xl font-bold text-white truncate">{formatCurrency(totalBenefice, 'USD')}</p>
+            <p className="mt-0.5 text-xs md:text-sm text-purple-100">Bénéfice net</p>
+          </div>
+        </div>
+      </div>
 
       {/* Total Dépenses Card */}
-      <Card className="card-base transition-shadow-hover">
-        <CardContent className="p-4 sm:p-6">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-red-500 to-red-600 p-4 md:p-5 shadow-lg">
+        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+        <div className="relative">
           <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Dépenses</p>
-              <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                {formatCurrency(totalDepenses, 'USD')}
-              </p>
+            <div className="rounded-lg bg-white/20 p-2">
+              <TrendingDown className="h-4 w-4 md:h-5 md:w-5 text-white" />
             </div>
-            <div className="p-3 rounded-full bg-red-500 flex-shrink-0">
-              <TrendingDown className="h-6 w-6 text-white" />
-            </div>
+            <span className="text-[10px] md:text-xs font-medium text-red-100">Sorties</span>
           </div>
-        </CardContent>
-      </Card>
+          <div className="mt-3">
+            <p className="text-lg md:text-2xl font-bold text-white truncate">{formatCurrency(totalDepenses, 'USD')}</p>
+            <p className="mt-0.5 text-xs md:text-sm text-red-100">Dépenses</p>
+          </div>
+        </div>
+      </div>
 
       {/* Transactions Count Card */}
-      <Card className="card-base transition-shadow-hover">
-        <CardContent className="p-4 sm:p-6">
+      <div className="col-span-2 lg:col-span-1 relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 p-4 md:p-5 shadow-lg">
+        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/5"></div>
+        <div className="relative">
           <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Transactions</p>
-              <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate mt-2">
-                {totalCount || 0}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">Toutes pages confondues</p>
+            <div className="rounded-lg bg-white/10 p-2">
+              <Receipt className="h-4 w-4 md:h-5 md:w-5 text-white" />
             </div>
-            <div className="p-3 rounded-full bg-orange-500 flex-shrink-0">
-              <Receipt className="h-6 w-6 text-white" />
-            </div>
+            <span className="text-[10px] md:text-xs font-medium text-slate-400">Total</span>
           </div>
-        </CardContent>
-      </Card>
+          <div className="mt-3">
+            <p className="text-lg md:text-2xl font-bold text-white">{totalCount || 0}</p>
+            <p className="mt-0.5 text-xs md:text-sm text-slate-400">Transactions</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

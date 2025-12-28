@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
+import {
   Plus,
   Trash2,
   Edit2,
@@ -18,9 +18,22 @@ import {
   Palette,
   Tag,
   Save,
-  X
+  X,
+  Grid3x3,
+  List
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
+import { UnifiedDataTable } from '@/components/ui/unified-data-table';
+import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
+import { MoreHorizontal } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Icônes disponibles pour les catégories
 const AVAILABLE_ICONS = [
@@ -81,7 +94,9 @@ export const CategoriesFinances = () => {
   const [activeTab, setActiveTab] = useState<'revenue' | 'depense'>('revenue');
   const [showForm, setShowForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<FinanceCategory | null>(null);
-  
+  const [viewMode, setViewMode] = useState<'table' | 'cards' | 'auto'>('auto');
+  const isMobile = useIsMobile();
+
   const [formData, setFormData] = useState({
     nom: '',
     code: '',
@@ -118,7 +133,7 @@ export const CategoriesFinances = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.nom || !formData.code) {
       showError('Veuillez remplir tous les champs obligatoires');
       return;
@@ -227,6 +242,54 @@ export const CategoriesFinances = () => {
     return AVAILABLE_ICONS.find(i => i.value === iconValue)?.icon || '📁';
   };
 
+  const categoryColumns = [
+    {
+      key: 'nom',
+      title: 'Catégorie',
+      sortable: true,
+      render: (value: string, item: FinanceCategory) => (
+        <div className="flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg"
+            style={{ backgroundColor: item.couleur }}
+          >
+            {getIconEmoji(item.icon)}
+          </div>
+          <div>
+            <p className="font-medium">{item.nom}</p>
+            <p className="text-xs text-gray-500">{item.code}</p>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'description',
+      title: 'Description',
+      hiddenOn: 'md' as const,
+      render: (value: string) => <span className="text-gray-500 italic text-sm">{value || '-'}</span>
+    },
+    {
+      key: 'actions',
+      title: '',
+      align: 'right' as const,
+      render: (_: any, item: FinanceCategory) => (
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
+            <Edit2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-red-600 hover:bg-red-50"
+            onClick={() => handleDelete(item.id)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      )
+    }
+  ];
+
   if (loading) {
     return (
       <Layout>
@@ -259,11 +322,37 @@ export const CategoriesFinances = () => {
                 Dépenses
               </TabsTrigger>
             </TabsList>
-            
-            <Button onClick={openNewForm} className="bg-green-500 hover:bg-green-600">
-              <Plus className="mr-2 h-4 w-4" />
-              Nouvelle catégorie
-            </Button>
+
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 mr-2">
+                <button
+                  type="button"
+                  className={cn(
+                    'p-1.5 rounded-md transition-all',
+                    viewMode === 'cards' ? 'bg-white shadow-sm' : 'hover:bg-gray-200 text-gray-500'
+                  )}
+                  onClick={() => setViewMode('cards')}
+                  title="Vue Grille"
+                >
+                  <Grid3x3 className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    'p-1.5 rounded-md transition-all',
+                    viewMode === 'table' ? 'bg-white shadow-sm' : 'hover:bg-gray-200 text-gray-500'
+                  )}
+                  onClick={() => setViewMode('table')}
+                  title="Vue Liste"
+                >
+                  <List className="h-4 w-4" />
+                </button>
+              </div>
+              <Button onClick={openNewForm} className="bg-green-500 hover:bg-green-600">
+                <Plus className="mr-2 h-4 w-4" />
+                Nouvelle catégorie
+              </Button>
+            </div>
           </div>
 
           {/* Formulaire */}
@@ -325,11 +414,10 @@ export const CategoriesFinances = () => {
                           key={icon.value}
                           type="button"
                           onClick={() => setFormData(prev => ({ ...prev, icon: icon.value }))}
-                          className={`p-2 text-xl rounded-lg border-2 transition-all ${
-                            formData.icon === icon.value
-                              ? 'border-green-500 bg-green-50'
-                              : 'border-gray-200 hover:border-gray-300'
-                          }`}
+                          className={`p-2 text-xl rounded-lg border-2 transition-all ${formData.icon === icon.value
+                            ? 'border-green-500 bg-green-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                            }`}
                           title={icon.label}
                         >
                           {icon.icon}
@@ -350,11 +438,10 @@ export const CategoriesFinances = () => {
                           key={color.value}
                           type="button"
                           onClick={() => setFormData(prev => ({ ...prev, couleur: color.value }))}
-                          className={`w-8 h-8 rounded-full border-2 transition-all ${
-                            formData.couleur === color.value
-                              ? 'ring-2 ring-offset-2 ring-gray-400'
-                              : ''
-                          }`}
+                          className={`w-8 h-8 rounded-full border-2 transition-all ${formData.couleur === color.value
+                            ? 'ring-2 ring-offset-2 ring-gray-400'
+                            : ''
+                            }`}
                           style={{ backgroundColor: color.value }}
                           title={color.label}
                         />
@@ -365,7 +452,7 @@ export const CategoriesFinances = () => {
                   {/* Aperçu */}
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <Label className="text-sm text-gray-500 mb-2 block">Aperçu</Label>
-                    <div 
+                    <div
                       className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-white"
                       style={{ backgroundColor: formData.couleur }}
                     >
@@ -389,111 +476,34 @@ export const CategoriesFinances = () => {
           )}
 
           {/* Liste des catégories */}
-          <TabsContent value="revenue">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-green-500" />
-                  Catégories de Revenus ({filteredCategories.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {filteredCategories.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">
-                    Aucune catégorie de revenus. Cliquez sur "Nouvelle catégorie" pour en créer une.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredCategories.map((category) => (
-                      <div
-                        key={category.id}
-                        className="p-4 rounded-lg border flex items-center justify-between hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg"
-                            style={{ backgroundColor: category.couleur }}
-                          >
-                            {getIconEmoji(category.icon)}
-                          </div>
-                          <div>
-                            <p className="font-medium">{category.nom}</p>
-                            <p className="text-xs text-gray-500">{category.code}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(category)}>
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-red-600 hover:bg-red-50"
-                            onClick={() => handleDelete(category.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+          {/* Liste des catégories Unified */}
+          <UnifiedDataTable
+            data={filteredCategories}
+            loading={loading}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            emptyMessage={`Aucune catégorie de ${activeTab === 'revenue' ? 'revenue' : 'dépense'}`}
+            emptySubMessage="Cliquez sur 'Nouvelle catégorie' pour commencer"
+            columns={categoryColumns}
+            cardConfig={{
+              titleKey: 'nom',
+              titleRender: (item) => (
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg"
+                    style={{ backgroundColor: item.couleur }}
+                  >
+                    {getIconEmoji(item.icon)}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="depense">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingDown className="h-5 w-5 text-red-500" />
-                  Catégories de Dépenses ({filteredCategories.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {filteredCategories.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">
-                    Aucune catégorie de dépenses. Cliquez sur "Nouvelle catégorie" pour en créer une.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredCategories.map((category) => (
-                      <div
-                        key={category.id}
-                        className="p-4 rounded-lg border flex items-center justify-between hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg"
-                            style={{ backgroundColor: category.couleur }}
-                          >
-                            {getIconEmoji(category.icon)}
-                          </div>
-                          <div>
-                            <p className="font-medium">{category.nom}</p>
-                            <p className="text-xs text-gray-500">{category.code}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(category)}>
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-red-600 hover:bg-red-50"
-                            onClick={() => handleDelete(category.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  <span className="font-medium">{item.nom}</span>
+                </div>
+              ),
+              subtitleKey: 'code',
+              infoFields: [
+                { key: 'description', label: 'Description' }
+              ]
+            }}
+          />
         </Tabs>
       </div>
     </Layout>

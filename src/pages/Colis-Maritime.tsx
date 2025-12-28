@@ -12,28 +12,53 @@ import { Separator } from '@/components/ui/separator';
 
 import Layout from '@/components/layout/Layout';
 import { usePageSetup } from '@/hooks/use-page-setup';
+import { UnifiedDataTable } from '@/components/ui/unified-data-table';
+import { FilterTabs } from '@/components/ui/filter-tabs';
+import { ColumnSelector, ColumnConfig } from '@/components/ui/column-selector';
+import { ExportDropdown } from '@/components/ui/export-dropdown';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ColisMaritimePage: React.FC = () => {
     const [activeTab, setActiveTab] = useState('colis');
     const { colis, loading: colisLoading } = useColisMaritime();
     const { containers, loading: containersLoading } = useContainersMaritime();
     const [searchTerm, setSearchTerm] = useState('');
+    const [viewMode, setViewMode] = useState<'table' | 'cards' | 'auto'>('auto');
+    const [colisColumnsConfig, setColisColumnsConfig] = useState<Record<string, boolean>>({});
+    const [containerColumnsConfig, setContainerColumnsConfig] = useState<Record<string, boolean>>({});
+    const [colisFilter, setColisFilter] = useState('all');
+    const [containerFilter, setContainerFilter] = useState('all');
+    const isMobile = useIsMobile();
 
     usePageSetup({
         title: 'Fret Maritime',
         subtitle: 'Gestion des expéditions maritimes, CBM et containers'
     });
 
-    const filteredColis = colis.filter(c =>
-        c.client?.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.tracking_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredColis = colis.filter(c => {
+        const matchesSearch = c.client?.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.tracking_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const filteredContainers = containers.filter(c =>
-        c.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.transitaire?.nom.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+        let matchesStatus = true;
+        if (colisFilter === 'recu') matchesStatus = c.statut === 'Reçu Entrepôt Chine';
+        if (colisFilter === 'transit') matchesStatus = c.statut === 'En transit' || c.statut === 'En Mer';
+        if (colisFilter === 'arrive') matchesStatus = c.statut === 'Arrivé' || c.statut === 'Livré';
+
+        return matchesSearch && matchesStatus;
+    });
+
+    const filteredContainers = containers.filter(c => {
+        const matchesSearch = c.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.transitaire?.nom.toLowerCase().includes(searchTerm.toLowerCase());
+
+        let matchesStatus = true;
+        if (containerFilter === 'prep') matchesStatus = c.statut === 'En préparation';
+        if (containerFilter === 'mer') matchesStatus = c.statut === 'En transit' || c.statut === 'En Mer';
+        if (containerFilter === 'arrive') matchesStatus = c.statut === 'Arrivé';
+
+        return matchesSearch && matchesStatus;
+    });
 
     return (
         <Layout>
@@ -51,205 +76,242 @@ const ColisMaritimePage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Stats Cards Overview */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                    <Card>
-                        <CardContent className="pt-6">
+                {/* Stats Cards Overview - Modern Gradient Design */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                    {/* Colis en Attente */}
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-500 to-amber-500 p-4 md:p-5 shadow-lg">
+                        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+                        <div className="relative">
                             <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-500">Colis en Attente</p>
-                                    <p className="text-2xl font-bold text-yellow-600">
-                                        {colis.filter(c => c.statut === 'Reçu Entrepôt Chine').length}
-                                    </p>
+                                <div className="rounded-lg bg-white/20 p-2">
+                                    <Package className="h-4 w-4 md:h-5 md:w-5 text-white" />
                                 </div>
-                                <Package className="h-8 w-8 text-yellow-500" />
+                                <span className="text-[10px] md:text-xs font-medium text-yellow-100">Attente</span>
                             </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="pt-6">
+                            <div className="mt-3">
+                                <p className="text-lg md:text-2xl font-bold text-white">
+                                    {colis.filter(c => c.statut === 'Reçu Entrepôt Chine').length}
+                                </p>
+                                <p className="mt-0.5 text-xs md:text-sm text-yellow-100">Colis en attente</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Volume Total */}
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 md:p-5 shadow-lg">
+                        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+                        <div className="relative">
                             <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-500">Volume Total</p>
-                                    <p className="text-2xl font-bold text-blue-600">
-                                        {colis.reduce((acc, curr) => acc + (Number(curr.cbm) || 0), 0).toFixed(3)} m³
-                                    </p>
+                                <div className="rounded-lg bg-white/20 p-2">
+                                    <Ship className="h-4 w-4 md:h-5 md:w-5 text-white" />
                                 </div>
-                                <Ship className="h-8 w-8 text-blue-500" />
+                                <span className="text-[10px] md:text-xs font-medium text-blue-100">m³</span>
                             </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="pt-6">
+                            <div className="mt-3">
+                                <p className="text-lg md:text-2xl font-bold text-white">
+                                    {colis.reduce((acc, curr) => acc + (Number(curr.cbm) || 0), 0).toFixed(2)}
+                                </p>
+                                <p className="mt-0.5 text-xs md:text-sm text-blue-100">Volume total</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Containers en Mer */}
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 p-4 md:p-5 shadow-lg">
+                        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+                        <div className="relative">
                             <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-500">Containers en Mer</p>
-                                    <p className="text-2xl font-bold text-blue-500">
-                                        {containers.filter(c => c.statut === 'En transit').length}
-                                    </p>
+                                <div className="rounded-lg bg-white/20 p-2">
+                                    <Ship className="h-4 w-4 md:h-5 md:w-5 text-white" />
                                 </div>
-                                <Ship className="h-8 w-8 text-blue-400" />
+                                <span className="text-[10px] md:text-xs font-medium text-indigo-100">En mer</span>
                             </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="pt-6">
+                            <div className="mt-3">
+                                <p className="text-lg md:text-2xl font-bold text-white">
+                                    {containers.filter(c => c.statut === 'En transit').length}
+                                </p>
+                                <p className="mt-0.5 text-xs md:text-sm text-indigo-100">Containers</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Arrivés à Kin */}
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 shadow-lg">
+                        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+                        <div className="relative">
                             <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-500">Arrivés à Kin</p>
-                                    <p className="text-2xl font-bold text-green-600">
-                                        {containers.filter(c => c.statut === 'Arrivé').length}
-                                    </p>
+                                <div className="rounded-lg bg-white/20 p-2">
+                                    <Package className="h-4 w-4 md:h-5 md:w-5 text-white" />
                                 </div>
-                                <Package className="h-8 w-8 text-green-500" />
+                                <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] md:text-xs font-medium text-white">
+                                    ✓
+                                </span>
                             </div>
-                        </CardContent>
-                    </Card>
+                            <div className="mt-3">
+                                <p className="text-lg md:text-2xl font-bold text-white">
+                                    {containers.filter(c => c.statut === 'Arrivé').length}
+                                </p>
+                                <p className="mt-0.5 text-xs md:text-sm text-emerald-100">Arrivés à Kin</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
 
                 <Tabs defaultValue="colis" onValueChange={setActiveTab} className="w-full">
-                    <div className="flex items-center justify-between mb-4">
-                        <TabsList>
-                            <TabsTrigger value="colis">Colis Individuels</TabsTrigger>
-                            <TabsTrigger value="containers">Containers</TabsTrigger>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-4">
+                        <TabsList className="inline-flex bg-gray-100/80 dark:bg-gray-800/80 p-1.5 rounded-xl gap-1">
+                            <TabsTrigger
+                                value="colis"
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+                                    text-gray-500 dark:text-gray-400
+                                    hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50
+                                    data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-blue-500/20"
+                            >
+                                <Package className="h-4 w-4" />
+                                <span className="hidden sm:inline">Colis Individuels</span>
+                                <span className="sm:hidden">Colis</span>
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="containers"
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+                                    text-gray-500 dark:text-gray-400
+                                    hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50
+                                    data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-indigo-500/20"
+                            >
+                                <Ship className="h-4 w-4" />
+                                Containers
+                            </TabsTrigger>
                         </TabsList>
-                        <div className="relative w-72">
-                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <div className="relative w-full sm:w-72">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder="Rechercher..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-8"
+                                className="pl-10 bg-gray-50 dark:bg-gray-800"
                             />
                         </div>
                     </div>
 
                     <TabsContent value="colis" className="space-y-4">
+                        <FilterTabs
+                            tabs={[
+                                { id: 'all', label: 'Tous', count: colis.length },
+                                { id: 'recu', label: 'Reçu Chine', count: colis.filter(c => c.statut === 'Reçu Entrepôt Chine').length },
+                                { id: 'transit', label: 'En Transit', count: colis.filter(c => c.statut === 'En transit' || c.statut === 'En Mer').length },
+                                { id: 'arrive', label: 'Arrivé', count: colis.filter(c => c.statut === 'Arrivé' || c.statut === 'Livré').length },
+                            ]}
+                            activeTab={colisFilter}
+                            onTabChange={setColisFilter}
+                        />
                         <Card>
                             <CardHeader>
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                    <CardTitle className="flex items-center gap-2">
-                                        <Package className="h-5 w-5 text-blue-500" />
-                                        Liste des Colis Maritimes ({filteredColis.length})
-                                    </CardTitle>
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                    <div className="flex flex-col gap-1">
+                                        <CardTitle className="flex items-center gap-2">
+                                            <Package className="h-5 w-5 text-blue-500" />
+                                            Liste des Colis Maritimes ({filteredColis.length})
+                                        </CardTitle>
+                                        <CardDescription>Tous les colis reçus, en attente de chargement ou en transit.</CardDescription>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                        <ColumnSelector
+                                            columns={COLIS_COLUMNS.map(c => ({
+                                                key: c.key,
+                                                label: c.title,
+                                                visible: colisColumnsConfig[c.key] !== false
+                                            }))}
+                                            onColumnsChange={(cols) => setColisColumnsConfig(cols.reduce((acc, c) => ({ ...acc, [c.key]: c.visible }), {}))}
+                                        />
+                                        <ExportDropdown
+                                            onExport={() => { }}
+                                            disabled={filteredColis.length === 0}
+                                        />
+                                    </div>
                                 </div>
-                                <CardDescription>Tous les colis reçus, en attente de chargement ou en transit.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="overflow-x-auto rounded-xl shadow-sm border border-gray-100">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 text-gray-700">
-                                            <tr>
-                                                <th className="p-4 font-semibold">Date Reçu</th>
-                                                <th className="p-4 font-semibold">Client</th>
-                                                <th className="p-4 font-semibold">Tracking</th>
-                                                <th className="p-4 font-semibold">CBM</th>
-                                                <th className="p-4 font-semibold">Container</th>
-                                                <th className="p-4 font-semibold">Statut</th>
-                                                <th className="p-4 font-semibold text-right">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100">
-                                            {colisLoading ? (
-                                                <tr><td colSpan={7} className="p-8 text-center">
-                                                    <div className="flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>
-                                                </td></tr>
-                                            ) : filteredColis.length === 0 ? (
-                                                <tr><td colSpan={7} className="p-12 text-center text-gray-500">
-                                                    <Package className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                                                    Aucun colis trouvé
-                                                </td></tr>
-                                            ) : (
-                                                filteredColis.map(item => (
-                                                    <tr key={item.id} className="hover:bg-blue-50/30 transition-colors">
-                                                        <td className="p-4">{item.date_reception_chine ? format(new Date(item.date_reception_chine), 'dd/MM/yyyy') : '-'}</td>
-                                                        <td className="p-4 font-medium">
-                                                            <div className="flex flex-col">
-                                                                <span>{item.client?.nom || 'Inconnu'}</span>
-                                                                <span className="text-xs text-gray-500">{item.client?.telephone}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="p-4 font-mono bg-gray-50/50 rounded">{item.tracking_number || '-'}</td>
-                                                        <td className="p-4 font-mono font-bold text-blue-700">{item.cbm} m³</td>
-                                                        <td className="p-4">
-                                                            {item.container ? (
-                                                                <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
-                                                                    {item.container.numero}
-                                                                </Badge>
-                                                            ) : (
-                                                                <span className="text-gray-400 text-xs italic">Non assigné</span>
-                                                            )}
-                                                        </td>
-                                                        <td className="p-4">
-                                                            <StatusBadge status={item.statut} />
-                                                        </td>
-                                                        <td className="p-4 text-right">
-                                                            <Button variant="ghost" size="sm" className="hover:bg-blue-100 text-blue-600">Détails</Button>
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <UnifiedDataTable
+                                    data={filteredColis}
+                                    columns={COLIS_COLUMNS.filter(c => colisColumnsConfig[c.key] !== false)}
+                                    loading={colisLoading}
+                                    viewMode={viewMode}
+                                    onViewModeChange={setViewMode}
+                                    emptyMessage="Aucun colis trouvé"
+                                    emptySubMessage="Essayez de modifier vos filtres"
+                                    cardConfig={{
+                                        titleKey: 'tracking_number',
+                                        subtitleKey: 'client.nom',
+                                        badgeKey: 'statut',
+                                        badgeRender: (date) => <StatusBadge status={date.statut} />,
+                                        infoFields: [
+                                            { key: 'cbm', label: 'CBM', render: (val) => `${val} m³` },
+                                            { key: 'container.numero', label: 'Container' }
+                                        ]
+                                    }}
+                                />
                             </CardContent>
                         </Card>
                     </TabsContent>
 
                     <TabsContent value="containers" className="space-y-4">
+                        <FilterTabs
+                            tabs={[
+                                { id: 'all', label: 'Tous', count: containers.length },
+                                { id: 'prep', label: 'En préparation', count: containers.filter(c => c.statut === 'En préparation').length },
+                                { id: 'mer', label: 'En Mer', count: containers.filter(c => c.statut === 'En transit' || c.statut === 'En Mer').length },
+                                { id: 'arrive', label: 'Arrivé', count: containers.filter(c => c.statut === 'Arrivé').length },
+                            ]}
+                            activeTab={containerFilter}
+                            onTabChange={setContainerFilter}
+                        />
                         <Card>
                             <CardHeader>
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                    <CardTitle className="flex items-center gap-2">
-                                        <Ship className="h-5 w-5 text-blue-500" />
-                                        Gestion des Containers ({filteredContainers.length})
-                                    </CardTitle>
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                    <div className="flex flex-col gap-1">
+                                        <CardTitle className="flex items-center gap-2">
+                                            <Ship className="h-5 w-5 text-blue-500" />
+                                            Gestion des Containers ({filteredContainers.length})
+                                        </CardTitle>
+                                        <CardDescription>Suivi des containers groupés et de leurs expéditions.</CardDescription>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                        <ColumnSelector
+                                            columns={CONTAINER_COLUMNS.map(c => ({
+                                                key: c.key,
+                                                label: c.title,
+                                                visible: containerColumnsConfig[c.key] !== false
+                                            }))}
+                                            onColumnsChange={(cols) => setContainerColumnsConfig(cols.reduce((acc, c) => ({ ...acc, [c.key]: c.visible }), {}))}
+                                        />
+                                        <ExportDropdown
+                                            onExport={() => { }}
+                                            disabled={filteredContainers.length === 0}
+                                        />
+                                    </div>
                                 </div>
-                                <CardDescription>Suivi des containers groupés et de leurs expéditions.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="overflow-x-auto rounded-xl shadow-sm border border-gray-100">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 text-gray-700">
-                                            <tr>
-                                                <th className="p-4 font-semibold">Numéro</th>
-                                                <th className="p-4 font-semibold">Transitaire</th>
-                                                <th className="p-4 font-semibold">Départ</th>
-                                                <th className="p-4 font-semibold">Arrivée Prévue</th>
-                                                <th className="p-4 font-semibold">Statut</th>
-                                                <th className="p-4 font-semibold text-right">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100">
-                                            {containersLoading ? (
-                                                <tr><td colSpan={6} className="p-8 text-center">
-                                                    <div className="flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>
-                                                </td></tr>
-                                            ) : filteredContainers.length === 0 ? (
-                                                <tr><td colSpan={6} className="p-12 text-center text-gray-500">
-                                                    <Ship className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                                                    Aucun container trouvé
-                                                </td></tr>
-                                            ) : (
-                                                filteredContainers.map(container => (
-                                                    <tr key={container.id} className="hover:bg-blue-50/30 transition-colors">
-                                                        <td className="p-4 font-bold font-mono text-blue-700">{container.numero}</td>
-                                                        <td className="p-4 font-medium">{container.transitaire?.nom || '-'}</td>
-                                                        <td className="p-4">{container.date_depart ? format(new Date(container.date_depart), 'dd/MM/yyyy') : '-'}</td>
-                                                        <td className="p-4">{container.date_arrivee_prevue ? format(new Date(container.date_arrivee_prevue), 'dd/MM/yyyy') : '-'}</td>
-                                                        <td className="p-4">
-                                                            <StatusBadge status={container.statut} />
-                                                        </td>
-                                                        <td className="p-4 text-right">
-                                                            <Button variant="ghost" size="sm" className="hover:bg-blue-100 text-blue-600">Gérer</Button>
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <UnifiedDataTable
+                                    data={filteredContainers}
+                                    columns={CONTAINER_COLUMNS.filter(c => containerColumnsConfig[c.key] !== false)}
+                                    loading={containersLoading}
+                                    viewMode={viewMode}
+                                    onViewModeChange={setViewMode}
+                                    emptyMessage="Aucun container trouvé"
+                                    emptySubMessage="Aucun container ne correspond à votre recherche"
+                                    cardConfig={{
+                                        titleKey: 'numero',
+                                        subtitleKey: 'transitaire.nom',
+                                        badgeKey: 'statut',
+                                        badgeRender: (date) => <StatusBadge status={date.statut} />,
+                                        infoFields: [
+                                            { key: 'date_depart', label: 'Départ', render: (val) => val ? format(new Date(val), 'dd/MM/yyyy') : '-' },
+                                            { key: 'date_arrivee_prevue', label: 'Arrivée', render: (val) => val ? format(new Date(val), 'dd/MM/yyyy') : '-' }
+                                        ]
+                                    }}
+                                />
                             </CardContent>
                         </Card>
                     </TabsContent>
@@ -271,5 +333,102 @@ const StatusBadge = ({ status }: { status: string }) => {
         </span>
     );
 };
+
+
+
+const COLIS_COLUMNS = [
+    {
+        key: 'date_reception_chine',
+        title: 'Date Reçu',
+        sortable: true,
+        render: (value: any) => value ? format(new Date(value), 'dd/MM/yyyy') : '-'
+    },
+    {
+        key: 'client',
+        title: 'Client',
+        sortable: true,
+        render: (value: any, item: any) => (
+            <div className="flex flex-col">
+                <span>{item.client?.nom || 'Inconnu'}</span>
+                <span className="text-xs text-gray-500">{item.client?.telephone}</span>
+            </div>
+        )
+    },
+    {
+        key: 'tracking_number',
+        title: 'Tracking',
+        sortable: true,
+        render: (value: any) => <span className="font-mono bg-gray-50/50 rounded px-2 py-1">{value || '-'}</span>
+    },
+    {
+        key: 'cbm',
+        title: 'CBM',
+        sortable: true,
+        render: (value: any) => <span className="font-mono font-bold text-blue-700">{value} m³</span>
+    },
+    {
+        key: 'container',
+        title: 'Container',
+        sortable: true,
+        render: (value: any) => value ? (
+            <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
+                {value.numero}
+            </Badge>
+        ) : (
+            <span className="text-gray-400 text-xs italic">Non assigné</span>
+        )
+    },
+    {
+        key: 'statut',
+        title: 'Statut',
+        sortable: true,
+        render: (value: any) => <StatusBadge status={value} />
+    },
+    {
+        key: 'actions',
+        title: 'Actions',
+        align: 'right' as const,
+        render: () => <Button variant="ghost" size="sm" className="hover:bg-blue-100 text-blue-600">Détails</Button>
+    }
+];
+
+const CONTAINER_COLUMNS = [
+    {
+        key: 'numero',
+        title: 'Numéro',
+        sortable: true,
+        render: (value: any) => <span className="font-bold font-mono text-blue-700">{value}</span>
+    },
+    {
+        key: 'transitaire.nom',
+        title: 'Transitaire',
+        sortable: true,
+        render: (value: any, item: any) => item.transitaire?.nom || '-'
+    },
+    {
+        key: 'date_depart',
+        title: 'Départ',
+        sortable: true,
+        render: (value: any) => value ? format(new Date(value), 'dd/MM/yyyy') : '-'
+    },
+    {
+        key: 'date_arrivee_prevue',
+        title: 'Arrivée Prévue',
+        sortable: true,
+        render: (value: any) => value ? format(new Date(value), 'dd/MM/yyyy') : '-'
+    },
+    {
+        key: 'statut',
+        title: 'Statut',
+        sortable: true,
+        render: (value: any) => <StatusBadge status={value} />
+    },
+    {
+        key: 'actions',
+        title: 'Actions',
+        align: 'right' as const,
+        render: () => <Button variant="ghost" size="sm" className="hover:bg-blue-100 text-blue-600">Gérer</Button>
+    }
+];
 
 export default ColisMaritimePage;

@@ -9,9 +9,9 @@ import { logSecurityEvent } from '@/lib/security/error-handling';
 import type { Transaction, UpdateTransactionData, CreateTransactionData, TransactionFilters } from '@/types';
 
 // Import des modules de transactions
-import { 
+import {
   COMMERCIAL_MOTIFS,
-  fetchRatesAndFees, 
+  fetchRatesAndFees,
   calculateTransactionAmounts,
   applyBaseFilters,
   applyCommercialFilters,
@@ -21,7 +21,7 @@ import {
 } from './transactions';
 
 export const useTransactions = (
-  page: number = 1, 
+  page: number = 1,
   filters: TransactionFilters = {},
   sortColumn: string = 'date_paiement',
   sortDirection: 'asc' | 'desc' = 'desc'
@@ -77,10 +77,10 @@ export const useTransactions = (
         query = query.eq('mode_paiement', filters.modePaiement);
       }
       if (filters.dateFrom) {
-        query = query.gte('created_at', filters.dateFrom);
+        query = query.gte('date_paiement', filters.dateFrom);
       }
       if (filters.dateTo) {
-        query = query.lte('created_at', filters.dateTo);
+        query = query.lte('date_paiement', filters.dateTo);
       }
       if (filters.minAmount) {
         query = query.gte('montant', parseFloat(filters.minAmount));
@@ -88,29 +88,29 @@ export const useTransactions = (
       if (filters.maxAmount) {
         query = query.lte('montant', parseFloat(filters.maxAmount));
       }
-      
+
       // Filtrer uniquement les transactions commerciales
       if (filters.motifCommercial) {
         query = query.in('motif', COMMERCIAL_MOTIFS);
       }
-      
+
       // Filtrer par type de transaction (pour les onglets)
       if (filters.typeTransaction && filters.typeTransaction.length > 0) {
         query = query.in('type_transaction', filters.typeTransaction);
       }
-      
+
       // Exclure certains motifs (pour les opérations internes)
       if (filters.excludeMotifs && filters.excludeMotifs.length > 0) {
         query = query.not('motif', 'in', `(${filters.excludeMotifs.join(',')})`);
       }
-      
+
       // Filtrer les swaps (transferts sans client) vs transactions commerciales (avec client)
       if (filters.isSwap === true) {
         query = query.is('client_id', null);
       } else if (filters.isSwap === false) {
         query = query.not('client_id', 'is', null);
       }
-      
+
       // Appliquer le tri AVANT la pagination
       const ascending = sortDirection === 'asc';
       query = query.order(sortColumn, { ascending });
@@ -127,7 +127,7 @@ export const useTransactions = (
       // Filtrage côté client pour la recherche
       let filteredData = data || [];
       let filteredCount = count || 0;
-      
+
       if (filters.search && filteredData.length > 0) {
         const searchLower = filters.search.toLowerCase().trim();
         filteredData = filteredData.filter((transaction: any) => {
@@ -138,7 +138,7 @@ export const useTransactions = (
           return matchId || matchClientNom || matchClientTelephone || matchModePaiement;
         });
         filteredCount = filteredData.length;
-        
+
         // Appliquer la pagination côté client si recherche active
         const from = (page - 1) * pagination.pageSize;
         const to = from + pagination.pageSize;
@@ -184,10 +184,10 @@ export const useTransactions = (
         query = query.eq('mode_paiement', filters.modePaiement);
       }
       if (filters.dateFrom) {
-        query = query.gte('created_at', filters.dateFrom);
+        query = query.gte('date_paiement', filters.dateFrom);
       }
       if (filters.dateTo) {
-        query = query.lte('created_at', filters.dateTo);
+        query = query.lte('date_paiement', filters.dateTo);
       }
       if (filters.minAmount) {
         query = query.gte('montant', parseFloat(filters.minAmount));
@@ -195,29 +195,29 @@ export const useTransactions = (
       if (filters.maxAmount) {
         query = query.lte('montant', parseFloat(filters.maxAmount));
       }
-      
+
       // Filtrer uniquement les transactions commerciales
       if (filters.motifCommercial) {
         query = query.in('motif', COMMERCIAL_MOTIFS);
       }
-      
+
       // Filtrer par type de transaction
       if (filters.typeTransaction && filters.typeTransaction.length > 0) {
         query = query.in('type_transaction', filters.typeTransaction);
       }
-      
+
       // Exclure certains motifs
       if (filters.excludeMotifs && filters.excludeMotifs.length > 0) {
         query = query.not('motif', 'in', `(${filters.excludeMotifs.join(',')})`);
       }
-      
+
       // Filtrer les swaps (transferts sans client) vs transactions commerciales (avec client)
       if (filters.isSwap === true) {
         query = query.is('client_id', null);
       } else if (filters.isSwap === false) {
         query = query.not('client_id', 'is', null);
       }
-      
+
       // Appliquer la recherche textuelle pour les totaux
       if (filters.search) {
         query = query.or(`id.ilike.%${filters.search}%`);
@@ -264,17 +264,17 @@ export const useTransactions = (
     try {
       // Log input data for debugging
       console.log(' Creating transaction with data:', transactionData);
-      
+
       // SECURITY: Validate and sanitize input data
       const validation = validateTransactionInput(transactionData);
       console.log(' Validation result:', validation);
-      
+
       if (!validation.isValid) {
         const errorMsg = `Validation error: ${validation.error}`;
         console.error(' Validation failed:', errorMsg);
         setError(errorMsg);
         showError(errorMsg);
-        
+
         // Log security event
         logSecurityEvent(
           'INVALID_TRANSACTION_INPUT',
@@ -282,7 +282,7 @@ export const useTransactions = (
           'medium',
           { inputData: transactionData }
         );
-        
+
         throw new Error(errorMsg);
       }
 
@@ -295,19 +295,19 @@ export const useTransactions = (
             const errorMsg = `Suspicious input detected in ${field}`;
             setError(errorMsg);
             showError(errorMsg);
-            
+
             // Log security event
             logSecurityEvent(
               'SUSPICIOUS_INPUT_DETECTED',
               errorMsg,
               'high',
-              { 
-                field, 
+              {
+                field,
                 inputData: transactionData[field as keyof CreateTransactionData],
-                attackType: attackCheck.attackType 
+                attackType: attackCheck.attackType
               }
             );
-            
+
             throw new Error(errorMsg);
           }
         }
@@ -343,7 +343,7 @@ export const useTransactions = (
       });
 
       const tauxUSD = sanitizedData.devise === 'USD' ? 1 : rates.usdToCdf;
-      
+
       // Utiliser le module de calcul avec mapping des nouveaux noms de catégories
       console.log(' Calculating fees for motif:', sanitizedData.motif, 'fees:', fees);
       const amounts = calculateTransactionAmounts(
@@ -355,7 +355,7 @@ export const useTransactions = (
         fees
       );
       console.log(' Calculated amounts:', amounts);
-      
+
       const fraisUSD = amounts.frais;
       const benefice = amounts.benefice;
       const montantCNY = amounts.montant_cny;
@@ -400,7 +400,7 @@ export const useTransactions = (
       );
 
       showSuccess('Transaction créée avec succès');
-      
+
       // Forcer le refresh immédiatement
       setRefreshTrigger(prev => prev + 1);
       // Appel direct pour refresh immédiat
@@ -408,7 +408,7 @@ export const useTransactions = (
         fetchTransactions();
         fetchGlobalTotals(); // Rafraîchir les totaux globaux
       }, 100);
-      
+
       return data;
     } catch (err: any) {
       console.error(' Error creating operation:', err);
@@ -434,9 +434,9 @@ export const useTransactions = (
 
     try {
       let updatedData = { ...transactionData };
-      
+
       console.log(' updateTransaction called with:', { id, transactionData });
-      
+
       if (transactionData.montant !== undefined || transactionData.devise || transactionData.motif) {
         const { data: currentTransaction } = await supabase
           .from('transactions')
@@ -450,7 +450,7 @@ export const useTransactions = (
             .select('cle, valeur, categorie')
             .in('categorie', ['taux_change', 'frais'])
             .in('cle', ['usdToCny', 'usdToCdf', 'transfert', 'commande', 'partenaire']);
-          
+
           const rates: Record<string, number> = { usdToCny: 7.25, usdToCdf: 2850 };
           const fees: Record<string, number> = { transfert: 5, commande: 10, partenaire: 3 };
 
@@ -494,7 +494,7 @@ export const useTransactions = (
 
       // Exclure les champs de compte pour éviter les erreurs RLS
       const { compte_source_id, compte_destination_id, ...safeData } = updatedData as any;
-      
+
       const { data, error } = await supabase
         .from('transactions')
         .update(safeData)
@@ -514,7 +514,7 @@ export const useTransactions = (
       showSuccess('Transaction mise à jour avec succès');
       setRefreshTrigger(prev => prev + 1);
       setTimeout(() => { fetchTransactions(); fetchGlobalTotals(); }, 100);
-      
+
       return data;
     } catch (err: any) {
       console.error(' Error updating:', err);
@@ -540,7 +540,7 @@ export const useTransactions = (
       showSuccess('Transaction supprimée');
       setRefreshTrigger(prev => prev + 1);
       setTimeout(() => { fetchTransactions(); fetchGlobalTotals(); }, 100);
-      
+
       return { message: 'Supprimée' };
     } catch (error: any) {
       return { error: error.message };

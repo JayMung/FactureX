@@ -26,23 +26,35 @@ export const INITIAL_TOTALS: GlobalTotals = {
  */
 export function calculateGlobalTotals(transactions: any[]): Omit<GlobalTotals, 'totalCount'> {
   return transactions.reduce((acc, transaction) => {
-    // Total USD/CDF ne compte QUE les transactions commerciales
-    if (COMMERCIAL_MOTIFS.includes(transaction.motif)) {
+    // Total USD/CDF compte TOUTES les revenues (Commercial + Autres Paiements)
+    if (transaction.type_transaction === 'revenue' || COMMERCIAL_MOTIFS.includes(transaction.motif)) {
       if (transaction.devise === 'USD') {
         acc.totalUSD += transaction.montant || 0;
       } else if (transaction.devise === 'CDF') {
         acc.totalCDF += transaction.montant || 0;
       }
-      acc.totalCNY += transaction.montant_cny || 0;
-      acc.totalFrais += transaction.frais || 0;
-      acc.totalBenefice += transaction.benefice || 0;
+
+      // CNY, Frais et Bénéfice ne concernent que les motifs commerciaux
+      // CNY, Frais et Bénéfice ne concernent que les motifs commerciaux
+      if (COMMERCIAL_MOTIFS.includes(transaction.motif)) {
+        acc.totalCNY += transaction.montant_cny || 0;
+        const frais = transaction.frais || 0;
+        const benefice = transaction.benefice || 0;
+
+        acc.totalFrais += frais;
+        acc.totalBenefice += benefice;
+
+        // Ajouter la commission partenaire (Frais - Bénéfice) aux dépenses
+        // "la somme qui resort c'est ca qu'on depenses"
+        acc.totalDepenses += (frais - benefice);
+      }
     }
-    
+
     // Calculer les dépenses séparément
     if (transaction.type_transaction === 'depense') {
       acc.totalDepenses += transaction.montant || 0;
     }
-    
+
     return acc;
   }, {
     totalUSD: 0,

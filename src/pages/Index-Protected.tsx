@@ -221,21 +221,29 @@ const IndexProtected: React.FC = () => {
 
           {/* Tabs - Plus épuré */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
-            <TabsList className="inline-flex bg-gray-100/80 dark:bg-gray-800/50 p-1 rounded-lg gap-1">
+            <TabsList className="inline-flex bg-gray-100/80 dark:bg-gray-800/80 p-1.5 rounded-xl gap-1 w-auto">
               <TabsTrigger
                 value="overview"
-                className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-green-600 data-[state=active]:shadow-sm transition-all rounded-md text-gray-600 dark:text-gray-400"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all
+                  text-gray-500 dark:text-gray-400
+                  hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50
+                  data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-emerald-500/20"
               >
                 <Activity className="h-4 w-4" />
-                <span className="text-sm font-medium">Vue d'ensemble</span>
+                <span className="hidden sm:inline">Vue d'ensemble</span>
+                <span className="sm:hidden">Aperçu</span>
               </TabsTrigger>
               {isAdmin && (
                 <TabsTrigger
                   value="analytics"
-                  className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-green-600 data-[state=active]:shadow-sm transition-all rounded-md text-gray-600 dark:text-gray-400"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all
+                    text-gray-500 dark:text-gray-400
+                    hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50
+                    data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-emerald-500/20"
                 >
                   <BarChart3 className="h-4 w-4" />
-                  <span className="text-sm font-medium">Analytics avancés</span>
+                  <span className="hidden sm:inline">Analytics avancés</span>
+                  <span className="sm:hidden">Analytics</span>
                 </TabsTrigger>
               )}
             </TabsList>
@@ -250,33 +258,37 @@ const IndexProtected: React.FC = () => {
                 />
               </div>
 
-              {/* Stats - Design épuré avec bordures colorées */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {overviewStats.map((stat, index) => (
-                  <div key={index} className={`stat-card border-l-4 ${stat.borderColor}`}>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{stat.title}</p>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                          {stat.value}
-                        </p>
-                        {stat.change && (
-                          <div className={`mt-2 ${stat.change.isPositive ? 'trend-positive' : 'trend-negative'}`}>
-                            {stat.change.isPositive ? (
-                              <TrendingUp className="h-3.5 w-3.5" />
-                            ) : (
-                              <TrendingDown className="h-3.5 w-3.5" />
-                            )}
-                            <span>{stat.change.value}%</span>
+              {/* Stats Cards - Modern Gradient Design */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                {overviewStats.map((stat, index) => {
+                  const gradientColors = [
+                    'from-emerald-500 to-emerald-600',
+                    'from-blue-500 to-blue-600',
+                    'from-purple-500 to-purple-600',
+                    'from-orange-500 to-orange-600'
+                  ];
+                  return (
+                    <div key={index} className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${gradientColors[index % 4]} p-4 md:p-5 shadow-lg`}>
+                      <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+                      <div className="relative">
+                        <div className="flex items-center justify-between">
+                          <div className="rounded-lg bg-white/20 p-2">
+                            {React.cloneElement(stat.icon, { className: 'h-4 w-4 md:h-5 md:w-5 text-white' })}
                           </div>
-                        )}
-                      </div>
-                      <div className={`p-2.5 rounded-xl ${stat.iconBg} flex-shrink-0`}>
-                        {stat.icon}
+                          {stat.change && (
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] md:text-xs font-medium ${stat.change.isPositive ? 'bg-white/20 text-white' : 'bg-red-200/30 text-white'}`}>
+                              {stat.change.isPositive ? '+' : '-'}{stat.change.value}%
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-3">
+                          <p className="text-lg md:text-2xl font-bold text-white truncate">{stat.value}</p>
+                          <p className="mt-0.5 text-xs md:text-sm text-white/80">{stat.title}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Activity Feed + Quick Actions */}

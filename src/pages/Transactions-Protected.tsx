@@ -42,14 +42,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useTransactions } from '../hooks/useTransactions';
 import { usePermissions } from '../hooks/usePermissions';
 import Pagination from '../components/ui/pagination-custom';
-import SortableHeader from '../components/ui/sortable-header';
 import TransactionFormFinancial from '@/components/forms/TransactionFormFinancial';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
 import TransactionDetailsModal from '../components/modals/TransactionDetailsModal';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
-import EnhancedTable from '@/components/ui/enhanced-table';
-import { getTransactionColumns } from '@/components/transactions/TransactionColumns';
 import { TransactionStats } from '@/components/transactions/TransactionStats';
 import { StatusBadge } from '@/components/transactions/StatusBadge';
 import type { Transaction } from '@/types';
@@ -66,6 +63,420 @@ import {
 
 import { getDateRange, PeriodFilter } from '@/utils/dateUtils';
 import { PeriodFilterTabs } from '@/components/ui/period-filter-tabs';
+import { UnifiedDataTable } from '@/components/ui/unified-data-table';
+import { FilterTabs } from '@/components/ui/filter-tabs';
+import { ColumnSelector } from '@/components/ui/column-selector';
+import { ExportDropdown } from '@/components/ui/export-dropdown';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+// Helper function to get columns compatible with UnifiedDataTable
+const getTransactionColumnsCombined = (props: any) => {
+  const { activeTab, onView, onEdit, onDuplicate, onDelete, onStatusChange, canUpdate, canDelete, generateReadableId, categoriesMap } = props;
+
+  const defaultActions = {
+    key: 'actions',
+    title: '',
+    align: 'right' as const,
+    render: (_: any, item: any) => (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => onView(item)}>
+            <Eye className="mr-2 h-4 w-4" /> Voir détails
+          </DropdownMenuItem>
+          {canUpdate && (
+            <DropdownMenuItem onClick={() => onEdit(item)}>
+              <Edit className="mr-2 h-4 w-4" /> Modifier
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={() => onDuplicate(item)}>
+            <Copy className="mr-2 h-4 w-4" /> Dupliquer
+          </DropdownMenuItem>
+          {canDelete && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onDelete(item)} className="text-red-600">
+                <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  };
+
+  if (activeTab === 'clients') {
+    return [
+      {
+        key: 'id',
+        title: 'ID',
+        sortable: true,
+        render: (_: any, item: any, index: number) => (
+          <button
+            onClick={(e) => { e.stopPropagation(); onView(item); }}
+            className="text-blue-600 font-medium font-mono text-xs whitespace-nowrap hover:underline focus:outline-none"
+          >
+            {generateReadableId(item.id, index)}
+          </button>
+        )
+      },
+      {
+        key: 'client',
+        title: 'Client',
+        sortable: true,
+        render: (_: any, item: any) => (
+          <div className="flex flex-col">
+            <span className="font-bold whitespace-nowrap">{item.client?.nom || '-'}</span>
+          </div>
+        )
+      },
+      {
+        key: 'date_paiement',
+        title: 'Date',
+        sortable: true,
+        render: (value: any) => (
+          <span className="text-gray-600 whitespace-nowrap">
+            {new Date(value).toLocaleDateString()}
+          </span>
+        )
+      },
+      {
+        key: 'montant',
+        title: 'Montant',
+        sortable: true,
+        render: (value: any, item: any) => (
+          <span className="font-bold text-gray-900 whitespace-nowrap">
+            {formatCurrency(value, item.devise)}
+          </span>
+        )
+      },
+      {
+        key: 'motif',
+        title: 'Motif',
+        sortable: true,
+        render: (value: any) => (
+          <Badge variant="secondary" className="bg-gray-100 text-gray-800 font-normal whitespace-nowrap">
+            {value}
+          </Badge>
+        )
+      },
+      {
+        key: 'statut',
+        title: 'Statut',
+        sortable: true,
+        render: (value: any, item: any) => (
+          <StatusBadge
+            status={value}
+            transaction={item}
+            onStatusChange={onStatusChange}
+            canUpdate={canUpdate}
+          />
+        )
+      },
+      {
+        key: 'frais',
+        title: 'Frais',
+        sortable: true,
+        render: (value: any) => (
+          <span className="font-medium text-gray-600 whitespace-nowrap">
+            {formatCurrency(value || 0, 'USD')}
+          </span>
+        )
+      },
+      {
+        key: 'benefice',
+        title: 'Bénéfice',
+        sortable: true,
+        render: (value: any) => (
+          <span className="font-bold text-green-600 whitespace-nowrap">
+            {formatCurrency(value || 0, 'USD')}
+          </span>
+        )
+      },
+      {
+        key: 'montant_cny',
+        title: 'CNY',
+        sortable: true,
+        render: (value: any) => (
+          <span className="font-medium text-blue-600 whitespace-nowrap">
+            {value ? formatCurrency(value, 'CNY') : '-'}
+          </span>
+        )
+      },
+      {
+        key: 'mode_paiement',
+        title: 'Compte',
+        sortable: true,
+        render: (value: any) => (
+          <span className="font-medium whitespace-nowrap">
+            {value === 'AIRTEL_MONEY' ? 'Airtel Money' : value === 'CASH' ? 'Cash' : value === 'M_PESA' ? 'M-Pesa' : value?.replace('_', ' ')}
+          </span>
+        )
+      },
+      defaultActions
+    ];
+  }
+
+  if (activeTab === 'internes') {
+    return [
+      {
+        key: 'id',
+        title: 'ID',
+        sortable: true,
+        render: (_: any, item: any, index: number) => (
+          <button
+            onClick={(e) => { e.stopPropagation(); onView(item); }}
+            className="text-blue-600 font-medium font-mono text-xs whitespace-nowrap hover:underline focus:outline-none"
+          >
+            {generateReadableId(item.id, index)}
+          </button>
+        )
+      },
+      {
+        key: 'date_paiement',
+        title: 'Date',
+        sortable: true,
+        render: (value: any) => (
+          <span className="text-gray-600 whitespace-nowrap font-medium">
+            {new Date(value).toLocaleDateString()}
+          </span>
+        )
+      },
+      {
+        key: 'type_transaction',
+        title: 'Type',
+        sortable: true,
+        render: (value: any) => (
+          <Badge variant={value === 'revenue' ? 'default' : 'destructive'}
+            className={value === 'revenue' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}>
+            {value === 'revenue' ? '↑ Revenu' : '↓ Dépense'}
+          </Badge>
+        )
+      },
+      {
+        key: 'montant',
+        title: 'Montant',
+        sortable: true,
+        render: (value: any, item: any) => (
+          <span className={item.type_transaction === 'revenue' ? "font-bold text-green-600 whitespace-nowrap" : "font-bold text-red-600 whitespace-nowrap"}>
+            {item.type_transaction === 'revenue' ? '+' : '-'}{formatCurrency(value, item.devise)}
+          </span>
+        )
+      },
+      {
+        key: 'motif',
+        title: 'Motif',
+        sortable: true,
+        render: (value: any) => (
+          <span className="font-medium text-gray-700 whitespace-nowrap">
+            {value}
+          </span>
+        )
+      },
+      {
+        key: 'finance_category',
+        title: 'Catégorie',
+        sortable: true,
+        render: (_: any, item: any) => {
+          // Find category by name if stored as name in item.finance_category or item.categorie
+          const catName = item.finance_category?.nom || item.categorie || item.category || 'Non catégorisé';
+          const category = categoriesMap?.[catName];
+
+          return (
+            <Badge
+              variant="outline"
+              className="font-normal whitespace-nowrap border-gray-200"
+              style={{
+                backgroundColor: category?.couleur ? `${category.couleur}15` : '#f9fafb',
+                color: category?.couleur || '#374151',
+                borderColor: category?.couleur ? `${category.couleur}30` : '#e5e7eb'
+              }}
+            >
+              {catName}
+            </Badge>
+          );
+        }
+      },
+      {
+        key: 'mode_paiement',
+        title: 'Compte',
+        sortable: true,
+        render: (_: any, item: any) => {
+          const isExpense = item.type_transaction === 'depense';
+          const accountName = isExpense
+            ? item.compte_source?.nom
+            : item.compte_destination?.nom;
+
+          return (
+            <span className={`font-medium whitespace-nowrap ${isExpense ? 'text-red-600' : 'text-emerald-600'}`}>
+              {accountName || item.mode_paiement?.replace('_', ' ') || '-'}
+            </span>
+          );
+        }
+      },
+      defaultActions
+    ];
+  }
+
+  if (activeTab === 'swaps') {
+    return [
+      {
+        key: 'id',
+        title: 'ID',
+        sortable: true,
+        render: (_: any, item: any, index: number) => (
+          <button
+            onClick={(e) => { e.stopPropagation(); onView(item); }}
+            className="text-blue-600 font-medium font-mono text-xs whitespace-nowrap hover:underline focus:outline-none"
+          >
+            {generateReadableId(item.id, index)}
+          </button>
+        )
+      },
+      {
+        key: 'date_paiement',
+        title: 'Date',
+        sortable: true,
+        render: (value: any) => (
+          <span className="text-gray-600 whitespace-nowrap font-medium">
+            {new Date(value).toLocaleDateString()}
+          </span>
+        )
+      },
+      {
+        key: 'compte_source',
+        title: 'Source',
+        sortable: true,
+        render: (_: any, item: any) => (
+          <span className="text-red-500 font-medium whitespace-nowrap">
+            {item.compte_source?.nom || '-'}
+          </span>
+        )
+      },
+      {
+        key: 'compte_destination',
+        title: 'Destination',
+        sortable: true,
+        render: (_: any, item: any) => (
+          <span className="text-emerald-500 font-medium whitespace-nowrap">
+            {item.compte_destination?.nom || '-'}
+          </span>
+        )
+      },
+      {
+        key: 'montant',
+        title: 'Montant',
+        sortable: true,
+        render: (value: any, item: any) => (
+          <span className="font-bold text-blue-600 whitespace-nowrap">
+            {formatCurrency(value, item.devise)}
+          </span>
+        )
+      },
+      {
+        key: 'notes',
+        title: 'Notes',
+        sortable: true,
+        render: (value: any) => (
+          <span className="text-gray-500 text-sm truncate max-w-[200px] block" title={value || ''}>
+            {value || '-'}
+          </span>
+        )
+      },
+      defaultActions
+    ];
+  }
+
+  // Column definitions for other tabs (keep simplified version or previous logic)
+  return [
+    {
+      key: 'date_paiement',
+      title: 'Date',
+      sortable: true,
+      render: (value: any) => (
+        <div className="flex flex-col">
+          <span className="font-medium text-gray-900 dark:text-gray-100">
+            {new Date(value).toLocaleDateString()}
+          </span>
+          <span className="text-xs text-gray-500">
+            {new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
+      )
+    },
+    {
+      key: 'motif',
+      title: 'Motif',
+      sortable: true,
+      render: (value: any, item: any) => (
+        <div className="flex flex-col max-w-[200px]">
+          <span className="font-medium truncate" title={value}>{value}</span>
+          {item.client && (
+            <span className="text-xs text-blue-600 dark:text-blue-400 truncate">
+              {item.client.nom}
+            </span>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'type_transaction',
+      title: 'Type',
+      sortable: true,
+      hiddenOn: 'sm' as const,
+      render: (value: any) => (
+        <Badge variant={value === 'revenue' ? 'default' : value === 'depense' ? 'destructive' : 'secondary'}
+          className={value === 'revenue' ? 'bg-green-100 text-green-800' : value === 'depense' ? 'bg-red-100 text-red-800' : ''}>
+          {value === 'revenue' ? 'Entrée' : value === 'depense' ? 'Sortie' : 'Transfert'}
+        </Badge>
+      )
+    },
+    {
+      key: 'montant',
+      title: 'Montant',
+      sortable: true,
+      align: 'right' as const,
+      render: (value: any, item: any) => (
+        <div className="flex flex-col items-end">
+          <span className={item.type_transaction === 'revenue' ? "font-bold text-green-600" : "font-bold text-red-600"}>
+            {formatCurrency(value, item.devise)}
+          </span>
+          {item.montant_cny && (
+            <span className="text-xs text-purple-600">
+              {formatCurrency(item.montant_cny, 'CNY')}
+            </span>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'statut',
+      title: 'Statut',
+      sortable: true,
+      align: 'center' as const,
+      render: (value: any, item: any) => (
+        <StatusBadge
+          status={value}
+          transaction={item}
+          onStatusChange={onStatusChange}
+          canUpdate={canUpdate}
+        />
+      )
+    },
+    {
+      key: 'mode_paiement',
+      title: 'Moyen',
+      sortable: true,
+      hiddenOn: 'md' as const,
+      render: (value: any) => <span className="text-sm text-gray-600 capitalization">{value?.replace('_', ' ')}</span>
+    },
+    defaultActions
+  ];
+};
 
 const TransactionsProtected: React.FC = () => {
   usePageSetup({
@@ -88,6 +499,9 @@ const TransactionsProtected: React.FC = () => {
   const [bulkActionOpen, setBulkActionOpen] = useState(false);
   const [sortColumn, setSortColumn] = useState('date_paiement');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [viewMode, setViewMode] = useState<'table' | 'cards' | 'auto'>('auto');
+  const [columnsConfig, setColumnsConfig] = useState<Record<string, boolean>>({});
+  const isMobile = useIsMobile();
 
   // États pour les modales de confirmation
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -100,6 +514,22 @@ const TransactionsProtected: React.FC = () => {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [transactionToView, setTransactionToView] = useState<Transaction | null>(null);
   const { checkPermission } = usePermissions();
+  const [categoriesMap, setCategoriesMap] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data } = await supabase.from('finance_categories').select('*');
+      if (data) {
+        const map = data.reduce((acc: any, cat: any) => {
+          acc[cat.nom] = cat; // Map by name as 'transactions.categorie' likely stores the name
+          if (cat.code) acc[cat.code] = cat;
+          return acc;
+        }, {});
+        setCategoriesMap(map);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -157,10 +587,43 @@ const TransactionsProtected: React.FC = () => {
     updateTransaction,
     deleteTransaction,
     refetch
-  } = useTransactions(currentPage, memoFilters);
+  } = useTransactions(currentPage, memoFilters,
+    // Only pass server-supported columns to the hook
+    ['finance_category', 'mode_paiement'].includes(sortColumn) ? 'created_at' : sortColumn,
+    sortDirection
+  );
 
-  // Les transactions sont déjà filtrées côté serveur (Commande/Transfert uniquement)
-  const commercialTransactions = transactions;
+  // Client-side sorting for complex columns
+  const sortedTransactions = useMemo(() => {
+    if (!['finance_category', 'mode_paiement'].includes(sortColumn)) {
+      return transactions;
+    }
+
+    return [...transactions].sort((a: any, b: any) => {
+      let valA = '';
+      let valB = '';
+
+      if (sortColumn === 'finance_category') {
+        valA = a.finance_category?.nom || a.categorie || a.category || '';
+        valB = b.finance_category?.nom || b.categorie || b.category || '';
+      } else if (sortColumn === 'mode_paiement') {
+        if (activeTab === 'internes') {
+          const isExpenseA = a.type_transaction === 'depense';
+          const isExpenseB = b.type_transaction === 'depense';
+          valA = isExpenseA ? a.compte_source?.nom : a.compte_destination?.nom;
+          valB = isExpenseB ? b.compte_source?.nom : b.compte_destination?.nom;
+        }
+        // Fallback or standard value
+        valA = valA || a.mode_paiement || '';
+        valB = valB || b.mode_paiement || '';
+      }
+
+      const comparison = valA.localeCompare(valB);
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [transactions, sortColumn, sortDirection, activeTab]);
+
+  const commercialTransactions = sortedTransactions;
 
   // Fonction de tri côté serveur
   const handleSort = (column: string) => {
@@ -358,7 +821,17 @@ const TransactionsProtected: React.FC = () => {
     const totalBenefice = selectedTxs
       .reduce((sum, t) => sum + t.benefice, 0);
 
-    return { totalUSD, totalCDF, totalCNY, totalFrais, totalBenefice };
+    const totalDepenses = selectedTxs
+      .reduce((sum, t) => {
+        // Si c'est une dépense explicite
+        if (t.type_transaction === 'depense') {
+          return sum + t.montant;
+        }
+        // Sinon, c'est la commission partenaire (Frais - Bénéfice)
+        return sum + ((t.frais || 0) - (t.benefice || 0));
+      }, 0);
+
+    return { totalUSD, totalCDF, totalCNY, totalFrais, totalBenefice, totalDepenses };
   };
 
   const { totalUSD, totalFrais, totalBenefice, totalDepenses } = globalTotals;
@@ -560,6 +1033,13 @@ const TransactionsProtected: React.FC = () => {
                           {formatCurrency(selectedTotals.totalFrais, 'USD')}
                         </span>
                       </div>
+                      <div className="flex items-center gap-2 sm:gap-4">
+                        <TrendingDown className="h-4 w-4 text-red-600" />
+                        <span className="font-medium text-gray-700">Dépenses:</span>
+                        <span className="font-bold text-red-600">
+                          {formatCurrency(selectedTotals.totalDepenses, 'USD')}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -574,30 +1054,39 @@ const TransactionsProtected: React.FC = () => {
             setSelectedTransactions(new Set()); // Clear selection
           }} className="w-full">
             <div className="flex justify-center mb-6">
-              <TabsList className="grid w-full max-w-3xl grid-cols-3 h-14 p-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+              <TabsList className="inline-flex w-full max-w-2xl p-1.5 bg-gray-100/80 dark:bg-gray-800/80 rounded-xl gap-1">
                 <TabsTrigger
                   value="clients"
-                  className="flex items-center justify-center gap-2 h-full text-base font-semibold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-green-600 transition-all border-r border-gray-200 dark:border-gray-700 last:border-r-0 data-[state=active]:border-transparent"
+                  className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all
+                    text-gray-500 dark:text-gray-400
+                    hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-700/50
+                    data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-emerald-500/20"
                 >
-                  <DollarSign className="h-5 w-5" />
+                  <DollarSign className="h-4 w-4" />
                   <span className="hidden sm:inline">Transactions Client</span>
                   <span className="sm:hidden">Clients</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="internes"
-                  className="flex items-center justify-center gap-2 h-full text-base font-semibold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-orange-600 transition-all border-r border-gray-200 dark:border-gray-700 last:border-r-0 data-[state=active]:border-transparent"
+                  className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all
+                    text-gray-500 dark:text-gray-400
+                    hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-700/50
+                    data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-orange-500/20"
                 >
-                  <Receipt className="h-5 w-5" />
+                  <Receipt className="h-4 w-4" />
                   <span className="hidden sm:inline">Opérations Internes</span>
                   <span className="sm:hidden">Internes</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="swaps"
-                  className="flex items-center justify-center gap-2 h-full text-base font-semibold rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 transition-all border-r border-gray-200 dark:border-gray-700 last:border-r-0 data-[state=active]:border-transparent"
+                  className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all
+                    text-gray-500 dark:text-gray-400
+                    hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-700/50
+                    data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-blue-500/20"
                 >
-                  <Wallet className="h-5 w-5" />
+                  <Wallet className="h-4 w-4" />
                   <span className="hidden sm:inline">Swaps Comptes</span>
-                  <span className="sm:hidden">Swap</span>
+                  <span className="sm:hidden">Swaps</span>
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -616,11 +1105,11 @@ const TransactionsProtected: React.FC = () => {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6">
-              <div className="relative flex-1">
+            <div className="flex flex-col xl:flex-row gap-4 mb-6">
+              <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Rechercher par client, ID ou mode de paiement..."
+                  placeholder="Rechercher..."
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
@@ -629,39 +1118,34 @@ const TransactionsProtected: React.FC = () => {
                   className="pl-10"
                 />
               </div>
-              <Select value={statusFilter} onValueChange={(value) => {
-                setStatusFilter(value);
-                setCurrentPage(1);
-              }}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Statut" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les statuts</SelectItem>
-                  <SelectItem value="Servi">Servi</SelectItem>
-                  <SelectItem value="En attente">En attente</SelectItem>
-                  <SelectItem value="Remboursé">Remboursé</SelectItem>
-                  <SelectItem value="Annulé">Annulé</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={currencyFilter} onValueChange={(value) => {
-                setCurrencyFilter(value);
-                setCurrentPage(1);
-              }}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Devise" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Toutes devises</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="CDF">CDF</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" className="w-full sm:w-auto">
-                <Filter className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Plus de filtres</span>
-                <span className="sm:hidden">Filtres</span>
-              </Button>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <FilterTabs
+                  tabs={[
+                    { id: 'all', label: 'Tous' },
+                    { id: 'Servi', label: 'Servi' },
+                    { id: 'En attente', label: 'En attente' },
+                    { id: 'Remboursé', label: 'Remboursé' },
+                    { id: 'Annulé', label: 'Annulé' },
+                  ]}
+                  activeTab={statusFilter}
+                  onTabChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
+                  variant="default"
+                />
+
+                <div className="h-8 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block" />
+
+                <FilterTabs
+                  tabs={[
+                    { id: 'all', label: 'Devises' },
+                    { id: 'USD', label: 'USD' },
+                    { id: 'CDF', label: 'CDF' },
+                  ]}
+                  activeTab={currencyFilter}
+                  onTabChange={(val) => { setCurrencyFilter(val); setCurrentPage(1); }}
+                  variant="default"
+                />
+              </div>
             </div>
 
             {/* Transactions Table */}
@@ -670,15 +1154,25 @@ const TransactionsProtected: React.FC = () => {
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                   <CardTitle>{tabConfig.title}</CardTitle>
                   <div className="flex flex-col sm:flex-row gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={exportTransactions}
+                    <ExportDropdown
+                      onExport={() => exportTransactions()} // Reuse existing export logic
                       disabled={transactions.length === 0}
-                      className="w-full sm:w-auto"
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      Exporter
-                    </Button>
+                    />
+                    <ColumnSelector
+                      columns={getTransactionColumnsCombined({
+                        activeTab,
+                        onView: handleViewTransaction,
+                        onEdit: handleEditTransaction,
+                        onDuplicate: handleDuplicateTransaction,
+                        onDelete: handleDeleteTransaction,
+                        onStatusChange: handleStatusChange,
+                        canUpdate: checkPermission('finances', 'update'),
+                        canDelete: checkPermission('finances', 'delete'),
+                        generateReadableId,
+                        categoriesMap
+                      }).map(c => ({ key: c.key as string, label: c.title, visible: columnsConfig[c.key as string] !== false }))}
+                      onColumnsChange={(cols) => setColumnsConfig(cols.reduce((acc, c) => ({ ...acc, [c.key]: c.visible }), {}))}
+                    />
 
                     <PermissionGuard module="finances" permission="create">
                       <Button className="bg-green-500 hover:bg-green-600 w-full sm:w-auto" onClick={handleAddTransaction}>
@@ -691,23 +1185,28 @@ const TransactionsProtected: React.FC = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <EnhancedTable
+                <UnifiedDataTable
                   data={commercialTransactions}
                   loading={loading}
-                  emptyMessage="Aucune transaction"
+                  viewMode={viewMode}
+                  onViewModeChange={setViewMode}
+                  emptyMessage="Aucune transaction trouvée"
                   emptySubMessage="Commencez par créer votre première transaction"
                   onSort={handleSort}
                   sortKey={sortColumn}
                   sortDirection={sortDirection}
                   bulkSelect={{
                     selected: Array.from(selectedTransactions),
-                    onSelectAll: handleSelectAll,
+                    onSelectAll: (checked) => {
+                      if (checked) handleSelectAll();
+                      else setSelectedTransactions(new Set());
+                    },
                     onSelectItem: (id, checked) => handleSelectTransaction(id),
                     getId: (transaction: Transaction) => transaction.id,
                     isAllSelected: selectedTransactions.size === transactions.length && transactions.length > 0,
                     isPartiallySelected: selectedTransactions.size > 0 && selectedTransactions.size < transactions.length
                   }}
-                  columns={getTransactionColumns({
+                  columns={getTransactionColumnsCombined({
                     activeTab,
                     onView: handleViewTransaction,
                     onEdit: handleEditTransaction,
@@ -715,8 +1214,48 @@ const TransactionsProtected: React.FC = () => {
                     onDelete: handleDeleteTransaction,
                     onStatusChange: handleStatusChange,
                     canUpdate: checkPermission('finances', 'update'),
-                    canDelete: checkPermission('finances', 'delete')
-                  })}
+                    canDelete: checkPermission('finances', 'delete'),
+                    generateReadableId,
+                    categoriesMap
+                  }).filter(c => columnsConfig[c.key] !== false)}
+                  cardConfig={{
+                    titleKey: 'motif',
+                    titleRender: (item, index) => (
+                      <div className="flex flex-col gap-1 w-full">
+                        <div className="flex justify-between items-start w-full">
+                          <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                            {generateReadableId(item.id, index)}
+                          </span>
+                          <span className={item.type_transaction === 'revenue' ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
+                            {formatCurrency(item.montant, item.devise)}
+                          </span>
+                        </div>
+                        <div className="font-bold text-gray-900 dark:text-gray-100 mt-1">{item.motif}</div>
+                      </div>
+                    ),
+                    subtitleRender: (item) => (
+                      <div className="flex flex-col gap-1 text-sm text-gray-500 mt-1">
+                        {item.client && <span className="font-medium text-gray-700">{item.client.nom}</span>}
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-3 h-3" />
+                          <span className="text-xs">{new Date(item.date_paiement).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    ),
+                    badgeKey: 'statut',
+                    badgeRender: (item) => (
+                      <StatusBadge
+                        status={item.statut}
+                        transaction={item}
+                        onStatusChange={handleStatusChange}
+                        canUpdate={checkPermission('finances', 'update')}
+                      />
+                    ),
+                    infoFields: [
+                      { key: 'mode_paiement', label: 'Compte', render: (val) => val === 'AIRTEL_MONEY' ? 'Airtel' : val === 'M_PESA' ? 'M-Pesa' : val },
+                      { key: 'benefice', label: 'Bénéfice', render: (val) => <span className="text-orange-600 font-medium">{formatCurrency(val, 'USD')}</span> }
+                    ]
+                  }}
                 />
 
                 {/* Pagination avec sélecteur de taille */}

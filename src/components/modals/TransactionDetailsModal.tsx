@@ -225,6 +225,36 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
 
   const typeConfig = transaction ? getTransactionTypeConfig() : null;
 
+  // Recalculer les montants dépendants quand les frais changent
+  const handleFraisChange = (value: string) => {
+    const newFrais = parseFloat(value) || 0;
+
+    // Calculer la commission partenaire initiale (coût fixe)
+    const originalFrais = transaction?.frais || 0;
+    const originalBenefice = transaction?.benefice || 0;
+    const commissionPartenaire = originalFrais - originalBenefice;
+
+    // Nouveau bénéfice = Nouveaux frais - Commission
+    const newBenefice = newFrais - commissionPartenaire;
+
+    // Recalculer le montant CNY
+    // Montant Net = Montant - Frais
+    const currentMontant = editedData.montant || transaction?.montant || 0;
+    const currentTauxCNY = editedData.taux_usd_cny || transaction?.taux_usd_cny || 0;
+
+    // Estimation simplifiée pour le CNY (suppose que les frais sont dans la même devise)
+    // Pour être précis il faudrait gérer la conversion devise -> USD si CDF
+    const montantNet = currentMontant - newFrais;
+    const newMontantCNY = montantNet * currentTauxCNY;
+
+    setEditedData(prev => ({
+      ...prev,
+      frais: newFrais,
+      benefice: newBenefice,
+      montant_cny: newMontantCNY
+    }));
+  };
+
   const handleSave = async () => {
     if (!transaction || !onUpdate) return;
 
@@ -556,14 +586,19 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                 {/* Frais - Only show if configured */}
                 {typeConfig?.showFrais && (
-                  <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 sm:p-4 text-center">
-                    <Label className="text-xs text-gray-500 mb-1 sm:mb-2 block">Frais</Label>
+                  <div
+                    className={`bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 sm:p-4 text-center transition-colors ${!isEditMode ? 'hover:bg-orange-100 cursor-pointer' : ''}`}
+                    onDoubleClick={() => !isEditMode && setIsEditMode(true)}
+                    title="Double-cliquer pour modifier"
+                  >
+                    <Label className="text-xs text-gray-500 mb-1 sm:mb-2 block curs-pointer">Frais</Label>
                     {isEditMode ? (
                       <Input
                         type="number"
                         value={editedData.frais}
-                        onChange={(e) => setEditedData({ ...editedData, frais: parseFloat(e.target.value) })}
+                        onChange={(e) => handleFraisChange(e.target.value)}
                         className="text-center"
+                        autoFocus
                       />
                     ) : (
                       <p className="text-base sm:text-lg font-bold text-orange-600">

@@ -5,9 +5,10 @@
 // Seuls les nouveaux termes standardisés sont listés
 export const COMMERCIAL_MOTIFS = [
   'Commande (Facture)',
+  'Commande', // Legacy
   'Transfert (Argent)',
-  'Transfert Reçu',
-  'Autres Paiements'
+  'Transfert', // Legacy
+  'Transfert Reçu'
 ];
 
 // Mapping des nouveaux noms de catégories vers les anciens pour le calcul des frais

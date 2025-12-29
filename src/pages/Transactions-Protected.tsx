@@ -268,16 +268,6 @@ const getTransactionColumnsCombined = (props: any) => {
         )
       },
       {
-        key: 'motif',
-        title: 'Motif',
-        sortable: true,
-        render: (value: any) => (
-          <span className="font-medium text-gray-700 whitespace-nowrap">
-            {value}
-          </span>
-        )
-      },
-      {
         key: 'finance_category',
         title: 'Catégorie',
         sortable: true,
@@ -317,6 +307,16 @@ const getTransactionColumnsCombined = (props: any) => {
             </span>
           );
         }
+      },
+      {
+        key: 'notes',
+        title: 'Notes',
+        sortable: false,
+        render: (value: any) => (
+          <span className="text-gray-500 text-sm truncate max-w-[150px] inline-block" title={value}>
+            {value || '-'}
+          </span>
+        )
       },
       defaultActions
     ];

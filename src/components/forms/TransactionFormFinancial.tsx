@@ -59,7 +59,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
     type_transaction: defaultType as 'revenue' | 'depense' | 'transfert',
     client_id: '',
     montant: '',
-    devise: 'USD' as 'USD' | 'CDF',
+    devise: 'USD' as 'USD' | 'CDF' | 'CNY',
     categorie: 'Commande',
     mode_paiement: '',
     date_paiement: getTodayDateString(),
@@ -623,6 +623,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
                   <SelectContent>
                     <SelectItem value="USD">USD ($)</SelectItem>
                     <SelectItem value="CDF">CDF (Fc)</SelectItem>
+                    <SelectItem value="CNY">CNY (¥)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

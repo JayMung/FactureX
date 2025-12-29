@@ -25,6 +25,7 @@ export const SettingsTransitaires: React.FC = () => {
     ville: '',
     specialisation_chine: false,
     specialisation_congo: false,
+    services_offerts: [] as string[],
     delai_moyen_livraison: '',
     tarif_base: '',
     note_interne: ''
@@ -61,6 +62,7 @@ export const SettingsTransitaires: React.FC = () => {
       ville: '',
       specialisation_chine: false,
       specialisation_congo: false,
+      services_offerts: [],
       delai_moyen_livraison: '',
       tarif_base: '',
       note_interne: ''
@@ -77,6 +79,7 @@ export const SettingsTransitaires: React.FC = () => {
       ville: transitaire.ville || '',
       specialisation_chine: transitaire.specialisation_chine,
       specialisation_congo: transitaire.specialisation_congo,
+      services_offerts: transitaire.services_offerts || [],
       delai_moyen_livraison: transitaire.delai_moyen_livraison?.toString() || '',
       tarif_base: transitaire.tarif_base?.toString() || '',
       note_interne: transitaire.note_interne || ''
@@ -99,6 +102,7 @@ export const SettingsTransitaires: React.FC = () => {
         ville: formData.ville || null,
         specialisation_chine: formData.specialisation_chine,
         specialisation_congo: formData.specialisation_congo,
+        services_offerts: formData.services_offerts,
         delai_moyen_livraison: formData.delai_moyen_livraison ? parseInt(formData.delai_moyen_livraison) : null,
         tarif_base: formData.tarif_base ? parseFloat(formData.tarif_base) : null,
         note_interne: formData.note_interne || null,
@@ -166,6 +170,18 @@ export const SettingsTransitaires: React.FC = () => {
     }
   };
 
+  // Helper to manage services (Aerien/Maritime)
+  const toggleService = (service: string) => {
+    setFormData(prev => {
+      const services = prev.services_offerts || [];
+      if (services.includes(service)) {
+        return { ...prev, services_offerts: services.filter(s => s !== service) };
+      } else {
+        return { ...prev, services_offerts: [...services, service] };
+      }
+    });
+  };
+
   if (loading) {
     return (
       <Card>
@@ -214,13 +230,24 @@ export const SettingsTransitaires: React.FC = () => {
                           {transitaire.actif ? 'Actif' : 'Inactif'}
                         </Badge>
                         {transitaire.specialisation_chine && (
-                          <Badge variant="outline" className="text-xs">🇨🇳 Chine</Badge>
+                          <Badge variant="outline" className="text-xs border-red-200 bg-red-50 text-red-700">🇨🇳 Chine</Badge>
                         )}
                         {transitaire.specialisation_congo && (
-                          <Badge variant="outline" className="text-xs">🇨🇩 Congo</Badge>
+                          <Badge variant="outline" className="text-xs border-blue-200 bg-blue-50 text-blue-700">🇨🇩 Congo</Badge>
+                        )}
+                        {/* Display Transport Types */}
+                        {transitaire.services_offerts?.includes('Aerien') && (
+                          <Badge variant="outline" className="text-xs border-sky-200 bg-sky-50 text-sky-700 flex items-center gap-1">
+                            ✈️ Aérien
+                          </Badge>
+                        )}
+                        {transitaire.services_offerts?.includes('Maritime') && (
+                          <Badge variant="outline" className="text-xs border-indigo-200 bg-indigo-50 text-indigo-700 flex items-center gap-1">
+                            🚢 Maritime
+                          </Badge>
                         )}
                       </div>
-                      
+
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-600">
                         {transitaire.nom_contact && (
                           <div>
@@ -359,8 +386,33 @@ export const SettingsTransitaires: React.FC = () => {
               </div>
             </div>
 
+            {/* Transport Types */}
             <div className="space-y-2">
-              <Label>Spécialisations</Label>
+              <Label>Type de Transport</Label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer bg-blue-50 p-2 rounded border border-blue-100 hover:bg-blue-100 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.services_offerts?.includes('Aerien')}
+                    onChange={() => toggleService('Aerien')}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  <span className="flex items-center gap-1 font-medium text-blue-900">✈️ Aérien</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer bg-indigo-50 p-2 rounded border border-indigo-100 hover:bg-indigo-100 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.services_offerts?.includes('Maritime')}
+                    onChange={() => toggleService('Maritime')}
+                    className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                  />
+                  <span className="flex items-center gap-1 font-medium text-indigo-900">🚢 Maritime</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Spécialisations (Pays)</Label>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input

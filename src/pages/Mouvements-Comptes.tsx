@@ -143,7 +143,7 @@ const MouvementsComptes: React.FC = () => {
 
       {/* Stats Cards - Enhanced Design */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Débits Card */}
+        {/* Total Débits Card - Real Expenses Only */}
         <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-red-500 to-red-600 p-5 shadow-lg">
           <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10"></div>
           <div className="relative">
@@ -152,7 +152,7 @@ const MouvementsComptes: React.FC = () => {
                 <TrendingDown className="h-5 w-5 text-white" />
               </div>
               <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
-                Sorties
+                Dépenses
               </span>
             </div>
             <div className="mt-4">
@@ -161,14 +161,14 @@ const MouvementsComptes: React.FC = () => {
               ) : (
                 <>
                   <p className="text-3xl font-bold text-white">{formatCurrency(globalStats.totalDebits, 'USD')}</p>
-                  <p className="mt-1 text-sm text-red-100">{globalStats.nombreDebits} mouvements</p>
+                  <p className="mt-1 text-sm text-red-100">{globalStats.nombreDebits} dépenses</p>
                 </>
               )}
             </div>
           </div>
         </div>
 
-        {/* Total Crédits Card */}
+        {/* Total Crédits Card - Real Revenues Only */}
         <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-5 shadow-lg">
           <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10"></div>
           <div className="relative">
@@ -177,7 +177,7 @@ const MouvementsComptes: React.FC = () => {
                 <TrendingUp className="h-5 w-5 text-white" />
               </div>
               <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
-                Entrées
+                Revenus
               </span>
             </div>
             <div className="mt-4">
@@ -186,7 +186,7 @@ const MouvementsComptes: React.FC = () => {
               ) : (
                 <>
                   <p className="text-3xl font-bold text-white">{formatCurrency(globalStats.totalCredits, 'USD')}</p>
-                  <p className="mt-1 text-sm text-emerald-100">{globalStats.nombreCredits} mouvements</p>
+                  <p className="mt-1 text-sm text-emerald-100">{globalStats.nombreCredits} revenus</p>
                 </>
               )}
             </div>
@@ -211,14 +211,16 @@ const MouvementsComptes: React.FC = () => {
               ) : (
                 <>
                   <p className="text-3xl font-bold text-white">{formatCurrency(globalStats.soldeNet, 'USD')}</p>
-                  <p className="mt-1 text-sm text-blue-100">Crédits - Débits</p>
+                  <p className="mt-1 text-sm text-blue-100">
+                    Net (- ${globalStats.totalSwapFees?.toFixed(2) || '0.00'} frais swap)
+                  </p>
                 </>
               )}
             </div>
           </div>
         </div>
 
-        {/* Total Mouvements Card */}
+        {/* Total Mouvements Card with Swap Info */}
         <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 p-5 shadow-lg">
           <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/5"></div>
           <div className="relative">
@@ -234,13 +236,16 @@ const MouvementsComptes: React.FC = () => {
               ) : (
                 <>
                   <p className="text-3xl font-bold text-white">{globalStats.nombreMouvements}</p>
-                  <p className="mt-1 text-sm text-slate-400">Mouvements</p>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Mouvements ({globalStats.nombreSwaps || 0} swaps)
+                  </p>
                 </>
               )}
             </div>
           </div>
         </div>
       </div>
+
 
       {/* Filters - Cleaner Design */}
       <div className="bg-white dark:bg-gray-900 rounded-xl border p-4 shadow-sm">
@@ -397,7 +402,21 @@ const MOUVEMENT_COLUMNS = [
     key: 'description',
     title: 'Description',
     sortable: true,
-    render: (value: any) => <span className="font-medium text-gray-700 dark:text-gray-300">{value}</span>
+    render: (value: any, item: any) => {
+      const isSwap = item.transaction?.type_transaction === 'transfert';
+      return (
+        <div className="flex items-center gap-2">
+          {isSwap && (
+            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs px-1.5 py-0.5">
+              🔄 Swap
+            </Badge>
+          )}
+          <span className={`font-medium ${isSwap ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>
+            {value}
+          </span>
+        </div>
+      );
+    }
   },
   {
     key: 'type_mouvement',
@@ -414,31 +433,98 @@ const MOUVEMENT_COLUMNS = [
     title: 'Débit',
     align: 'right' as const,
     hiddenOn: 'sm' as const,
-    render: (value: any, item: any) => item.type_mouvement === 'debit' ? (
-      <span className="text-red-600 font-bold">
-        {formatCurrency(item.montant, item.compte?.devise || 'USD')}
-      </span>
-    ) : '-'
+    render: (value: any, item: any) => {
+      if (item.type_mouvement !== 'debit') return '-';
+      const devise = item.compte?.devise || 'USD';
+      // Show USD equivalent if not already USD
+      const isUSD = devise === 'USD';
+      return (
+        <span className="text-red-600 font-bold">
+          {formatCurrency(item.montant, 'USD')}
+          {!isUSD && (
+            <span className="text-xs text-gray-400 ml-1">
+              ({formatCurrency(item.montant, devise)})
+            </span>
+          )}
+        </span>
+      );
+    }
   },
   {
     key: 'credit',
     title: 'Crédit',
     align: 'right' as const,
     hiddenOn: 'sm' as const,
-    render: (value: any, item: any) => item.type_mouvement === 'credit' ? (
-      <span className="text-green-600 font-bold">
-        {formatCurrency(item.montant, item.compte?.devise || 'USD')}
-      </span>
-    ) : '-'
+    render: (value: any, item: any) => {
+      if (item.type_mouvement !== 'credit') return '-';
+      const devise = item.compte?.devise || 'USD';
+      // For CNY accounts, show the real CNY value with USD conversion note
+      if (devise === 'CNY') {
+        // Assume rate ~7.25 (we'd need to pass this from context for accuracy)
+        const usdEquivalent = item.montant / 7.25;
+        return (
+          <span className="text-green-600 font-bold">
+            {formatCurrency(item.montant, 'CNY')}
+            <span className="text-xs text-gray-400 ml-1">
+              (~{formatCurrency(usdEquivalent, 'USD')})
+            </span>
+          </span>
+        );
+      }
+      if (devise === 'CDF') {
+        const usdEquivalent = item.montant / 2850;
+        return (
+          <span className="text-green-600 font-bold">
+            {formatCurrency(item.montant, 'CDF')}
+            <span className="text-xs text-gray-400 ml-1">
+              (~{formatCurrency(usdEquivalent, 'USD')})
+            </span>
+          </span>
+        );
+      }
+      return (
+        <span className="text-green-600 font-bold">
+          {formatCurrency(item.montant, 'USD')}
+        </span>
+      );
+    }
   },
   {
     key: 'solde_apres',
     title: 'Solde',
     align: 'right' as const,
-    render: (value: any, item: any) => (
-      <span className="font-mono font-bold">
-        {formatCurrency(value, 'USD')}
-      </span>
-    )
+    render: (value: any, item: any) => {
+      const devise = item.compte?.devise || 'USD';
+      // For non-USD accounts, show the original currency value
+      // The solde_apres is in the account's native currency
+      if (devise === 'CNY') {
+        const usdEquivalent = value / 7.25;
+        return (
+          <span className="font-mono font-bold">
+            {formatCurrency(value, 'CNY')}
+            <span className="text-xs text-gray-400 ml-1">
+              (~{formatCurrency(usdEquivalent, 'USD')})
+            </span>
+          </span>
+        );
+      }
+      if (devise === 'CDF') {
+        const usdEquivalent = value / 2850;
+        return (
+          <span className="font-mono font-bold">
+            {formatCurrency(value, 'CDF')}
+            <span className="text-xs text-gray-400 ml-1">
+              (~{formatCurrency(usdEquivalent, 'USD')})
+            </span>
+          </span>
+        );
+      }
+      return (
+        <span className="font-mono font-bold">
+          {formatCurrency(value, 'USD')}
+        </span>
+      );
+    }
   }
 ];
+

@@ -35,9 +35,10 @@ import {
   ChevronDown,
   XCircle,
   TrendingUp,
-  Send
+  Send,
+  Calendar
 } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { startOfDay, startOfWeek, startOfMonth, startOfYear, endOfDay, endOfWeek, endOfMonth, endOfYear, subDays } from 'date-fns';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import { UnifiedDataTable } from '@/components/ui/unified-data-table';
@@ -68,6 +69,7 @@ const FacturesProtected: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statutFilter, setStatutFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('month');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | undefined>(undefined);
@@ -90,6 +92,36 @@ const FacturesProtected: React.FC = () => {
     { key: 'actions', label: 'Actions', visible: true, required: true }
   ]);
 
+  const getDateRange = () => {
+    const now = new Date();
+    switch (dateFilter) {
+      case 'today':
+        return {
+          dateFrom: startOfDay(now).toISOString(),
+          dateTo: endOfDay(now).toISOString()
+        };
+      case 'week':
+        return {
+          dateFrom: startOfWeek(now, { weekStartsOn: 1 }).toISOString(),
+          dateTo: endOfWeek(now, { weekStartsOn: 1 }).toISOString()
+        };
+      case 'month':
+        return {
+          dateFrom: startOfMonth(now).toISOString(),
+          dateTo: endOfMonth(now).toISOString()
+        };
+      case 'year':
+        return {
+          dateFrom: startOfYear(now).toISOString(),
+          dateTo: endOfYear(now).toISOString()
+        };
+      default:
+        return { dateFrom: undefined, dateTo: undefined };
+    }
+  };
+
+  const { dateFrom, dateTo } = getDateRange();
+
   const {
     factures,
     pagination,
@@ -107,6 +139,8 @@ const FacturesProtected: React.FC = () => {
       type: typeFilter === 'all' ? undefined : (typeFilter as 'devis' | 'facture'),
       statut: statutFilter === 'all' ? undefined : statutFilter,
       search: searchTerm || undefined,
+      dateFrom,
+      dateTo
     },
     { pageSize, sort: sortConfig }
   );
@@ -527,6 +561,26 @@ const FacturesProtected: React.FC = () => {
                 className="pl-10"
               />
             </div>
+
+            <Select value={dateFilter} onValueChange={(value) => {
+              setDateFilter(value);
+              setCurrentPage(1);
+            }}>
+              <SelectTrigger className="w-full sm:w-40">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-gray-500" />
+                  <SelectValue placeholder="Période" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toute la période</SelectItem>
+                <SelectItem value="today">Aujourd'hui</SelectItem>
+                <SelectItem value="week">Cette semaine</SelectItem>
+                <SelectItem value="month">Ce mois</SelectItem>
+                <SelectItem value="year">Cette année</SelectItem>
+              </SelectContent>
+            </Select>
+
             <Select value={typeFilter} onValueChange={(value) => {
               setTypeFilter(value);
               setCurrentPage(1);
@@ -581,8 +635,12 @@ const FacturesProtected: React.FC = () => {
                 onSort={handleSort}
                 sortKey={sortConfig?.key}
                 sortDirection={sortConfig?.direction}
-                selectedIds={Array.from(selectedFactures)}
-                onSelectionChange={(ids) => setSelectedFactures(new Set(ids))}
+                bulkSelect={{
+                  selected: Array.from(selectedFactures),
+                  onSelectAll: handleSelectAll,
+                  onSelectItem: handleSelectFacture,
+                  getId: (item) => item.id
+                }}
                 columns={[
                   {
                     key: 'mode_livraison',

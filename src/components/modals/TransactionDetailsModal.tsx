@@ -235,7 +235,11 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
     const commissionPartenaire = originalFrais - originalBenefice;
 
     // Nouveau bénéfice = Nouveaux frais - Commission
-    const newBenefice = newFrais - commissionPartenaire;
+    // SAUF pour les transferts (Swaps) où le bénéfice doit rester à 0
+    let newBenefice = newFrais - commissionPartenaire;
+    if (transaction?.type_transaction === 'transfert') {
+      newBenefice = 0;
+    }
 
     // Recalculer le montant CNY
     // Montant Net = Montant - Frais
@@ -445,12 +449,12 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                 <div className="flex gap-2">
                   <Input
                     type="number"
-                    value={editedData.montant}
+                    value={editedData.montant ?? ''}
                     onChange={(e) => setEditedData({ ...editedData, montant: parseFloat(e.target.value) })}
                     className="flex-1"
                   />
                   <Select
-                    value={editedData.devise}
+                    value={editedData.devise ?? 'USD'}
                     onValueChange={(value) => setEditedData({ ...editedData, devise: value })}
                   >
                     <SelectTrigger className="w-24 sm:w-32">
@@ -497,7 +501,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                 </Label>
                 {isEditMode ? (
                   <Select
-                    value={editedData.motif}
+                    value={editedData.motif ?? ''}
                     onValueChange={(value) => setEditedData({ ...editedData, motif: value })}
                   >
                     <SelectTrigger>
@@ -519,7 +523,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                 <Label className="text-xs text-gray-500 mb-2 block">Mode de paiement</Label>
                 {isEditMode ? (
                   <Input
-                    value={editedData.mode_paiement}
+                    value={editedData.mode_paiement ?? ''}
                     onChange={(e) => setEditedData({ ...editedData, mode_paiement: e.target.value })}
                   />
                 ) : (
@@ -527,15 +531,23 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                 )}
               </div>
 
-              {/* Date de création */}
+              {/* Date de paiement */}
               <div className="col-span-2 sm:col-span-1 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
                 <Label className="text-xs text-gray-500 flex items-center gap-2 mb-2">
                   <Calendar className="h-4 w-4" />
-                  Date
+                  Date de paiement
                 </Label>
-                <p className="text-sm sm:text-base font-medium">
-                  {new Date(transaction.created_at).toLocaleDateString('fr-FR')}
-                </p>
+                {isEditMode ? (
+                  <Input
+                    type="date"
+                    value={editedData.date_paiement ? new Date(editedData.date_paiement).toISOString().split('T')[0] : ''}
+                    onChange={(e) => setEditedData({ ...editedData, date_paiement: new Date(e.target.value).toISOString() })}
+                  />
+                ) : (
+                  <p className="text-sm sm:text-base font-medium">
+                    {transaction.date_paiement ? new Date(transaction.date_paiement).toLocaleDateString('fr-FR') : '-'}
+                  </p>
+                )}
               </div>
 
               {/* Créé par */}
@@ -595,7 +607,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                     {isEditMode ? (
                       <Input
                         type="number"
-                        value={editedData.frais}
+                        value={editedData.frais ?? ''}
                         onChange={(e) => handleFraisChange(e.target.value)}
                         className="text-center"
                         autoFocus
@@ -615,7 +627,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                     {isEditMode ? (
                       <Input
                         type="number"
-                        value={editedData.benefice}
+                        value={editedData.benefice ?? ''}
                         onChange={(e) => setEditedData({ ...editedData, benefice: parseFloat(e.target.value) })}
                         className="text-center"
                       />
@@ -635,7 +647,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                       <Input
                         type="number"
                         step="0.0001"
-                        value={editedData.taux_usd_cny || ''}
+                        value={editedData.taux_usd_cny ?? ''}
                         onChange={(e) => setEditedData({ ...editedData, taux_usd_cny: parseFloat(e.target.value) || undefined })}
                         className="text-center"
                       />
@@ -679,7 +691,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                 className="bg-green-500 hover:bg-green-600 w-full sm:w-auto"
               >
                 <Save className="h-4 w-4 mr-2" />
-                {isSaving ? 'Enregistrement...' : 'Enregistrer'}
+                {isSaving ? 'Mise à jour...' : 'Mettre à jour'}
               </Button>
             </div>
           )}

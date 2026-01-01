@@ -22,7 +22,13 @@ import {
   UserCheck,
   UserX,
   Mail,
-  Phone
+  Phone,
+  Building,
+  Package,
+  Truck,
+  Key,
+  Webhook,
+  ArrowLeft
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 // @ts-ignore - Temporary workaround for Supabase types
@@ -60,6 +66,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { SettingsColis } from '@/components/settings/SettingsColis';
+import { SettingsTransitaires } from '@/components/settings/SettingsTransitaires';
+import { CompanySettings } from '@/components/settings/CompanySettings';
 import type { PaymentMethod } from '@/types';
 
 interface UserProfile {
@@ -623,6 +633,13 @@ const Settings = () => {
       description: 'Informations personnelles et photo de profil'
     },
     {
+      id: 'entreprise',
+      label: 'Entreprise',
+      icon: <Building className="h-5 w-5" />,
+      description: 'Informations entreprise et logo',
+      adminOnly: true
+    },
+    {
       id: 'users',
       label: 'Utilisateurs',
       icon: <Users className="h-5 w-5" />,
@@ -637,6 +654,27 @@ const Settings = () => {
       adminOnly: true
     },
     {
+      id: 'factures',
+      label: 'Factures',
+      icon: <FileText className="h-5 w-5" />,
+      description: 'Frais de livraison et conditions de vente',
+      adminOnly: true
+    },
+    {
+      id: 'colis',
+      label: 'Colis',
+      icon: <Package className="h-5 w-5" />,
+      description: 'Fournisseurs et tarifs pour colis',
+      adminOnly: true
+    },
+    {
+      id: 'transitaires',
+      label: 'Transitaires',
+      icon: <Truck className="h-5 w-5" />,
+      description: 'Gestion des transitaires partenaires',
+      adminOnly: true
+    },
+    {
       id: 'exchange-rates',
       label: 'Taux de change',
       icon: <DollarSign className="h-5 w-5" />,
@@ -644,493 +682,572 @@ const Settings = () => {
       adminOnly: true
     },
     {
-      id: 'transaction-fees',
-      label: 'Frais de transaction',
-      icon: <SettingsIcon className="h-5 w-5" />,
-      description: 'Configuration des frais par type de transaction',
+      id: 'api-keys',
+      label: 'Clés API',
+      icon: <Key className="h-5 w-5" />,
+      description: "Gestion des clés d'accès API",
+      adminOnly: true
+    },
+    {
+      id: 'webhooks',
+      label: 'Webhooks',
+      icon: <Webhook className="h-5 w-5" />,
+      description: 'Notifications en temps réel',
       adminOnly: true
     },
     {
       id: 'activity-logs',
-      label: 'Logs d\'activité',
+      label: "Logs d'activité",
       icon: <FileText className="h-5 w-5" />,
-      description: 'Historique des actions dans l\'application',
+      description: "Historique des actions dans l'application",
       adminOnly: true
-    },
-    {
-      id: 'factures',
-      label: 'Factures',
-      icon: <FileText className="h-5 w-5" />,
-      description: 'Paramètres entreprise et frais de livraison',
-      adminOnly: false
     }
   ];
+
+  // Mobile responsiveness
+  const isMobile = useIsMobile();
+  const [showMobileContent, setShowMobileContent] = useState(false);
 
   const filteredOptions = settingsOptions.filter(option =>
     !option.adminOnly || profile?.role === 'admin'
   );
 
+  // Handle tab selection on mobile - show content view
+  const handleMobileTabSelect = (tabId: string) => {
+    setActiveTab(tabId);
+    setShowMobileContent(true);
+  };
+
+  // Handle back button on mobile - show menu view
+  const handleMobileBack = () => {
+    setShowMobileContent(false);
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar - Modern Design */}
-          <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-              <div className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-emerald-500 to-emerald-600">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <SettingsIcon className="h-5 w-5" />
-                  Paramètres
-                </h3>
-              </div>
-              <nav className="p-2 space-y-1">
-                {filteredOptions.map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => setActiveTab(option.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-all ${activeTab === option.id
-                      ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-100 dark:border-emerald-800'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                      }`}
-                  >
-                    <div className={`p-2 rounded-lg ${activeTab === option.id
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                      }`}>
-                      {option.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-medium text-sm ${activeTab === option.id ? 'text-emerald-700 dark:text-emerald-300' : ''}`}>
-                        {option.label}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{option.description}</p>
-                    </div>
-                  </button>
-                ))}
-              </nav>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="lg:col-span-3">
-            {/* Users Tab */}
-            {activeTab === 'users' && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center">
-                      <Users className="mr-2 h-5 w-5" />
-                      Utilisateurs ({users.length})
-                    </CardTitle>
-                    <Button onClick={handleAddUser} className="bg-green-500 hover:bg-green-600">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Ajouter un utilisateur
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {usersLoading ? (
-                    <div className="flex items-center justify-center h-32">
-                      <Loader2 className="h-6 w-6 animate-spin text-green-500" />
-                    </div>
-                  ) : users.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                      <p>Aucun utilisateur trouvé</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {users.map((user) => (
-                        <div key={user.id} className="card-base transition-shadow-hover flex items-center justify-between p-4">
-                          <div className="flex items-center space-x-4">
-                            <div className="p-2.5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                              <UserIcon className="h-5 w-5 text-white" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{user.first_name} {user.last_name}</p>
-                              <p className="text-sm text-gray-500">{user.email}</p>
-                              <div className="flex items-center space-x-2 mt-1">
-                                <Badge
-                                  variant={user.role === 'admin' ? 'default' : 'secondary'}
-                                  className={user.role === 'admin' ? 'bg-green-500 hover:bg-green-600' : ''}
-                                >
-                                  {user.role === 'admin' ? (
-                                    <>
-                                      <Crown className="mr-1 h-3 w-3" />
-                                      Admin
-                                    </>
-                                  ) : (
-                                    <>
-                                      <UserCheck className="mr-1 h-3 w-3" />
-                                      Opérateur
-                                    </>
-                                  )}
-                                </Badge>
-                                <Badge
-                                  variant={user.is_active ? 'default' : 'secondary'}
-                                  className={user.is_active ? 'bg-green-500 hover:bg-green-600' : ''}
-                                >
-                                  {user.is_active ? 'Actif' : 'Inactif'}
-                                </Badge>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleToggleUserStatus(user)}
-                              className="hover:bg-green-50 hover:text-green-600"
-                            >
-                              {user.is_active ? (
-                                <UserX className="h-4 w-4" />
-                              ) : (
-                                <UserCheck className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditUser(user)}
-                              className="hover:bg-green-50 hover:text-green-600"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleDeleteUser(user)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )
-            }
-
-            {/* Profile Tab */}
-            {
-              activeTab === 'profile' && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <UserIcon className="mr-2 h-5 w-5" />
-                      Profil
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Avatar */}
-                    <div className="flex items-center space-x-4">
-                      <div className="relative">
-                        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center overflow-hidden">
-                          {profile?.avatar_url ? (
-                            <img
-                              src={profile.avatar_url}
-                              alt="Avatar"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <UserIcon className="h-10 w-10 text-green-500" />
-                          )}
-                        </div>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleAvatarUpload}
-                          className="hidden"
-                        />
-                        <button
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={uploading}
-                          className="absolute bottom-0 right-0 p-1 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:opacity-50"
-                        >
-                          {uploading ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Camera className="h-3 w-3" />
-                          )}
-                        </button>
+          {/* Sidebar - Hidden on mobile when showing content */}
+          {(!isMobile || !showMobileContent) && (
+            <div className="lg:col-span-1">
+              <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+                <div className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-emerald-500 to-emerald-600">
+                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <SettingsIcon className="h-5 w-5" />
+                    Paramètres
+                  </h3>
+                </div>
+                <nav className="p-2 space-y-1 max-h-[70vh] overflow-y-auto">
+                  {filteredOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => isMobile ? handleMobileTabSelect(option.id) : setActiveTab(option.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-all ${activeTab === option.id
+                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-100 dark:border-emerald-800'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        }`}
+                    >
+                      <div className={`p-2 rounded-lg ${activeTab === option.id
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                        }`}>
+                        {option.icon}
                       </div>
-                      <div>
-                        <h3 className="font-medium">{user?.email}</h3>
-                        <p className="text-sm text-gray-500">
-                          {profile?.role === 'admin' ? 'Administrateur' : 'Opérateur'}
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-medium text-sm ${activeTab === option.id ? 'text-emerald-700 dark:text-emerald-300' : ''}`}>
+                          {option.label}
                         </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{option.description}</p>
                       </div>
-                    </div>
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            </div>
+          )}
 
-                    {/* Profile Form */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="first_name">Prénom</Label>
-                        <Input
-                          id="first_name"
-                          value={profileForm.first_name}
-                          onChange={(e) => setProfileForm(prev => ({ ...prev, first_name: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="last_name">Nom</Label>
-                        <Input
-                          id="last_name"
-                          value={profileForm.last_name}
-                          onChange={(e) => setProfileForm(prev => ({ ...prev, last_name: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-
-                    <Button onClick={handleSaveProfile} disabled={saving} className="bg-green-500 hover:bg-green-600">
-                      {saving ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Sauvegarde...
-                        </>
-                      ) : (
-                        'Sauvegarder les modifications'
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
-              )
-            }
-
-            {/* Payment Methods Tab */}
-            {
-              activeTab === 'payment-methods' && (
+          {/* Content - Show always on desktop, only when showMobileContent on mobile */}
+          {(!isMobile || showMobileContent) && (
+            <div className="lg:col-span-3">
+              {/* Mobile Back Button */}
+              {isMobile && showMobileContent && (
+                <Button
+                  variant="ghost"
+                  onClick={handleMobileBack}
+                  className="mb-4 flex items-center gap-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Retour aux paramètres
+                </Button>
+              )}
+              {/* Users Tab */}
+              {activeTab === 'users' && (
                 <Card>
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center">
-                        <CreditCard className="mr-2 h-5 w-5" />
-                        Moyens de paiement
+                        <Users className="mr-2 h-5 w-5" />
+                        Utilisateurs ({users.length})
                       </CardTitle>
-                      <Button
-                        onClick={() => {
-                          setSelectedPaymentMethod(undefined);
-                          setIsPaymentMethodFormOpen(true);
-                        }}
-                        className="bg-green-500 hover:bg-green-600"
-                      >
+                      <Button onClick={handleAddUser} className="bg-green-500 hover:bg-green-600">
                         <Plus className="mr-2 h-4 w-4" />
-                        Ajouter un moyen
+                        Ajouter un utilisateur
                       </Button>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      {paymentMethods.map((method) => (
-                        <div key={method.id} className="card-base transition-shadow-hover flex items-center justify-between p-4">
-                          <div className="flex items-center space-x-4">
-                            <div className="p-2.5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-                              <CreditCard className="h-5 w-5 text-white" />
+                    {usersLoading ? (
+                      <div className="flex items-center justify-center h-32">
+                        <Loader2 className="h-6 w-6 animate-spin text-green-500" />
+                      </div>
+                    ) : users.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                        <p>Aucun utilisateur trouvé</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {users.map((user) => (
+                          <div key={user.id} className="card-base transition-shadow-hover flex items-center justify-between p-4">
+                            <div className="flex items-center space-x-4">
+                              <div className="p-2.5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                                <UserIcon className="h-5 w-5 text-white" />
+                              </div>
+                              <div>
+                                <p className="font-medium">{user.first_name} {user.last_name}</p>
+                                <p className="text-sm text-gray-500">{user.email}</p>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <Badge
+                                    variant={user.role === 'admin' ? 'default' : 'secondary'}
+                                    className={user.role === 'admin' ? 'bg-green-500 hover:bg-green-600' : ''}
+                                  >
+                                    {user.role === 'admin' ? (
+                                      <>
+                                        <Crown className="mr-1 h-3 w-3" />
+                                        Admin
+                                      </>
+                                    ) : (
+                                      <>
+                                        <UserCheck className="mr-1 h-3 w-3" />
+                                        Opérateur
+                                      </>
+                                    )}
+                                  </Badge>
+                                  <Badge
+                                    variant={user.is_active ? 'default' : 'secondary'}
+                                    className={user.is_active ? 'bg-green-500 hover:bg-green-600' : ''}
+                                  >
+                                    {user.is_active ? 'Actif' : 'Inactif'}
+                                  </Badge>
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium">{method.name}</p>
-                              <p className="text-sm text-gray-500">{method.description}</p>
-                              <Badge
-                                variant={method.is_active ? 'default' : 'secondary'}
-                                className={method.is_active ? 'bg-green-500 hover:bg-green-600' : ''}
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleToggleUserStatus(user)}
+                                className="hover:bg-green-50 hover:text-green-600"
                               >
-                                {method.is_active ? 'Actif' : 'Inactif'}
-                              </Badge>
+                                {user.is_active ? (
+                                  <UserX className="h-4 w-4" />
+                                ) : (
+                                  <UserCheck className="h-4 w-4" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditUser(user)}
+                                className="hover:bg-green-50 hover:text-green-600"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => handleDeleteUser(user)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleTogglePaymentMethod(method)}
-                              className="hover:bg-green-50 hover:text-green-600"
-                            >
-                              {method.is_active ? 'Désactiver' : 'Activer'}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedPaymentMethod(method);
-                                setIsPaymentMethodFormOpen(true);
-                              }}
-                              className="hover:bg-green-50 hover:text-green-600"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleDeletePaymentMethod(method)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )
-            }
+              }
 
-            {/* Exchange Rates Tab */}
-            {
-              activeTab === 'exchange-rates' && (
+              {/* Profile Tab */}
+              {
+                activeTab === 'profile' && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <UserIcon className="mr-2 h-5 w-5" />
+                        Profil
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Avatar */}
+                      <div className="flex items-center space-x-4">
+                        <div className="relative">
+                          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center overflow-hidden">
+                            {profile?.avatar_url ? (
+                              <img
+                                src={profile.avatar_url}
+                                alt="Avatar"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <UserIcon className="h-10 w-10 text-green-500" />
+                            )}
+                          </div>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarUpload}
+                            className="hidden"
+                          />
+                          <button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploading}
+                            className="absolute bottom-0 right-0 p-1 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:opacity-50"
+                          >
+                            {uploading ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Camera className="h-3 w-3" />
+                            )}
+                          </button>
+                        </div>
+                        <div>
+                          <h3 className="font-medium">{user?.email}</h3>
+                          <p className="text-sm text-gray-500">
+                            {profile?.role === 'admin' ? 'Administrateur' : 'Opérateur'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Profile Form */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="first_name">Prénom</Label>
+                          <Input
+                            id="first_name"
+                            value={profileForm.first_name}
+                            onChange={(e) => setProfileForm(prev => ({ ...prev, first_name: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="last_name">Nom</Label>
+                          <Input
+                            id="last_name"
+                            value={profileForm.last_name}
+                            onChange={(e) => setProfileForm(prev => ({ ...prev, last_name: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+
+                      <Button onClick={handleSaveProfile} disabled={saving} className="bg-green-500 hover:bg-green-600">
+                        {saving ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Sauvegarde...
+                          </>
+                        ) : (
+                          'Sauvegarder les modifications'
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )
+              }
+
+              {/* Payment Methods Tab */}
+              {
+                activeTab === 'payment-methods' && (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center">
+                          <CreditCard className="mr-2 h-5 w-5" />
+                          Moyens de paiement
+                        </CardTitle>
+                        <Button
+                          onClick={() => {
+                            setSelectedPaymentMethod(undefined);
+                            setIsPaymentMethodFormOpen(true);
+                          }}
+                          className="bg-green-500 hover:bg-green-600"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Ajouter un moyen
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {paymentMethods.map((method) => (
+                          <div key={method.id} className="card-base transition-shadow-hover flex items-center justify-between p-4">
+                            <div className="flex items-center space-x-4">
+                              <div className="p-2.5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                                <CreditCard className="h-5 w-5 text-white" />
+                              </div>
+                              <div>
+                                <p className="font-medium">{method.name}</p>
+                                <p className="text-sm text-gray-500">{method.description}</p>
+                                <Badge
+                                  variant={method.is_active ? 'default' : 'secondary'}
+                                  className={method.is_active ? 'bg-green-500 hover:bg-green-600' : ''}
+                                >
+                                  {method.is_active ? 'Actif' : 'Inactif'}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleTogglePaymentMethod(method)}
+                                className="hover:bg-green-50 hover:text-green-600"
+                              >
+                                {method.is_active ? 'Désactiver' : 'Activer'}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedPaymentMethod(method);
+                                  setIsPaymentMethodFormOpen(true);
+                                }}
+                                className="hover:bg-green-50 hover:text-green-600"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => handleDeletePaymentMethod(method)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              }
+
+              {/* Exchange Rates Tab */}
+              {
+                activeTab === 'exchange-rates' && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <DollarSign className="mr-2 h-5 w-5" />
+                        Taux de change
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="usdToCdf">USD vers CDF</Label>
+                          <Input
+                            id="usdToCdf"
+                            type="number"
+                            value={exchangeRates.usdToCdf}
+                            onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCdf: e.target.value }))}
+                            placeholder="2850"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="usdToCny">USD vers CNY</Label>
+                          <Input
+                            id="usdToCny"
+                            type="number"
+                            value={exchangeRates.usdToCny}
+                            onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCny: e.target.value }))}
+                            placeholder="7.25"
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => handleSaveSettings('taux_change', exchangeRates)}
+                        disabled={saving}
+                        className="bg-green-500 hover:bg-green-600"
+                      >
+                        {saving ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Sauvegarde...
+                          </>
+                        ) : (
+                          'Sauvegarder les taux'
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )
+              }
+
+              {/* Transaction Fees Tab */}
+              {
+                activeTab === 'transaction-fees' && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <SettingsIcon className="mr-2 h-5 w-5" />
+                        Frais de transaction
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <Label htmlFor="transfert">Transfert (%)</Label>
+                          <Input
+                            id="transfert"
+                            type="number"
+                            value={transactionFees.transfert}
+                            onChange={(e) => setTransactionFees(prev => ({ ...prev, transfert: e.target.value }))}
+                            placeholder="5"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="commande">Commande (%)</Label>
+                          <Input
+                            id="commande"
+                            type="number"
+                            value={transactionFees.commande}
+                            onChange={(e) => setTransactionFees(prev => ({ ...prev, commande: e.target.value }))}
+                            placeholder="10"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="partenaire">Partenaire (%)</Label>
+                          <Input
+                            id="partenaire"
+                            type="number"
+                            value={transactionFees.partenaire}
+                            onChange={(e) => setTransactionFees(prev => ({ ...prev, partenaire: e.target.value }))}
+                            placeholder="3"
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => handleSaveSettings('frais', transactionFees)}
+                        disabled={saving}
+                        className="bg-green-500 hover:bg-green-600"
+                      >
+                        {saving ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Sauvegarde...
+                          </>
+                        ) : (
+                          'Sauvegarder les frais'
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )
+              }
+
+              {/* Activity Logs Tab */}
+              {
+                activeTab === 'activity-logs' && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <FileText className="mr-2 h-5 w-5" />
+                        Logs d'activité
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {activityLogs.map((log) => (
+                          <div key={log.id} className="card-base transition-shadow-hover flex items-center justify-between p-4">
+                            <div className="flex items-center space-x-4">
+                              <div className="p-2.5 rounded-full bg-purple-500 flex items-center justify-center flex-shrink-0">
+                                <FileText className="h-5 w-5 text-white" />
+                              </div>
+                              <div>
+                                <p className="font-medium">{log.action}</p>
+                                <p className="text-sm text-gray-500">
+                                  {log.cible} - {new Date(log.created_at).toLocaleString('fr-FR')}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              }
+
+              {/* Factures Settings Tab */}
+              {activeTab === 'factures' && <SettingsFacture />}
+
+              {/* Entreprise Settings Tab */}
+              {activeTab === 'entreprise' && <CompanySettings />}
+
+              {/* Colis Settings Tab */}
+              {activeTab === 'colis' && <SettingsColis />}
+
+              {/* Transitaires Settings Tab */}
+              {activeTab === 'transitaires' && <SettingsTransitaires />}
+
+              {/* API Keys Tab */}
+              {activeTab === 'api-keys' && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center">
-                      <DollarSign className="mr-2 h-5 w-5" />
-                      Taux de change
+                      <Key className="mr-2 h-5 w-5" />
+                      Clés API
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="usdToCdf">USD vers CDF</Label>
-                        <Input
-                          id="usdToCdf"
-                          type="number"
-                          value={exchangeRates.usdToCdf}
-                          onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCdf: e.target.value }))}
-                          placeholder="2850"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="usdToCny">USD vers CNY</Label>
-                        <Input
-                          id="usdToCny"
-                          type="number"
-                          value={exchangeRates.usdToCny}
-                          onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCny: e.target.value }))}
-                          placeholder="7.25"
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => handleSaveSettings('taux_change', exchangeRates)}
-                      disabled={saving}
-                      className="bg-green-500 hover:bg-green-600"
-                    >
-                      {saving ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Sauvegarde...
-                        </>
-                      ) : (
-                        'Sauvegarder les taux'
-                      )}
+                    <p className="text-gray-600 dark:text-gray-400">
+                      Gérez vos clés d'accès API pour intégrer FactureX avec vos applications.
+                    </p>
+                    <Button onClick={() => navigate('/api-keys')} className="bg-emerald-500 hover:bg-emerald-600">
+                      Gérer les clés API
                     </Button>
                   </CardContent>
                 </Card>
-              )
-            }
+              )}
 
-            {/* Transaction Fees Tab */}
-            {
-              activeTab === 'transaction-fees' && (
+              {/* Webhooks Tab */}
+              {activeTab === 'webhooks' && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center">
-                      <SettingsIcon className="mr-2 h-5 w-5" />
-                      Frais de transaction
+                      <Webhook className="mr-2 h-5 w-5" />
+                      Webhooks
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <Label htmlFor="transfert">Transfert (%)</Label>
-                        <Input
-                          id="transfert"
-                          type="number"
-                          value={transactionFees.transfert}
-                          onChange={(e) => setTransactionFees(prev => ({ ...prev, transfert: e.target.value }))}
-                          placeholder="5"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="commande">Commande (%)</Label>
-                        <Input
-                          id="commande"
-                          type="number"
-                          value={transactionFees.commande}
-                          onChange={(e) => setTransactionFees(prev => ({ ...prev, commande: e.target.value }))}
-                          placeholder="10"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="partenaire">Partenaire (%)</Label>
-                        <Input
-                          id="partenaire"
-                          type="number"
-                          value={transactionFees.partenaire}
-                          onChange={(e) => setTransactionFees(prev => ({ ...prev, partenaire: e.target.value }))}
-                          placeholder="3"
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => handleSaveSettings('frais', transactionFees)}
-                      disabled={saving}
-                      className="bg-green-500 hover:bg-green-600"
-                    >
-                      {saving ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Sauvegarde...
-                        </>
-                      ) : (
-                        'Sauvegarder les frais'
-                      )}
+                    <p className="text-gray-600 dark:text-gray-400">
+                      Configurez des webhooks pour recevoir des notifications en temps réel.
+                    </p>
+                    <Button onClick={() => navigate('/webhooks')} className="bg-emerald-500 hover:bg-emerald-600">
+                      Gérer les webhooks
                     </Button>
                   </CardContent>
                 </Card>
-              )
-            }
-
-            {/* Activity Logs Tab */}
-            {
-              activeTab === 'activity-logs' && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <FileText className="mr-2 h-5 w-5" />
-                      Logs d'activité
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {activityLogs.map((log) => (
-                        <div key={log.id} className="card-base transition-shadow-hover flex items-center justify-between p-4">
-                          <div className="flex items-center space-x-4">
-                            <div className="p-2.5 rounded-full bg-purple-500 flex items-center justify-center flex-shrink-0">
-                              <FileText className="h-5 w-5 text-white" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{log.action}</p>
-                              <p className="text-sm text-gray-500">
-                                {log.cible} - {new Date(log.created_at).toLocaleString('fr-FR')}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            }
-
-            {/* Factures Settings Tab */}
-            {activeTab === 'factures' && <SettingsFacture />}
-          </div >
-        </div >
-      </div >
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* User Form Modal */}
       < Dialog open={isUserFormOpen} onOpenChange={setIsUserFormOpen} >

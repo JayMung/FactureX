@@ -309,28 +309,30 @@ const Comptes: React.FC = () => {
             <button
               type="button"
               className={cn(
-                'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0',
+                'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 px-3',
                 viewMode === 'cards'
                   ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'hover:bg-accent hover:text-accent-foreground'
+                  : 'hover:bg-accent hover:text-accent-foreground text-gray-500'
               )}
               onClick={() => setViewMode('cards')}
               title="Vue Grille"
             >
               <Grid3x3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Cartes</span>
             </button>
             <button
               type="button"
               className={cn(
-                'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 rounded-md px-3 h-8 w-8 p-0',
+                'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 px-3',
                 viewMode === 'table'
                   ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'hover:bg-accent hover:text-accent-foreground'
+                  : 'hover:bg-accent hover:text-accent-foreground text-gray-500'
               )}
               onClick={() => setViewMode('table')}
               title="Vue Liste"
             >
               <List className="h-4 w-4" />
+              <span className="hidden sm:inline">Table</span>
             </button>
           </div>
 
@@ -544,6 +546,8 @@ const Comptes: React.FC = () => {
         loading={loading}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
+        showViewToggle={false} // Disable internal toggle to avoid duplication
+        onRowClick={handleViewDetail} // Open details on row click
         emptyMessage="Aucun compte trouvé"
         emptySubMessage="Créez votre premier compte financier"
         columns={compteColumns.filter(c => columnsConfig[c.key] !== false)}

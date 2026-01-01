@@ -28,6 +28,7 @@ import ApiKeys from "./pages/ApiKeys";
 import Webhooks from "./pages/Webhooks";
 import FinanceStatistics from "./pages/Finance-Statistics";
 import ColisMaritimePage from './pages/Colis-Maritime';
+import Rapports from "./pages/Rapports";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import AdminSetup from "./pages/AdminSetup";
@@ -161,6 +162,11 @@ const App = () => (
               <Route path="/finances/statistiques" element={
                 <ProtectedRouteEnhanced requiredModule="finances">
                   <FinanceStatistics />
+                </ProtectedRouteEnhanced>
+              } />
+              <Route path="/rapports" element={
+                <ProtectedRouteEnhanced>
+                  <Rapports />
                 </ProtectedRouteEnhanced>
               } />
               {/* Routes redirigées vers /transactions (pages fusionnées) */}

@@ -437,60 +437,109 @@ export const useTransactions = (
 
       console.log(' updateTransaction called with:', { id, transactionData });
 
-      if (transactionData.montant !== undefined || transactionData.devise || transactionData.motif) {
-        const { data: currentTransaction } = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('id', id)
-          .single();
+      // Fetch current transaction to get type and existing values
+      const { data: currentTransaction } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-        if (currentTransaction) {
-          const { data: settings } = await supabase
-            .from('settings')
-            .select('cle, valeur, categorie')
-            .in('categorie', ['taux_change', 'frais'])
-            .in('cle', ['usdToCny', 'usdToCdf', 'transfert', 'commande', 'partenaire']);
+      if (currentTransaction) {
+        const transactionType = currentTransaction.type_transaction;
 
-          const rates: Record<string, number> = { usdToCny: 7.25, usdToCdf: 2850 };
-          const fees: Record<string, number> = { transfert: 5, commande: 10, partenaire: 3 };
-
-          settings?.forEach((setting: any) => {
-            if (setting.categorie === 'taux_change') {
-              rates[setting.cle] = parseFloat(setting.valeur);
-            } else if (setting.categorie === 'frais') {
-              fees[setting.cle] = parseFloat(setting.valeur);
-            }
-          });
-
-          const montant = transactionData.montant ?? currentTransaction.montant;
-          const devise = transactionData.devise ?? currentTransaction.devise;
-          const motif = transactionData.motif ?? currentTransaction.motif;
-
-          // Utiliser le module de calcul avec mapping des nouveaux noms de catégories
-          const amounts = calculateTransactionAmounts(
-            montant,
-            devise,
-            motif,
-            currentTransaction.type_transaction,
-            rates,
-            fees
-          );
-          const fraisUSD = amounts.frais;
-          const benefice = amounts.benefice;
-          const montantCNY = amounts.montant_cny;
-
+        // SWAP (Transfert entre comptes) - NO automatic calculations
+        // Only manual frais allowed, benefice is always 0, no CNY
+        if (transactionType === 'transfert') {
           updatedData = {
             ...updatedData,
-            montant: montant,
-            devise: devise,
-            taux_usd_cny: rates.usdToCny,
-            taux_usd_cdf: rates.usdToCdf,
-            montant_cny: montantCNY,
-            frais: fraisUSD,
-            benefice: benefice
+            // Preserve explicit frais if provided, otherwise keep existing
+            frais: transactionData.frais !== undefined ? transactionData.frais : currentTransaction.frais,
+            // Benefice is ALWAYS 0 for swaps
+            benefice: 0,
+            // No CNY for swaps
+            montant_cny: null,
+            taux_usd_cny: null
           };
         }
+        // DÉPENSE (Opération Interne - Expense) - No benefice, no CNY
+        else if (transactionType === 'depense') {
+          updatedData = {
+            ...updatedData,
+            // Preserve explicit frais if provided, otherwise keep existing
+            frais: transactionData.frais !== undefined ? transactionData.frais : currentTransaction.frais,
+            // No benefice for expenses
+            benefice: 0,
+            // No CNY for expenses
+            montant_cny: null,
+            taux_usd_cny: null
+          };
+        }
+        // REVENUE (Facture, Transfert reçu) - Full calculation with manual override
+        else if (transactionType === 'revenue') {
+          // Only recalculate if montant, devise, or motif changed
+          if (transactionData.montant !== undefined || transactionData.devise || transactionData.motif) {
+            const { data: settings } = await supabase
+              .from('settings')
+              .select('cle, valeur, categorie')
+              .in('categorie', ['taux_change', 'frais'])
+              .in('cle', ['usdToCny', 'usdToCdf', 'transfert', 'commande', 'partenaire']);
+
+            const rates: Record<string, number> = { usdToCny: 7.25, usdToCdf: 2850 };
+            const fees: Record<string, number> = { transfert: 5, commande: 10, partenaire: 3 };
+
+            settings?.forEach((setting: any) => {
+              if (setting.categorie === 'taux_change') {
+                rates[setting.cle] = parseFloat(setting.valeur);
+              } else if (setting.categorie === 'frais') {
+                fees[setting.cle] = parseFloat(setting.valeur);
+              }
+            });
+
+            const montant = transactionData.montant ?? currentTransaction.montant;
+            const devise = transactionData.devise ?? currentTransaction.devise;
+            const motif = transactionData.motif ?? currentTransaction.motif;
+
+            // Use calculation module for revenues
+            const amounts = calculateTransactionAmounts(
+              montant,
+              devise,
+              motif,
+              transactionType,
+              rates,
+              fees
+            );
+
+            // Preserve manual values if explicitly provided
+            const fraisUSD = transactionData.frais !== undefined ? transactionData.frais : amounts.frais;
+            const benefice = transactionData.benefice !== undefined ? transactionData.benefice : amounts.benefice;
+            const montantCNY = transactionData.montant_cny !== undefined ? transactionData.montant_cny : amounts.montant_cny;
+
+            updatedData = {
+              ...updatedData,
+              montant: montant,
+              devise: devise,
+              taux_usd_cny: rates.usdToCny,
+              taux_usd_cdf: rates.usdToCdf,
+              montant_cny: montantCNY,
+              frais: fraisUSD,
+              benefice: benefice
+            };
+          } else {
+            // No financial field changed, just preserve manual frais/benefice if provided
+            if (transactionData.frais !== undefined) {
+              updatedData.frais = transactionData.frais;
+            }
+            if (transactionData.benefice !== undefined) {
+              updatedData.benefice = transactionData.benefice;
+            }
+            if (transactionData.montant_cny !== undefined) {
+              updatedData.montant_cny = transactionData.montant_cny;
+            }
+          }
+        }
       }
+
+
 
       // Exclure les champs de compte pour éviter les erreurs RLS
       const { compte_source_id, compte_destination_id, ...safeData } = updatedData as any;

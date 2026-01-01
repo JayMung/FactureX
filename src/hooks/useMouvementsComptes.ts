@@ -51,25 +51,51 @@ export const useMouvementsComptes = (page: number = 1, filters: MouvementFilters
 
       // Si pas de filtre de compte, calculer le solde global cumulé
       let mouvementsWithGlobalSolde = data || [];
-      
+
       if (!filters.compte_id && data && data.length > 0) {
-        // Récupérer TOUS les mouvements pour calculer le solde global
+        // Fetch exchange rates from settings
+        const { data: settingsData } = await supabase
+          .from('settings')
+          .select('cle, valeur')
+          .eq('categorie', 'taux_change')
+          .in('cle', ['usdToCny', 'usdToCdf']);
+
+        const rates: Record<string, number> = { usdToCny: 7.25, usdToCdf: 2850 };
+        settingsData?.forEach((s: any) => {
+          rates[s.cle] = parseFloat(s.valeur) || rates[s.cle];
+        });
+
+        // Helper function to convert amount to USD
+        const convertToUSD = (montant: number, devise: string): number => {
+          if (devise === 'USD') return montant;
+          if (devise === 'CNY') return montant / rates.usdToCny;
+          if (devise === 'CDF') return montant / rates.usdToCdf;
+          return montant;
+        };
+
+        // Récupérer TOUS les mouvements pour calculer le solde global (avec devise du compte)
         const { data: allMouvements } = await supabase
           .from('mouvements_comptes')
-          .select('id, date_mouvement, created_at, type_mouvement, montant')
+          .select(`
+            id, date_mouvement, created_at, type_mouvement, montant,
+            compte:comptes_financiers!compte_id(devise)
+          `)
           .order('date_mouvement', { ascending: true })
           .order('created_at', { ascending: true });
 
         if (allMouvements) {
-          // Calculer le solde global cumulé pour chaque mouvement
+          // Calculer le solde global cumulé pour chaque mouvement (converted to USD)
           let soldeGlobal = 0;
           const soldesMap = new Map<string, number>();
 
           allMouvements.forEach(m => {
+            const devise = (m.compte as any)?.devise || 'USD';
+            const montantUSD = convertToUSD(m.montant || 0, devise);
+
             if (m.type_mouvement === 'credit') {
-              soldeGlobal += m.montant;
+              soldeGlobal += montantUSD;
             } else {
-              soldeGlobal -= m.montant;
+              soldeGlobal -= montantUSD;
             }
             soldesMap.set(m.id, soldeGlobal);
           });
@@ -81,6 +107,7 @@ export const useMouvementsComptes = (page: number = 1, filters: MouvementFilters
           }));
         }
       }
+
 
       setMouvements(mouvementsWithGlobalSolde);
 
@@ -223,12 +250,16 @@ export const useCompteStats = (compteId: string) => {
 };
 
 // Hook to get global balance across all comptes
+// Excludes swaps from credits/debits (they are internal transfers)
 export const useGlobalBalance = () => {
   const [balance, setBalance] = useState({
     totalCredits: 0,
     totalDebits: 0,
     soldeNet: 0,
-    nombreComptes: 0
+    nombreComptes: 0,
+    totalSwapVolume: 0,
+    totalSwapFees: 0,
+    nombreSwaps: 0
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -237,40 +268,91 @@ export const useGlobalBalance = () => {
       try {
         setIsLoading(true);
 
+        // Fetch exchange rates from settings
+        const { data: settingsData } = await supabase
+          .from('settings')
+          .select('cle, valeur')
+          .eq('categorie', 'taux_change')
+          .in('cle', ['usdToCny', 'usdToCdf']);
+
+        const rates: Record<string, number> = { usdToCny: 7.25, usdToCdf: 2850 };
+        settingsData?.forEach((s: any) => {
+          rates[s.cle] = parseFloat(s.valeur) || rates[s.cle];
+        });
+
+        // Helper function to convert amount to USD
+        const convertToUSD = (montant: number, devise: string): number => {
+          if (devise === 'USD') return montant;
+          if (devise === 'CNY') return montant / rates.usdToCny;
+          if (devise === 'CDF') return montant / rates.usdToCdf;
+          return montant;
+        };
+
         // Get all comptes with their current balance
         const { data: comptes } = await supabase
           .from('comptes_financiers')
           .select('id, nom, solde_actuel, devise');
 
         if (comptes) {
-          // Sum all balances (convert to USD if needed)
+          // Sum all balances (convert to USD)
           const totalSolde = comptes.reduce((sum, compte) => {
-            return sum + (compte.solde_actuel || 0);
+            const soldeUSD = convertToUSD(compte.solde_actuel || 0, compte.devise || 'USD');
+            return sum + soldeUSD;
           }, 0);
 
-          // Get total credits and debits from mouvements
+          // Get mouvements with transaction type to exclude swaps
           const { data: mouvements } = await supabase
             .from('mouvements_comptes')
-            .select('type_mouvement, montant');
+            .select(`
+              type_mouvement,
+              montant,
+              compte:comptes_financiers!compte_id(devise),
+              transaction:transactions!transaction_id(type_transaction, frais)
+            `);
 
           let totalCredits = 0;
           let totalDebits = 0;
+          let totalSwapVolume = 0;
+          let totalSwapFees = 0;
+          const seenSwapTransactions = new Set<string>();
 
           if (mouvements) {
-            totalCredits = mouvements
-              .filter(m => m.type_mouvement === 'credit')
-              .reduce((sum, m) => sum + m.montant, 0);
-            
-            totalDebits = mouvements
-              .filter(m => m.type_mouvement === 'debit')
-              .reduce((sum, m) => sum + m.montant, 0);
+            mouvements.forEach(m => {
+              const devise = (m.compte as any)?.devise || 'USD';
+              const montantUSD = convertToUSD(m.montant || 0, devise);
+              const isSwap = (m.transaction as any)?.type_transaction === 'transfert';
+
+              if (isSwap) {
+                // Only count debit side for swap volume
+                if (m.type_mouvement === 'debit') {
+                  totalSwapVolume += montantUSD;
+
+                  // Track swap fees (avoid double counting)
+                  const txId = (m as any).transaction_id;
+                  if (txId && !seenSwapTransactions.has(txId)) {
+                    seenSwapTransactions.add(txId);
+                    totalSwapFees += (m.transaction as any)?.frais || 0;
+                  }
+                }
+              } else {
+                // Real transactions (not swaps)
+                if (m.type_mouvement === 'credit') {
+                  totalCredits += montantUSD;
+                } else {
+                  totalDebits += montantUSD;
+                }
+              }
+            });
           }
 
           setBalance({
             totalCredits,
             totalDebits,
             soldeNet: totalSolde,
-            nombreComptes: comptes.length
+            nombreComptes: comptes.length,
+            totalSwapVolume,
+            totalSwapFees,
+            nombreSwaps: seenSwapTransactions.size
           });
         }
       } catch (err) {
@@ -285,3 +367,5 @@ export const useGlobalBalance = () => {
 
   return { balance, isLoading };
 };
+
+

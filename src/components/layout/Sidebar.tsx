@@ -144,6 +144,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         label: 'Statistiques',
         path: '/finances/statistiques',
       },
+      {
+        icon: FileText,
+        label: 'Rapports',
+        path: '/rapports',
+      },
     ];
 
   // Filtrer les items du menu selon les permissions

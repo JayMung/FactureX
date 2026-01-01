@@ -12,6 +12,7 @@ interface BulkActionsProps {
   onExportSelected: () => void;
   onEmailSelected: () => void;
   isDeleting?: boolean;
+  children?: React.ReactNode;
 }
 
 const BulkActions: React.FC<BulkActionsProps> = ({
@@ -20,7 +21,8 @@ const BulkActions: React.FC<BulkActionsProps> = ({
   onDeleteSelected,
   onExportSelected,
   onEmailSelected,
-  isDeleting = false
+  isDeleting = false,
+  children
 }) => {
   if (selectedCount === 0) return null;
 
@@ -35,7 +37,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
             Actions groupées disponibles
           </span>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
@@ -46,7 +48,9 @@ const BulkActions: React.FC<BulkActionsProps> = ({
             <Mail className="mr-2 h-4 w-4" />
             Contacter
           </Button>
-          
+
+          {children}
+
           <Button
             variant="outline"
             size="sm"
@@ -56,7 +60,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
             <Download className="mr-2 h-4 w-4" />
             Exporter
           </Button>
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -76,7 +80,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
               </>
             )}
           </Button>
-          
+
           <Button
             variant="ghost"
             size="sm"

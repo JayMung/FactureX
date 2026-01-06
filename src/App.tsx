@@ -26,7 +26,7 @@ import CategoriesFinances from "./pages/Categories-Finances";
 // import EncaissementsProtected from "./pages/Encaissements-Protected";
 import ApiKeys from "./pages/ApiKeys";
 import Webhooks from "./pages/Webhooks";
-import FinanceStatistics from "./pages/Finance-Statistics";
+import StatistiquesProtected from "./pages/Statistiques-Protected";
 import ColisMaritimePage from './pages/Colis-Maritime';
 import Rapports from "./pages/Rapports";
 import Login from "./pages/Login";
@@ -161,7 +161,7 @@ const App = () => (
               } />
               <Route path="/finances/statistiques" element={
                 <ProtectedRouteEnhanced requiredModule="finances">
-                  <FinanceStatistics />
+                  <StatistiquesProtected />
                 </ProtectedRouteEnhanced>
               } />
               <Route path="/rapports" element={

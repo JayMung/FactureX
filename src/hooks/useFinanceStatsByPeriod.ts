@@ -47,27 +47,45 @@ const classifyTransaction = (t: { montant?: number; motif?: string; type_transac
     const typeTransaction = (t.type_transaction || '').toLowerCase();
     const benefice = t.benefice || 0;
 
-    // Check for expenses first
+    // Strict check based on new standardized types
+    if (typeTransaction === 'depense') {
+        return { type: 'depense', montant, benefice };
+    }
+    if (typeTransaction === 'revenue') {
+        return { type: 'revenue', montant, benefice };
+    }
+    // Note: 'transfert' type in transactions table usually means "money transfer" (revenue type activity in this business logic, or neutral swap)
+    // But in the hook, it distinguishes them.
+    // If it is 'transfert', we need to check if it's internal swap (no user?) or revenue-generating transfer.
+    // However, the hook logic above says "Check for INTERNAL swaps ONLY... if type_transaction === 'swap'".
+    // And "Check for revenue... if type_transaction === 'transfert'".
+    // So distinct types are used.
+
+    // Let's keep the logic aligned with what the form saves:
+    if (typeTransaction === 'transfert') {
+        // Is it a swap (internal) or commercial transfer?
+        // The form saves 'transfert' for both? No, form has type_transaction: 'revenue' | 'depense' | 'transfert'.
+        // But previously 'transfert' was considered revenue.
+        // Let's assume 'transfert' type logic in this app means "money transfer service" (revenue).
+        // Only internal movements are 'swap' or 'depense' if legacy.
+
+        // Actually, let's look at the old logic:
+        // if typeTransaction === 'transfert' -> return 'revenue'
+        return { type: 'revenue', montant, benefice };
+    }
+
+    // Legacy fallback based on strings
+
+    // Check for expenses
     if (EXPENSE_MOTIFS.some(m => motif.includes(m.toLowerCase())) ||
-        typeTransaction === 'depense' ||
         typeTransaction === 'sortie') {
         return { type: 'depense', montant, benefice };
     }
 
-    // Check for INTERNAL swaps ONLY (not regular transfers which are revenue)
+    // Check for INTERNAL swaps
     if (INTERNAL_TRANSFER_MOTIFS.some(m => motif.includes(m.toLowerCase())) ||
         typeTransaction === 'swap') {
         return { type: 'transfert', montant, benefice };
-    }
-
-    // Check for revenue (includes Transfert payments which are client payments)
-    if (REVENUE_MOTIFS.some(m => motif.includes(m.toLowerCase())) ||
-        typeTransaction === 'commande' ||
-        typeTransaction === 'entree' ||
-        typeTransaction === 'commercial' ||
-        typeTransaction === 'paiement' ||
-        typeTransaction === 'transfert') {  // transfert type = revenue
-        return { type: 'revenue', montant, benefice };
     }
 
     // Default: treat as revenue

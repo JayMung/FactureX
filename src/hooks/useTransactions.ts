@@ -114,6 +114,10 @@ export const useTransactions = (
       // Appliquer le tri AVANT la pagination
       const ascending = sortDirection === 'asc';
       query = query.order(sortColumn, { ascending });
+      // Secondary sort to ensure deterministic order for items with same primary sort value
+      if (sortColumn !== 'created_at' && sortColumn !== 'id') {
+        query = query.order('created_at', { ascending: false });
+      }
 
       // Appliquer la pagination APRÈS le tri (sauf si recherche active)
       if (!filters.search) {

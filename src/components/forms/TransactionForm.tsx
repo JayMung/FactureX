@@ -19,6 +19,16 @@ import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useExchangeRates, useFees } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
+import { supabase } from '@/integrations/supabase/client';
+
+interface FinanceCategory {
+  id: string;
+  nom: string;
+  type: string;
+  is_active: boolean;
+  code?: string;
+  created_at?: string;
+}
 
 interface TransactionFormProps {
   isOpen: boolean;
@@ -27,33 +37,15 @@ interface TransactionFormProps {
   transaction?: Transaction | undefined;
 }
 
-// Catégories par type de transaction
-const REVENUE_CATEGORIES = [
-  { value: 'Commande', label: 'Commande (Achat client)' },
-  { value: 'Transfert', label: 'Transfert d\'argent' },
-  { value: 'Retrait Colis', label: 'Retrait Colis' },
-  { value: 'Vente', label: 'Vente directe' },
-  { value: 'Autre', label: 'Autre revenue' }
-];
+// Categories will be fetched dynamically
+const DEFAULT_REVENUE_CATS = ['Commande', 'Transfert', 'Retrait Colis', 'Vente', 'Autre'];
+const DEFAULT_DEPENSE_CATS = ['Paiement Fournisseur', 'Paiement Shipping', 'Loyer', 'Salaires', 'Frais Installation', 'Achat Biens', 'Transport', 'Maintenance', 'Carburant', 'Autre'];
 
-const DEPENSE_CATEGORIES = [
-  { value: 'Paiement Fournisseur', label: 'Paiement Fournisseur' },
-  { value: 'Paiement Shipping', label: 'Paiement Shipping' },
-  { value: 'Loyer', label: 'Loyer' },
-  { value: 'Salaires', label: 'Salaires' },
-  { value: 'Frais Installation', label: 'Frais d\'Installation' },
-  { value: 'Achat Biens', label: 'Achat Biens' },
-  { value: 'Transport', label: 'Transport' },
-  { value: 'Maintenance', label: 'Maintenance' },
-  { value: 'Carburant', label: 'Carburant' },
-  { value: 'Autre', label: 'Autre dépense' }
-];
-
-const TransactionForm: React.FC<TransactionFormProps> = ({ 
-  isOpen, 
-  onClose, 
+const TransactionForm: React.FC<TransactionFormProps> = ({
+  isOpen,
+  onClose,
   onSuccess,
-  transaction 
+  transaction
 }) => {
   const [formData, setFormData] = useState({
     type_transaction: 'revenue' as 'revenue' | 'depense' | 'transfert',
@@ -61,6 +53,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     montant: '',
     devise: 'USD',
     categorie: 'Commande',
+    category_id: '',
     motif: 'Commande',
     mode_paiement: '',
     date_paiement: new Date().toISOString().split('T')[0],
@@ -69,9 +62,12 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     notes: '',
     frais: '0'
   });
-  
+
+  const [categories, setCategories] = useState<FinanceCategory[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isCalculating, setIsCalculating] = useState(false);
   const [calculations, setCalculations] = useState({
@@ -101,6 +97,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         montant: transaction.montant.toString(),
         devise: transaction.devise,
         categorie: transaction.categorie || transaction.motif || 'Commande',
+        category_id: transaction.category_id || '',
         motif: transaction.motif || 'Commande',
         mode_paiement: transaction.mode_paiement || '',
         date_paiement: transaction.date_paiement?.split('T')[0] || new Date().toISOString().split('T')[0],
@@ -109,7 +106,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         notes: transaction.notes || '',
         frais: transaction.frais?.toString() || '0'
       });
-      
+
       setCalculations({
         frais: transaction.frais || 0,
         benefice: transaction.benefice || 0,
@@ -119,6 +116,28 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       });
     }
   }, [transaction, isEditing]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setLoadingCategories(true);
+      try {
+        const { data, error } = await supabase
+          .from('finance_categories')
+          .select('*')
+          .eq('is_active', true)
+          .order('nom');
+
+        if (data) {
+          setCategories(data);
+        }
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   // Calculer automatiquement lorsque les données changent
   useEffect(() => {
@@ -131,15 +150,15 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     if (!formData.montant || !rates || !fees) return;
 
     setIsCalculating(true);
-    
+
     try {
       const montant = parseFloat(formData.montant);
       const tauxUSD = formData.devise === 'USD' ? 1 : rates.usdToCdf;
-      
+
       // Pour les transferts, utiliser les frais saisis manuellement
       let fraisUSD = 0;
       let benefice = 0;
-      
+
       if (formData.type_transaction === 'transfert') {
         // Frais de transfert saisis manuellement
         fraisUSD = parseFloat(formData.frais) || 0;
@@ -157,10 +176,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         fraisUSD = 0;
         benefice = -montant; // Dépense = perte
       }
-      
+
       const montantNet = montant - fraisUSD;
-      const montantCNY = formData.devise === 'USD' 
-        ? montantNet * rates.usdToCny 
+      const montantCNY = formData.devise === 'USD'
+        ? montantNet * rates.usdToCny
         : (montantNet / tauxUSD) * rates.usdToCny;
 
       setCalculations({
@@ -265,7 +284,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     try {
@@ -276,6 +295,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         devise: formData.devise,
         motif: formData.motif,
         categorie: formData.categorie,
+        category_id: formData.category_id || undefined,
         mode_paiement: formData.mode_paiement,
         date_paiement: formData.date_paiement,
         compte_source_id: formData.compte_source_id,
@@ -290,7 +310,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       } else {
         await createTransaction(transactionData);
       }
-      
+
       onSuccess?.();
       onClose();
       // Reset form
@@ -300,6 +320,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         montant: '',
         devise: 'USD',
         categorie: 'Commande',
+        category_id: '',
         motif: 'Commande',
         mode_paiement: '',
         date_paiement: new Date().toISOString().split('T')[0],
@@ -337,6 +358,17 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   if (!isOpen) return null;
 
   const activePaymentMethods = paymentMethods.filter(method => method.is_active);
+
+  // Filter categories by type
+  const availableCategories = categories.filter(c =>
+    c.type === formData.type_transaction ||
+    (formData.type_transaction === 'transfert' && c.type === 'revenue') // Transfert uses mostly revenue categories conceptually or special ones? Actually Transfert is its own beast.
+  );
+
+  // Fallback if no categories in DB yet
+  const displayCategories = availableCategories.length > 0
+    ? availableCategories.map(c => ({ value: c.id, label: c.nom, original: c }))
+    : (formData.type_transaction === 'depense' ? DEFAULT_DEPENSE_CATS : DEFAULT_REVENUE_CATS).map(c => ({ value: c, label: c, original: null }));
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -417,15 +449,33 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
               <div className="space-y-2">
                 <Label htmlFor="motif">Motif *</Label>
                 <Select
-                  value={formData.motif}
-                  onValueChange={(value) => handleChange('motif', value)}
+                  value={formData.category_id || formData.categorie} // Use ID if available, else name (fallback)
+                  onValueChange={(value) => {
+                    // Check if value is UUID
+                    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+                    if (isUuid) {
+                      const cat = categories.find(c => c.id === value);
+                      setFormData(prev => ({
+                        ...prev,
+                        category_id: value,
+                        categorie: cat ? cat.nom : prev.categorie,
+                        motif: cat ? cat.nom : prev.motif
+                      }));
+                    } else {
+                      // Legacy or fallback string value
+                      setFormData(prev => ({ ...prev, categorie: value, category_id: '', motif: value }));
+                    }
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Commande">Commande</SelectItem>
-                    <SelectItem value="Transfert">Transfert</SelectItem>
+                    {displayCategories.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

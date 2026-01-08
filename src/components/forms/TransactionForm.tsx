@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ClientCombobox } from '@/components/ui/client-combobox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Save, X, DollarSign, Calculator, AlertTriangle, Wallet, TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react';
+import { Loader2, Save, X, DollarSign } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { validateTransactionInput } from '@/lib/security/input-validation';
 import { detectAttackPatterns } from '@/lib/security/validation';
@@ -21,25 +21,16 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 import { supabase } from '@/integrations/supabase/client';
 
-interface FinanceCategory {
-  id: string;
-  nom: string;
-  type: string;
-  is_active: boolean;
-  code?: string;
-  created_at?: string;
-}
+// Refactored imports
+import { TransactionCalculations } from './transaction/TransactionCalculations';
+import {
+  TransactionFormProps,
+  FinanceCategory,
+  DEFAULT_REVENUE_CATS,
+  DEFAULT_DEPENSE_CATS
+} from './transaction/types';
 
-interface TransactionFormProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess?: () => void;
-  transaction?: Transaction | undefined;
-}
-
-// Categories will be fetched dynamically
-const DEFAULT_REVENUE_CATS = ['Commande', 'Transfert', 'Retrait Colis', 'Vente', 'Autre'];
-const DEFAULT_DEPENSE_CATS = ['Paiement Fournisseur', 'Paiement Shipping', 'Loyer', 'Salaires', 'Frais Installation', 'Achat Biens', 'Transport', 'Maintenance', 'Carburant', 'Autre'];
+// Interfaces and constants moved to ./transaction/types.ts
 
 const TransactionForm: React.FC<TransactionFormProps> = ({
   isOpen,
@@ -165,7 +156,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         benefice = fraisUSD; // Les frais de transfert sont le bénéfice
       } else if (formData.type_transaction === 'revenue') {
         // Calcul automatique pour les revenues
-        const categorieLower = formData.categorie.toLowerCase().replace(/ /g, '');
+        const categorieLower = (formData.motif || formData.categorie).toLowerCase().replace(/ /g, '');
+        // Fallback for fee key logic
         const feeKey = categorieLower as keyof typeof fees;
         const feePercentage = fees[feeKey] || fees.commande || 0;
         fraisUSD = montant * (feePercentage / 100);
@@ -362,13 +354,29 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   // Filter categories by type
   const availableCategories = categories.filter(c =>
     c.type === formData.type_transaction ||
-    (formData.type_transaction === 'transfert' && c.type === 'revenue') // Transfert uses mostly revenue categories conceptually or special ones? Actually Transfert is its own beast.
+    (formData.type_transaction === 'transfert' && c.type === 'revenue')
   );
 
-  // Fallback if no categories in DB yet
-  const displayCategories = availableCategories.length > 0
-    ? availableCategories.map(c => ({ value: c.id, label: c.nom, original: c }))
-    : (formData.type_transaction === 'depense' ? DEFAULT_DEPENSE_CATS : DEFAULT_REVENUE_CATS).map(c => ({ value: c, label: c, original: null }));
+  // Combine DB categories with Legacy defaults to ensuring nothing is missing
+  // especially 'Paiement Facture' etc if they haven't been migrated to DB yet
+  const defaults = formData.type_transaction === 'depense' ? DEFAULT_DEPENSE_CATS : DEFAULT_REVENUE_CATS;
+
+  // Create a map to avoid duplicates (DB takes precedence if name matches)
+  const categoryMap = new Map();
+
+  // Add defaults first (as fallback objects)
+  defaults.forEach(name => {
+    categoryMap.set(name.toLowerCase(), { value: name, label: name, original: null });
+  });
+
+  // Add DB categories (overriding defaults if name matches)
+  availableCategories.forEach(c => {
+    categoryMap.set(c.nom.toLowerCase(), { value: c.id, label: c.nom, original: c });
+  });
+
+  // Convert back to array
+  // If we have DB categories, we prefer them, but we want to ensure the "Important" legacy ones exist too
+  const displayCategories = Array.from(categoryMap.values()).sort((a, b) => a.label.localeCompare(b.label));
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -377,7 +385,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center">
               <DollarSign className="mr-2 h-5 w-5" />
-              {isEditing ? 'Modifier la transaction' : 'Nouvelle transaction'}
+              {isEditing ? 'Modifier la transaction' : 'Nouvelle transaction (v2)'}
             </CardTitle>
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-4 w-4" />
@@ -522,50 +530,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
               )}
             </div>
 
-            {/* Calculations Preview */}
-            {formData.montant && !isCalculating && (
-              <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                <h3 className="font-medium flex items-center">
-                  <Calculator className="mr-2 h-4 w-4" />
-                  Prévisualisation des calculs
-                </h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-600">Frais ({formData.motif}):</span>
-                    <span className="ml-2 font-medium">
-                      {formatCurrency(calculations.frais, 'USD')}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Bénéfice:</span>
-                    <span className="ml-2 font-medium text-green-600">
-                      {formatCurrency(calculations.benefice, 'USD')}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Montant CNY:</span>
-                    <span className="ml-2 font-medium text-blue-600">
-                      {formatCurrency(calculations.montant_cny, 'CNY')}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Taux USD/CDF:</span>
-                    <span className="ml-2 font-medium">
-                      {calculations.taux_usd_cdf.toLocaleString('fr-FR')}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {isCalculating && (
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-gray-600">Calcul en cours...</span>
-                </div>
-              </div>
-            )}
+            {/* Calculations Preview - Extracted to component */}
+            <TransactionCalculations
+              formData={formData}
+              isCalculating={isCalculating}
+              calculations={calculations}
+              formatCurrency={formatCurrency}
+            />
 
             {/* Exchange Rates Info */}
             {rates && (

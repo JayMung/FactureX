@@ -29,12 +29,12 @@ interface TransactionFormProps {
   defaultType?: 'revenue' | 'depense' | 'transfert';
 }
 
-// Catégories par défaut (fallback si la base de données est vide)
+// Catégories par défaut (Revenue) - 4 motifs essentiels
 const DEFAULT_REVENUE_CATEGORIES = [
-  { value: 'Commande (Facture)', label: 'Commande (Facture)' },
-  { value: 'Transfert (Argent)', label: 'Transfert (Argent)' },
-  { value: 'Paiement Colis', label: 'Paiement Colis' },
-  { value: 'Autres Paiement', label: 'Autres Paiement' }
+  { value: 'Transfert Reçu', label: 'Transfert Reçu' },           // Applique % (5%)
+  { value: 'Commande (Facture)', label: 'Commande (Facture)' },   // Lié à facture, Applique % (15%)
+  { value: 'Paiement Colis', label: 'Paiement Colis' },           // Lié à colis, Pas de %
+  { value: 'Autres Paiement', label: 'Autres Paiement' }          // Pas de %
 ];
 
 const DEFAULT_DEPENSE_CATEGORIES = [
@@ -96,18 +96,29 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   const isEditing = !!transaction;
   const isLoading = isCreating || isUpdating;
 
-  // Déterminer les catégories à afficher (DB ou fallback) - memoized to prevent infinite loops
+  // Déterminer les catégories à afficher (MERGE DB + Defaults) - memoized to prevent infinite loops
   const displayRevenueCategories = useMemo(() => {
-    let categories = revenueCategories.length > 0
-      ? revenueCategories.map(c => ({ value: c.nom, label: c.nom, code: c.code, icon: c.icon, couleur: c.couleur }))
-      : DEFAULT_REVENUE_CATEGORIES.map(c => ({ ...c, code: '', icon: '', couleur: '' }));
+    // Start with defaults
+    const categoryMap = new Map<string, { value: string; label: string; code: string; icon: string; couleur: string }>();
 
-    // Ensure "Autres Paiement" is always present for revenue
-    if (!categories.find(c => c.value === 'Autres Paiement')) {
-      categories.push({ value: 'Autres Paiement', label: 'Autres Paiement', code: 'AUTRE_PAIEMENT', icon: '', couleur: '' });
-    }
+    // Add all defaults first
+    DEFAULT_REVENUE_CATEGORIES.forEach(c => {
+      categoryMap.set(c.value.toLowerCase(), { ...c, code: '', icon: '', couleur: '' });
+    });
 
-    return categories;
+    // Override/add with DB categories (they have priority if names match)
+    revenueCategories.forEach(c => {
+      categoryMap.set(c.nom.toLowerCase(), {
+        value: c.nom,
+        label: c.nom,
+        code: c.code || '',
+        icon: c.icon || '',
+        couleur: c.couleur || ''
+      });
+    });
+
+    // Convert back to array and sort alphabetically
+    return Array.from(categoryMap.values()).sort((a, b) => a.label.localeCompare(b.label));
   }, [revenueCategories]);
 
   const displayDepenseCategories = useMemo(() =>

@@ -158,11 +158,25 @@ const getTransactionColumnsCombined = (props: any) => {
         key: 'motif',
         title: 'Motif',
         sortable: true,
-        render: (value: any) => (
-          <Badge variant="secondary" className="bg-gray-100 text-gray-800 font-normal whitespace-nowrap">
-            {value}
-          </Badge>
-        )
+        render: (value: any, item: any) => {
+          // Try to find the category definition to get its color
+          // For commercial transactions, the 'motif' often matches the category name
+          const category = categoriesMap?.[value] || categoriesMap?.[item.categorie];
+
+          return (
+            <Badge
+              variant="outline"
+              className="font-normal whitespace-nowrap border-0"
+              style={{
+                backgroundColor: category?.couleur ? `${category.couleur}15` : '#f3f4f6',
+                color: category?.couleur || '#374151',
+                border: `1px solid ${category?.couleur ? `${category.couleur}30` : '#e5e7eb'}`
+              }}
+            >
+              {value}
+            </Badge>
+          );
+        }
       },
       {
         key: 'statut',

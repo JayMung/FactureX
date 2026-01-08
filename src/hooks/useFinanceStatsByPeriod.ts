@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getDateRange, getPeriodLabel, PeriodFilter } from '@/utils/dateUtils';
+import { useExchangeRates } from './useSettings';
+
 export type { PeriodFilter };
 
 interface FinanceStats {
@@ -47,48 +49,29 @@ const classifyTransaction = (t: { montant?: number; motif?: string; type_transac
     const typeTransaction = (t.type_transaction || '').toLowerCase();
     const benefice = t.benefice || 0;
 
-    // Strict check based on new standardized types
     if (typeTransaction === 'depense') {
         return { type: 'depense', montant, benefice };
     }
     if (typeTransaction === 'revenue') {
         return { type: 'revenue', montant, benefice };
     }
-    // Note: 'transfert' type in transactions table usually means "money transfer" (revenue type activity in this business logic, or neutral swap)
-    // But in the hook, it distinguishes them.
-    // If it is 'transfert', we need to check if it's internal swap (no user?) or revenue-generating transfer.
-    // However, the hook logic above says "Check for INTERNAL swaps ONLY... if type_transaction === 'swap'".
-    // And "Check for revenue... if type_transaction === 'transfert'".
-    // So distinct types are used.
 
-    // Let's keep the logic aligned with what the form saves:
+    // Legacy support
     if (typeTransaction === 'transfert') {
-        // Is it a swap (internal) or commercial transfer?
-        // The form saves 'transfert' for both? No, form has type_transaction: 'revenue' | 'depense' | 'transfert'.
-        // But previously 'transfert' was considered revenue.
-        // Let's assume 'transfert' type logic in this app means "money transfer service" (revenue).
-        // Only internal movements are 'swap' or 'depense' if legacy.
-
-        // Actually, let's look at the old logic:
-        // if typeTransaction === 'transfert' -> return 'revenue'
         return { type: 'revenue', montant, benefice };
     }
 
     // Legacy fallback based on strings
-
-    // Check for expenses
     if (EXPENSE_MOTIFS.some(m => motif.includes(m.toLowerCase())) ||
         typeTransaction === 'sortie') {
         return { type: 'depense', montant, benefice };
     }
 
-    // Check for INTERNAL swaps
     if (INTERNAL_TRANSFER_MOTIFS.some(m => motif.includes(m.toLowerCase())) ||
         typeTransaction === 'swap') {
         return { type: 'transfert', montant, benefice };
     }
 
-    // Default: treat as revenue
     return { type: 'revenue', montant, benefice };
 };
 
@@ -100,15 +83,18 @@ export const useFinanceStatsByPeriod = (period: PeriodFilter = 'month') => {
     const { current: currentRange, previous: previousRange } = useMemo(() => getDateRange(period), [period]);
     const periodLabel = useMemo(() => getPeriodLabel(period), [period]);
 
+    // Get exchange rates for conversion
+    const { rates, isLoading: ratesLoading } = useExchangeRates();
+
     useEffect(() => {
         const fetchStats = async () => {
+            // Wait for rates to be available
+            if (ratesLoading) return;
+
             setIsLoading(true);
             setError(null);
 
             try {
-                console.log('📊 Fetching finance stats for period:', period);
-                console.log('📅 Date range:', currentRange.start.toISOString(), 'to', currentRange.end.toISOString());
-
                 // Fetch transactions for current period
                 const { data: currentData, error: currentError } = await supabase
                     .from('transactions')
@@ -116,15 +102,7 @@ export const useFinanceStatsByPeriod = (period: PeriodFilter = 'month') => {
                     .gte('created_at', currentRange.start.toISOString())
                     .lte('created_at', currentRange.end.toISOString());
 
-                if (currentError) {
-                    console.error('❌ Error fetching current data:', currentError);
-                    throw currentError;
-                }
-
-                console.log('📦 Current period transactions:', currentData?.length || 0);
-                if (currentData?.length) {
-                    console.log('📋 Sample transaction:', currentData[0]);
-                }
+                if (currentError) throw currentError;
 
                 // Fetch transactions for previous period
                 const { data: previousData, error: previousError } = await supabase
@@ -133,10 +111,19 @@ export const useFinanceStatsByPeriod = (period: PeriodFilter = 'month') => {
                     .gte('created_at', previousRange.start.toISOString())
                     .lte('created_at', previousRange.end.toISOString());
 
-                if (previousError) {
-                    console.error('❌ Error fetching previous data:', previousError);
-                    throw previousError;
-                }
+                if (previousError) throw previousError;
+
+                // Helper for conversion
+                const convertToUsd = (amount: number, currency: string) => {
+                    if (!amount) return 0;
+                    if (currency === 'CDF' && rates?.usdToCdf) {
+                        return amount / rates.usdToCdf;
+                    }
+                    if (currency === 'CNY' && rates?.usdToCny) {
+                        return amount / rates.usdToCny;
+                    }
+                    return amount; // Default USD
+                };
 
                 // Calculate current stats
                 let currentRevenue = 0;
@@ -146,18 +133,18 @@ export const useFinanceStatsByPeriod = (period: PeriodFilter = 'month') => {
 
                 (currentData || []).forEach(t => {
                     const classified = classifyTransaction(t);
+                    const amountUSD = convertToUsd(classified.montant, t.devise || 'USD');
+                    const beneficeUSD = convertToUsd(classified.benefice, t.devise || 'USD'); // Assuming benefice is same currency as transaction
 
                     if (classified.type === 'revenue') {
-                        currentRevenue += classified.montant;
-                        totalBenefice += classified.benefice;
+                        currentRevenue += amountUSD;
+                        totalBenefice += beneficeUSD;
                     } else if (classified.type === 'depense') {
-                        currentDepenses += classified.montant;
+                        currentDepenses += amountUSD;
                     } else if (classified.type === 'transfert') {
-                        currentTransferts += classified.montant;
+                        currentTransferts += amountUSD;
                     }
                 });
-
-                console.log('💰 Calculated:', { currentRevenue, currentDepenses, currentTransferts, totalBenefice });
 
                 // Calculate previous stats
                 let previousRevenue = 0;
@@ -165,11 +152,12 @@ export const useFinanceStatsByPeriod = (period: PeriodFilter = 'month') => {
 
                 (previousData || []).forEach(t => {
                     const classified = classifyTransaction(t);
+                    const amountUSD = convertToUsd(classified.montant, t.devise || 'USD');
 
                     if (classified.type === 'revenue') {
-                        previousRevenue += classified.montant;
+                        previousRevenue += amountUSD;
                     } else if (classified.type === 'depense') {
-                        previousDepenses += classified.montant;
+                        previousDepenses += amountUSD;
                     }
                 });
 
@@ -199,13 +187,15 @@ export const useFinanceStatsByPeriod = (period: PeriodFilter = 'month') => {
             }
         };
 
-        fetchStats();
-    }, [currentRange, previousRange, period]);
+        if (!ratesLoading) {
+            fetchStats();
+        }
+    }, [currentRange, previousRange, period, rates, ratesLoading]);
 
     return {
         stats,
         transactions: stats?.transactions || [],
-        isLoading,
+        isLoading: isLoading || ratesLoading,
         error,
         periodLabel,
         dateRange: currentRange

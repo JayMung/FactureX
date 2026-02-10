@@ -30,3 +30,4 @@ La sécurité de FactureX repose sur une architecture robuste avec **Supabase** 
 
 *Audit genere automatiquement via windsurf-coder* 🤖
 Validation de l identite Git effectuee avec succes.
+Synchro Cloud-to-Local operationnel le 11/02/2026.

@@ -189,6 +189,14 @@ export class InputValidator {
       }
     }
 
+    // Validate category_id (UUID)
+    if (data.category_id) {
+      const categoryResult = this.validateUUID(data.category_id, 'category_id');
+      if (categoryResult.isValid) {
+        sanitized.category_id = categoryResult.sanitizedValue;
+      }
+    }
+
     return {
       isValid: errors.length === 0,
       sanitizedValue: sanitized,

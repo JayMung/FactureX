@@ -494,8 +494,8 @@ export class SupabaseService {
       if (error) throw error;
 
       const rates: ExchangeRates = {
-        usdToCny: 7.25,
-        usdToCdf: 2850,
+        usdToCny: 6.95,
+        usdToCdf: 2200,
         lastUpdated: new Date().toISOString()
       };
 

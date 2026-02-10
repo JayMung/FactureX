@@ -32,7 +32,7 @@ export const useContainersMaritime = () => {
                 .from('containers_maritime')
                 .select(`
                     *,
-                    transitaire:transitaires(nom)
+                    transitaire:transitaires!containers_maritime_transitaire_id_fkey(nom)
                 `)
                 .order('created_at', { ascending: false });
 
@@ -62,7 +62,7 @@ export const useContainersMaritime = () => {
 
             if (error) throw error;
 
-            setContainers(prev => [newContainer as ContainerMaritime, ...prev]);
+            await fetchContainers(); // Refresh to get joined transitaire info
             toast.success('Container créé avec succès');
             return newContainer;
         } catch (err: any) {
@@ -83,7 +83,7 @@ export const useContainersMaritime = () => {
 
             if (error) throw error;
 
-            setContainers(prev => prev.map(c => c.id === id ? { ...c, ...updated } as ContainerMaritime : c));
+            await fetchContainers(); // Refresh to get joined transitaire info
             toast.success('Container mis à jour');
             return updated;
         } catch (err: any) {

@@ -29,12 +29,12 @@ interface TransactionFormProps {
   defaultType?: 'revenue' | 'depense' | 'transfert';
 }
 
-// Catégories par défaut (fallback si la base de données est vide)
+// Catégories par défaut (Revenue) - 4 motifs essentiels
 const DEFAULT_REVENUE_CATEGORIES = [
-  { value: 'Commande (Facture)', label: 'Commande (Facture)' },
-  { value: 'Transfert (Argent)', label: 'Transfert (Argent)' },
-  { value: 'Paiement Colis', label: 'Paiement Colis' },
-  { value: 'Autres Paiement', label: 'Autres Paiement' }
+  { value: 'Transfert Reçu', label: 'Transfert Reçu' },           // Applique % (5%)
+  { value: 'Commande (Facture)', label: 'Commande (Facture)' },   // Lié à facture, Applique % (15%)
+  { value: 'Paiement Colis', label: 'Paiement Colis' },           // Lié à colis, Pas de %
+  { value: 'Autres Paiement', label: 'Autres Paiement' }          // Pas de %
 ];
 
 const DEFAULT_DEPENSE_CATEGORIES = [
@@ -59,7 +59,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
     type_transaction: defaultType as 'revenue' | 'depense' | 'transfert',
     client_id: '',
     montant: '',
-    devise: 'USD' as 'USD' | 'CDF',
+    devise: 'USD' as 'USD' | 'CDF' | 'CNY',
     categorie: 'Commande',
     mode_paiement: '',
     date_paiement: getTodayDateString(),
@@ -96,18 +96,29 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   const isEditing = !!transaction;
   const isLoading = isCreating || isUpdating;
 
-  // Déterminer les catégories à afficher (DB ou fallback) - memoized to prevent infinite loops
+  // Déterminer les catégories à afficher (MERGE DB + Defaults) - memoized to prevent infinite loops
   const displayRevenueCategories = useMemo(() => {
-    let categories = revenueCategories.length > 0
-      ? revenueCategories.map(c => ({ value: c.nom, label: c.nom, code: c.code, icon: c.icon, couleur: c.couleur }))
-      : DEFAULT_REVENUE_CATEGORIES.map(c => ({ ...c, code: '', icon: '', couleur: '' }));
+    // Start with defaults
+    const categoryMap = new Map<string, { value: string; label: string; code: string; icon: string; couleur: string }>();
 
-    // Ensure "Autres Paiement" is always present for revenue
-    if (!categories.find(c => c.value === 'Autres Paiement')) {
-      categories.push({ value: 'Autres Paiement', label: 'Autres Paiement', code: 'AUTRE_PAIEMENT', icon: '', couleur: '' });
-    }
+    // Add all defaults first
+    DEFAULT_REVENUE_CATEGORIES.forEach(c => {
+      categoryMap.set(c.value.toLowerCase(), { ...c, code: '', icon: '', couleur: '' });
+    });
 
-    return categories;
+    // Override/add with DB categories (they have priority if names match)
+    revenueCategories.forEach(c => {
+      categoryMap.set(c.nom.toLowerCase(), {
+        value: c.nom,
+        label: c.nom,
+        code: c.code || '',
+        icon: c.icon || '',
+        couleur: c.couleur || ''
+      });
+    });
+
+    // Convert back to array and sort alphabetically
+    return Array.from(categoryMap.values()).sort((a, b) => a.label.localeCompare(b.label));
   }, [revenueCategories]);
 
   const displayDepenseCategories = useMemo(() =>
@@ -186,14 +197,18 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   }, [formData.type_transaction, isEditing, categoriesLoading, displayRevenueCategories, displayDepenseCategories]);
 
   // Reset frais à 0 quand la catégorie n'a pas de frais (only if frais is not already 0)
-  useEffect(() => {
-    if (!hasFees) {
-      setFormData(prev => {
-        if (prev.frais === '0') return prev; // Prevent unnecessary update
-        return { ...prev, frais: '0' };
-      });
-    }
-  }, [hasFees]);
+  // Reset frais à 0 quand la catégorie n'a pas de frais (only if frais is not already 0)
+  // Ne PAS reset pour les transferts car les frais sont manuels
+  // Reset frais logic removed to allow manual fees on any category
+  // Si on veut des frais auto, on pourrait le remettre, mais l'utilisateur veut du manuel.
+  // useEffect(() => {
+  //   if (!hasFees && formData.type_transaction !== 'transfert') {
+  //     setFormData(prev => {
+  //       if (prev.frais === '0') return prev;
+  //       return { ...prev, frais: '0' };
+  //     });
+  //   }
+  // }, [hasFees, formData.type_transaction]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -312,10 +327,62 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
         transactionData.facture_id = formData.facture_id;
       }
 
-      // Ne PAS envoyer frais et benefice - ils seront calculés par useTransactions
-      // Supprimer les valeurs par défaut pour laisser le hook calculer
-      delete (transactionData as any).frais;
+      // Ne PAS envoyer frais et benefice SAUF pour transfert où les frais sont manuels
+      // Pour Revenue/Depense, le hook useTransactions calcule peut-être des frais auto.
+      // Mais pour Transfert, le champ 'frais' est explicite.
+      if (formData.type_transaction !== 'transfert') {
+        delete (transactionData as any).frais;
+      }
       delete (transactionData as any).benefice;
+
+      // Gestion SWAP (Conversion) — toutes les paires de devises
+      if (formData.type_transaction === 'transfert' && formData.compte_source_id && formData.compte_destination_id) {
+        const activeComptesList = activeComptes || comptes.filter(c => c.is_active || c.id === formData.compte_source_id || c.id === formData.compte_destination_id);
+        const source = activeComptesList.find(c => c.id === formData.compte_source_id);
+        const dest = activeComptesList.find(c => c.id === formData.compte_destination_id);
+
+        if (source && dest && source.devise !== dest.devise) {
+          const montantSource = parseFloat(formData.montant || '0');
+          const usdToCny = rates?.usdToCny || 6.95;
+          const usdToCdf = rates?.usdToCdf || 2200;
+          let montantConverti = 0;
+
+          // USD -> CNY
+          if (source.devise === 'USD' && dest.devise === 'CNY') {
+            montantConverti = montantSource * usdToCny;
+          }
+          // CNY -> USD
+          else if (source.devise === 'CNY' && dest.devise === 'USD') {
+            montantConverti = montantSource / usdToCny;
+          }
+          // USD -> CDF
+          else if (source.devise === 'USD' && dest.devise === 'CDF') {
+            montantConverti = montantSource * usdToCdf;
+          }
+          // CDF -> USD
+          else if (source.devise === 'CDF' && dest.devise === 'USD') {
+            montantConverti = montantSource / usdToCdf;
+          }
+          // CNY -> CDF (via USD: CNY->USD->CDF)
+          else if (source.devise === 'CNY' && dest.devise === 'CDF') {
+            montantConverti = (montantSource / usdToCny) * usdToCdf;
+          }
+          // CDF -> CNY (via USD: CDF->USD->CNY)
+          else if (source.devise === 'CDF' && dest.devise === 'CNY') {
+            montantConverti = (montantSource / usdToCdf) * usdToCny;
+          }
+
+          if (montantConverti > 0) {
+            (transactionData as any).montant_converti = parseFloat(montantConverti.toFixed(2));
+            (transactionData as any).taux_usd_cny = usdToCny;
+            (transactionData as any).taux_usd_cdf = usdToCdf;
+            // Legacy: also set montant_cny for backward compatibility
+            if (dest.devise === 'CNY') {
+              (transactionData as any).montant_cny = parseFloat(montantConverti.toFixed(2));
+            }
+          }
+        }
+      }
 
       if (isEditing && transaction) {
         console.log('🔄 Updating transaction:', transaction.id);
@@ -623,6 +690,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
                   <SelectContent>
                     <SelectItem value="USD">USD ($)</SelectItem>
                     <SelectItem value="CDF">CDF (Fc)</SelectItem>
+                    <SelectItem value="CNY">CNY (¥)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -720,7 +788,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
                       <SelectValue placeholder="Vers quel compte?" />
                     </SelectTrigger>
                     <SelectContent>
-                      {activeComptes.filter(c => c.devise === formData.devise && c.id !== formData.compte_source_id).map((compte) => (
+                      {activeComptes.filter(c => c.id !== formData.compte_source_id).map((compte) => (
                         <SelectItem key={compte.id} value={compte.id}>
                           <div className="flex items-center">
                             <Wallet className="mr-2 h-4 w-4" />
@@ -733,21 +801,55 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
                   {errors.compte_destination_id && (
                     <p className="text-sm text-red-600">{errors.compte_destination_id}</p>
                   )}
+
+                  {/* Info Swap / Conversion */}
+                  {formData.compte_source_id && formData.compte_destination_id && (() => {
+                    const source = activeComptes.find(c => c.id === formData.compte_source_id);
+                    const dest = activeComptes.find(c => c.id === formData.compte_destination_id);
+                    if (source && dest && source.devise !== dest.devise) {
+                      // Assuming USD -> CNY for now as primary use case
+                      let rate = 1;
+                      let convertedAmount = 0;
+                      let rateDisplay = '';
+
+                      if (source.devise === 'USD' && dest.devise === 'CNY') {
+                        rate = rates.usdToCny || 0;
+                        convertedAmount = parseFloat(formData.montant || '0') * rate;
+                        rateDisplay = `1 USD = ${rate} CNY`;
+                      }
+
+                      return (
+                        <Alert className="mt-2 bg-blue-50 border-blue-200">
+                          <ArrowRightLeft className="h-4 w-4 text-blue-500" />
+                          <AlertDescription className="text-blue-700">
+                            <strong>Swap {source.devise} vers {dest.devise}</strong><br />
+                            Taux: {rateDisplay}<br />
+                            Montant reçu estimé: <strong>{convertedAmount.toFixed(2)} {dest.devise}</strong>
+                          </AlertDescription>
+                        </Alert>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="frais">Frais de transfert</Label>
-                  <Input
-                    id="frais"
-                    type="number"
-                    step="0.01"
-                    value={formData.frais}
-                    onChange={(e) => handleChange('frais', e.target.value)}
-                    placeholder="0.00"
-                  />
-                </div>
               </>
             )}
+
+            {/* Frais (Visible pour tous les types si souhaité, ou au moins Revenue/Transfert) */}
+            {/* L'utilisateur veut pouvoir ajouter des frais manuels sur d'autres transactions */}
+
+            <div className="space-y-2">
+              <Label htmlFor="frais">Frais {formData.type_transaction === 'transfert' ? 'de transfert' : '(Optionnel)'}</Label>
+              <Input
+                id="frais"
+                type="number"
+                step="0.01"
+                value={formData.frais}
+                onChange={(e) => handleChange('frais', e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
 
             {/* Date */}
             <div className="space-y-2">

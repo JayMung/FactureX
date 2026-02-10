@@ -18,13 +18,15 @@ import {
   DollarSign,
   MapPin,
   CheckSquare,
-  Phone
+  Phone,
+  ArrowRightLeft
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import SortableHeader from '../components/ui/sortable-header';
 import BulkActions from '../components/ui/bulk-actions';
 import ClientForm from '../components/forms/ClientForm';
 import ClientHistoryModal from '../components/clients/ClientHistoryModal';
+import MergeClientsDialog from '../components/clients/MergeClientsDialog';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
@@ -78,6 +80,7 @@ const ClientsProtected: React.FC = () => {
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
   const { isAdmin } = usePermissions();
 
   const {
@@ -339,7 +342,17 @@ const ClientsProtected: React.FC = () => {
             onExportSelected={() => exportSelectedClients(sortedData.filter((c: Client) => selectedClients.includes(c.id)))}
             onEmailSelected={() => emailSelectedClients(sortedData.filter((c: Client) => selectedClients.includes(c.id)))}
             isDeleting={isDeleting}
-          />
+          >
+            {selectedClients.length === 2 && isAdmin && (
+              <Button
+                onClick={() => setIsMergeDialogOpen(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+              >
+                <ArrowRightLeft className="h-4 w-4" />
+                Fusionner les 2 fiches
+              </Button>
+            )}
+          </BulkActions>
 
           {/* City Filter Tabs */}
           <FilterTabs
@@ -628,6 +641,16 @@ const ClientsProtected: React.FC = () => {
             client={clientForHistory}
             open={historyModalOpen}
             onOpenChange={setHistoryModalOpen}
+          />
+
+          <MergeClientsDialog
+            open={isMergeDialogOpen}
+            onOpenChange={setIsMergeDialogOpen}
+            clientsToMerge={selectedClients}
+            onSuccess={() => {
+              setSelectedClients([]);
+              refetch();
+            }}
           />
 
           {/* Delete Confirmation Dialogs */}

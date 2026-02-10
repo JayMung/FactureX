@@ -35,6 +35,7 @@ export interface Transaction {
   // New financial fields
   type_transaction: 'revenue' | 'depense' | 'transfert';
   categorie?: string;
+  category_id?: string; // Foreign key to finance_categories
   compte_source_id?: string;
   compte_destination_id?: string;
   colis_id?: string;
@@ -213,6 +214,7 @@ export interface CreateTransactionData {
   date_paiement?: string;
   statut?: string;
   categorie?: string;
+  category_id?: string;
   compte_source_id?: string;
   compte_destination_id?: string;
   colis_id?: string;
@@ -234,6 +236,7 @@ export interface UpdateTransactionData {
   date_paiement?: string;
   statut?: string;
   categorie?: string;
+  category_id?: string;
   compte_source_id?: string;
   compte_destination_id?: string;
   colis_id?: string;

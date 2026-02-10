@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ClientCombobox } from '@/components/ui/client-combobox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Save, X, DollarSign, Calculator, AlertTriangle, Wallet, TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react';
+import { Loader2, Save, X, DollarSign } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { validateTransactionInput } from '@/lib/security/input-validation';
 import { detectAttackPatterns } from '@/lib/security/validation';
@@ -19,41 +19,24 @@ import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useExchangeRates, useFees } from '@/hooks/useSettings';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
+import { supabase } from '@/integrations/supabase/client';
 
-interface TransactionFormProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess?: () => void;
-  transaction?: Transaction | undefined;
-}
+// Refactored imports
+import { TransactionCalculations } from './transaction/TransactionCalculations';
+import {
+  TransactionFormProps,
+  FinanceCategory,
+  DEFAULT_REVENUE_CATS,
+  DEFAULT_DEPENSE_CATS
+} from './transaction/types';
 
-// Catégories par type de transaction
-const REVENUE_CATEGORIES = [
-  { value: 'Commande', label: 'Commande (Achat client)' },
-  { value: 'Transfert', label: 'Transfert d\'argent' },
-  { value: 'Retrait Colis', label: 'Retrait Colis' },
-  { value: 'Vente', label: 'Vente directe' },
-  { value: 'Autre', label: 'Autre revenue' }
-];
+// Interfaces and constants moved to ./transaction/types.ts
 
-const DEPENSE_CATEGORIES = [
-  { value: 'Paiement Fournisseur', label: 'Paiement Fournisseur' },
-  { value: 'Paiement Shipping', label: 'Paiement Shipping' },
-  { value: 'Loyer', label: 'Loyer' },
-  { value: 'Salaires', label: 'Salaires' },
-  { value: 'Frais Installation', label: 'Frais d\'Installation' },
-  { value: 'Achat Biens', label: 'Achat Biens' },
-  { value: 'Transport', label: 'Transport' },
-  { value: 'Maintenance', label: 'Maintenance' },
-  { value: 'Carburant', label: 'Carburant' },
-  { value: 'Autre', label: 'Autre dépense' }
-];
-
-const TransactionForm: React.FC<TransactionFormProps> = ({ 
-  isOpen, 
-  onClose, 
+const TransactionForm: React.FC<TransactionFormProps> = ({
+  isOpen,
+  onClose,
   onSuccess,
-  transaction 
+  transaction
 }) => {
   const [formData, setFormData] = useState({
     type_transaction: 'revenue' as 'revenue' | 'depense' | 'transfert',
@@ -61,6 +44,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     montant: '',
     devise: 'USD',
     categorie: 'Commande',
+    category_id: '',
     motif: 'Commande',
     mode_paiement: '',
     date_paiement: new Date().toISOString().split('T')[0],
@@ -69,9 +53,12 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     notes: '',
     frais: '0'
   });
-  
+
+  const [categories, setCategories] = useState<FinanceCategory[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isCalculating, setIsCalculating] = useState(false);
   const [calculations, setCalculations] = useState({
@@ -101,6 +88,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         montant: transaction.montant.toString(),
         devise: transaction.devise,
         categorie: transaction.categorie || transaction.motif || 'Commande',
+        category_id: transaction.category_id || '',
         motif: transaction.motif || 'Commande',
         mode_paiement: transaction.mode_paiement || '',
         date_paiement: transaction.date_paiement?.split('T')[0] || new Date().toISOString().split('T')[0],
@@ -109,7 +97,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         notes: transaction.notes || '',
         frais: transaction.frais?.toString() || '0'
       });
-      
+
       setCalculations({
         frais: transaction.frais || 0,
         benefice: transaction.benefice || 0,
@@ -119,6 +107,28 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       });
     }
   }, [transaction, isEditing]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setLoadingCategories(true);
+      try {
+        const { data, error } = await supabase
+          .from('finance_categories')
+          .select('*')
+          .eq('is_active', true)
+          .order('nom');
+
+        if (data) {
+          setCategories(data);
+        }
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   // Calculer automatiquement lorsque les données changent
   useEffect(() => {
@@ -131,22 +141,23 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     if (!formData.montant || !rates || !fees) return;
 
     setIsCalculating(true);
-    
+
     try {
       const montant = parseFloat(formData.montant);
       const tauxUSD = formData.devise === 'USD' ? 1 : rates.usdToCdf;
-      
+
       // Pour les transferts, utiliser les frais saisis manuellement
       let fraisUSD = 0;
       let benefice = 0;
-      
+
       if (formData.type_transaction === 'transfert') {
         // Frais de transfert saisis manuellement
         fraisUSD = parseFloat(formData.frais) || 0;
         benefice = fraisUSD; // Les frais de transfert sont le bénéfice
       } else if (formData.type_transaction === 'revenue') {
         // Calcul automatique pour les revenues
-        const categorieLower = formData.categorie.toLowerCase().replace(/ /g, '');
+        const categorieLower = (formData.motif || formData.categorie).toLowerCase().replace(/ /g, '');
+        // Fallback for fee key logic
         const feeKey = categorieLower as keyof typeof fees;
         const feePercentage = fees[feeKey] || fees.commande || 0;
         fraisUSD = montant * (feePercentage / 100);
@@ -157,11 +168,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         fraisUSD = 0;
         benefice = -montant; // Dépense = perte
       }
-      
+
       const montantNet = montant - fraisUSD;
-      const montantCNY = formData.devise === 'USD' 
-        ? montantNet * rates.usdToCny 
-        : (montantNet / tauxUSD) * rates.usdToCny;
+
+      // Calculer montant_cny uniquement pour les revenues (transactions commerciales)
+      let montantCNY = 0;
+      if (formData.type_transaction === 'revenue') {
+        montantCNY = formData.devise === 'USD'
+          ? montantNet * rates.usdToCny
+          : (montantNet / tauxUSD) * rates.usdToCny;
+      }
 
       setCalculations({
         frais: fraisUSD,
@@ -265,7 +281,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     try {
@@ -276,6 +292,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         devise: formData.devise,
         motif: formData.motif,
         categorie: formData.categorie,
+        category_id: formData.category_id || undefined,
         mode_paiement: formData.mode_paiement,
         date_paiement: formData.date_paiement,
         compte_source_id: formData.compte_source_id,
@@ -290,7 +307,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       } else {
         await createTransaction(transactionData);
       }
-      
+
       onSuccess?.();
       onClose();
       // Reset form
@@ -300,6 +317,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         montant: '',
         devise: 'USD',
         categorie: 'Commande',
+        category_id: '',
         motif: 'Commande',
         mode_paiement: '',
         date_paiement: new Date().toISOString().split('T')[0],
@@ -338,6 +356,33 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const activePaymentMethods = paymentMethods.filter(method => method.is_active);
 
+  // Filter categories by type
+  const availableCategories = categories.filter(c =>
+    c.type === formData.type_transaction ||
+    (formData.type_transaction === 'transfert' && c.type === 'revenue')
+  );
+
+  // Combine DB categories with Legacy defaults to ensuring nothing is missing
+  // especially 'Paiement Facture' etc if they haven't been migrated to DB yet
+  const defaults = formData.type_transaction === 'depense' ? DEFAULT_DEPENSE_CATS : DEFAULT_REVENUE_CATS;
+
+  // Create a map to avoid duplicates (DB takes precedence if name matches)
+  const categoryMap = new Map();
+
+  // Add defaults first (as fallback objects)
+  defaults.forEach(name => {
+    categoryMap.set(name.toLowerCase(), { value: name, label: name, original: null });
+  });
+
+  // Add DB categories (overriding defaults if name matches)
+  availableCategories.forEach(c => {
+    categoryMap.set(c.nom.toLowerCase(), { value: c.id, label: c.nom, original: c });
+  });
+
+  // Convert back to array
+  // If we have DB categories, we prefer them, but we want to ensure the "Important" legacy ones exist too
+  const displayCategories = Array.from(categoryMap.values()).sort((a, b) => a.label.localeCompare(b.label));
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -345,7 +390,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center">
               <DollarSign className="mr-2 h-5 w-5" />
-              {isEditing ? 'Modifier la transaction' : 'Nouvelle transaction'}
+              {isEditing ? 'Modifier la transaction' : 'Nouvelle transaction (v2)'}
             </CardTitle>
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-4 w-4" />
@@ -417,15 +462,33 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
               <div className="space-y-2">
                 <Label htmlFor="motif">Motif *</Label>
                 <Select
-                  value={formData.motif}
-                  onValueChange={(value) => handleChange('motif', value)}
+                  value={formData.category_id || formData.categorie} // Use ID if available, else name (fallback)
+                  onValueChange={(value) => {
+                    // Check if value is UUID
+                    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+                    if (isUuid) {
+                      const cat = categories.find(c => c.id === value);
+                      setFormData(prev => ({
+                        ...prev,
+                        category_id: value,
+                        categorie: cat ? cat.nom : prev.categorie,
+                        motif: cat ? cat.nom : prev.motif
+                      }));
+                    } else {
+                      // Legacy or fallback string value
+                      setFormData(prev => ({ ...prev, categorie: value, category_id: '', motif: value }));
+                    }
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Commande">Commande</SelectItem>
-                    <SelectItem value="Transfert">Transfert</SelectItem>
+                    {displayCategories.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -472,50 +535,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
               )}
             </div>
 
-            {/* Calculations Preview */}
-            {formData.montant && !isCalculating && (
-              <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                <h3 className="font-medium flex items-center">
-                  <Calculator className="mr-2 h-4 w-4" />
-                  Prévisualisation des calculs
-                </h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-600">Frais ({formData.motif}):</span>
-                    <span className="ml-2 font-medium">
-                      {formatCurrency(calculations.frais, 'USD')}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Bénéfice:</span>
-                    <span className="ml-2 font-medium text-green-600">
-                      {formatCurrency(calculations.benefice, 'USD')}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Montant CNY:</span>
-                    <span className="ml-2 font-medium text-blue-600">
-                      {formatCurrency(calculations.montant_cny, 'CNY')}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Taux USD/CDF:</span>
-                    <span className="ml-2 font-medium">
-                      {calculations.taux_usd_cdf.toLocaleString('fr-FR')}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {isCalculating && (
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-gray-600">Calcul en cours...</span>
-                </div>
-              </div>
-            )}
+            {/* Calculations Preview - Extracted to component */}
+            <TransactionCalculations
+              formData={formData}
+              isCalculating={isCalculating}
+              calculations={calculations}
+              formatCurrency={formatCurrency}
+            />
 
             {/* Exchange Rates Info */}
             {rates && (

@@ -21,7 +21,7 @@ export type ColisMaritime = {
     date_livraison: string | null;
     notes: string | null;
     photos: string[] | null;
-    client?: { nom: string; email: string; telephone: string } | null; // Joined
+    client?: { nom: string; telephone: string } | null; // Joined
     container?: { numero: string; statut: string } | null; // Joined
     created_at: string;
 };
@@ -39,8 +39,8 @@ export const useColisMaritime = () => {
                 .from('colis_maritime')
                 .select(`
                     *,
-                    client:clients(nom, email, telephone),
-                    container:containers_maritime(numero, statut)
+                    client:clients!colis_maritime_client_id_fkey(nom, telephone),
+                    container:containers_maritime!colis_maritime_container_id_fkey(numero, statut)
                 `)
                 .order('created_at', { ascending: false });
 
@@ -65,7 +65,7 @@ export const useColisMaritime = () => {
 
             if (error) throw error;
 
-            setColis(prev => [newColis as ColisMaritime, ...prev]);
+            await fetchColis(); // Refresh to get joined data (client, container)
             toast.success('Colis maritime créé avec succès');
             return newColis;
         } catch (err: any) {
@@ -86,7 +86,7 @@ export const useColisMaritime = () => {
 
             if (error) throw error;
 
-            setColis(prev => prev.map(c => c.id === id ? { ...c, ...updated } as ColisMaritime : c));
+            await fetchColis(); // Refresh to get joined data
             toast.success('Colis maritime mis à jour');
             return updated;
         } catch (err: any) {

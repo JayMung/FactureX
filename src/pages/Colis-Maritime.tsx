@@ -17,11 +17,28 @@ import { FilterTabs } from '@/components/ui/filter-tabs';
 import { ColumnSelector, ColumnConfig } from '@/components/ui/column-selector';
 import { ExportDropdown } from '@/components/ui/export-dropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ColisMaritimeDialog } from '@/components/colis-maritime/ColisMaritimeDialog';
+import { ContainerMaritimeDialog } from '@/components/colis-maritime/ContainerMaritimeDialog';
+import { ColisMaritime } from '@/hooks/useColisMaritime';
+import { ContainerMaritime } from '@/hooks/useContainersMaritime';
 
 const ColisMaritimePage: React.FC = () => {
     const [activeTab, setActiveTab] = useState('colis');
-    const { colis, loading: colisLoading } = useColisMaritime();
-    const { containers, loading: containersLoading } = useContainersMaritime();
+    const {
+        colis,
+        loading: colisLoading,
+        createColis,
+        updateColis,
+        fetchColis // Import fetchColis to manually refresh if needed
+    } = useColisMaritime();
+    const {
+        containers,
+        loading: containersLoading,
+        createContainer,
+        updateContainer,
+        fetchContainers
+    } = useContainersMaritime();
+
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'table' | 'cards' | 'auto'>('auto');
     const [colisColumnsConfig, setColisColumnsConfig] = useState<Record<string, boolean>>({});
@@ -29,6 +46,12 @@ const ColisMaritimePage: React.FC = () => {
     const [colisFilter, setColisFilter] = useState('all');
     const [containerFilter, setContainerFilter] = useState('all');
     const isMobile = useIsMobile();
+
+    // Dialog states
+    const [isColisDialogOpen, setIsColisDialogOpen] = useState(false);
+    const [isContainerDialogOpen, setIsContainerDialogOpen] = useState(false);
+    const [selectedColis, setSelectedColis] = useState<ColisMaritime | null>(null);
+    const [selectedContainer, setSelectedContainer] = useState<ContainerMaritime | null>(null);
 
     usePageSetup({
         title: 'Fret Maritime',
@@ -69,7 +92,18 @@ const ColisMaritimePage: React.FC = () => {
                             <Filter className="mr-2 h-4 w-4" />
                             Filtres
                         </Button>
-                        <Button className="bg-blue-600 hover:bg-blue-700">
+                        <Button
+                            className="bg-blue-600 hover:bg-blue-700"
+                            onClick={() => {
+                                if (activeTab === 'colis') {
+                                    setSelectedColis(null);
+                                    setIsColisDialogOpen(true);
+                                } else {
+                                    setSelectedContainer(null);
+                                    setIsContainerDialogOpen(true);
+                                }
+                            }}
+                        >
                             <Plus className="mr-2 h-4 w-4" />
                             {activeTab === 'colis' ? 'Nouveau Colis' : 'Nouveau Container'}
                         </Button>
@@ -217,7 +251,7 @@ const ColisMaritimePage: React.FC = () => {
                                     </div>
                                     <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                                         <ColumnSelector
-                                            columns={COLIS_COLUMNS.map(c => ({
+                                            columns={COLIS_COLUMNS(null, null).map(c => ({
                                                 key: c.key,
                                                 label: c.title,
                                                 visible: colisColumnsConfig[c.key] !== false
@@ -234,7 +268,7 @@ const ColisMaritimePage: React.FC = () => {
                             <CardContent>
                                 <UnifiedDataTable
                                     data={filteredColis}
-                                    columns={COLIS_COLUMNS.filter(c => colisColumnsConfig[c.key] !== false)}
+                                    columns={COLIS_COLUMNS(setSelectedColis, setIsColisDialogOpen).filter(c => colisColumnsConfig[c.key] !== false)}
                                     loading={colisLoading}
                                     viewMode={viewMode}
                                     onViewModeChange={setViewMode}
@@ -278,7 +312,7 @@ const ColisMaritimePage: React.FC = () => {
                                     </div>
                                     <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                                         <ColumnSelector
-                                            columns={CONTAINER_COLUMNS.map(c => ({
+                                            columns={CONTAINER_COLUMNS(null, null).map(c => ({
                                                 key: c.key,
                                                 label: c.title,
                                                 visible: containerColumnsConfig[c.key] !== false
@@ -295,7 +329,7 @@ const ColisMaritimePage: React.FC = () => {
                             <CardContent>
                                 <UnifiedDataTable
                                     data={filteredContainers}
-                                    columns={CONTAINER_COLUMNS.filter(c => containerColumnsConfig[c.key] !== false)}
+                                    columns={CONTAINER_COLUMNS(setSelectedContainer, setIsContainerDialogOpen).filter(c => containerColumnsConfig[c.key] !== false)}
                                     loading={containersLoading}
                                     viewMode={viewMode}
                                     onViewModeChange={setViewMode}
@@ -317,6 +351,34 @@ const ColisMaritimePage: React.FC = () => {
                     </TabsContent>
                 </Tabs>
             </div>
+
+            <ColisMaritimeDialog
+                open={isColisDialogOpen}
+                onOpenChange={setIsColisDialogOpen}
+                initialData={selectedColis}
+                onSubmit={async (data) => {
+                    if (selectedColis) {
+                        await updateColis(selectedColis.id, data);
+                    } else {
+                        await createColis(data);
+                    }
+                    setIsColisDialogOpen(false); // Ensure close
+                }}
+            />
+
+            <ContainerMaritimeDialog
+                open={isContainerDialogOpen}
+                onOpenChange={setIsContainerDialogOpen}
+                initialData={selectedContainer}
+                onSubmit={async (data) => {
+                    if (selectedContainer) {
+                        await updateContainer(selectedContainer.id, data);
+                    } else {
+                        await createContainer(data);
+                    }
+                    setIsContainerDialogOpen(false); // Ensure close
+                }}
+            />
         </Layout>
     );
 };
@@ -336,7 +398,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 
 
-const COLIS_COLUMNS = [
+const COLIS_COLUMNS = (setSelectedColis: any, setIsColisDialogOpen: any) => [
     {
         key: 'date_reception_chine',
         title: 'Date Reçu',
@@ -388,11 +450,24 @@ const COLIS_COLUMNS = [
         key: 'actions',
         title: 'Actions',
         align: 'right' as const,
-        render: () => <Button variant="ghost" size="sm" className="hover:bg-blue-100 text-blue-600">Détails</Button>
+        render: (_: any, item: any) => (
+            <Button
+                variant="ghost"
+                size="sm"
+                className="hover:bg-blue-100 text-blue-600"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedColis(item);
+                    setIsColisDialogOpen(true);
+                }}
+            >
+                Détails
+            </Button>
+        )
     }
 ];
 
-const CONTAINER_COLUMNS = [
+const CONTAINER_COLUMNS = (setSelectedContainer: any, setIsContainerDialogOpen: any) => [
     {
         key: 'numero',
         title: 'Numéro',
@@ -427,7 +502,20 @@ const CONTAINER_COLUMNS = [
         key: 'actions',
         title: 'Actions',
         align: 'right' as const,
-        render: () => <Button variant="ghost" size="sm" className="hover:bg-blue-100 text-blue-600">Gérer</Button>
+        render: (_: any, item: any) => (
+            <Button
+                variant="ghost"
+                size="sm"
+                className="hover:bg-blue-100 text-blue-600"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedContainer(item);
+                    setIsContainerDialogOpen(true);
+                }}
+            >
+                Gérer
+            </Button>
+        )
     }
 ];
 

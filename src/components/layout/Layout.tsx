@@ -9,6 +9,7 @@ import Sidebar from './Sidebar';
 import { useAuth } from '@/components/auth/AuthProvider';
 import SessionActivityTracker from '@/components/auth/SessionActivityTracker';
 import SessionTimeoutWarning from '@/components/auth/SessionTimeoutWarning';
+import OfflinePrompt from './OfflinePrompt';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -30,7 +31,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         setSidebarOpen(false);
       }
     };
-    
+
     checkDesktop();
     window.addEventListener('resize', checkDesktop);
     return () => window.removeEventListener('resize', checkDesktop);
@@ -78,7 +79,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             />
           )}
         </AnimatePresence>
-        
+
         {/* Sidebar avec animation fluide */}
         <AnimatePresence mode="wait">
           {sidebarOpen && (
@@ -87,34 +88,37 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               animate={{ x: 0 }}
               exit={{ x: isDesktop ? 0 : '-100%' }}
               transition={
-                isDesktop 
+                isDesktop
                   ? { duration: 0.2, ease: 'easeInOut' }
                   : { type: 'spring', stiffness: 300, damping: 30 }
               }
               className={`${isDesktop ? 'relative' : 'fixed'} inset-y-0 left-0 z-50`}
             >
-              <Sidebar 
-                isMobileOpen={false} 
+              <Sidebar
+                isMobileOpen={false}
                 currentPath={location.pathname}
               />
             </motion.div>
           )}
         </AnimatePresence>
-        
+
         <div className="flex-1 flex flex-col overflow-hidden w-full">
-          <Header 
-            title={getPageTitle()} 
+          <Header
+            title={getPageTitle()}
             subtitle={getPageTitle() === 'Tableau de bord' ? "Vue d'ensemble de votre activité" : undefined}
             user={user}
-            onMenuToggle={toggleMobileSidebar} 
+            onMenuToggle={toggleMobileSidebar}
           />
           <main className="flex-1 overflow-x-hidden overflow-y-auto bg-white dark:bg-bg-dark p-4 md:p-6 transition-opacity duration-200">
             {children}
           </main>
         </div>
-        
+
         {/* Session timeout warning */}
         <SessionTimeoutWarning />
+
+        {/* PWA / Offline notifications */}
+        <OfflinePrompt />
       </div>
     </SessionActivityTracker>
   );

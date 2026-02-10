@@ -60,7 +60,7 @@ export const useMouvementsComptes = (page: number = 1, filters: MouvementFilters
           .eq('categorie', 'taux_change')
           .in('cle', ['usdToCny', 'usdToCdf']);
 
-        const rates: Record<string, number> = { usdToCny: 7.25, usdToCdf: 2850 };
+        const rates: Record<string, number> = { usdToCny: 6.95, usdToCdf: 2200 };
         settingsData?.forEach((s: any) => {
           rates[s.cle] = parseFloat(s.valeur) || rates[s.cle];
         });
@@ -275,7 +275,7 @@ export const useGlobalBalance = () => {
           .eq('categorie', 'taux_change')
           .in('cle', ['usdToCny', 'usdToCdf']);
 
-        const rates: Record<string, number> = { usdToCny: 7.25, usdToCdf: 2850 };
+        const rates: Record<string, number> = { usdToCny: 6.95, usdToCdf: 2200 };
         settingsData?.forEach((s: any) => {
           rates[s.cle] = parseFloat(s.valeur) || rates[s.cle];
         });

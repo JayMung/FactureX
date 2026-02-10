@@ -49,7 +49,7 @@ export const useMouvementsComptesStats = (filters?: MouvementFilters) => {
         .eq('categorie', 'taux_change')
         .in('cle', ['usdToCny', 'usdToCdf']);
 
-      const rates: Record<string, number> = { usdToCny: 7.25, usdToCdf: 2850 };
+      const rates: Record<string, number> = { usdToCny: 6.95, usdToCdf: 2200 };
       settingsData?.forEach((s: any) => {
         rates[s.cle] = parseFloat(s.valeur) || rates[s.cle];
       });
@@ -133,13 +133,23 @@ export const useMouvementsComptesStats = (filters?: MouvementFilters) => {
         }
       });
 
+      // Fetch actual account balances for the real solde net
+      const { data: comptes } = await supabase
+        .from('comptes_financiers')
+        .select('solde_actuel, devise')
+        .eq('is_active', true);
+
+      const soldeGlobal = (comptes || []).reduce((sum, c) => {
+        return sum + convertToUSD(c.solde_actuel || 0, c.devise || 'USD');
+      }, 0);
+
       setStats({
         totalDebits,
         totalCredits,
         nombreDebits: realDebits.length,
         nombreCredits: realCredits.length,
         nombreMouvements: mouvements.length,
-        soldeNet: totalCredits - totalDebits - totalSwapFees, // Net includes swap fees as cost
+        soldeNet: soldeGlobal, // Real balance across all accounts
         totalSwapVolume,
         totalSwapFees,
         nombreSwaps: swapDebits.length

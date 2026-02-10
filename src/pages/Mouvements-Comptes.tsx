@@ -202,7 +202,7 @@ const MouvementsComptes: React.FC = () => {
                 <ArrowUpCircle className="h-5 w-5 text-white" />
               </div>
               <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
-                Balance
+                Solde Global
               </span>
             </div>
             <div className="mt-4">
@@ -212,7 +212,7 @@ const MouvementsComptes: React.FC = () => {
                 <>
                   <p className="text-3xl font-bold text-white">{formatCurrency(globalStats.soldeNet, 'USD')}</p>
                   <p className="mt-1 text-sm text-blue-100">
-                    Net (- ${globalStats.totalSwapFees?.toFixed(2) || '0.00'} frais swap)
+                    Tous les comptes actifs
                   </p>
                 </>
               )}

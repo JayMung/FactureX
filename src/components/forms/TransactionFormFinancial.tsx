@@ -335,20 +335,50 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
       }
       delete (transactionData as any).benefice;
 
-      // Gestion SWAP (Conversion)
+      // Gestion SWAP (Conversion) — toutes les paires de devises
       if (formData.type_transaction === 'transfert' && formData.compte_source_id && formData.compte_destination_id) {
-        // Trouver les comptes
         const activeComptesList = activeComptes || comptes.filter(c => c.is_active || c.id === formData.compte_source_id || c.id === formData.compte_destination_id);
         const source = activeComptesList.find(c => c.id === formData.compte_source_id);
         const dest = activeComptesList.find(c => c.id === formData.compte_destination_id);
 
         if (source && dest && source.devise !== dest.devise) {
-          // Cas USD -> CNY
+          const montantSource = parseFloat(formData.montant || '0');
+          const usdToCny = rates?.usdToCny || 6.95;
+          const usdToCdf = rates?.usdToCdf || 2200;
+          let montantConverti = 0;
+
+          // USD -> CNY
           if (source.devise === 'USD' && dest.devise === 'CNY') {
-            const rate = rates.usdToCny || 0;
-            if (rate > 0) {
-              (transactionData as any).taux_usd_cny = rate;
-              (transactionData as any).montant_cny = parseFloat(formData.montant || '0') * rate;
+            montantConverti = montantSource * usdToCny;
+          }
+          // CNY -> USD
+          else if (source.devise === 'CNY' && dest.devise === 'USD') {
+            montantConverti = montantSource / usdToCny;
+          }
+          // USD -> CDF
+          else if (source.devise === 'USD' && dest.devise === 'CDF') {
+            montantConverti = montantSource * usdToCdf;
+          }
+          // CDF -> USD
+          else if (source.devise === 'CDF' && dest.devise === 'USD') {
+            montantConverti = montantSource / usdToCdf;
+          }
+          // CNY -> CDF (via USD: CNY->USD->CDF)
+          else if (source.devise === 'CNY' && dest.devise === 'CDF') {
+            montantConverti = (montantSource / usdToCny) * usdToCdf;
+          }
+          // CDF -> CNY (via USD: CDF->USD->CNY)
+          else if (source.devise === 'CDF' && dest.devise === 'CNY') {
+            montantConverti = (montantSource / usdToCdf) * usdToCny;
+          }
+
+          if (montantConverti > 0) {
+            (transactionData as any).montant_converti = parseFloat(montantConverti.toFixed(2));
+            (transactionData as any).taux_usd_cny = usdToCny;
+            (transactionData as any).taux_usd_cdf = usdToCdf;
+            // Legacy: also set montant_cny for backward compatibility
+            if (dest.devise === 'CNY') {
+              (transactionData as any).montant_cny = parseFloat(montantConverti.toFixed(2));
             }
           }
         }

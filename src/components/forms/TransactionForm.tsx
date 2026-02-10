@@ -170,9 +170,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       }
 
       const montantNet = montant - fraisUSD;
-      const montantCNY = formData.devise === 'USD'
-        ? montantNet * rates.usdToCny
-        : (montantNet / tauxUSD) * rates.usdToCny;
+
+      // Calculer montant_cny uniquement pour les revenues (transactions commerciales)
+      let montantCNY = 0;
+      if (formData.type_transaction === 'revenue') {
+        montantCNY = formData.devise === 'USD'
+          ? montantNet * rates.usdToCny
+          : (montantNet / tauxUSD) * rates.usdToCny;
+      }
 
       setCalculations({
         frais: fraisUSD,

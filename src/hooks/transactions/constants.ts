@@ -25,15 +25,15 @@ export const MOTIF_TO_FEE_KEY: Record<string, string> = {
   'paiement colis': 'paiement colis'
 };
 
-// Taux par défaut
+// Taux par défaut (synchronisés avec la DB settings)
 export const DEFAULT_RATES = {
-  usdToCny: 7.25,
-  usdToCdf: 2850
+  usdToCny: 6.95,
+  usdToCdf: 2200
 };
 
-// Frais par défaut (en pourcentage)
+// Frais par défaut (en pourcentage, synchronisés avec la DB settings)
 export const DEFAULT_FEES = {
   transfert: 5,
-  commande: 10,
+  commande: 15,
   partenaire: 3
 };

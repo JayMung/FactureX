@@ -59,9 +59,12 @@ export const useFinancialOperations = () => {
   }, [queryClient]);
 
   // ✅ CRUD pour Opérations Internes (Dépenses/Revenus/Swaps)
+  // NOTE: Les triggers SQL gèrent automatiquement:
+  //   - La mise à jour des soldes (trigger_update_compte_after_insert)
+  //   - La création des mouvements (trigger_create_mouvement_after_transaction_insert)
+  // On ne fait donc QUE l'INSERT ici pour éviter le double comptage.
   const createOperationInterne = useCallback(async (data: CreateTransactionData) => {
     try {
-      // 1. Créer la transaction
       const { data: transaction, error } = await supabase
         .from('transactions')
         .insert([{
@@ -73,56 +76,9 @@ export const useFinancialOperations = () => {
 
       if (error) throw error;
 
-      // 2. Gérer les mouvements selon le type
-      if (data.type_transaction === 'depense' && data.compte_source_id) {
-        // Débiter le compte source
-        await updateCompteSolde(data.compte_source_id, data.montant, 'debit');
-        await createMouvementCompte({
-          compte_id: data.compte_source_id,
-          type_mouvement: 'debit',
-          montant: data.montant,
-          description: `Dépense: ${data.motif}`,
-          transaction_id: transaction.id
-        });
-      }
-
-      if (data.type_transaction === 'revenue' && data.compte_destination_id) {
-        // Créditer le compte destination
-        await updateCompteSolde(data.compte_destination_id, data.montant, 'credit');
-        await createMouvementCompte({
-          compte_id: data.compte_destination_id,
-          type_mouvement: 'credit',
-          montant: data.montant,
-          description: `Revenu: ${data.motif}`,
-          transaction_id: transaction.id
-        });
-      }
-
-      if (data.type_transaction === 'transfert' && data.compte_source_id && data.compte_destination_id) {
-        // Débiter le compte source
-        await updateCompteSolde(data.compte_source_id, data.montant, 'debit');
-        await createMouvementCompte({
-          compte_id: data.compte_source_id,
-          type_mouvement: 'debit',
-          montant: data.montant,
-          description: `Transfert vers compte #${data.compte_destination_id.slice(0, 8)}`,
-          transaction_id: transaction.id
-        });
-
-        // Créditer le compte destination
-        await updateCompteSolde(data.compte_destination_id, data.montant, 'credit');
-        await createMouvementCompte({
-          compte_id: data.compte_destination_id,
-          type_mouvement: 'credit',
-          montant: data.montant,
-          description: `Transfert depuis compte #${data.compte_source_id.slice(0, 8)}`,
-          transaction_id: transaction.id
-        });
-      }
-
       toast.success('Opération créée et comptes mis à jour');
       
-      // 3. Rafraîchir les requêtes
+      // Rafraîchir les requêtes (les triggers ont déjà mis à jour les soldes et mouvements)
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['comptes_financiers'] });
       queryClient.invalidateQueries({ queryKey: ['mouvements_comptes'] });
@@ -269,67 +225,12 @@ export const useFinancialOperations = () => {
     }
   }, [queryClient, updateCompteSolde, createMouvementCompte]);
 
-  // ✅ Supprimer une transaction interne (avec mise à jour des comptes)
+  // ✅ Supprimer une transaction interne
+  // NOTE: Les triggers SQL gèrent automatiquement:
+  //   - L'inversion des soldes (trigger_revert_compte_after_transaction_delete)
+  //   - La suppression des mouvements (trigger_delete_mouvements_before_transaction_delete)
   const deleteOperationInterne = useCallback(async (transactionId: string) => {
     try {
-      // 1. Récupérer les détails de la transaction
-      const { data: transaction, error: fetchError } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('id', transactionId)
-        .single();
-
-      if (fetchError) throw fetchError;
-      if (!transaction) throw new Error('Transaction non trouvée');
-
-      // 2. Inverser les mouvements selon le type
-      if (transaction.type_transaction === 'depense' && transaction.compte_source_id) {
-        // Créditer le compte source (inverser la dépense)
-        await updateCompteSolde(transaction.compte_source_id, transaction.montant, 'credit');
-        await createMouvementCompte({
-          compte_id: transaction.compte_source_id,
-          type_mouvement: 'credit',
-          montant: transaction.montant,
-          description: `Annulation dépense: ${transaction.motif}`,
-          transaction_id: transactionId
-        });
-      }
-
-      if (transaction.type_transaction === 'revenue' && transaction.compte_destination_id) {
-        // Débiter le compte destination (inverser le revenu)
-        await updateCompteSolde(transaction.compte_destination_id, transaction.montant, 'debit');
-        await createMouvementCompte({
-          compte_id: transaction.compte_destination_id,
-          type_mouvement: 'debit',
-          montant: transaction.montant,
-          description: `Annulation revenu: ${transaction.motif}`,
-          transaction_id: transactionId
-        });
-      }
-
-      if (transaction.type_transaction === 'transfert' && transaction.compte_source_id && transaction.compte_destination_id) {
-        // Inverser le transfert
-        await updateCompteSolde(transaction.compte_source_id, transaction.montant, 'credit');
-        await updateCompteSolde(transaction.compte_destination_id, transaction.montant, 'debit');
-
-        await createMouvementCompte({
-          compte_id: transaction.compte_source_id,
-          type_mouvement: 'credit',
-          montant: transaction.montant,
-          description: `Annulation transfert vers #${transaction.compte_destination_id.slice(0, 8)}`,
-          transaction_id: transactionId
-        });
-
-        await createMouvementCompte({
-          compte_id: transaction.compte_destination_id,
-          type_mouvement: 'debit',
-          montant: transaction.montant,
-          description: `Annulation transfert depuis #${transaction.compte_source_id.slice(0, 8)}`,
-          transaction_id: transactionId
-        });
-      }
-
-      // 3. Supprimer la transaction
       const { error: deleteError } = await supabase
         .from('transactions')
         .delete()
@@ -339,12 +240,11 @@ export const useFinancialOperations = () => {
 
       toast.success('Opération supprimée et comptes mis à jour');
       
-      // 4. Rafraîchir les requêtes
+      // Rafraîchir les requêtes (les triggers ont déjà inversé les soldes et supprimé les mouvements)
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['comptes_financiers'] });
       queryClient.invalidateQueries({ queryKey: ['mouvements_comptes'] });
       
-      return transaction;
     } catch (error: any) {
       console.error('Erreur suppression opération:', error);
       toast.error('Erreur lors de la suppression', {
@@ -352,7 +252,7 @@ export const useFinancialOperations = () => {
       });
       throw error;
     }
-  }, [queryClient, updateCompteSolde, createMouvementCompte]);
+  }, [queryClient]);
 
   return {
     // CRUD

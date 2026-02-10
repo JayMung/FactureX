@@ -328,13 +328,13 @@ export const useTransactions = (
         .in('cle', ['usdToCny', 'usdToCdf', 'transfert', 'commande', 'partenaire']);
 
       const rates: Record<string, number> = {
-        usdToCny: 7.25,
-        usdToCdf: 2850
+        usdToCny: 6.95,
+        usdToCdf: 2200
       };
 
       const fees: Record<string, number> = {
         transfert: 5,
-        commande: 10,
+        commande: 15,
         partenaire: 3
       };
 
@@ -349,7 +349,6 @@ export const useTransactions = (
       const tauxUSD = sanitizedData.devise === 'USD' ? 1 : rates.usdToCdf;
 
       // Utiliser le module de calcul avec mapping des nouveaux noms de catégories
-      console.log(' Calculating fees for motif:', sanitizedData.motif, 'fees:', fees);
       const amounts = calculateTransactionAmounts(
         sanitizedData.montant,
         sanitizedData.devise,
@@ -488,8 +487,8 @@ export const useTransactions = (
               .in('categorie', ['taux_change', 'frais'])
               .in('cle', ['usdToCny', 'usdToCdf', 'transfert', 'commande', 'partenaire']);
 
-            const rates: Record<string, number> = { usdToCny: 7.25, usdToCdf: 2850 };
-            const fees: Record<string, number> = { transfert: 5, commande: 10, partenaire: 3 };
+            const rates: Record<string, number> = { usdToCny: 6.95, usdToCdf: 2200 };
+            const fees: Record<string, number> = { transfert: 5, commande: 15, partenaire: 3 };
 
             settings?.forEach((setting: any) => {
               if (setting.categorie === 'taux_change') {
@@ -545,8 +544,12 @@ export const useTransactions = (
 
 
 
-      // Exclure les champs de compte pour éviter les erreurs RLS
-      const { compte_source_id, compte_destination_id, ...safeData } = updatedData as any;
+      // Inclure les comptes dans la mise à jour si fournis
+      const safeData = { ...updatedData } as any;
+
+      // Ne pas envoyer les comptes s'ils sont vides (éviter d'écraser avec null)
+      if (!safeData.compte_source_id) delete safeData.compte_source_id;
+      if (!safeData.compte_destination_id) delete safeData.compte_destination_id;
 
       const { data, error } = await supabase
         .from('transactions')

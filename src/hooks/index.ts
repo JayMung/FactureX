@@ -10,6 +10,7 @@ export * from './useClientHistory';
 export * from './useClientUnpaidFactures';
 export * from './useClients';
 export * from './useColis';
+export * from './useComptabiliteAI';
 export * from './useColisList';
 export * from './useColisMaritime';
 export * from './useComptesFinanciers';

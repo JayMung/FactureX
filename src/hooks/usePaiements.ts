@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { showSuccess, showError } from '@/utils/toast';
+import { useSupabaseQuery } from './useSupabaseQuery';
 
 // Fonction utilitaire pour générer un ID de colis lisible
 export const generateColisId = (colisId: string, createdAt: string): string => {
@@ -67,59 +68,55 @@ export interface CreatePaiementData {
   organization_id?: string; // Optionnel car sera ajouté automatiquement
 }
 
-export function usePaiements(page = 1, filters?: PaiementFilters) {
-  const pageSize = 20;
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
+// Query keys centralisées pour invalidation
+const PAIEMENT_RELATED_KEYS = ['paiements', 'paiement-stats', 'factures', 'comptes', 'transactions'];
 
-  return useQuery({
-    queryKey: ['paiements', page, filters],
-    queryFn: async () => {
-      let query = supabase
-        .from('paiements')
-        .select(`
-          *,
-          client:clients(nom, telephone),
-          facture:factures(facture_number, total_general),
-          colis:colis(id, created_at, tracking_chine),
-          compte:comptes_financiers(nom, type_compte)
-        `, { count: 'exact' })
-        .order('date_paiement', { ascending: false })
-        .range(from, to);
-
-      // Apply filters
-      if (filters?.type_paiement) {
-        query = query.eq('type_paiement', filters.type_paiement);
-      }
-      if (filters?.client_id) {
-        query = query.eq('client_id', filters.client_id);
-      }
-      if (filters?.compte_id) {
-        query = query.eq('compte_id', filters.compte_id);
-      }
-      if (filters?.date_debut) {
-        query = query.gte('date_paiement', filters.date_debut);
-      }
-      if (filters?.date_fin) {
-        query = query.lte('date_paiement', filters.date_fin);
-      }
-      if (filters?.search) {
-        query = query.or(`facture.facture_number.ilike.%${filters.search}%,client.nom.ilike.%${filters.search}%`);
-      }
-
-      const { data, error, count } = await query;
-
-      if (error) throw error;
-
-      return {
-        paiements: data as Paiement[],
-        totalCount: count || 0,
-        totalPages: Math.ceil((count || 0) / pageSize),
-      };
-    },
-  });
+function invalidatePaiementQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  for (const key of PAIEMENT_RELATED_KEYS) {
+    queryClient.invalidateQueries({ queryKey: [key] });
+  }
 }
 
+// READ — Utilise useSupabaseQuery pour la liste paginée
+export function usePaiements(page = 1, filters?: PaiementFilters) {
+  const result = useSupabaseQuery<Paiement, PaiementFilters>({
+    table: 'paiements',
+    queryKey: 'paiements',
+    select: `*,
+      client:clients(nom, telephone),
+      facture:factures(facture_number, total_general),
+      colis:colis(id, created_at, tracking_chine),
+      compte:comptes_financiers(nom, type_compte)`,
+    pagination: { page, pageSize: 20 },
+    orderBy: { column: 'date_paiement', ascending: false },
+    filters,
+    applyFilters: (query, f) => {
+      if (f.type_paiement) query = query.eq('type_paiement', f.type_paiement);
+      if (f.client_id) query = query.eq('client_id', f.client_id);
+      if (f.compte_id) query = query.eq('compte_id', f.compte_id);
+      if (f.date_debut) query = query.gte('date_paiement', f.date_debut);
+      if (f.date_fin) query = query.lte('date_paiement', f.date_fin);
+      if (f.search) query = query.or(`facture.facture_number.ilike.%${f.search}%,client.nom.ilike.%${f.search}%`);
+      return query;
+    },
+  });
+
+  // Preserve original return shape: { data: { paiements, totalCount, totalPages } }
+  return {
+    data: result.pagination
+      ? {
+          paiements: result.data as Paiement[],
+          totalCount: result.pagination.count,
+          totalPages: result.pagination.totalPages,
+        }
+      : undefined,
+    isLoading: result.isLoading,
+    error: result.error ? new Error(result.error) : null,
+    refetch: result.refetch,
+  };
+}
+
+// CREATE — Garde la logique custom (fetch organization_id avant insert)
 export function useCreatePaiement() {
   const queryClient = useQueryClient();
 
@@ -136,15 +133,9 @@ export function useCreatePaiement() {
         throw new Error('Impossible de récupérer votre organisation');
       }
 
-      // Ajouter organization_id aux données
-      const paiementData = {
-        ...data,
-        organization_id: profile.organization_id,
-      };
-
       const { data: paiement, error } = await supabase
         .from('paiements')
-        .insert([paiementData])
+        .insert([{ ...data, organization_id: profile.organization_id }])
         .select()
         .single();
 
@@ -152,99 +143,76 @@ export function useCreatePaiement() {
       return paiement;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['paiements'] });
-      queryClient.invalidateQueries({ queryKey: ['factures'] });
-      queryClient.invalidateQueries({ queryKey: ['comptes'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      toast.success('Encaissement enregistré avec succès');
+      invalidatePaiementQueries(queryClient);
+      showSuccess('Encaissement enregistré avec succès');
     },
     onError: (error: any) => {
       console.error('Error creating paiement:', error);
-      toast.error(error.message || 'Erreur lors de l\'enregistrement de l\'encaissement');
+      showError(error.message || 'Erreur lors de l\'enregistrement de l\'encaissement');
     },
   });
 }
 
+// DELETE
 export function useDeletePaiement() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('paiements')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await supabase.from('paiements').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['paiements'] });
-      queryClient.invalidateQueries({ queryKey: ['factures'] });
-      queryClient.invalidateQueries({ queryKey: ['comptes'] });
-      toast.success('Encaissement supprimé avec succès');
+      invalidatePaiementQueries(queryClient);
+      showSuccess('Encaissement supprimé avec succès');
     },
     onError: (error: any) => {
       console.error('Error deleting paiement:', error);
-      toast.error(error.message || 'Erreur lors de la suppression de l\'encaissement');
+      showError(error.message || 'Erreur lors de la suppression de l\'encaissement');
     },
   });
 }
 
+// STATS — Logique de calcul custom, garde useQuery direct
 export function usePaiementStats(filters?: PaiementFilters) {
-  return useQuery({
-    queryKey: ['paiement-stats', filters],
-    queryFn: async () => {
-      let query = supabase
-        .from('paiements')
-        .select('montant_paye, type_paiement, date_paiement');
-
-      // Apply filters
-      if (filters?.type_paiement) {
-        query = query.eq('type_paiement', filters.type_paiement);
-      }
-      if (filters?.client_id) {
-        query = query.eq('client_id', filters.client_id);
-      }
-      if (filters?.compte_id) {
-        query = query.eq('compte_id', filters.compte_id);
-      }
-      if (filters?.date_debut) {
-        query = query.gte('date_paiement', filters.date_debut);
-      }
-      if (filters?.date_fin) {
-        query = query.lte('date_paiement', filters.date_fin);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      const total = data?.reduce((sum, p) => sum + Number(p.montant_paye), 0) || 0;
-      const totalFactures = data?.filter(p => p.type_paiement === 'facture')
-        .reduce((sum, p) => sum + Number(p.montant_paye), 0) || 0;
-      const totalColis = data?.filter(p => p.type_paiement === 'colis')
-        .reduce((sum, p) => sum + Number(p.montant_paye), 0) || 0;
-      const count = data?.length || 0;
-
-      // Aujourd'hui
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayPayments = data?.filter(p => new Date(p.date_paiement) >= today) || [];
-      const totalToday = todayPayments.reduce((sum, p) => sum + Number(p.montant_paye), 0);
-
-      return {
-        total,
-        totalFactures,
-        totalColis,
-        count,
-        totalToday,
-        countToday: todayPayments.length,
-      };
+  const result = useSupabaseQuery<{ montant_paye: number; type_paiement: string; date_paiement: string }, PaiementFilters>({
+    table: 'paiements',
+    queryKey: 'paiement-stats',
+    select: 'montant_paye, type_paiement, date_paiement',
+    filters,
+    applyFilters: (query, f) => {
+      if (f.type_paiement) query = query.eq('type_paiement', f.type_paiement);
+      if (f.client_id) query = query.eq('client_id', f.client_id);
+      if (f.compte_id) query = query.eq('compte_id', f.compte_id);
+      if (f.date_debut) query = query.gte('date_paiement', f.date_debut);
+      if (f.date_fin) query = query.lte('date_paiement', f.date_fin);
+      return query;
     },
   });
+
+  const rawData = result.data as { montant_paye: number; type_paiement: string; date_paiement: string }[];
+
+  const total = rawData?.reduce((sum, p) => sum + Number(p.montant_paye), 0) || 0;
+  const totalFactures = rawData?.filter(p => p.type_paiement === 'facture')
+    .reduce((sum, p) => sum + Number(p.montant_paye), 0) || 0;
+  const totalColis = rawData?.filter(p => p.type_paiement === 'colis')
+    .reduce((sum, p) => sum + Number(p.montant_paye), 0) || 0;
+  const count = rawData?.length || 0;
+
+  // Aujourd'hui
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayPayments = rawData?.filter(p => new Date(p.date_paiement) >= today) || [];
+  const totalToday = todayPayments.reduce((sum, p) => sum + Number(p.montant_paye), 0);
+
+  return {
+    data: { total, totalFactures, totalColis, count, totalToday, countToday: todayPayments.length },
+    isLoading: result.isLoading,
+    error: result.error ? new Error(result.error) : null,
+  };
 }
 
-// Hook to update a paiement
+// UPDATE
 export function useUpdatePaiement() {
   const queryClient = useQueryClient();
 
@@ -261,14 +229,12 @@ export function useUpdatePaiement() {
       return paiement;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['paiements'] });
-      queryClient.invalidateQueries({ queryKey: ['factures'] });
-      queryClient.invalidateQueries({ queryKey: ['comptes'] });
-      toast.success('Encaissement modifié avec succès');
+      invalidatePaiementQueries(queryClient);
+      showSuccess('Encaissement modifié avec succès');
     },
     onError: (error: any) => {
       console.error('Error updating paiement:', error);
-      toast.error(error.message || 'Erreur lors de la modification de l\'encaissement');
+      showError(error.message || 'Erreur lors de la modification de l\'encaissement');
     },
   });
 }

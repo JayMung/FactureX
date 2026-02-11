@@ -1,162 +1,79 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from './useOrganization';
+import { useSupabaseQuery } from './useSupabaseQuery';
+import { useSupabaseCrud } from './useSupabaseCrud';
 import type { CompteFinancier, CreateCompteFinancierData, UpdateCompteFinancierData } from '@/types';
 
 export const useComptesFinanciers = () => {
-  const [comptes, setComptes] = useState<CompteFinancier[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganization();
 
-  // Fetch all financial accounts
-  const fetchComptes = async () => {
-    if (!organizationId) return;
+  // READ — React Query via useSupabaseQuery
+  const { data: comptes, isLoading: loading, error, refetch: fetchComptes } = useSupabaseQuery<CompteFinancier>({
+    table: 'comptes_financiers',
+    queryKey: 'comptes',
+    select: '*',
+    orderBy: { column: 'created_at', ascending: false },
+    filters: { organization_id: organizationId },
+    applyFilters: (query, f: any) => {
+      if (f.organization_id) query = query.eq('organization_id', f.organization_id);
+      return query;
+    },
+    enabled: !!organizationId,
+  });
 
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data, error } = await supabase
-        .from('comptes_financiers')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-      setComptes(data || []);
-    } catch (error: any) {
-      console.error('Error fetching comptes:', error);
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Create a new financial account
-  const createCompte = async (data: CreateCompteFinancierData): Promise<CompteFinancier> => {
-    if (!organizationId) throw new Error('Organization ID is required');
-
-    try {
+  // WRITE — React Query mutations via useSupabaseCrud
+  const crud = useSupabaseCrud<CompteFinancier>({
+    table: 'comptes_financiers',
+    queryKey: 'comptes',
+    entityLabel: 'Compte',
+    relatedQueryKeys: ['dashboardStats', 'mouvements'],
+    beforeCreate: async (data) => {
+      if (!organizationId) throw new Error('Organization ID is required');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
+      return { ...data, organization_id: organizationId, created_by: user.id };
+    },
+  });
 
-      // Debug JWT contents
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('JWT token payload:', session?.access_token ? JSON.parse(atob(session.access_token.split('.')[1])) : 'No token');
-      console.log('User metadata:', user.user_metadata);
-      console.log('User app metadata:', user.app_metadata);
-      console.log('Organization ID from hook:', organizationId);
-      console.log('Creating compte with data:', {
-        ...data,
-        organization_id: organizationId,
-        created_by: user.id,
-      });
+  // Wrapper to match original createCompte(data) signature
+  const createCompte = useCallback(async (data: CreateCompteFinancierData): Promise<CompteFinancier> => {
+    return crud.createAsync(data as Partial<CompteFinancier>);
+  }, [crud.createAsync]);
 
-      const { data: newCompte, error } = await supabase
-        .from('comptes_financiers')
-        .insert({
-          ...data,
-          organization_id: organizationId,
-          created_by: user.id,
-        })
-        .select()
-        .single();
+  // Wrapper to match original updateCompte(id, data) signature
+  const updateCompte = useCallback(async (id: string, data: UpdateCompteFinancierData): Promise<CompteFinancier> => {
+    return crud.updateAsync({ id, data: data as Partial<CompteFinancier> });
+  }, [crud.updateAsync]);
 
-      if (error) {
-        console.error('Supabase error details:', error);
-        console.error('Error code:', error.code);
-        console.error('Error message:', error.message);
-        console.error('Error details:', error.details);
-        throw error;
-      }
-      if (!newCompte) throw new Error('Failed to create compte');
+  // Wrapper to match original deleteCompte(id) signature
+  const deleteCompte = useCallback(async (id: string): Promise<void> => {
+    await crud.removeAsync(id);
+  }, [crud.removeAsync]);
 
-      // Refresh the list
-      await fetchComptes();
-      return newCompte;
-    } catch (error: any) {
-      console.error('Error creating compte:', error);
-      throw error;
-    }
-  };
+  // Utility methods — memoized for performance
+  const comptesArray = comptes as CompteFinancier[];
 
-  // Update an existing financial account
-  const updateCompte = async (id: string, data: UpdateCompteFinancierData): Promise<CompteFinancier> => {
-    try {
-      const { data: updatedCompte, error } = await supabase
-        .from('comptes_financiers')
-        .update(data)
-        .eq('id', id)
-        .select()
-        .single();
+  const getComptesByType = useCallback((type: 'mobile_money' | 'banque' | 'cash') => {
+    return comptesArray.filter(compte => compte.type_compte === type && compte.is_active);
+  }, [comptesArray]);
 
-      if (error) throw error;
-      if (!updatedCompte) throw new Error('Failed to update compte');
+  const getComptesByDevise = useCallback((devise: 'USD' | 'CDF' | 'CNY') => {
+    return comptesArray.filter(compte => compte.devise === devise && compte.is_active);
+  }, [comptesArray]);
 
-      // Update local state
-      setComptes(prev => prev.map(compte =>
-        compte.id === id ? updatedCompte : compte
-      ));
-
-      return updatedCompte;
-    } catch (error: any) {
-      console.error('Error updating compte:', error);
-      throw error;
-    }
-  };
-
-  // Delete a financial account
-  const deleteCompte = async (id: string): Promise<void> => {
-    try {
-      const { error } = await supabase
-        .from('comptes_financiers')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      // Update local state
-      setComptes(prev => prev.filter(compte => compte.id !== id));
-    } catch (error: any) {
-      console.error('Error deleting compte:', error);
-      throw error;
-    }
-  };
-
-  // Get accounts by type
-  const getComptesByType = (type: 'mobile_money' | 'banque' | 'cash') => {
-    return comptes.filter(compte => compte.type_compte === type && compte.is_active);
-  };
-
-  // Get accounts by currency
-  const getComptesByDevise = (devise: 'USD' | 'CDF' | 'CNY') => {
-    return comptes.filter(compte => compte.devise === devise && compte.is_active);
-  };
-
-  // Get total balance by currency
-  const getTotalBalance = (devise: 'USD' | 'CDF' | 'CNY') => {
-    return comptes
+  const getTotalBalance = useCallback((devise: 'USD' | 'CDF' | 'CNY') => {
+    return comptesArray
       .filter(compte => compte.devise === devise && compte.is_active)
       .reduce((total, compte) => total + parseFloat(compte.solde_actuel.toString()), 0);
-  };
+  }, [comptesArray]);
 
-  // Get active accounts only
-  const getActiveComptes = () => {
-    return comptes.filter(compte => compte.is_active);
-  };
-
-  // Fetch on mount and when organization changes
-  useEffect(() => {
-    if (organizationId) {
-      fetchComptes();
-    }
-  }, [organizationId]);
+  const getActiveComptes = useCallback(() => {
+    return comptesArray.filter(compte => compte.is_active);
+  }, [comptesArray]);
 
   return {
-    comptes,
+    comptes: comptesArray,
     loading,
     error,
     fetchComptes,

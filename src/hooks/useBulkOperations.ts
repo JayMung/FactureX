@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabaseService } from '@/services/supabase';
 import type { Client } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
+import { exportToCsv, exportToText } from '@/utils/csv-export';
 
 export const useBulkOperations = () => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -42,43 +43,27 @@ export const useBulkOperations = () => {
   };
 
   const exportSelectedClients = (clients: Client[]) => {
-    const csv = [
-      ['nom', 'telephone', 'ville', 'total_paye', 'created_at'],
-      ...clients.map(client => [
+    exportToCsv(
+      ['Nom', 'Téléphone', 'Ville', 'Total Payé', 'Date Création'],
+      clients.map(client => [
         client.nom,
         client.telephone,
         client.ville,
         client.total_paye?.toString() || '0',
-        client.created_at
-      ])
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `clients-selection-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    
+        client.created_at,
+      ]),
+      { filename: 'clients-selection' }
+    );
     showSuccess(`${clients.length} client(s) exporté(s) avec succès`);
   };
 
   const emailSelectedClients = (clients: Client[]) => {
-    const emails = clients
-      .filter(client => client.telephone) // Utiliser le téléphone comme identifiant pour l'instant
+    const content = clients
+      .filter(client => client.telephone)
       .map(client => `${client.nom} (${client.telephone})`)
       .join('\n');
 
-    // Créer un fichier texte avec les informations
-    const blob = new Blob([emails], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `clients-contact-${new Date().toISOString().split('T')[0]}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-    
+    exportToText(content, 'clients-contact');
     showSuccess(`Informations de contact de ${clients.length} client(s) téléchargées`);
   };
 

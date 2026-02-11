@@ -1,5 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseQuery } from './useSupabaseQuery';
 
 export interface Colis {
   id: string;
@@ -22,29 +21,24 @@ interface ColisListFilters {
 }
 
 export function useColisList(filters?: ColisListFilters) {
-  return useQuery({
-    queryKey: ['colis-list', filters],
-    queryFn: async () => {
-      let query = supabase
-        .from('colis')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      // Filtrer par client si spécifié
-      if (filters?.clientId) {
-        query = query.eq('client_id', filters.clientId);
-      }
-
-      // Filtrer par statut si spécifié
-      if (filters?.statut) {
-        query = query.eq('statut', filters.statut);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      return data as Colis[];
+  const result = useSupabaseQuery<Colis, ColisListFilters>({
+    table: 'colis',
+    queryKey: 'colis-list',
+    select: '*',
+    orderBy: { column: 'created_at', ascending: false },
+    filters,
+    applyFilters: (query, f) => {
+      if (f.clientId) query = query.eq('client_id', f.clientId);
+      if (f.statut) query = query.eq('statut', f.statut);
+      return query;
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
   });
+
+  // Preserve original return shape for backward compatibility
+  return {
+    data: result.data as Colis[],
+    isLoading: result.isLoading,
+    error: result.error ? new Error(result.error) : null,
+    refetch: result.refetch,
+  };
 }

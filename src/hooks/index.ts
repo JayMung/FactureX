@@ -30,7 +30,6 @@ export * from './useFinancialOperations';
 export * from './useFinancialReports';
 export * from './useFinancialValidation';
 export * from './useFormValidation';
-export * from './useFournisseurs';
 export * from './useLastReconciliation';
 export * from './useMouvementsComptes';
 export * from './useMouvementsComptesStats';

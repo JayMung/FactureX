@@ -43,6 +43,8 @@ export * from './usePermissions';
 export * from './useRealTimeActivity';
 export * from './useSettings';
 export * from './useSorting';
+export * from './useSupabaseCrud';
+export * from './useSupabaseQuery';
 export * from './useTransactions';
 export * from './useTransitaires';
 export * from './useUpdateColisStatut';

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useApiKeys } from '@/hooks/useApiKeys';
 import { Plus, Copy, Eye, EyeOff, Trash2, Key, AlertCircle, CheckCircle2 } from 'lucide-react';
 import {
@@ -56,7 +56,6 @@ const DEFAULT_PERMISSIONS_BY_TYPE = {
 };
 
 export default function ApiKeys() {
-  const { toast } = useToast();
   const { apiKeys, loading, createApiKey, deleteApiKey } = useApiKeys();
   
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -76,45 +75,48 @@ export default function ApiKeys() {
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [showGeneratedKey, setShowGeneratedKey] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   const handleCreateKey = async () => {
     if (!newKeyData.name.trim()) {
-      toast({
-        title: 'Erreur',
-        description: 'Le nom de la clé est requis',
-        variant: 'destructive',
-      });
+      toast.error('Le nom de la clé est requis');
       return;
     }
 
     if (newKeyData.permissions.length === 0) {
-      toast({
-        title: 'Erreur',
-        description: 'Sélectionnez au moins une permission',
-        variant: 'destructive',
-      });
+      toast.error('Sélectionnez au moins une permission');
       return;
     }
 
-    const result = await createApiKey(
-      newKeyData.name,
-      newKeyData.type,
-      newKeyData.permissions,
-      newKeyData.expiresInDays
-    );
+    setCreating(true);
+    try {
+      const result = await createApiKey(
+        newKeyData.name,
+        newKeyData.type,
+        newKeyData.permissions,
+        newKeyData.expiresInDays
+      );
 
-    if (result.success && result.key) {
-      setGeneratedKey(result.key);
-      setShowGeneratedKey(true);
-      setIsCreateDialogOpen(false);
-      
-      // Reset form
-      setNewKeyData({
-        name: '',
-        type: 'secret',
-        permissions: DEFAULT_PERMISSIONS_BY_TYPE.secret,
-        expiresInDays: 90,
-      });
+      if (result.success && result.key) {
+        setGeneratedKey(result.key);
+        setShowGeneratedKey(true);
+        setIsCreateDialogOpen(false);
+        
+        // Reset form
+        setNewKeyData({
+          name: '',
+          type: 'secret',
+          permissions: DEFAULT_PERMISSIONS_BY_TYPE.secret,
+          expiresInDays: 90,
+        });
+      } else if (!result.success) {
+        toast.error(result.error || 'Échec de la création de la clé API');
+      }
+    } catch (error: any) {
+      console.error('handleCreateKey error:', error);
+      toast.error(error.message || 'Erreur inattendue lors de la création');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -131,10 +133,7 @@ export default function ApiKeys() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(true);
-    toast({
-      title: 'Copié !',
-      description: 'La clé API a été copiée dans le presse-papier',
-    });
+    toast.success('La clé API a été copiée dans le presse-papier');
     setTimeout(() => setCopiedKey(false), 2000);
   };
 
@@ -403,7 +402,13 @@ export default function ApiKeys() {
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
               Annuler
             </Button>
-            <Button onClick={handleCreateKey}>Créer la Clé</Button>
+            <Button onClick={handleCreateKey} disabled={creating}>
+              {creating ? (
+                <><span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />Création...</>
+              ) : (
+                'Créer la Clé'
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

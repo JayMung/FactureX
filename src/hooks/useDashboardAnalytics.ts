@@ -1,116 +1,161 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { FieldLevelSecurityService } from '@/lib/security/field-level-security';
-import { usePermissions } from './usePermissions';
 
-interface AnalyticsData {
-  totalRevenue: number;
-  totalTransactions: number;
-  activeClients: number;
-  netProfit: number;
-  revenueChange: { value: number; isPositive: boolean };
-  transactionChange: { value: number; isPositive: boolean };
-  clientChange: { value: number; isPositive: boolean };
-  profitChange: { value: number; isPositive: boolean };
-  currencyBreakdown: {
-    USD: number;
-    CDF: number;
-  };
-  dailyStats: Array<{
-    date: string;
-    revenueUSD: number;
-    revenueCDF: number;
-    transactions: number;
-    newClients: number;
-  }>;
-  topTransactions: Array<{
-    clientName: string;
-    amount: number;
-    currency: string;
-    date: string;
-    status: string;
-  }>;
+export interface CurrencyBreakdownItem {
+  currency: string;
+  total: number;
+  count: number;
 }
 
+export interface DailyStatItem {
+  date: string;
+  revenueUSD: number;
+  supplierCostUSD: number;
+  operationalExpensesUSD: number;
+  netMarginUSD: number;
+}
+
+export interface TopTransactionItem {
+  id: string;
+  montant: number;
+  devise: string;
+  motif: string;
+  client_name: string;
+  created_at: string;
+}
+
+export interface DashboardData {
+  totalRevenueUSD: number;
+  supplierCostUSD: number;
+  operationalExpensesUSD: number;
+  totalExpensesUSD: number;
+  netMarginUSD: number;
+  netProfitUSD: number;
+  totalFrais: number;
+  totalFactures: number;
+  facturesValidees: number;
+  facturesEnAttente: number;
+  activeClients: number;
+  currencyBreakdown: CurrencyBreakdownItem[];
+  dailyStats: DailyStatItem[];
+  topTransactions: TopTransactionItem[];
+  revenueChange: { value: number; isPositive: boolean };
+  expenseChange: { value: number; isPositive: boolean };
+  profitChange: { value: number; isPositive: boolean };
+  marginChange: { value: number; isPositive: boolean };
+  dataWarning: string | null;
+  incompleteTransactionsCount: number;
+  incompleteAmountUSD: number;
+}
+
+const DEFAULT_DATA: DashboardData = {
+  totalRevenueUSD: 0,
+  supplierCostUSD: 0,
+  operationalExpensesUSD: 0,
+  totalExpensesUSD: 0,
+  netMarginUSD: 0,
+  netProfitUSD: 0,
+  totalFrais: 0,
+  totalFactures: 0,
+  facturesValidees: 0,
+  facturesEnAttente: 0,
+  activeClients: 0,
+  currencyBreakdown: [],
+  dailyStats: [],
+  topTransactions: [],
+  revenueChange: { value: 0, isPositive: true },
+  expenseChange: { value: 0, isPositive: true },
+  profitChange: { value: 0, isPositive: true },
+  marginChange: { value: 0, isPositive: true },
+  dataWarning: null,
+  incompleteTransactionsCount: 0,
+  incompleteAmountUSD: 0,
+};
+
+const getPeriodDates = (period: string): { startDate: string; endDate: string } => {
+  const now = new Date();
+  const startDate = new Date();
+
+  switch (period) {
+    case '24h':
+      startDate.setDate(now.getDate() - 1);
+      break;
+    case '7d':
+      startDate.setDate(now.getDate() - 7);
+      break;
+    case '30d':
+      startDate.setDate(now.getDate() - 30);
+      break;
+    case '90d':
+      startDate.setDate(now.getDate() - 90);
+      break;
+    default:
+      startDate.setDate(now.getDate() - 7);
+  }
+
+  return {
+    startDate: startDate.toISOString(),
+    endDate: now.toISOString(),
+  };
+};
+
 export const useDashboardAnalytics = (period: string = '7d') => {
-  const [analytics, setAnalytics] = useState<AnalyticsData>({
-    totalRevenue: 0,
-    totalTransactions: 0,
-    activeClients: 0,
-    netProfit: 0,
-    revenueChange: { value: 0, isPositive: true },
-    transactionChange: { value: 0, isPositive: true },
-    clientChange: { value: 0, isPositive: true },
-    profitChange: { value: 0, isPositive: true },
-    currencyBreakdown: { USD: 0, CDF: 0 },
-    dailyStats: [],
-    topTransactions: []
-  });
+  const [analytics, setAnalytics] = useState<DashboardData>(DEFAULT_DATA);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { permissions, loading: permissionsLoading } = usePermissions();
-
-  const getPeriodDates = (period: string) => {
-    const now = new Date();
-    const startDate = new Date();
-    
-    switch (period) {
-      case '24h':
-        startDate.setDate(now.getDate() - 1);
-        break;
-      case '7d':
-        startDate.setDate(now.getDate() - 7);
-        break;
-      case '30d':
-        startDate.setDate(now.getDate() - 30);
-        break;
-      case '90d':
-        startDate.setDate(now.getDate() - 90);
-        break;
-      default:
-        startDate.setDate(now.getDate() - 7);
-    }
-    
-    return {
-      startDate: startDate.toISOString(),
-      endDate: now.toISOString()
-    };
-  };
 
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Wait for permissions to load
-      if (permissionsLoading) return;
-      
-      // Use secure RPC function instead of direct table access
-      const userRole = permissions?.role || 'operateur';
-      
-      const { data: analyticsData, error: rpcError } = await supabase
-        .rpc('get_dashboard_analytics_secure', {
-          p_period: period,
-          p_user_role: userRole
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Utilisateur non authentifié');
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+      if (!profile?.organization_id) throw new Error('Organization introuvable pour cet utilisateur');
+
+      const { startDate, endDate } = getPeriodDates(period);
+
+      const { data: rpcData, error: rpcError } = await supabase
+        .rpc('get_dashboard_overview_secure', {
+          p_organization_id: profile.organization_id,
+          p_start_date: startDate,
+          p_end_date: endDate,
         });
 
       if (rpcError) throw rpcError;
 
-      // Parse the JSON response
-      const parsedData = analyticsData as any;
-      
+      const d = rpcData as any;
+
       setAnalytics({
-        totalRevenue: parsedData.totalRevenue || 0,
-        totalTransactions: parsedData.totalTransactions || 0,
-        activeClients: parsedData.activeClients || 0,
-        netProfit: parsedData.netProfit || 0,
-        revenueChange: parsedData.revenueChange || { value: 0, isPositive: true },
-        transactionChange: parsedData.transactionChange || { value: 0, isPositive: true },
-        clientChange: parsedData.clientChange || { value: 0, isPositive: true },
-        profitChange: parsedData.profitChange || { value: 0, isPositive: true },
-        currencyBreakdown: parsedData.currencyBreakdown || { USD: 0, CDF: 0 },
-        dailyStats: parsedData.dailyStats || [],
-        topTransactions: parsedData.topTransactions || []
+        totalRevenueUSD:          d.totalRevenueUSD          ?? 0,
+        supplierCostUSD:          d.supplierCostUSD          ?? 0,
+        operationalExpensesUSD:   d.operationalExpensesUSD   ?? 0,
+        totalExpensesUSD:         d.totalExpensesUSD         ?? 0,
+        netMarginUSD:             d.netMarginUSD             ?? 0,
+        netProfitUSD:             d.netProfitUSD             ?? 0,
+        totalFrais:               d.totalFrais               ?? 0,
+        totalFactures:            d.totalFactures            ?? 0,
+        facturesValidees:         d.facturesValidees         ?? 0,
+        facturesEnAttente:        d.facturesEnAttente        ?? 0,
+        activeClients:            d.activeClients            ?? 0,
+        currencyBreakdown:        d.currencyBreakdown        ?? [],
+        dailyStats:               d.dailyStats               ?? [],
+        topTransactions:          d.topTransactions          ?? [],
+        revenueChange:            d.revenueChange            ?? { value: 0, isPositive: true },
+        expenseChange:            d.expenseChange            ?? { value: 0, isPositive: true },
+        profitChange:             d.profitChange             ?? { value: 0, isPositive: true },
+        marginChange:             d.marginChange             ?? { value: 0, isPositive: true },
+        dataWarning:              d.dataWarning              ?? null,
+        incompleteTransactionsCount: d.incompleteTransactionsCount ?? 0,
+        incompleteAmountUSD:      d.incompleteAmountUSD      ?? 0,
       });
 
     } catch (err: any) {
@@ -118,7 +163,7 @@ export const useDashboardAnalytics = (period: string = '7d') => {
     } finally {
       setLoading(false);
     }
-  }, [period, permissions, permissionsLoading]);
+  }, [period]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -128,6 +173,6 @@ export const useDashboardAnalytics = (period: string = '7d') => {
     analytics,
     loading,
     error,
-    refetch: fetchAnalytics
+    refetch: fetchAnalytics,
   };
 };

@@ -1,11 +1,13 @@
 /**
  * Permission System Consolidation - Single Source of Truth
  * 
- * This module eliminates privilege escalation vulnerabilities by:
- * 1. Using only admin_roles table as the single source of truth
- * 2. Implementing atomic permission operations
- * 3. Adding comprehensive audit logging
- * 4. Ensuring permission consistency across all tables
+ * Architecture unifiée (2026-02-21):
+ * 1. app_metadata.role = source canonique (server-controlled, JWT)
+ * 2. admin_roles table = audit trail uniquement (granted_by, granted_at)
+ * 3. profiles.role = cache lecture seule (non-admin uniquement)
+ * 4. set_user_role() RPC = seul point d'écriture de rôle
+ *
+ * Décisions d'autorisation: UNIQUEMENT via app_metadata (is_admin() SQL helper)
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -32,16 +34,22 @@ export class PermissionConsolidationService {
    */
   async getUserPermissions(userId: string): Promise<ConsolidatedPermission> {
     try {
-      // SINGLE SOURCE OF TRUTH: Only check admin_roles table
-      const { data: adminRole, error: adminError } = await supabase
-        .from('admin_roles')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .single();
+      // PRIMARY SOURCE OF TRUTH: app_metadata via get_user_role() RPC
+      // Falls back to admin_roles for audit trail cross-check
+      const { data: { user } } = await supabase.auth.getUser();
 
-      const isAdmin = !!adminRole;
-      const adminRoleType = adminRole?.role;
+      // For current user: read directly from JWT app_metadata (no DB round-trip)
+      let effectiveRole: string | undefined;
+      if (user?.id === userId) {
+        effectiveRole = user.app_metadata?.role as string | undefined;
+      } else {
+        // For other users (admin viewing): use get_user_role RPC
+        const { data: roleData } = await supabase.rpc('get_user_role', { p_user_id: userId });
+        effectiveRole = roleData as string | undefined;
+      }
+
+      const isAdmin = effectiveRole === 'admin' || effectiveRole === 'super_admin';
+      const adminRoleType = isAdmin ? effectiveRole as 'admin' | 'super_admin' : undefined;
 
       // If admin, return all permissions
       if (isAdmin) {
@@ -49,7 +57,7 @@ export class PermissionConsolidationService {
         return {
           user_id: userId,
           is_admin: true,
-          admin_role: adminRoleType as 'admin' | 'super_admin',
+          admin_role: adminRoleType,
           permissions: allPermissions,
           last_sync: new Date().toISOString()
         };
@@ -132,24 +140,17 @@ export class PermissionConsolidationService {
    */
   async applyRoleAtomic(userId: string, roleName: string, grantedBy: string): Promise<void> {
     try {
-      // SECURITY: Use database function for atomic operation with session refresh
-      const { data, error } = await supabase.rpc('apply_role_atomic', {
-        target_user_id: userId,
-        role_name: roleName,
-        granted_by_user_id: grantedBy,
-        force_session_refresh: true
+      // UNIFIED: Use set_user_role RPC — updates app_metadata + profiles + admin_roles atomically
+      const { data, error } = await supabase.rpc('set_user_role', {
+        p_target_user_id: userId,
+        p_role: roleName
       });
 
       if (error) throw error;
 
-      if (!data) {
-        throw new Error('Failed to apply role atomically');
-      }
-
       // Force session refresh for the target user to prevent stale JWT
       await this.forceSessionRefresh(userId);
 
-      // Log security event
       logSecurityEvent(
         'ROLE_APPLIED',
         `Role ${roleName} applied to user ${userId}`,
@@ -175,23 +176,17 @@ export class PermissionConsolidationService {
    */
   async revokeRoleAtomic(userId: string, revokedBy: string): Promise<void> {
     try {
-      // SECURITY: Use database function for atomic operation with session refresh
-      const { data, error } = await supabase.rpc('revoke_role_atomic', {
-        target_user_id: userId,
-        revoked_by_user_id: revokedBy,
-        force_session_refresh: true
+      // UNIFIED: Downgrade to operateur via set_user_role RPC
+      const { data, error } = await supabase.rpc('set_user_role', {
+        p_target_user_id: userId,
+        p_role: 'operateur'
       });
 
       if (error) throw error;
 
-      if (!data) {
-        throw new Error('Failed to revoke role atomically');
-      }
-
       // Force session refresh for the target user to prevent stale JWT
       await this.forceSessionRefresh(userId);
 
-      // Log security event
       logSecurityEvent(
         'ROLE_REVOKED',
         `Role revoked from user ${userId}`,

@@ -29,32 +29,12 @@ serve(async (req: Request) => {
       throw new Error("Unauthorized: You must be logged in");
     }
 
-    // Verify if the user has admin role using the admin_roles table
-    // We check for active admin roles
-    const { data: adminRole, error: adminError } = await supabaseClient
-      .from("admin_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (adminError) {
-       console.error("Admin role check error:", adminError);
-       throw new Error("Failed to verify admin privileges");
-    }
-
-    if (!adminRole || (adminRole.role !== "admin" && adminRole.role !== "super_admin")) {
-       // Fallback check: in case the migration is partial, check profiles but only if admin_roles failed
-       // This is a temporary backward compatibility measure
-       const { data: profile } = await supabaseClient
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-        
-       if (!profile || (profile.role !== "admin" && profile.role !== "super_admin")) {
-          throw new Error("Forbidden: Admin privileges required");
-       }
+    // Verify admin role via app_metadata (server-controlled, JWT-embedded, cannot be forged by user)
+    // app_metadata is the canonical source of truth — do NOT use admin_roles or profiles.role
+    // profiles.role no longer stores admin/super_admin (prevent_admin_role_in_profiles trigger)
+    const userRole = user.app_metadata?.role;
+    if (userRole !== "admin" && userRole !== "super_admin") {
+      throw new Error("Forbidden: Admin privileges required");
     }
 
     // Get request body

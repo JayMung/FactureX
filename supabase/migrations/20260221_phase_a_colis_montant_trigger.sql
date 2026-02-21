@@ -1,0 +1,18 @@
+-- PHASE A: Colis montant_a_payer coherence — AUDIT FINDING
+--
+-- DISCOVERY: montant_a_payer is already a GENERATED COLUMN:
+--   montant_a_payer NUMERIC(10,2) GENERATED ALWAYS AS (poids * tarif_kg) STORED
+--
+-- This means:
+--   1. PostgreSQL guarantees montant_a_payer = poids * tarif_kg at all times (INSERT + UPDATE)
+--   2. No trigger is needed — the DB enforces it natively
+--   3. Backfill is unnecessary — generated columns are always current
+--   4. NOT NULL alter is unnecessary — generated column cannot be NULL when poids/tarif_kg are NOT NULL
+--   5. Frontend MUST NOT send montant_a_payer in INSERT/UPDATE payloads (PostgreSQL rejects it)
+--
+-- ACTION REQUIRED (frontend only):
+--   Ensure montant_a_payer is NOT included in the colisData payload in Colis-Aeriens-Create.tsx
+--   The computed preview (montantCalcule) is display-only and correct.
+--
+-- No SQL changes needed for Phase A.
+SELECT 'Phase A: montant_a_payer is a GENERATED COLUMN — no migration needed' AS status;

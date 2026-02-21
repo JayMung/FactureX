@@ -4,6 +4,7 @@
  */
 
 import type { ApiResponse, DiscordEmbed, DiscordWebhookPayload } from './api-types.ts';
+import { CURRENT_API_VERSION } from './api-version.ts';
 
 // ============================================================================
 // Standard API Responses
@@ -25,10 +26,34 @@ export function successResponse<T>(
     meta: {
       generated_at: new Date().toISOString(),
       organization_id: meta?.organization_id || '',
-      ...meta
+      ...meta,
+      // Version fields are spread from meta when provided by the caller
     },
     ...(pagination && { pagination })
   };
+}
+
+/**
+ * Build a success Response object with version-aware headers and body metadata.
+ * This is a convenience wrapper around successResponse() that also sets HTTP headers.
+ */
+export function versionedJsonResponse<T>(
+  data: T,
+  meta: Record<string, any>,
+  headers: Record<string, string>,
+  statusCode: number = 200,
+  pagination?: {
+    total: number;
+    limit: number;
+    offset: number;
+    has_more: boolean;
+  }
+): Response {
+  const body = successResponse(data, meta, pagination);
+  return new Response(JSON.stringify(body), {
+    status: statusCode,
+    headers: { ...headers, 'Content-Type': 'application/json' },
+  });
 }
 
 export function errorResponse(
@@ -344,7 +369,7 @@ export function formatForN8n(data: any, eventType: string): any {
     data: data,
     metadata: {
       source: 'facturex-api',
-      version: '1.0'
+      version: CURRENT_API_VERSION
     }
   };
 }

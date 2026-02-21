@@ -367,6 +367,27 @@ serve(async (req: Request) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // Authentication guard: require WEBHOOK_PROCESSOR_SECRET or a valid Supabase service JWT
+  // This endpoint is called by Supabase cron (Authorization: Bearer <service_role_key>)
+  // OR by internal calls with x-webhook-processor-secret header
+  const processorSecret = Deno.env.get("WEBHOOK_PROCESSOR_SECRET") || "";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+
+  const authHeader = req.headers.get("authorization") || "";
+  const customSecret = req.headers.get("x-webhook-processor-secret") || "";
+  const bearerToken = authHeader.replace("Bearer ", "").trim();
+
+  const isAuthorizedBySecret = processorSecret && customSecret === processorSecret;
+  const isAuthorizedByServiceRole = serviceRoleKey && bearerToken === serviceRoleKey;
+
+  if (!isAuthorizedBySecret && !isAuthorizedByServiceRole) {
+    console.error("Unauthorized webhook-processor attempt");
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   try {
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",

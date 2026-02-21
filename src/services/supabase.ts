@@ -22,67 +22,47 @@ export class SupabaseService {
   // Clients
   async getClients(page: number = 1, pageSize: number = 10, filters: ClientFilters = {}): Promise<ApiResponse<PaginatedResponse<Client>>> {
     try {
-      // SECURITY: Use field-level security to prevent sensitive data exposure
-      const secureSelect = await fieldLevelSecurityService.buildSecureSelect('clients');
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData?.user?.id;
 
-      let query = supabase
-        .from('clients')
-        .select(secureSelect, { count: 'exact' })
-        .range((page - 1) * pageSize, page * pageSize - 1)
-        .order('created_at', { ascending: false });
-
-      if (filters.search) {
-        // SECURITY: Only search in allowed fields
-        const allowedFields = await fieldLevelSecurityService.getFilteredFields('clients');
-        const searchFields = allowedFields.filter(field => ['nom', 'telephone'].includes(field));
-
-        if (searchFields.length > 0) {
-          const searchConditions = searchFields.map(field => `${field}.ilike.%${filters.search}%`).join(',');
-          query = query.or(searchConditions);
-        }
+      if (!userId) {
+        return { error: 'Utilisateur non connecté' };
       }
 
-      if (filters.ville) {
-        query = query.eq('ville', filters.ville);
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) throw profileError;
+      if (!profile?.organization_id) {
+        return { error: 'Organisation utilisateur introuvable' };
       }
 
-      const { data, error, count } = await query;
+      const { data: rpcResult, error: rpcError } = await supabase
+        .rpc('get_clients_with_totals', {
+          p_organization_id: profile.organization_id,
+          p_page: page,
+          p_page_size: pageSize,
+          p_search: filters.search || null,
+          p_ville: filters.ville || null
+        });
 
-      if (error) throw error;
+      if (rpcError) throw rpcError;
+
+      const rawClients = (rpcResult as any)?.data || [];
+      const count = Number((rpcResult as any)?.count || 0);
 
       // SECURITY: Filter response data to ensure no sensitive information leaks
-      const filteredClients = await fieldLevelSecurityService.filterResponseData('clients', data || []);
-
-      // Compute total_paye per client from transactions (USD only, exclude canceled)
-      // SECURITY: Only add financial data if user has permission
-      const canSeeFinancialData = await fieldLevelSecurityService.isFieldAllowed('clients', 'total_paye');
-
-      if (filteredClients.length > 0 && canSeeFinancialData) {
-        const clientIds = filteredClients.map(c => c.id);
-        const { data: txData, error: txError } = await supabase
-          .from('transactions')
-          .select('client_id, montant, devise, statut')
-          .in('client_id', clientIds);
-
-        if (!txError && txData) {
-          const totalsMap = new Map<string, number>();
-          txData.forEach(t => {
-            if (t.devise === 'USD' && t.statut !== 'Annulé') {
-              totalsMap.set(t.client_id, (totalsMap.get(t.client_id) || 0) + (t.montant || 0));
-            }
-          });
-          filteredClients.forEach(c => {
-            (c as any).total_paye = totalsMap.get(c.id) || 0;
-          });
-        }
-      }
+      const filteredClients = await fieldLevelSecurityService.filterResponseData('clients', rawClients);
 
       const result: PaginatedResponse<Client> = {
         data: filteredClients,
-        count: count || 0,
+        count,
         page,
         pageSize,
-        totalPages: Math.ceil((count || 0) / pageSize)
+        totalPages: Math.ceil(count / pageSize)
       };
 
       return { data: result };
@@ -104,7 +84,7 @@ export class SupabaseService {
       }
 
       if (filters.ville) {
-        transQuery = transQuery.eq('clients.ville', filters.ville);
+        transQuery = transQuery.ilike('clients.ville', filters.ville);
       }
 
       // Filtrer pour exclure les transactions annulées et ne compter que USD
@@ -128,7 +108,7 @@ export class SupabaseService {
       }
 
       if (filters.ville) {
-        clientQuery = clientQuery.eq('ville', filters.ville);
+        clientQuery = clientQuery.ilike('ville', filters.ville);
       }
 
       const { count, error: countError } = await clientQuery;
@@ -201,24 +181,14 @@ export class SupabaseService {
 
   async deleteClient(id: string): Promise<ApiResponse<void>> {
     try {
-      // Supprimer d'abord toutes les transactions du client
-      const { error: txDeleteError } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('client_id', id);
-
-      if (txDeleteError) {
-        console.warn('Erreur lors de la suppression des transactions:', txDeleteError);
-        // Continuer quand même pour supprimer le client
-      }
-
-      // Ensuite supprimer le client
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', id);
+      const { data, error } = await supabase
+        .rpc('delete_client_secure', { p_client_id: id });
 
       if (error) throw error;
+
+      if (data !== true) {
+        throw new Error('Suppression client non confirmée');
+      }
 
       await this.logActivity('Suppression client', 'Client', id);
 

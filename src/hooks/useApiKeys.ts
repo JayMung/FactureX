@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from './use-toast';
+import { toast } from 'sonner';
 import { useAuth } from '@/components/auth/AuthProvider';
 
 interface ApiKey {
@@ -20,7 +20,6 @@ interface ApiKey {
 export function useApiKeys() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
   const { user } = useAuth();
 
   const fetchApiKeys = async () => {
@@ -36,11 +35,7 @@ export function useApiKeys() {
       setApiKeys(data || []);
     } catch (error: any) {
       console.error('Error fetching API keys:', error);
-      toast({
-        title: 'Erreur',
-        description: 'Impossible de charger les clés API',
-        variant: 'destructive',
-      });
+      toast.error('Impossible de charger les clés API');
     } finally {
       setLoading(false);
     }
@@ -56,6 +51,12 @@ export function useApiKeys() {
     permissions: string[],
     expiresInDays: number
   ): Promise<{ success: boolean; key?: string; error?: string }> => {
+    if (!user?.id) {
+      console.warn('[useApiKeys] createApiKey called with no authenticated user');
+      toast.error('Vous devez être connecté pour créer une clé API.');
+      return { success: false, error: 'Utilisateur non connecté' };
+    }
+
     try {
       // Générer une clé API
       const prefix = type === 'public' ? 'pk_live_' : type === 'secret' ? 'sk_live_' : 'ak_live_';
@@ -82,7 +83,7 @@ export function useApiKeys() {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('organization_id')
-        .eq('id', user?.id)
+        .eq('id', user.id)
         .single();
 
       if (profileError) {
@@ -98,7 +99,7 @@ export function useApiKeys() {
       const { data: adminRole, error: adminError } = await supabase
         .from('admin_roles')
         .select('role, is_active')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .single();
 
       if (adminError || !adminRole || !adminRole.is_active) {
@@ -121,17 +122,14 @@ export function useApiKeys() {
           permissions,
           is_active: true,
           expires_at: expiresAt,
-          created_by: user?.id,
+          created_by: user.id,
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      toast({
-        title: 'Succès',
-        description: 'Clé API créée avec succès',
-      });
+      toast.success('Clé API créée avec succès');
 
       // Rafraîchir la liste
       await fetchApiKeys();
@@ -139,12 +137,18 @@ export function useApiKeys() {
       return { success: true, key: apiKey };
     } catch (error: any) {
       console.error('Error creating API key:', error);
-      toast({
-        title: 'Erreur',
-        description: error.message || 'Impossible de créer la clé API',
-        variant: 'destructive',
-      });
-      return { success: false, error: error.message };
+
+      // Detect RLS policy violation
+      const isRlsError = error?.code === '42501' ||
+        error?.message?.includes('row-level security') ||
+        error?.message?.includes('policy');
+
+      const userMessage = isRlsError
+        ? 'Accès refusé : vous n\'avez pas les permissions nécessaires pour créer une clé API. Vérifiez votre rôle administrateur.'
+        : (error.message || 'Impossible de créer la clé API');
+
+      toast.error(userMessage);
+      return { success: false, error: userMessage };
     }
   };
 
@@ -157,10 +161,7 @@ export function useApiKeys() {
 
       if (error) throw error;
 
-      toast({
-        title: 'Succès',
-        description: 'Clé API supprimée avec succès',
-      });
+      toast.success('Clé API supprimée avec succès');
 
       // Rafraîchir la liste
       await fetchApiKeys();
@@ -168,11 +169,7 @@ export function useApiKeys() {
       return true;
     } catch (error: any) {
       console.error('Error deleting API key:', error);
-      toast({
-        title: 'Erreur',
-        description: error.message || 'Impossible de supprimer la clé API',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Impossible de supprimer la clé API');
       return false;
     }
   };
@@ -205,10 +202,7 @@ export function useApiKeys() {
           .update({ is_active: false })
           .eq('id', keyId);
 
-        toast({
-          title: 'Succès',
-          description: 'Clé API rotée avec succès. L\'ancienne clé a été désactivée.',
-        });
+        toast.success('Clé API rotée avec succès. L\'ancienne clé a été désactivée.');
 
         return { success: true, key: result.key };
       }
@@ -216,11 +210,7 @@ export function useApiKeys() {
       return { success: false };
     } catch (error: any) {
       console.error('Error rotating API key:', error);
-      toast({
-        title: 'Erreur',
-        description: error.message || 'Impossible de roter la clé API',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Impossible de roter la clé API');
       return { success: false };
     }
   };

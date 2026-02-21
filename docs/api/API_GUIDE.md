@@ -45,6 +45,7 @@ https://ddnxtuhswmewoxrwswzg.supabase.co/functions/v1
 | **Public** | `pk_live_` | Lecture seule (stats) | 100/h | Dashboards publics |
 | **Secret** | `sk_live_` | Lecture + Webhooks | 1000/h | Intégrations (n8n, Discord) |
 | **Admin** | `ak_live_` | Accès complet | 5000/h | Administration |
+| **AI Agent** | `ai_live_` | Lecture + écritures en attente | 200/h | Agents IA autonomes |
 
 ### Créer une Clé API
 
@@ -549,11 +550,35 @@ curl -X GET "https://ddnxtuhswmewoxrwswzg.supabase.co/functions/v1/api-stats?per
 
 ### Rate Limits
 
-| Type de Clé | Requêtes/Heure | Burst |
-|-------------|----------------|-------|
-| Public | 100 | 10/min |
-| Secret | 1000 | 50/min |
-| Admin | 5000 | 100/min |
+| Type de Clé | Requêtes/Heure | Burst | `is_machine` |
+|-------------|----------------|-------|---------------|
+| Public | 100 | 10/min | `false` |
+| Secret | 1000 | 50/min | `false` |
+| Admin | 5000 | 100/min | `false` |
+| AI Agent | 200 | 20/min | `true` |
+
+### Restrictions AI Agent
+
+Les clés `ai_agent` (`ai_live_`) ont des restrictions supplémentaires qui ne peuvent pas être contournées par les permissions :
+
+| Restriction | Description |
+|-------------|-------------|
+| **Pas de DELETE** | Les clés AI ne peuvent supprimer aucune entité |
+| **Pas de modification de transactions validées** | Les transactions avec statut `Servi`, `Validé`, `validated`, `completed` ne peuvent pas être modifiées |
+| **Workflow d'approbation obligatoire** | Les transactions créées par un agent IA doivent passer par un processus d'approbation humaine |
+
+#### Permissions par défaut AI Agent
+
+```json
+[
+  "read:transactions",
+  "read:clients",
+  "read:factures",
+  "read:colis",
+  "read:stats",
+  "write:pending_transactions"
+]
+```
 
 ### Headers de Rate Limit
 
@@ -641,6 +666,18 @@ async function fetchWithRetry(url, options, maxRetries = 3) {
 ---
 
 ## 🔄 Changelog
+
+### v1.2.0 (2025-02-17)
+- 🤖 Nouveau type de clé API : `ai_agent` (préfixe `ai_live_`)
+- ✅ Permissions dédiées pour agents IA avec `write:pending_transactions`
+- ✅ Rate limit : 200 req/h pour clés AI
+- ✅ Flag `is_machine` pour identifier les consommateurs non-humains
+- ✅ Restrictions hard-coded : pas de DELETE, pas de modification de transactions validées, workflow d'approbation obligatoire
+
+### v1.1.0 (2025-02-17)
+- 🔄 Support du versioning API (`/v1/` prefix)
+- ✅ Backward compatibility pour les routes legacy
+- ✅ Headers de dépréciation pour les routes non-versionnées
 
 ### v1.0.0 (2025-01-13)
 - 🎉 Lancement initial de l'API

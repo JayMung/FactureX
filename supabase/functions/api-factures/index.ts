@@ -1,24 +1,34 @@
 /**
- * API Endpoint: GET /api-factures
+ * API Endpoint: GET /v1/api-factures
  * Returns filtered facture/devis data for external integrations
+ * 
+ * Versioned routes:
+ *   GET /v1/api-factures   — current (recommended)
+ *   GET /api-factures       — legacy (deprecated, supported until 2026-06-01)
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { authenticateRequest } from '../_shared/api-auth.ts';
 import { successResponse, Errors } from '../_shared/api-response.ts';
+import { withVersionHeaders, getVersionMeta } from '../_shared/api-version.ts';
 import type { FactureFilters } from '../_shared/api-types.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const corsHeaders = {
+const FUNCTION_NAME = 'api-factures';
+
+const baseCorsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key, x-organization-id',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key, x-organization-id, x-api-version',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
 };
 
 serve(async (req) => {
+  // Build version-aware headers for this request
+  const corsHeaders = withVersionHeaders(baseCorsHeaders, req, FUNCTION_NAME);
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -145,11 +155,13 @@ serve(async (req) => {
       items_count: facture.items?.length || 0
     }));
 
+    const versionMeta = getVersionMeta(req, FUNCTION_NAME);
     const response = successResponse(
       { factures: facturesWithCount },
       {
         organization_id: keyData.organization_id,
         response_time_ms: Date.now() - startTime,
+        ...versionMeta,
       },
       {
         total: count || 0,

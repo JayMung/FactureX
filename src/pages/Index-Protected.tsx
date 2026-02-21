@@ -22,7 +22,8 @@ import {
   Plus,
   Shield,
   BarChart3,
-  ArrowUpRight
+  ArrowUpRight,
+  AlertTriangle
 } from 'lucide-react';
 
 import { useDashboardWithPermissions } from '../hooks/useDashboardWithPermissions';
@@ -218,6 +219,16 @@ const IndexProtected: React.FC = () => {
               <p className="text-green-100/90 text-sm mt-0.5">Gérez vos transferts USD/CDF en toute simplicité</p>
             </div>
           </div>
+
+          {/* Incomplete transactions warning badge — admin only */}
+          {isAdmin && stats?.incompleteTransactionsCount > 0 && (
+            <div className="flex items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2.5 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-200">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              <span className="font-medium">
+                {stats.incompleteTransactionsCount} transaction{stats.incompleteTransactionsCount > 1 ? 's' : ''} incomplète{stats.incompleteTransactionsCount > 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
 
           {/* Tabs - Plus épuré */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">

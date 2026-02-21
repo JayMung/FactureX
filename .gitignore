@@ -64,6 +64,9 @@ Desktop.ini
 *.sqlite
 *.sqlite3
 
+# TestSprite (auto-generated tests + secrets in tmp/)
+testsprite_tests/
+
 # Secrets (double protection)
 secrets/
 *.key

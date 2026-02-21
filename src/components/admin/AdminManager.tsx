@@ -58,8 +58,7 @@ export const AdminManager = () => {
       showSuccess(`Invitation administrateur envoyée à ${inviteEmail}`);
       setInviteEmail('');
       
-      // In a real implementation, you would send this token via email
-      console.log('Admin invitation token:', token);
+      // Token is sent via email — never log to console
       
     } catch (err: any) {
       console.error('Error granting admin:', err);

@@ -172,7 +172,7 @@ export const useTransactions = (
       setIsLoadingTotals(true);
       let query = supabase
         .from('transactions')
-        .select('montant, devise, montant_cny, frais, benefice, motif, type_transaction');
+        .select('montant, devise, montant_cny, frais, benefice, motif, type_transaction, id, mode_paiement, client:clients(nom, telephone)');
 
       // Appliquer les mêmes filtres que fetchTransactions
       if (filters.status) {
@@ -222,21 +222,28 @@ export const useTransactions = (
         query = query.not('client_id', 'is', null);
       }
 
-      // Appliquer la recherche textuelle pour les totaux
-      if (filters.search) {
-        query = query.or(`id.ilike.%${filters.search}%`);
-      }
-
       const { data, error } = await query;
 
       if (error) throw error;
 
+      // I4: Filtrage search côté client — même logique que fetchTransactions
+      let filteredData = data || [];
+      if (filters.search && filteredData.length > 0) {
+        const searchLower = filters.search.toLowerCase().trim();
+        filteredData = filteredData.filter((t: any) =>
+          t.id?.toLowerCase().includes(searchLower) ||
+          t.client?.nom?.toLowerCase().includes(searchLower) ||
+          t.client?.telephone?.toLowerCase().includes(searchLower) ||
+          t.mode_paiement?.toLowerCase().includes(searchLower)
+        );
+      }
+
       // Calculer les totaux globaux en utilisant le module
-      const totals = calculateGlobalTotals(data || []);
+      const totals = calculateGlobalTotals(filteredData);
 
       setGlobalTotals({
         ...totals,
-        totalCount: data?.length || 0
+        totalCount: filteredData.length
       });
     } catch (err: any) {
       console.error('Error fetching global totals:', err);
@@ -459,10 +466,10 @@ export const useTransactions = (
             frais: transactionData.frais !== undefined ? transactionData.frais : currentTransaction.frais,
             // Benefice is ALWAYS 0 for swaps
             benefice: 0,
-            // No CNY for swaps
-            montant_cny: null,
-            taux_usd_cny: null
           };
+          // I3: Ne pas envoyer null — laisser le trigger SQL gérer taux_usd_cny/montant_cny
+          delete (updatedData as any).montant_cny;
+          delete (updatedData as any).taux_usd_cny;
         }
         // DÉPENSE (Opération Interne - Expense) - No benefice, no CNY
         else if (transactionType === 'depense') {
@@ -472,10 +479,10 @@ export const useTransactions = (
             frais: transactionData.frais !== undefined ? transactionData.frais : currentTransaction.frais,
             // No benefice for expenses
             benefice: 0,
-            // No CNY for expenses
-            montant_cny: null,
-            taux_usd_cny: null
           };
+          // I3: Ne pas envoyer null — laisser le trigger SQL gérer taux_usd_cny/montant_cny
+          delete (updatedData as any).montant_cny;
+          delete (updatedData as any).taux_usd_cny;
         }
         // REVENUE (Facture, Transfert reçu) - Full calculation with manual override
         else if (transactionType === 'revenue') {
@@ -542,14 +549,16 @@ export const useTransactions = (
         }
       }
 
-
-
       // Inclure les comptes dans la mise à jour si fournis
       const safeData = { ...updatedData } as any;
 
       // Ne pas envoyer les comptes s'ils sont vides (éviter d'écraser avec null)
       if (!safeData.compte_source_id) delete safeData.compte_source_id;
       if (!safeData.compte_destination_id) delete safeData.compte_destination_id;
+
+      // I3: Supprimer les champs null résiduels — le trigger SQL recalcule
+      if (safeData.taux_usd_cny === null || safeData.taux_usd_cny === undefined) delete safeData.taux_usd_cny;
+      if (safeData.montant_cny === null || safeData.montant_cny === undefined) delete safeData.montant_cny;
 
       const { data, error } = await supabase
         .from('transactions')

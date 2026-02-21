@@ -883,31 +883,6 @@ const TransactionsProtected: React.FC = () => {
     showSuccess('Transactions exportées avec succès');
   };
 
-  // Analyse temporaire des anciens transferts
-  useEffect(() => {
-    const analyzeOldTransfers = async () => {
-      console.log('🔍 Analysing old transfers...');
-      const { data } = await supabase
-        .from('transactions')
-        .select('created_at, motif, type_transaction, montant, frais, benefice')
-        .ilike('motif', 'Transfert') // Chercher exactement "Transfert" (anciens)
-        .eq('type_transaction', 'revenue')
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (data) {
-        console.table(data.map(t => ({
-          ...t,
-          ratio_frais: t.montant ? (t.frais / t.montant * 100).toFixed(2) + '%' : 'N/A',
-          ratio_benefice: t.montant ? (t.benefice / t.montant * 100).toFixed(2) + '%' : 'N/A',
-          partenaire_estime: t.montant ? ((t.frais - t.benefice) / t.montant * 100).toFixed(2) + '%' : 'N/A'
-        })));
-      }
-    };
-
-    analyzeOldTransfers();
-  }, []);
-
   if (error) {
     return (
       <Layout>

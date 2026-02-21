@@ -7,6 +7,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { Ratelimit } from "https://esm.sh/@upstash/ratelimit@0.4.4";
 import { Redis } from "https://esm.sh/@upstash/redis@1.22.0";
 import type { ApiKey, ApiKeyType, RATE_LIMITS } from './api-types.ts';
+import { AI_AGENT_RESTRICTIONS } from './api-types.ts';
 import { Errors } from './api-response.ts';
 
 // ============================================================================
@@ -85,10 +86,10 @@ export async function validateApiKey(
     };
   }
 
-  // Extract key prefix (pk_live_, sk_live_, ak_live_)
+  // Extract key prefix (pk_live_, sk_live_, ak_live_, ai_live_)
   const prefix = apiKey.substring(0, 8);
   
-  if (!['pk_live_', 'sk_live_', 'ak_live_'].includes(prefix)) {
+  if (!['pk_live_', 'sk_live_', 'ak_live_', 'ai_live_'].includes(prefix)) {
     return {
       valid: false,
       error: Errors.UNAUTHORIZED('Invalid API key format')
@@ -196,10 +197,11 @@ export async function applyRateLimit(
 
   try {
     // Determine rate limit based on key type
-    const limits = {
+    const limits: Record<string, { requests: number; window: string }> = {
       public: { requests: 100, window: '1 h' },
       secret: { requests: 1000, window: '1 h' },
-      admin: { requests: 5000, window: '1 h' }
+      admin: { requests: 5000, window: '1 h' },
+      ai_agent: { requests: 200, window: '1 h' }
     };
 
     const limit = limits[keyData.type];
@@ -264,6 +266,85 @@ export async function logApiRequest(
 }
 
 // ============================================================================
+// AI Agent Restrictions
+// ============================================================================
+
+/**
+ * Enforce hard restrictions for ai_agent keys.
+ * These restrictions cannot be overridden by permissions.
+ * 
+ * Returns an error Response if the request violates a restriction, or null if allowed.
+ */
+export function enforceAiAgentRestrictions(
+  keyData: ApiKey,
+  req: Request
+): Response | null {
+  if (keyData.type !== 'ai_agent') {
+    return null; // Only applies to ai_agent keys
+  }
+
+  const method = req.method.toUpperCase();
+
+  // ai_agent keys cannot delete any entity
+  if (method === 'DELETE' && !AI_AGENT_RESTRICTIONS.canDelete) {
+    return Errors.FORBIDDEN(
+      'AI agent keys are not allowed to delete entities. Use a secret or admin key instead.'
+    );
+  }
+
+  // ai_agent keys cannot directly write to transactions — they must use
+  // the pending_transactions approval workflow instead.
+  // Block POST/PUT/PATCH on any transaction-related endpoint.
+  if (['POST', 'PUT', 'PATCH'].includes(method) && !AI_AGENT_RESTRICTIONS.canBypassApproval) {
+    const url = new URL(req.url);
+    const path = url.pathname.toLowerCase();
+    // Match api-transactions in the path (covers /api-transactions and /v1/api-transactions)
+    if (path.includes('api-transactions')) {
+      return Errors.FORBIDDEN(
+        'AI agent keys cannot write directly to transactions. ' +
+        'Use write:pending_transactions to submit transactions for human approval.'
+      );
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if an ai_agent key is attempting to update a validated transaction.
+ * Call this from endpoints that handle transaction updates.
+ * 
+ * Returns an error Response if the transaction is validated, or null if allowed.
+ */
+export function enforceAiAgentValidatedRestriction(
+  keyData: ApiKey,
+  transactionStatus: string
+): Response | null {
+  if (keyData.type !== 'ai_agent') {
+    return null;
+  }
+
+  const validatedStatuses = ['Servi', 'Validé', 'validated', 'completed'];
+  if (validatedStatuses.includes(transactionStatus) && !AI_AGENT_RESTRICTIONS.canUpdateValidated) {
+    return Errors.FORBIDDEN(
+      'AI agent keys cannot update validated transactions. Use a secret or admin key instead.'
+    );
+  }
+
+  return null;
+}
+
+/**
+ * Check if an ai_agent key is attempting to bypass the approval workflow.
+ * Transactions created by ai_agent keys must go through approval.
+ * 
+ * Returns true if the key is an ai_agent (meaning approval is required).
+ */
+export function requiresApproval(keyData: ApiKey): boolean {
+  return keyData.type === 'ai_agent' && !AI_AGENT_RESTRICTIONS.canBypassApproval;
+}
+
+// ============================================================================
 // Complete Authentication Flow
 // ============================================================================
 
@@ -308,6 +389,13 @@ export async function authenticateRequest(
     }
   }
 
+  // Enforce AI agent restrictions (no DELETE, etc.)
+  const aiRestrictionError = enforceAiAgentRestrictions(keyData, req);
+  if (aiRestrictionError) {
+    await logApiRequest(keyData, req, 403, Date.now() - startTime, 'AI agent restriction violated');
+    return { error: aiRestrictionError };
+  }
+
   // Apply rate limiting
   const rateLimitError = await applyRateLimit(keyData, `${keyData.organization_id}:${keyData.id}`);
   if (rateLimitError) {
@@ -326,7 +414,13 @@ export async function authenticateRequest(
  * Generate a new API key
  */
 export function generateApiKey(type: ApiKeyType): string {
-  const prefix = type === 'public' ? 'pk_live_' : type === 'secret' ? 'sk_live_' : 'ak_live_';
+  const prefixMap: Record<ApiKeyType, string> = {
+    public: 'pk_live_',
+    secret: 'sk_live_',
+    admin: 'ak_live_',
+    ai_agent: 'ai_live_'
+  };
+  const prefix = prefixMap[type];
   const randomBytes = new Uint8Array(32);
   crypto.getRandomValues(randomBytes);
   const randomString = Array.from(randomBytes)
@@ -370,6 +464,7 @@ export async function createApiKey(
         type,
         permissions,
         is_active: true,
+        is_machine: type === 'ai_agent',
         expires_at: expiresAt,
         created_by: createdBy
       })

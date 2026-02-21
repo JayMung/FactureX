@@ -18,14 +18,16 @@ export const useFactures = (page: number = 1, filters?: FactureFilters, options?
   const [factures, setFactures] = useState<Facture[]>([]);
   const [pagination, setPagination] = useState<PaginatedResponse<Facture> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingTotals, setIsLoadingTotals] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [globalTotals, setGlobalTotals] = useState({
     totalUSD: 0,
     totalCDF: 0,
     totalFrais: 0,
-    totalCount: 0
+    totalCount: 0,
+    totalAmount: 0,
+    totalPaid: 0,
+    totalOutstanding: 0
   });
   const pageSize = options?.pageSize ?? DEFAULT_PAGE_SIZE;
   const sort = options?.sort;
@@ -35,179 +37,62 @@ export const useFactures = (page: number = 1, filters?: FactureFilters, options?
       setIsLoading(true);
       setError(null);
 
-      // Construire la requête optimisée
-      let query = supabase
-        .from('factures')
-        .select(`
-          id,
-          facture_number,
-          type,
-          statut,
-          date_emission,
-          total_general,
-          devise,
-          mode_livraison,
-          client_id,
-          clients(id, nom, telephone, ville)
-        `, { count: 'exact' });
-
-      // Appliquer le tri
-      if (sort?.key) {
-        if (sort.key === 'clients') {
-          query = query.order('nom', { foreignTable: 'clients', ascending: sort.direction === 'asc' });
-        } else {
-          query = query.order(sort.key, { ascending: sort.direction === 'asc' });
+      const { data, error: fetchError } = await supabase.rpc(
+        'get_factures_with_totals_secure',
+        {
+          p_page: page,
+          p_page_size: pageSize,
+          p_search: filters?.search || null,
+          p_statut: filters?.statut || null,
+          p_type: filters?.type || null,
+          p_client_id: filters?.clientId || null,
+          p_date_from: filters?.dateFrom || null,
+          p_date_to: filters?.dateTo || null
         }
-      } else {
-        query = query.order('date_emission', { ascending: false });
-      }
-      
-      // Si pas de recherche, appliquer la pagination
-      if (!filters?.search) {
-        const from = (page - 1) * pageSize;
-        const to = from + pageSize - 1;
-        query = query.range(from, to);
-      }
-
-      // Appliquer les filtres
-      if (filters?.type) {
-        query = query.eq('type', filters.type);
-      }
-      if (filters?.statut) {
-        query = query.eq('statut', filters.statut);
-      }
-      if (filters?.clientId) {
-        query = query.eq('client_id', filters.clientId);
-      }
-      if (filters?.modeLivraison) {
-        query = query.eq('mode_livraison', filters.modeLivraison);
-      }
-      if (filters?.dateFrom) {
-        query = query.gte('date_emission', filters.dateFrom);
-      }
-      if (filters?.dateTo) {
-        query = query.lte('date_emission', filters.dateTo);
-      }
-      
-      // Charger factures
-      const { data, error: fetchError, count } = await query;
+      );
 
       if (fetchError) throw fetchError;
 
-      // Filtrage côté client pour rechercher dans les données du client
-      let filteredData = (data || []) as unknown as Facture[];
-      let filteredCount = count || 0;
-      
-      if (filters?.search && filteredData.length > 0) {
-        const searchLower = filters.search.toLowerCase().trim();
-        filteredData = filteredData.filter((facture: any) => {
-          const matchFactureNumber = facture.facture_number?.toLowerCase().includes(searchLower);
-          const matchClientNom = facture.clients?.nom?.toLowerCase().includes(searchLower);
-          const matchClientTelephone = facture.clients?.telephone?.toLowerCase().includes(searchLower);
-          return matchFactureNumber || matchClientNom || matchClientTelephone;
-        });
-        filteredCount = filteredData.length;
-        
-        // Appliquer la pagination côté client si recherche active
-        const from = (page - 1) * pageSize;
-        const to = from + pageSize;
-        filteredData = filteredData.slice(from, to);
-      }
+      const rpcData = data as {
+        data: Facture[] | null;
+        count: number;
+        totalAmount: number;
+        totalPaid: number;
+        totalOutstanding: number;
+      };
 
-      setFactures(filteredData);
-      
+      const rows = rpcData.data || [];
+      const totalCount = rpcData.count || 0;
+
+      setFactures(rows);
+
       setPagination({
-        data: filteredData,
-        count: filteredCount,
+        data: rows,
+        count: totalCount,
         page,
         pageSize,
-        totalPages: Math.ceil(filteredCount / pageSize)
+        totalPages: Math.ceil(totalCount / pageSize)
       });
 
-      // Reset retry count on success
+      setGlobalTotals({
+        totalUSD: 0,
+        totalCDF: 0,
+        totalFrais: 0,
+        totalCount,
+        totalAmount: rpcData.totalAmount || 0,
+        totalPaid: rpcData.totalPaid || 0,
+        totalOutstanding: rpcData.totalOutstanding || 0
+      });
+
       setRetryCount(0);
     } catch (err: any) {
       console.error('Error fetching factures:', err);
       setError(err.message || 'Erreur lors du chargement des factures');
       setRetryCount(prev => prev + 1);
-      
-      // Ne pas afficher de toast d'erreur pour éviter de polluer l'UI
-      // L'erreur est déjà loggée dans la console et stockée dans le state
     } finally {
       setIsLoading(false);
     }
   }, [page, pageSize, filters?.type, filters?.statut, filters?.clientId, filters?.modeLivraison, filters?.dateFrom, filters?.dateTo, filters?.search, retryCount]);
-
-  // Fonction pour calculer les totaux globaux (toutes pages confondues)
-  // IMPORTANT: Ne compte QUE les factures payées (statut = 'payee')
-  const fetchGlobalTotals = useCallback(async () => {
-    try {
-      setIsLoadingTotals(true);
-      
-      let query = supabase
-        .from('factures')
-        .select('total_general, devise, frais')
-        .eq('statut', 'payee'); // UNIQUEMENT les factures payées
-
-      // Appliquer les mêmes filtres que fetchFactures (sauf statut qui est forcé à 'payee')
-      if (filters?.type) {
-        query = query.eq('type', filters.type);
-      }
-      // Ne pas appliquer filters.statut car on force 'payee'
-      if (filters?.clientId) {
-        query = query.eq('client_id', filters.clientId);
-      }
-      if (filters?.modeLivraison) {
-        query = query.eq('mode_livraison', filters.modeLivraison);
-      }
-      if (filters?.dateFrom) {
-        query = query.gte('date_emission', filters.dateFrom);
-      }
-      if (filters?.dateTo) {
-        query = query.lte('date_emission', filters.dateTo);
-      }
-      
-      // Appliquer la recherche textuelle pour les totaux
-      if (filters?.search) {
-        query = query.or(`facture_number.ilike.%${filters.search}%`);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      // Calculer les totaux globaux (uniquement factures payées)
-      const totals = (data || []).reduce((acc, facture) => {
-        if (facture.devise === 'USD') {
-          acc.totalUSD += facture.total_general || 0;
-        } else if (facture.devise === 'CDF') {
-          acc.totalCDF += facture.total_general || 0;
-        }
-        acc.totalFrais += facture.frais || 0;
-        return acc;
-      }, {
-        totalUSD: 0,
-        totalCDF: 0,
-        totalFrais: 0
-      });
-
-      setGlobalTotals({
-        ...totals,
-        totalCount: data?.length || 0
-      });
-    } catch (err: any) {
-      console.error('Error fetching global totals:', err);
-      // En cas d'erreur, mettre à zéro
-      setGlobalTotals({
-        totalUSD: 0,
-        totalCDF: 0,
-        totalFrais: 0,
-        totalCount: 0
-      });
-    } finally {
-      setIsLoadingTotals(false);
-    }
-  }, [filters]);
 
   const createFacture = async (data: CreateFactureData): Promise<Facture> => {
     try {
@@ -260,58 +145,58 @@ export const useFactures = (page: number = 1, filters?: FactureFilters, options?
         totalGeneral = subtotal + fraisCommission + fraisTransportDouane;
       }
 
-      // Insérer la facture
-      const { data: factureData, error: factureError } = await supabase
+      const factureData = {
+        type: data.type,
+        statut: data.statut || 'brouillon',
+        client_id: data.client_id,
+        mode_livraison: data.mode_livraison,
+        devise: data.devise,
+        shipping_fee: shippingFee,
+        subtotal,
+        total_poids: totalPoids,
+        frais: fraisCommission,
+        frais_transport_douane: fraisTransportDouane,
+        total_general: totalGeneral,
+        conditions_vente: data.conditions_vente,
+        notes: data.notes,
+        informations_bancaires: data.informations_bancaires,
+        created_by: user.id,
+        date_emission: data.date_emission
+      };
+
+      const itemsArray = data.items.map((item) => ({ ...item }));
+
+      const { data: createdFactureId, error: createError } = await supabase.rpc(
+        'create_facture_secure',
+        {
+          p_facture: factureData,
+          p_items: itemsArray
+        }
+      );
+
+      if (createError) throw createError;
+
+      const { data: createdFacture, error: createdFactureError } = await supabase
         .from('factures')
-        .insert([{
-          type: data.type,
-          statut: data.statut || 'brouillon',
-          client_id: data.client_id,
-          mode_livraison: data.mode_livraison,
-          devise: data.devise,
-          shipping_fee: shippingFee,
-          subtotal,
-          total_poids: totalPoids,
-          frais: fraisCommission,
-          frais_transport_douane: fraisTransportDouane,
-          total_general: totalGeneral,
-          conditions_vente: data.conditions_vente,
-          notes: data.notes,
-          informations_bancaires: data.informations_bancaires,
-          created_by: user.id,
-          date_emission: data.date_emission
-        }])
-        .select()
+        .select('*')
+        .eq('id', createdFactureId)
         .single();
 
-      if (factureError) throw factureError;
-
-      // Insérer les items
-      const itemsToInsert = data.items.map((item, index) => ({
-        facture_id: factureData.id,
-        numero_ligne: index + 1,
-        ...item
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('facture_items')
-        .insert(itemsToInsert);
-
-      if (itemsError) throw itemsError;
+      if (createdFactureError) throw createdFactureError;
 
       // Log l'activité
       await logActivity({
         action: 'CREATE',
         cible: 'factures',
-        cible_id: factureData.id,
+        cible_id: createdFacture.id,
         details: { 
-          facture_number: factureData.facture_number,
+          facture_number: createdFacture.facture_number,
           type: data.type
         }
       });
 
       showSuccess(`${data.type === 'devis' ? 'Devis' : 'Facture'} créé(e) avec succès`);
-      return factureData;
+      return createdFacture;
     } catch (err: any) {
       console.error('Error creating facture:', err);
       showError(err.message || 'Erreur lors de la création');
@@ -338,26 +223,6 @@ export const useFactures = (page: number = 1, filters?: FactureFilters, options?
       if (data.frais_transport_douane !== undefined) updateData.frais_transport_douane = data.frais_transport_douane;
       if (data.total_poids !== undefined) updateData.total_poids = data.total_poids;
       if (data.total_general !== undefined) updateData.total_general = data.total_general;
-
-      // ✅ CORRECTION: Ne mettre à jour les items que si explicitement fournis ET non vides
-      // Si data.items est undefined, on ne touche pas aux items existants
-      // Si data.items est un tableau vide [], on supprime tous les items
-      // Si data.items contient des éléments, on remplace tous les items
-      if (data.items !== undefined) {
-        // Supprimer les anciens items
-        await supabase.from('facture_items').delete().eq('facture_id', id);
-
-        // Insérer les nouveaux items (seulement s'il y en a)
-        if (data.items.length > 0) {
-          const itemsToInsert = data.items.map((item, index) => ({
-            facture_id: id,
-            numero_ligne: index + 1,
-            ...item
-          }));
-
-          await supabase.from('facture_items').insert(itemsToInsert);
-        }
-      }
 
       // Si on met à jour les items SANS fournir de totaux, recalculer automatiquement
       if (data.items && data.subtotal === undefined) {
@@ -408,10 +273,29 @@ export const useFactures = (page: number = 1, filters?: FactureFilters, options?
         updateData.total_general = totalGeneral;
       }
 
-      const { error } = await supabase
-        .from('factures')
-        .update(updateData)
-        .eq('id', id);
+      let itemsArray: any[] = [];
+
+      if (data.items !== undefined) {
+        itemsArray = data.items.map((item) => ({ ...item }));
+      } else {
+        const { data: existingItems, error: existingItemsError } = await supabase
+          .from('facture_items')
+          .select('description, quantite, prix_unitaire, poids, montant_total')
+          .eq('facture_id', id)
+          .order('numero_ligne', { ascending: true });
+
+        if (existingItemsError) throw existingItemsError;
+        itemsArray = existingItems || [];
+      }
+
+      const { error } = await supabase.rpc(
+        'update_facture_secure',
+        {
+          p_facture_id: id,
+          p_facture: updateData,
+          p_items: itemsArray
+        }
+      );
 
       if (error) throw error;
 
@@ -442,10 +326,12 @@ export const useFactures = (page: number = 1, filters?: FactureFilters, options?
 
   const deleteFacture = async (id: string): Promise<void> => {
     try {
-      const { error } = await supabase
-        .from('factures')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.rpc(
+        'delete_facture_secure',
+        {
+          p_facture_id: id
+        }
+      );
 
       if (error) throw error;
 
@@ -520,12 +406,6 @@ export const useFactures = (page: number = 1, filters?: FactureFilters, options?
     fetchFactures();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, pageSize, filters?.type, filters?.statut, filters?.clientId, filters?.modeLivraison, filters?.dateFrom, filters?.dateTo, filters?.search, sort?.key, sort?.direction]);
-
-  useEffect(() => {
-    // Charger les totaux de manière asynchrone (non bloquant)
-    fetchGlobalTotals();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters?.type, filters?.clientId, filters?.modeLivraison, filters?.dateFrom, filters?.dateTo]);
 
   return {
     factures,

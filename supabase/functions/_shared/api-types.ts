@@ -7,17 +7,18 @@
 // API Key Types
 // ============================================================================
 
-export type ApiKeyType = 'public' | 'secret' | 'admin';
+export type ApiKeyType = 'public' | 'secret' | 'admin' | 'ai_agent';
 
 export interface ApiKey {
   id: string;
   organization_id: string;
   name: string;
   key_hash: string;
-  key_prefix: string; // pk_live_, sk_live_, ak_live_
+  key_prefix: string; // pk_live_, sk_live_, ak_live_, ai_live_
   type: ApiKeyType;
   permissions: string[];
   is_active: boolean;
+  is_machine: boolean; // true for ai_agent keys
   last_used_at?: string;
   expires_at?: string;
   created_at: string;
@@ -25,9 +26,10 @@ export interface ApiKey {
 }
 
 export interface ApiKeyPermissions {
-  public: string[];    // ['read:stats', 'read:public_data']
-  secret: string[];    // ['read:*', 'write:webhooks']
-  admin: string[];     // ['*']
+  public: string[];     // ['read:stats', 'read:public_data']
+  secret: string[];     // ['read:*', 'write:webhooks']
+  admin: string[];      // ['*']
+  ai_agent: string[];   // ['read:transactions', 'read:clients', ... 'write:pending_transactions']
 }
 
 // ============================================================================
@@ -55,6 +57,10 @@ export interface ApiResponse<T = any> {
     generated_at: string;
     organization_id: string;
     request_id?: string;
+    api_version?: string;
+    deprecated?: boolean;
+    sunset?: string;
+    migration_url?: string;
   };
   pagination?: {
     total: number;
@@ -227,6 +233,10 @@ export interface RateLimitConfig {
     requests: number;
     window: string; // '1h'
   };
+  ai_agent: {
+    requests: number;
+    window: string; // '1h'
+  };
 }
 
 export const RATE_LIMITS: RateLimitConfig = {
@@ -240,6 +250,10 @@ export const RATE_LIMITS: RateLimitConfig = {
   },
   admin: {
     requests: 5000,
+    window: '1h'
+  },
+  ai_agent: {
+    requests: 200,
     window: '1h'
   }
 };
@@ -260,6 +274,10 @@ export const API_PERMISSIONS = {
   // Write permissions
   'write:webhooks': 'Create and manage webhooks',
   'write:transactions': 'Create transactions',
+  'write:pending_transactions': 'Create pending transactions (requires approval)',
+  
+  // Colis permissions
+  'read:colis': 'Read colis (parcels) data',
   
   // Admin permissions
   'admin:keys': 'Manage API keys',
@@ -270,5 +288,30 @@ export const API_PERMISSIONS = {
 export const DEFAULT_PERMISSIONS: Record<ApiKeyType, string[]> = {
   public: ['read:stats'],
   secret: ['read:*', 'write:webhooks'],
-  admin: ['*']
+  admin: ['*'],
+  ai_agent: [
+    'read:transactions',
+    'read:clients',
+    'read:factures',
+    'read:colis',
+    'read:stats',
+    'write:pending_transactions'
+  ]
 };
+
+// ============================================================================
+// AI Agent Restrictions
+// ============================================================================
+
+/**
+ * Hard restrictions for ai_agent keys that cannot be overridden by permissions.
+ * These are enforced at the middleware level regardless of granted permissions.
+ */
+export const AI_AGENT_RESTRICTIONS = {
+  /** ai_agent keys cannot delete any entity */
+  canDelete: false,
+  /** ai_agent keys cannot update validated transactions */
+  canUpdateValidated: false,
+  /** ai_agent keys cannot bypass the approval workflow */
+  canBypassApproval: false,
+} as const;

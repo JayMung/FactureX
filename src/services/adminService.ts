@@ -25,30 +25,14 @@ export interface AdminInvitation {
 
 export class AdminService {
   // Check if current user is admin
+  // SOURCE OF TRUTH: app_metadata.role (server-controlled, JWT-embedded)
   async isCurrentUserAdmin(): Promise<boolean> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
 
-      // First check app_metadata (server-controlled, most reliable)
       const userRole = user.app_metadata?.role;
-      if (userRole === 'admin' || userRole === 'super_admin') {
-        return true;
-      }
-
-      // Fallback: Check secure admin_roles table
-      const { data, error } = await supabase
-        .from('admin_roles')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .single();
-
-      if (error && error.code !== 'PGRST116') { // Not found error
-        console.error('Error checking admin status:', error);
-      }
-
-      return !!data;
+      return userRole === 'admin' || userRole === 'super_admin';
     } catch (error) {
       console.error('Error checking admin status:', error);
       return false;

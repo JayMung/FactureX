@@ -45,9 +45,10 @@ export const usePermissions = () => {
         const consolidatedPerms = await permissionConsolidationService.getUserPermissions(user.id);
         
         setPermissions(consolidatedPerms.permissions);
-        // Fallback: treat metadata roles as admin if consolidation lags
-        const metaRole = (user.user_metadata?.role || user.app_metadata?.role) as string | undefined;
-        const effectiveIsAdmin = !!(consolidatedPerms.is_admin || metaRole === 'super_admin' || metaRole === 'admin' || authIsAdmin);
+        // app_metadata.role = source canonique (server-controlled)
+        // user_metadata.role est modifiable par l'utilisateur — NE PAS utiliser pour les décisions d'autorisation
+        const appMetaRole = user.app_metadata?.role as string | undefined;
+        const effectiveIsAdmin = !!(consolidatedPerms.is_admin || appMetaRole === 'super_admin' || appMetaRole === 'admin' || authIsAdmin);
         setIsAdmin(effectiveIsAdmin);
         
         // Mettre en cache
@@ -88,19 +89,22 @@ export const usePermissions = () => {
   useEffect(() => {
     if (!user?.id) return;
 
-    // Subscribe to both admin_roles and user_permissions for this user
+    // Subscribe to admin_roles (audit trail) and user_permissions for this user
+    // Role changes propagate via JWT refresh after set_user_role() RPC
     const channel = supabase
       .channel(`permissions:${user.id}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'admin_roles', filter: `user_id=eq.${user.id}` },
-        () => {
+        async () => {
           permissionsCache.delete(user.id);
-          // Soft reload in background
+          // Force JWT refresh so app_metadata reflects the new role
+          await supabase.auth.refreshSession();
+          const { data: { user: refreshedUser } } = await supabase.auth.getUser();
+          const appMetaRole = refreshedUser?.app_metadata?.role as string | undefined;
           permissionConsolidationService.getUserPermissions(user.id).then((consolidatedPerms) => {
             setPermissions(consolidatedPerms.permissions);
-            const metaRole = (user?.user_metadata?.role || user?.app_metadata?.role) as string | undefined;
-            const effectiveIsAdmin = !!(consolidatedPerms.is_admin || metaRole === 'super_admin' || metaRole === 'admin' || authIsAdmin);
+            const effectiveIsAdmin = !!(consolidatedPerms.is_admin || appMetaRole === 'super_admin' || appMetaRole === 'admin' || authIsAdmin);
             setIsAdmin(effectiveIsAdmin);
           }).catch(() => {/* ignore */});
         }
@@ -112,8 +116,8 @@ export const usePermissions = () => {
           permissionsCache.delete(user.id);
           permissionConsolidationService.getUserPermissions(user.id).then((consolidatedPerms) => {
             setPermissions(consolidatedPerms.permissions);
-            const metaRole = (user?.user_metadata?.role || user?.app_metadata?.role) as string | undefined;
-            const effectiveIsAdmin = !!(consolidatedPerms.is_admin || metaRole === 'super_admin' || metaRole === 'admin' || authIsAdmin);
+            const appMetaRole = user?.app_metadata?.role as string | undefined;
+            const effectiveIsAdmin = !!(consolidatedPerms.is_admin || appMetaRole === 'super_admin' || appMetaRole === 'admin' || authIsAdmin);
             setIsAdmin(effectiveIsAdmin);
           }).catch(() => {/* ignore */});
         }

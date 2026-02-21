@@ -54,7 +54,7 @@ function createGenericCrudHook<T, CreateData>(
           activityLogger.logActivityWithChanges(
             `Création ${options.entityName}`,
             options.tableName,
-            response.data.id as string,
+            (response.data as any).id as string,
             { before: null, after: response.data }
           );
           queryClient.invalidateQueries({ queryKey: [options.tableName] });
@@ -112,12 +112,13 @@ function createGenericCrudHook<T, CreateData>(
 
     return {
       // Data
-      items: dataQuery.data?.data?.data || [],
-      pagination: dataQuery.data?.data ? {
-        count: dataQuery.data.data.count,
-        page: dataQuery.data.data.page,
-        pageSize: dataQuery.data.data.pageSize,
-        totalPages: dataQuery.data.data.totalPages
+      items: (((dataQuery.data?.data as any)?.data) || []) as T[],
+      clients: (((dataQuery.data?.data as any)?.data) || []) as T[],
+      pagination: (dataQuery.data?.data as any) ? {
+        count: (dataQuery.data?.data as any).count,
+        page: (dataQuery.data?.data as any).page,
+        pageSize: (dataQuery.data?.data as any).pageSize,
+        totalPages: (dataQuery.data?.data as any).totalPages
       } : null,
       globalTotals: {
         totalPaye: globalTotalsQuery.data?.data?.totalPaye || 0,
@@ -132,6 +133,9 @@ function createGenericCrudHook<T, CreateData>(
       createItem: createMutation.mutate,
       updateItem: updateMutation.mutate,
       deleteItem: deleteMutation.mutate,
+      createClient: createMutation.mutate,
+      updateClient: updateMutation.mutate,
+      deleteClient: deleteMutation.mutate,
       // Pending states
       isCreating: createMutation.isPending,
       isUpdating: updateMutation.isPending,
@@ -147,12 +151,12 @@ function createGenericCrudHook<T, CreateData>(
 export const useClients = createGenericCrudHook<Client, CreateClientData>({
   tableName: 'clients',
   entityName: 'Client',
-  getAll: supabaseService.getClients,
-  getById: supabaseService.getClientById,
-  create: supabaseService.createClient,
-  update: supabaseService.updateClient,
-  delete: supabaseService.deleteClient,
-  getGlobalTotals: supabaseService.getClientsGlobalTotals
+  getAll: supabaseService.getClients.bind(supabaseService),
+  getById: supabaseService.getClientById.bind(supabaseService),
+  create: supabaseService.createClient.bind(supabaseService),
+  update: supabaseService.updateClient.bind(supabaseService),
+  delete: supabaseService.deleteClient.bind(supabaseService),
+  getGlobalTotals: supabaseService.getClientsGlobalTotals.bind(supabaseService)
 });
 
 export const useClient = (id: string) => {

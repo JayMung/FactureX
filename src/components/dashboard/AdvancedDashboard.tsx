@@ -69,13 +69,13 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
   const handleExport = () => {
     // Export des données analytics en CSV
     const csv = [
-      ['Période', 'Revenus USD', 'Revenus CDF', 'Transactions', 'Nouveaux clients'],
+      ['Date', 'Revenus USD', 'Coût Fournisseur USD', 'Dépenses Opé. USD', 'Marge Nette USD'],
       ...analytics.dailyStats.map(stat => [
         stat.date,
         stat.revenueUSD.toString(),
-        stat.revenueCDF.toString(),
-        stat.transactions.toString(),
-        stat.newClients.toString()
+        stat.supplierCostUSD.toString(),
+        stat.operationalExpensesUSD.toString(),
+        stat.netMarginUSD.toString()
       ])
     ].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
 
@@ -241,28 +241,27 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Revenus totaux"
-          value={formatCurrency(analytics.totalRevenue, 'USD')}
+          value={formatCurrency(analytics.totalRevenueUSD, 'USD')}
           change={analytics.revenueChange}
           icon={<DollarSign className="h-6 w-6 text-white" />}
           color="bg-green-600"
         />
         <StatCard
-          title="Transactions"
-          value={analytics.totalTransactions.toLocaleString()}
-          change={analytics.transactionChange}
+          title="Marge nette"
+          value={formatCurrency(analytics.netMarginUSD, 'USD')}
+          change={analytics.marginChange}
           icon={<Receipt className="h-6 w-6 text-white" />}
           color="bg-blue-600"
         />
         <StatCard
           title="Clients actifs"
           value={analytics.activeClients.toLocaleString()}
-          change={analytics.clientChange}
           icon={<Users className="h-6 w-6 text-white" />}
           color="bg-purple-600"
         />
         <StatCard
           title="Bénéfice net"
-          value={formatCurrency(analytics.netProfit, 'USD')}
+          value={formatCurrency(analytics.netProfitUSD, 'USD')}
           change={analytics.profitChange}
           icon={<TrendingUp className="h-6 w-6 text-white" />}
           color="bg-orange-600"
@@ -309,7 +308,7 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
                 <Tooltip content={<ChartTooltip />} />
                 <Legend formatter={(value) => <span className="text-xs text-slate-500">{value}</span>} />
                 <Area type="monotone" dataKey="revenueUSD" stroke="#10b981" fillOpacity={1} fill="url(#colorUSD)" name="Revenus USD" />
-                <Area type="monotone" dataKey="revenueCDF" stroke="#3b82f6" fillOpacity={1} fill="url(#colorCDF)" name="Revenus CDF" />
+                <Area type="monotone" dataKey="supplierCostUSD" stroke="#3b82f6" fillOpacity={1} fill="url(#colorCDF)" name="Coût Fournisseur USD" />
               </AreaChart>
             ) : chartType === 'transactions' ? (
               <BarChart data={analytics.dailyStats}>
@@ -318,7 +317,7 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
                 <YAxis stroke="#94a3b8" style={{ fontSize: '12px' }} />
                 <Tooltip content={<ChartTooltip />} />
                 <Legend formatter={(value) => <span className="text-xs text-slate-500">{value}</span>} />
-                <Bar dataKey="transactions" fill="#3b82f6" radius={[8, 8, 0, 0]} name="Transactions" />
+                <Bar dataKey="netMarginUSD" fill="#3b82f6" radius={[8, 8, 0, 0]} name="Marge Nette USD" />
               </BarChart>
             ) : (
               <LineChart data={analytics.dailyStats}>
@@ -329,12 +328,12 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
                 <Legend formatter={(value) => <span className="text-xs text-slate-500">{value}</span>} />
                 <Line
                   type="monotone"
-                  dataKey="newClients"
+                  dataKey="operationalExpensesUSD"
                   stroke="#9333ea"
                   strokeWidth={2}
                   dot={{ fill: '#9333ea', r: 4 }}
                   activeDot={{ r: 6 }}
-                  name="Nouveaux clients"
+                  name="Dépenses Opérationnelles USD"
                 />
               </LineChart>
             )}
@@ -353,24 +352,26 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 bg-green-500 rounded"></div>
-                  <span>USD</span>
-                </div>
-                <span className="font-medium">
-                  {formatCurrency(analytics.currencyBreakdown.USD, 'USD')}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                  <span>CDF</span>
-                </div>
-                <span className="font-medium">
-                  {formatCurrency(analytics.currencyBreakdown.CDF, 'CDF')}
-                </span>
-              </div>
+              {analytics.currencyBreakdown.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-4">Aucune donnée de devise</p>
+              ) : (
+                analytics.currencyBreakdown.map((item) => (
+                  <div key={item.currency} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className={cn(
+                        'w-4 h-4 rounded',
+                        item.currency === 'USD' ? 'bg-green-500' :
+                        item.currency === 'CDF' ? 'bg-blue-500' : 'bg-orange-500'
+                      )}></div>
+                      <span>{item.currency}</span>
+                      <span className="text-xs text-gray-400">({item.count} txn)</span>
+                    </div>
+                    <span className="font-medium">
+                      {formatCurrency(item.total, item.currency)}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -384,22 +385,28 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className }) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {analytics.topTransactions.slice(0, 5).map((transaction, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{transaction.clientName}</p>
-                    <p className="text-sm text-gray-500">{transaction.date}</p>
+              {analytics.topTransactions.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-4">Aucune transaction</p>
+              ) : (
+                analytics.topTransactions.slice(0, 5).map((transaction) => (
+                  <div key={transaction.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{transaction.client_name}</p>
+                      <p className="text-sm text-gray-500">
+                        {new Date(transaction.created_at).toLocaleDateString('fr-FR')}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">
+                        {formatCurrency(transaction.montant, transaction.devise)}
+                      </p>
+                      {transaction.motif && (
+                        <span className="text-xs text-gray-400">{transaction.motif}</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium">
-                      {formatCurrency(transaction.amount, transaction.currency)}
-                    </p>
-                    <Badge variant="outline" className="text-xs">
-                      {transaction.status}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

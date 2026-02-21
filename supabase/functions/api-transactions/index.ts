@@ -1,24 +1,34 @@
 /**
- * API Endpoint: GET /api-transactions
+ * API Endpoint: GET /v1/api-transactions
  * Returns filtered transaction data for external integrations (n8n, Discord, etc.)
+ * 
+ * Versioned routes:
+ *   GET /v1/api-transactions   — current (recommended)
+ *   GET /api-transactions       — legacy (deprecated, supported until 2026-06-01)
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { authenticateRequest } from '../_shared/api-auth.ts';
 import { successResponse, Errors } from '../_shared/api-response.ts';
+import { withVersionHeaders, getVersionMeta } from '../_shared/api-version.ts';
 import type { TransactionFilters } from '../_shared/api-types.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const corsHeaders = {
+const FUNCTION_NAME = 'api-transactions';
+
+const baseCorsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key, x-organization-id',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key, x-organization-id, x-api-version',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
 };
 
 serve(async (req) => {
+  // Build version-aware headers for this request
+  const corsHeaders = withVersionHeaders(baseCorsHeaders, req, FUNCTION_NAME);
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -134,7 +144,8 @@ serve(async (req) => {
       );
     }
 
-    // Format response
+    // Format response with version metadata
+    const versionMeta = getVersionMeta(req, FUNCTION_NAME);
     const response = successResponse(
       {
         transactions: data || [],
@@ -142,6 +153,7 @@ serve(async (req) => {
       {
         organization_id: keyData.organization_id,
         response_time_ms: Date.now() - startTime,
+        ...versionMeta,
       },
       {
         total: count || 0,

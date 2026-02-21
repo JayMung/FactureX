@@ -50,6 +50,7 @@ import {
   sanitizeCityName,
   sanitizeCSV
 } from '@/lib/security/content-sanitization';
+import { supabase } from '@/integrations/supabase/client';
 
 const ClientsProtected: React.FC = () => {
   usePageSetup({
@@ -98,7 +99,8 @@ const ClientsProtected: React.FC = () => {
     ville: cityFilter === 'all' ? undefined : cityFilter
   });
 
-  const { sortedData, sortConfig, handleSort } = useSorting(clients);
+  const safeClients: Client[] = (clients as Client[] | undefined) ?? [];
+  const { sortedData, sortConfig, handleSort } = useSorting(safeClients);
   const {
     isProcessing,
     deleteMultipleClients,
@@ -195,31 +197,68 @@ const ClientsProtected: React.FC = () => {
     return `CL${paddedNumber}-${shortId}`;
   };
 
-  const exportClients = () => {
-    const dataToExport = selectedClients.length > 0
-      ? sortedData.filter((client: Client) => selectedClients.includes(client.id))
-      : sortedData;
+  const exportClients = async () => {
+    try {
+      let dataToExport: Client[] = [];
 
-    const csv = [
-      ['nom', 'telephone', 'ville', 'total_paye', 'created_at'],
-      ...dataToExport.map((client: Client) => [
-        sanitizeCSV(client.nom || ''),
-        sanitizeCSV(client.telephone || ''),
-        sanitizeCSV(client.ville || ''),
-        sanitizeCSV(client.total_paye?.toString() || '0'),
-        sanitizeCSV(client.created_at || '')
-      ])
-    ].map(row => row.join(',')).join('\n');
+      if (selectedClients.length > 0) {
+        dataToExport = sortedData.filter((client: Client) => selectedClients.includes(client.id));
+      } else {
+        const { data: authData } = await supabase.auth.getUser();
+        const userId = authData?.user?.id;
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `clients-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+        if (!userId) {
+          showError('Utilisateur non connecté');
+          return;
+        }
 
-    showSuccess(`${dataToExport.length} client(s) exporté(s) avec succès`);
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('organization_id')
+          .eq('id', userId)
+          .single();
+
+        if (profileError || !profile?.organization_id) {
+          throw profileError || new Error('Organisation utilisateur introuvable');
+        }
+
+        const { data: rpcResult, error: rpcError } = await supabase
+          .rpc('get_clients_with_totals', {
+            p_organization_id: profile.organization_id,
+            p_page: 1,
+            p_page_size: 100000,
+            p_search: searchTerm || null,
+            p_ville: cityFilter === 'all' ? null : cityFilter
+          });
+
+        if (rpcError) throw rpcError;
+
+        dataToExport = ((rpcResult as any)?.data || []) as Client[];
+      }
+
+      const csv = [
+        ['nom', 'telephone', 'ville', 'total_paye', 'created_at'],
+        ...dataToExport.map((client: Client) => [
+          sanitizeCSV(client.nom || ''),
+          sanitizeCSV(client.telephone || ''),
+          sanitizeCSV(client.ville || ''),
+          sanitizeCSV(client.total_paye?.toString() || '0'),
+          sanitizeCSV(client.created_at || '')
+        ])
+      ].map(row => row.join(',')).join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `clients-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      showSuccess(`${dataToExport.length} client(s) exporté(s) avec succès`);
+    } catch (error: any) {
+      showError(error.message || 'Erreur lors de l\'export des clients');
+    }
   };
 
   const isAllSelected = sortedData.length > 0 && selectedClients.length === sortedData.length;
@@ -426,7 +465,7 @@ const ClientsProtected: React.FC = () => {
             <CardContent>
               <UnifiedDataTable<Client>
                 data={sortedData}
-                loading={isLoading && clients.length === 0}
+                loading={isLoading && safeClients.length === 0}
                 emptyMessage="Aucun client"
                 emptySubMessage="Commencez par ajouter votre premier client"
                 emptyIcon={<Users className="h-8 w-8 text-gray-400" />}

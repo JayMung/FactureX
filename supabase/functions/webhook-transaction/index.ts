@@ -75,7 +75,7 @@ Deno.serve(async (req: Request) => {
   const bearerToken = authHeader.replace("Bearer ", "").trim();
   const token = customSecret || bearerToken;
 
-  console.log("Auth check - has WEBHOOK_SECRET:", !!WEBHOOK_SECRET, "token length:", token.length);
+  console.log("Auth check - has WEBHOOK_SECRET:", !!WEBHOOK_SECRET, "has token:", !!token);
 
   if (!WEBHOOK_SECRET || token !== WEBHOOK_SECRET) {
     console.error("Unauthorized webhook attempt");

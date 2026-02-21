@@ -199,14 +199,8 @@ const SettingsWithPermissions = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: adminRole } = await supabase
-            .from('admin_roles')
-            .select('role')
-            .eq('user_id', user.id)
-            .eq('is_active', true)
-            .single();
-
-          const actualRole = adminRole?.role || user.user_metadata?.role || 'operateur';
+          // app_metadata.role = source canonique (server-controlled, non modifiable par l'utilisateur)
+          const actualRole = user.app_metadata?.role || 'operateur';
 
           setUser({
             id: user.id,
@@ -274,16 +268,20 @@ const SettingsWithPermissions = () => {
         return;
       }
 
-      const { data: adminRoles } = await supabase
-        .from('admin_roles')
-        .select('user_id, role')
-        .eq('is_active', true);
+      // Récupérer les rôles effectifs via get_user_role RPC (lit app_metadata)
+      // profiles.role = cache non-admin uniquement, ne contient pas admin/super_admin
+      const roleResults = await Promise.all(
+        (profiles || []).map(async (profile) => {
+          const { data: roleData } = await supabase.rpc('get_user_role', { p_user_id: profile.id });
+          return { id: profile.id, role: (roleData as string) || profile.role || 'operateur' };
+        })
+      );
 
       const usersWithRoles = (profiles || []).map(profile => {
-        const adminRole = adminRoles?.find(ar => ar.user_id === profile.id);
+        const roleEntry = roleResults.find(r => r.id === profile.id);
         return {
           ...profile,
-          role: adminRole?.role || profile.role || 'operateur'
+          role: roleEntry?.role || profile.role || 'operateur'
         };
       });
 

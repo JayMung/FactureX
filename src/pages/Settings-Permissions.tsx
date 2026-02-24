@@ -1,6 +1,5 @@
-"use client";
-
 import { useState, useEffect, useRef } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   User as UserIcon,
   CreditCard,
@@ -33,7 +32,9 @@ import {
   Truck,
   Webhook,
   KeyRound,
-  Send
+  Send,
+  ArrowLeftRight,
+  ArrowLeft
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 // @ts-ignore - Temporary workaround for Supabase types
@@ -194,6 +195,36 @@ const SettingsWithPermissions = () => {
   });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+  const isMobile = useIsMobile();
+  const [showMobileContent, setShowMobileContent] = useState(false);
+
+  const handleMobileTabSelect = (tabId: string) => {
+    setActiveTab(tabId);
+    setShowMobileContent(true);
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `avatar_${user.id}_${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
+      if (updateError) throw updateError;
+      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
+      setProfileForm(prev => ({ ...prev, avatar_url: publicUrl }));
+      showSuccess('Photo de profil mise a jour avec succes');
+    } catch (error: any) {
+      showError(error.message || 'Erreur lors du telechargement de la photo');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchUserAndProfile = async () => {
       try {
@@ -268,24 +299,25 @@ const SettingsWithPermissions = () => {
         return;
       }
 
-      // Récupérer les rôles effectifs via get_user_role RPC (lit app_metadata)
-      // profiles.role = cache non-admin uniquement, ne contient pas admin/super_admin
-      const roleResults = await Promise.all(
+      // Afficher immédiatement tous les profils avec le rôle du cache
+      const baseUsers = (profiles || []).map(p => ({ ...p, role: p.role || 'operateur' }));
+      setUsers(baseUsers);
+
+      // Enrichir les rôles via RPC en best-effort (une erreur individuelle ne bloque pas les autres)
+      const roleResults = await Promise.allSettled(
         (profiles || []).map(async (profile) => {
           const { data: roleData } = await supabase.rpc('get_user_role', { p_user_id: profile.id });
           return { id: profile.id, role: (roleData as string) || profile.role || 'operateur' };
         })
       );
 
-      const usersWithRoles = (profiles || []).map(profile => {
-        const roleEntry = roleResults.find(r => r.id === profile.id);
-        return {
-          ...profile,
-          role: roleEntry?.role || profile.role || 'operateur'
-        };
+      const enriched = (profiles || []).map(profile => {
+        const result = roleResults.find((_, i) => (profiles || [])[i]?.id === profile.id);
+        const role = result?.status === 'fulfilled' ? result.value.role : (profile.role || 'operateur');
+        return { ...profile, role };
       });
 
-      setUsers(usersWithRoles);
+      setUsers(enriched);
     } catch (error: any) {
       console.error('Error fetching users:', error);
     } finally {
@@ -311,7 +343,7 @@ const SettingsWithPermissions = () => {
       const { data } = await supabase
         .from('activity_logs')
         .select('*')
-        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(50);
 
       setActivityLogs(data || []);
@@ -575,8 +607,11 @@ const SettingsWithPermissions = () => {
       showSuccess(`Un email de réinitialisation a été envoyé à ${userToResetPassword.email}`);
       setResetPasswordDialogOpen(false);
     } catch (error: any) {
-      console.error('Error sending reset password email:', error);
-      showError(error.message || 'Erreur lors de l\'envoi de l\'email de réinitialisation');
+      if (error?.code === 'over_email_send_rate_limit' || error?.status === 429) {
+        showError('Limite d\'envoi atteinte. Veuillez attendre quelques minutes avant de renvoyer un email.');
+      } else {
+        showError(error.message || 'Erreur lors de l\'envoi de l\'email de réinitialisation');
+      }
     } finally {
       setIsResettingPassword(false);
     }
@@ -795,7 +830,7 @@ const SettingsWithPermissions = () => {
     {
       id: 'exchange-rates',
       label: 'Taux de change',
-      icon: <DollarSign className="h-5 w-5" />,
+      icon: <ArrowLeftRight className="h-5 w-5" />,
       description: 'Configuration des taux USD/CDF et USD/CNY',
       adminOnly: true
     },
@@ -863,51 +898,76 @@ const SettingsWithPermissions = () => {
     return moduleId ? canAccessModule(moduleId as any) : true;
   });
 
-  // Debug logging
-  console.log('Settings Debug:', {
-    isAdmin,
-    permissionsLoading,
-    loading,
-    filteredOptionsCount: filteredOptions.length,
-    allOptionsCount: settingsOptions.length,
-    authUser: authUser?.email,
-    authUserRole: authUser?.user_metadata?.role || authUser?.app_metadata?.role,
-    authUserMetadata: authUser?.user_metadata,
-    authAppMetadata: authUser?.app_metadata
-  });
+  if (loading) {
+    return (
+      <Layout>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-pulse">
+          <div className="lg:col-span-1 h-96 bg-gray-100 rounded-xl" />
+          <div className="lg:col-span-3 space-y-4">
+            <div className="h-48 bg-gray-100 rounded-xl" />
+            <div className="h-64 bg-gray-100 rounded-xl" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <div className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar */}
-          <div className="lg:col-span-1 lg:sticky lg:top-4 lg:self-start lg:max-h-screen lg:overflow-visible">
-            <Card>
-              <CardContent className="p-4">
-                <nav className="space-y-2">
-                  {filteredOptions.map((option) => (
-                    <button
-                      key={option.id}
-                      onClick={() => setActiveTab(option.id)}
-                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${activeTab === option.id
-                        ? 'bg-green-100 text-green-600'
-                        : 'text-gray-600 hover:bg-gray-100'
+          {(!isMobile || !showMobileContent) && (
+            <div className="lg:col-span-1 lg:sticky lg:top-4 lg:self-start">
+              <Card className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600">
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                      <SettingsIcon className="h-4 w-4" />
+                      Paramètres
+                    </h3>
+                  </div>
+                  <nav className="p-2 space-y-0.5">
+                    {filteredOptions.map((option) => (
+                      <button
+                        key={option.id}
+                        onClick={() => isMobile ? handleMobileTabSelect(option.id) : setActiveTab(option.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-all ${
+                          activeTab === option.id
+                            ? 'bg-emerald-600 text-white shadow-sm'
+                            : 'text-gray-600 hover:bg-gray-50'
                         }`}
-                    >
-                      {option.icon}
-                      <div>
-                        <p className="font-medium">{option.label}</p>
-                        <p className="text-xs text-gray-500">{option.description}</p>
-                      </div>
-                    </button>
-                  ))}
-                </nav>
-              </CardContent>
-            </Card>
-          </div>
+                      >
+                        <span className={activeTab === option.id ? 'text-white' : 'text-gray-400'}>
+                          {option.icon}
+                        </span>
+                        <div className="min-w-0">
+                          <p className={`font-medium text-sm ${activeTab === option.id ? 'text-white' : ''}`}>
+                            {option.label}
+                          </p>
+                          <p className={`text-xs truncate mt-0.5 ${activeTab === option.id ? 'text-emerald-100' : 'text-gray-400'}`}>
+                            {option.description}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </nav>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
-          {/* Content */}
+          {(!isMobile || showMobileContent) && (
           <div className="lg:col-span-3">
+            {isMobile && showMobileContent && (
+              <Button
+                variant="ghost"
+                onClick={() => setShowMobileContent(false)}
+                className="mb-4 flex items-center gap-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Retour aux paramètres
+              </Button>
+            )}
             {/* Users Tab */}
             {activeTab === 'users' && (
               <Card>
@@ -983,6 +1043,7 @@ const SettingsWithPermissions = () => {
                               size="sm"
                               onClick={() => handleToggleUserStatus(user)}
                               className="hover:bg-green-50 hover:text-green-600"
+                              title={user.is_active ? 'Désactiver cet utilisateur' : 'Activer cet utilisateur'}
                             >
                               {user.is_active ? (
                                 <UserX className="h-4 w-4" />
@@ -1118,11 +1179,19 @@ const SettingsWithPermissions = () => {
                             <UserIcon className="h-12 w-12 text-green-500" />
                           )}
                         </div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleAvatarUpload}
+                        />
                         <button
                           className="absolute bottom-0 right-0 bg-green-500 hover:bg-green-600 text-white rounded-full p-2 shadow-lg transition-colors"
                           title="Changer la photo"
+                          onClick={() => fileInputRef.current?.click()}
                         >
-                          <Edit className="h-4 w-4" />
+                          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                         </button>
                       </div>
                       <div className="flex-1">
@@ -1716,6 +1785,7 @@ const SettingsWithPermissions = () => {
             )}
 
           </div>
+          )}
         </div>
       </div>
 
@@ -1729,9 +1799,9 @@ const SettingsWithPermissions = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="user-email">Email</Label>
               <Input
-                id="email"
+                id="user-email"
                 type="email"
                 value={userForm.email}
                 onChange={(e) => setUserForm(prev => ({ ...prev, email: e.target.value }))}
@@ -1740,24 +1810,24 @@ const SettingsWithPermissions = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="first_name">Prénom</Label>
+                <Label htmlFor="user-first_name">Prénom</Label>
                 <Input
-                  id="first_name"
+                  id="user-first_name"
                   value={userForm.first_name}
                   onChange={(e) => setUserForm(prev => ({ ...prev, first_name: e.target.value }))}
                 />
               </div>
               <div>
-                <Label htmlFor="last_name">Nom</Label>
+                <Label htmlFor="user-last_name">Nom</Label>
                 <Input
-                  id="last_name"
+                  id="user-last_name"
                   value={userForm.last_name}
                   onChange={(e) => setUserForm(prev => ({ ...prev, last_name: e.target.value }))}
                 />
               </div>
             </div>
             <div>
-              <Label htmlFor="role">Rôle</Label>
+              <Label htmlFor="user-role">Rôle</Label>
               <Select
                 value={userForm.role}
                 onValueChange={(value) => setUserForm(prev => ({ ...prev, role: value }))}
@@ -1772,18 +1842,18 @@ const SettingsWithPermissions = () => {
               </Select>
             </div>
             <div>
-              <Label htmlFor="phone">Téléphone</Label>
+              <Label htmlFor="user-phone">Téléphone</Label>
               <Input
-                id="phone"
+                id="user-phone"
                 value={userForm.phone}
                 onChange={(e) => setUserForm(prev => ({ ...prev, phone: e.target.value }))}
               />
             </div>
             {!selectedUser && (
               <div>
-                <Label htmlFor="password">Mot de passe</Label>
+                <Label htmlFor="user-password">Mot de passe</Label>
                 <Input
-                  id="password"
+                  id="user-password"
                   type="password"
                   value={userForm.password}
                   onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))}

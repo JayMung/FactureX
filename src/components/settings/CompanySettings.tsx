@@ -5,13 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Building2, Upload, Loader2 } from 'lucide-react';
+import { Building2, Upload, Loader2, Save } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 
 export const CompanySettings = () => {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingSignature, setUploadingSignature] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
 
@@ -45,6 +47,7 @@ export const CompanySettings = () => {
           company[item.cle] = item.valeur;
         });
         setCompanySettings(prev => ({ ...prev, ...company }));
+        setIsDirty(false);
       }
     } catch (error: any) {
       console.error('Error fetching settings:', error);
@@ -69,11 +72,17 @@ export const CompanySettings = () => {
 
       if (error) throw error;
       showSuccess('Informations entreprise sauvegardées');
+      setIsDirty(false);
     } catch (error: any) {
       showError(error.message || 'Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleFieldChange = (field: string, value: string) => {
+    setCompanySettings(prev => ({ ...prev, [field]: value }));
+    setIsDirty(true);
   };
 
   const handleImageUpload = async (
@@ -83,7 +92,8 @@ export const CompanySettings = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setUploading(true);
+    if (type === 'logo') setUploadingLogo(true);
+    else setUploadingSignature(true);
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${type}_${Date.now()}.${fileExt}`;
@@ -117,15 +127,29 @@ export const CompanySettings = () => {
       console.error(`Error uploading ${type}:`, error);
       showError(error.message || 'Erreur lors du téléchargement');
     } finally {
-      setUploading(false);
+      if (type === 'logo') setUploadingLogo(false);
+      else setUploadingSignature(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-green-500" />
-      </div>
+      <Card>
+        <CardHeader>
+          <div className="h-6 w-48 bg-gray-100 rounded animate-pulse" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="space-y-2">
+                <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
+                <div className="h-10 bg-gray-100 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+          <div className="h-16 bg-gray-100 rounded animate-pulse" />
+        </CardContent>
+      </Card>
     );
   }
 
@@ -140,119 +164,126 @@ export const CompanySettings = () => {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label>Nom de l'entreprise</Label>
+            <Label htmlFor="company-nom">Nom de l'entreprise</Label>
             <Input
+              id="company-nom"
               value={companySettings.nom_entreprise}
-              onChange={(e) => setCompanySettings(prev => ({ ...prev, nom_entreprise: e.target.value }))}
+              onChange={(e) => handleFieldChange('nom_entreprise', e.target.value)}
               placeholder="COCCINELLE SARL"
             />
           </div>
           <div>
-            <Label>Email</Label>
+            <Label htmlFor="company-email">Email</Label>
             <Input
+              id="company-email"
               type="email"
               value={companySettings.email_entreprise}
-              onChange={(e) => setCompanySettings(prev => ({ ...prev, email_entreprise: e.target.value }))}
+              onChange={(e) => handleFieldChange('email_entreprise', e.target.value)}
               placeholder="sales@coccinelledrc.com"
             />
           </div>
           <div>
-            <Label>Téléphone</Label>
+            <Label htmlFor="company-telephone">Téléphone</Label>
             <Input
+              id="company-telephone"
               value={companySettings.telephone_entreprise}
-              onChange={(e) => setCompanySettings(prev => ({ ...prev, telephone_entreprise: e.target.value }))}
+              onChange={(e) => handleFieldChange('telephone_entreprise', e.target.value)}
               placeholder="+243970746213"
             />
           </div>
           <div>
-            <Label>RCCM</Label>
+            <Label htmlFor="company-rccm">RCCM</Label>
             <Input
+              id="company-rccm"
               value={companySettings.rccm}
-              onChange={(e) => setCompanySettings(prev => ({ ...prev, rccm: e.target.value }))}
+              onChange={(e) => handleFieldChange('rccm', e.target.value)}
               placeholder="RCCM: CD/KNG/RCCM/21-B-02464"
             />
           </div>
           <div>
-            <Label>IDNAT</Label>
+            <Label htmlFor="company-idnat">IDNAT</Label>
             <Input
+              id="company-idnat"
               value={companySettings.idnat}
-              onChange={(e) => setCompanySettings(prev => ({ ...prev, idnat: e.target.value }))}
+              onChange={(e) => handleFieldChange('idnat', e.target.value)}
               placeholder="01-XXX-XXXXXXX"
             />
           </div>
           <div>
-            <Label>NIF</Label>
+            <Label htmlFor="company-nif">NIF</Label>
             <Input
+              id="company-nif"
               value={companySettings.nif}
-              onChange={(e) => setCompanySettings(prev => ({ ...prev, nif: e.target.value }))}
+              onChange={(e) => handleFieldChange('nif', e.target.value)}
               placeholder="A XXXXXXXXX X"
             />
           </div>
         </div>
         <div>
-          <Label>Adresse</Label>
+          <Label htmlFor="company-adresse">Adresse</Label>
           <Textarea
+            id="company-adresse"
             value={companySettings.adresse_entreprise}
-            onChange={(e) => setCompanySettings(prev => ({ ...prev, adresse_entreprise: e.target.value }))}
+            onChange={(e) => handleFieldChange('adresse_entreprise', e.target.value)}
             placeholder="24, Hortense Mbuyu, Lubumbashi , RDC"
             rows={2}
           />
         </div>
 
-        {/* Logo */}
-        <div>
-          <Label>Logo de l'entreprise</Label>
-          <div className="flex items-center space-x-4 mt-2">
-            {companySettings.logo_url && (
-              <img src={companySettings.logo_url} alt="Logo" className="h-16 w-16 object-contain border rounded" />
-            )}
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleImageUpload(e, 'logo')}
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              onClick={() => logoInputRef.current?.click()}
-              disabled={uploading}
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              {uploading ? 'Upload...' : 'Choisir logo'}
-            </Button>
+        <div className="border-t pt-4">
+          <p className="text-sm font-medium text-gray-700 mb-3">Visuels</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Logo */}
+            <div>
+              <Label className="text-sm text-gray-600">Logo de l'entreprise</Label>
+              <div className="flex items-center gap-3 mt-2">
+                <div className="h-16 w-16 border rounded-lg flex items-center justify-center bg-gray-50 flex-shrink-0 overflow-hidden">
+                  {companySettings.logo_url
+                    ? <img src={companySettings.logo_url} alt="Logo" className="h-full w-full object-contain" />
+                    : <Building2 className="h-6 w-6 text-gray-300" />}
+                </div>
+                <input ref={logoInputRef} type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'logo')} className="hidden" />
+                <Button variant="outline" size="sm" onClick={() => logoInputRef.current?.click()} disabled={uploadingLogo}>
+                  {uploadingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                  {uploadingLogo ? 'Upload...' : 'Choisir'}
+                </Button>
+              </div>
+            </div>
+            {/* Signature */}
+            <div>
+              <Label className="text-sm text-gray-600">Signature / Tampon (PNG sans fond)</Label>
+              <div className="flex items-center gap-3 mt-2">
+                <div className="h-16 w-32 border rounded-lg flex items-center justify-center bg-gray-50 flex-shrink-0 overflow-hidden">
+                  {companySettings.signature_url
+                    ? <img src={companySettings.signature_url} alt="Signature" className="h-full w-full object-contain" />
+                    : <span className="text-xs text-gray-400 text-center px-1">Aucune signature</span>}
+                </div>
+                <input ref={signatureInputRef} type="file" accept="image/png" onChange={(e) => handleImageUpload(e, 'signature')} className="hidden" />
+                <Button variant="outline" size="sm" onClick={() => signatureInputRef.current?.click()} disabled={uploadingSignature}>
+                  {uploadingSignature ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                  {uploadingSignature ? 'Upload...' : 'Choisir'}
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Signature */}
-        <div>
-          <Label>Signature/Stamp (PNG sans fond)</Label>
-          <div className="flex items-center space-x-4 mt-2">
-            {companySettings.signature_url && (
-              <img src={companySettings.signature_url} alt="Signature" className="h-16 w-32 object-contain border rounded" />
-            )}
-            <input
-              ref={signatureInputRef}
-              type="file"
-              accept="image/png"
-              onChange={(e) => handleImageUpload(e, 'signature')}
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              onClick={() => signatureInputRef.current?.click()}
-              disabled={uploading}
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              {uploading ? 'Upload...' : 'Choisir signature'}
-            </Button>
-          </div>
+        <div className="flex items-center justify-between pt-2 border-t">
+          {isDirty && (
+            <p className="text-xs text-amber-600 flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-amber-500 inline-block" />
+              Modifications non sauvegardées
+            </p>
+          )}
+          <Button
+            onClick={handleSaveCompanySettings}
+            disabled={saving}
+            className={`ml-auto bg-green-500 hover:bg-green-600 ${isDirty ? 'ring-2 ring-amber-400 ring-offset-1' : ''}`}
+          >
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Sauvegarder les informations
+          </Button>
         </div>
-
-        <Button onClick={handleSaveCompanySettings} disabled={saving} className="bg-green-500 hover:bg-green-600">
-          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          Sauvegarder les informations
-        </Button>
       </CardContent>
     </Card>
   );

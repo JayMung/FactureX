@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { Button } from '@/components/ui/button';
@@ -17,10 +18,14 @@ import {
   Users,
   DollarSign,
   MapPin,
+  AlertTriangle,
+  Clock3,
   CheckSquare,
   Phone,
   ArrowRightLeft
 } from 'lucide-react';
+
+import StatCard from '../components/dashboard/StatCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import SortableHeader from '../components/ui/sortable-header';
 import BulkActions from '../components/ui/bulk-actions';
@@ -53,6 +58,13 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 
 const ClientsProtected: React.FC = () => {
+  interface ClientIntelligence {
+    lastActivityAt: string | null;
+    isOverdue: boolean;
+    isInactive90d: boolean;
+    profitabilityScore: number;
+  }
+
   usePageSetup({
     title: 'Gestion des Clients',
     subtitle: 'Gérez les informations de vos clients'
@@ -60,7 +72,9 @@ const ClientsProtected: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [cityFilter, setCityFilter] = useState('all');
+  const [businessFilter, setBusinessFilter] = useState<'all' | 'overdue' | 'inactive'>('all');
   const [currentPage, setCurrentPage] = useState(1);
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | undefined>();
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
@@ -71,17 +85,41 @@ const ClientsProtected: React.FC = () => {
     { key: 'telephone', label: 'Téléphone', visible: true },
     { key: 'ville', label: 'Ville', visible: true },
     { key: 'total_paye', label: 'Total Payé', visible: true },
-    { key: 'created_at', label: 'Date', visible: true }
+    { key: 'created_at', label: 'Date', visible: true },
+    { key: 'last_activity', label: 'Dernière activité', visible: true },
+    { key: 'client_status', label: 'Statut client', visible: true },
+    { key: 'profitability_score', label: 'Rentabilité', visible: true }
   ]);
 
-  // États pour les modales
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [clientForHistory, setClientForHistory] = useState<Client | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const openClientId = (location.state as any)?.openClientId;
+    if (!openClientId) return;
+    navigate('/clients', { replace: true, state: {} });
+    supabase
+      .from('clients')
+      .select('*')
+      .eq('id', openClientId)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setClientForHistory(data as Client);
+          setHistoryModalOpen(true);
+        }
+      });
+  }, [location.state]);
+
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
+  const [intelligenceByClient, setIntelligenceByClient] = useState<Record<string, ClientIntelligence>>({});
   const { isAdmin } = usePermissions();
 
   const {
@@ -99,7 +137,8 @@ const ClientsProtected: React.FC = () => {
     ville: cityFilter === 'all' ? undefined : cityFilter
   });
 
-  const safeClients: Client[] = (clients as Client[] | undefined) ?? [];
+  const safeClients = useMemo<Client[]>(() => (clients as Client[] | undefined) ?? [], [clients]);
+
   const { sortedData, sortConfig, handleSort } = useSorting(safeClients);
   const {
     isProcessing,
@@ -107,6 +146,86 @@ const ClientsProtected: React.FC = () => {
     exportSelectedClients,
     emailSelectedClients,
   } = useBulkOperations();
+
+  useEffect(() => {
+    const loadClientIntelligence = async () => {
+      if (!safeClients.length) {
+        setIntelligenceByClient({});
+        return;
+      }
+
+      const clientIds = safeClients.map((c) => c.id);
+      const [txResult, factureResult] = await Promise.all([
+        supabase
+          .from('transactions')
+          .select('client_id, created_at, montant, benefice, statut')
+          .in('client_id', clientIds)
+          .neq('statut', 'Annulé'),
+        supabase
+          .from('factures')
+          .select('client_id, statut, date_emission')
+          .in('client_id', clientIds)
+      ]);
+
+      if (txResult.error || factureResult.error) return;
+
+      const txByClient = new Map<string, { lastAt: string | null; revenue: number; profit: number }>();
+      const now = Date.now();
+
+      (txResult.data || []).forEach((tx) => {
+        const prev = txByClient.get(tx.client_id) || { lastAt: null, revenue: 0, profit: 0 };
+        const nextLast = !prev.lastAt || new Date(tx.created_at) > new Date(prev.lastAt) ? tx.created_at : prev.lastAt;
+        txByClient.set(tx.client_id, {
+          lastAt: nextLast,
+          revenue: prev.revenue + Number(tx.montant || 0),
+          profit: prev.profit + Number(tx.benefice || 0)
+        });
+      });
+
+      const overdueSet = new Set<string>();
+      const factureLastByClient = new Map<string, string>();
+
+      (factureResult.data || []).forEach((f) => {
+        const last = factureLastByClient.get(f.client_id);
+        if (!last || new Date(f.date_emission) > new Date(last)) {
+          factureLastByClient.set(f.client_id, f.date_emission);
+        }
+        const ageDays = Math.floor((now - new Date(f.date_emission).getTime()) / (1000 * 60 * 60 * 24));
+        if (f.statut === 'en_attente' && ageDays > 30) overdueSet.add(f.client_id);
+      });
+
+      const next: Record<string, ClientIntelligence> = {};
+      safeClients.forEach((client) => {
+        const txData = txByClient.get(client.id);
+        const factureLast = factureLastByClient.get(client.id) || null;
+        const baseLast = txData?.lastAt || factureLast || client.created_at;
+        const age = Math.floor((now - new Date(baseLast).getTime()) / (1000 * 60 * 60 * 24));
+        const margin = txData && txData.revenue > 0 ? (txData.profit / txData.revenue) * 100 : 0;
+        const score = Math.max(0, Math.min(100, Math.round(margin * 2)));
+
+        next[client.id] = {
+          lastActivityAt: baseLast,
+          isOverdue: overdueSet.has(client.id),
+          isInactive90d: age > 90,
+          profitabilityScore: score,
+        };
+      });
+
+      setIntelligenceByClient(next);
+    };
+
+    loadClientIntelligence();
+  }, [safeClients]);
+
+  const displayedClients = useMemo(() => {
+    if (businessFilter === 'overdue') {
+      return sortedData.filter((c) => intelligenceByClient[c.id]?.isOverdue);
+    }
+    if (businessFilter === 'inactive') {
+      return sortedData.filter((c) => intelligenceByClient[c.id]?.isInactive90d);
+    }
+    return sortedData;
+  }, [businessFilter, intelligenceByClient, sortedData]);
 
   const handleDeleteClient = (client: Client) => {
     setClientToDelete(client);
@@ -125,9 +244,9 @@ const ClientsProtected: React.FC = () => {
       setTimeout(() => {
         refetch();
       }, 100);
-    } catch (error: any) {
-      console.error('Erreur lors de la suppression:', error);
-      showError(error.message || 'Erreur lors de la suppression');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erreur lors de la suppression';
+      showError(message);
     } finally {
       setIsDeleting(false);
     }
@@ -145,8 +264,8 @@ const ClientsProtected: React.FC = () => {
       setTimeout(() => {
         refetch();
       }, 100);
-    } catch (error: any) {
-      showError(error.message);
+    } catch (error: unknown) {
+      showError(error instanceof Error ? error.message : 'Erreur lors de la suppression');
     } finally {
       setIsDeleting(false);
     }
@@ -161,7 +280,7 @@ const ClientsProtected: React.FC = () => {
   };
 
   const handleSelectAll = (checked: boolean) => {
-    setSelectedClients(checked ? sortedData.map((client: Client) => client.id) : []);
+    setSelectedClients(checked ? displayedClients.map((client: Client) => client.id) : []);
   };
 
   const handleFormSuccess = () => {
@@ -202,7 +321,7 @@ const ClientsProtected: React.FC = () => {
       let dataToExport: Client[] = [];
 
       if (selectedClients.length > 0) {
-        dataToExport = sortedData.filter((client: Client) => selectedClients.includes(client.id));
+        dataToExport = displayedClients.filter((client: Client) => selectedClients.includes(client.id));
       } else {
         const { data: authData } = await supabase.auth.getUser();
         const userId = authData?.user?.id;
@@ -233,7 +352,8 @@ const ClientsProtected: React.FC = () => {
 
         if (rpcError) throw rpcError;
 
-        dataToExport = ((rpcResult as any)?.data || []) as Client[];
+        const rpcData = rpcResult as { data?: Client[] } | null;
+        dataToExport = rpcData?.data || [];
       }
 
       const csv = [
@@ -256,13 +376,14 @@ const ClientsProtected: React.FC = () => {
       URL.revokeObjectURL(url);
 
       showSuccess(`${dataToExport.length} client(s) exporté(s) avec succès`);
-    } catch (error: any) {
-      showError(error.message || 'Erreur lors de l\'export des clients');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erreur lors de l\'export des clients';
+      showError(message);
     }
   };
 
-  const isAllSelected = sortedData.length > 0 && selectedClients.length === sortedData.length;
-  const isPartiallySelected = selectedClients.length > 0 && selectedClients.length < sortedData.length;
+  const isAllSelected = displayedClients.length > 0 && selectedClients.length === displayedClients.length;
+  const isPartiallySelected = selectedClients.length > 0 && selectedClients.length < displayedClients.length;
 
   if (error) {
     return (
@@ -276,100 +397,69 @@ const ClientsProtected: React.FC = () => {
       </Layout>
     );
   }
+
   return (
     <ProtectedRouteEnhanced requiredModule="clients" requiredPermission="read">
       <Layout>
         <div className="space-y-6 animate-in fade-in duration-300">
-          {/* Stats Cards - Modern Gradient Design */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-            {/* Total Clients Card */}
-            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 shadow-lg">
-              <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-              <div className="relative">
-                <div className="flex items-center justify-between">
-                  <div className="rounded-lg bg-white/20 p-2">
-                    <Users className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                  </div>
-                  <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] md:text-xs font-medium text-white">
-                    Total
-                  </span>
-                </div>
-                <div className="mt-3">
-                  <p className="text-lg md:text-2xl font-bold text-white">{globalTotals.totalCount || 0}</p>
-                  <p className="mt-0.5 text-xs md:text-sm text-emerald-100">Clients</p>
-                </div>
+          {/* Stats Cards - Colorful Design */}
+          <div className="grid-responsive-4">
+            {/* Total Clients — vert */}
+            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-400 to-emerald-600 p-5 text-white shadow-md">
+              <div className="absolute top-3 right-3 bg-white/20 rounded-full px-2 py-0.5 text-xs font-semibold">Total</div>
+              <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
+              <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
+              <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
+                <Users className="h-5 w-5 text-white" />
               </div>
+              <p className="text-3xl font-bold leading-none">{globalTotals.totalCount || 0}</p>
+              <p className="mt-1 text-sm text-white/80">Clients</p>
             </div>
 
-            {/* Carte conditionnelle - Admin voit Total Payé, Opérateurs voit Pays */}
+            {/* Total Encaissé / Pays — bleu */}
             {isAdmin ? (
-              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 md:p-5 shadow-lg">
-                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-                <div className="relative">
-                  <div className="flex items-center justify-between">
-                    <div className="rounded-lg bg-white/20 p-2">
-                      <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                    </div>
-                    <span className="text-[10px] md:text-xs font-medium text-blue-100">USD</span>
-                  </div>
-                  <div className="mt-3">
-                    <p className="text-lg md:text-2xl font-bold text-white truncate">{formatCurrency(globalTotals.totalPaye)}</p>
-                    <p className="mt-0.5 text-xs md:text-sm text-blue-100">Total Payé</p>
-                  </div>
+              <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 p-5 text-white shadow-md">
+                <div className="absolute top-3 right-3 bg-white/20 rounded-full px-2 py-0.5 text-xs font-semibold">USD</div>
+                <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
+                <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
+                <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
+                  <DollarSign className="h-5 w-5 text-white" />
                 </div>
+                <p className="text-3xl font-bold leading-none truncate">{formatCurrency(globalTotals.totalPaye)}</p>
+                <p className="mt-1 text-sm text-white/80">Total Payé</p>
               </div>
             ) : (
-              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 md:p-5 shadow-lg">
-                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-                <div className="relative">
-                  <div className="flex items-center justify-between">
-                    <div className="rounded-lg bg-white/20 p-2">
-                      <MapPin className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <p className="text-lg md:text-2xl font-bold text-white">{new Set(sortedData.map((c: Client) => c.pays)).size}</p>
-                    <p className="mt-0.5 text-xs md:text-sm text-blue-100">Pays</p>
-                  </div>
+              <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 p-5 text-white shadow-md">
+                <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
+                <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
+                <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
+                  <MapPin className="h-5 w-5 text-white" />
                 </div>
+                <p className="text-3xl font-bold leading-none">{new Set(sortedData.map((c: Client) => c.pays)).size}</p>
+                <p className="mt-1 text-sm text-white/80">Pays</p>
               </div>
             )}
 
-            {/* Villes Card */}
-            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-4 md:p-5 shadow-lg">
-              <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-              <div className="relative">
-                <div className="flex items-center justify-between">
-                  <div className="rounded-lg bg-white/20 p-2">
-                    <MapPin className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <p className="text-lg md:text-2xl font-bold text-white">{new Set(sortedData.map((c: Client) => c.ville)).size}</p>
-                  <p className="mt-0.5 text-xs md:text-sm text-purple-100">Villes</p>
-                </div>
+            {/* Villes — violet */}
+            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-purple-400 to-purple-600 p-5 text-white shadow-md">
+              <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
+              <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
+              <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
+                <MapPin className="h-5 w-5 text-white" />
               </div>
+              <p className="text-3xl font-bold leading-none">{new Set(sortedData.map((c: Client) => c.ville)).size}</p>
+              <p className="mt-1 text-sm text-white/80">Villes</p>
             </div>
 
-            {/* Sélectionnés Card */}
-            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 p-4 md:p-5 shadow-lg">
-              <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-              <div className="relative">
-                <div className="flex items-center justify-between">
-                  <div className="rounded-lg bg-white/20 p-2">
-                    <CheckSquare className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                  </div>
-                  {selectedClients.length > 0 && (
-                    <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] md:text-xs font-medium text-white">
-                      Actif
-                    </span>
-                  )}
-                </div>
-                <div className="mt-3">
-                  <p className="text-lg md:text-2xl font-bold text-white">{selectedClients.length}</p>
-                  <p className="mt-0.5 text-xs md:text-sm text-orange-100">Sélectionnés</p>
-                </div>
+            {/* Sélectionnés — orange */}
+            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-orange-400 to-orange-600 p-5 text-white shadow-md">
+              <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
+              <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
+              <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
+                <CheckSquare className="h-5 w-5 text-white" />
               </div>
+              <p className="text-3xl font-bold leading-none">{selectedClients.length}</p>
+              <p className="mt-1 text-sm text-white/80">Sélectionnés</p>
             </div>
           </div>
 
@@ -378,8 +468,8 @@ const ClientsProtected: React.FC = () => {
             selectedCount={selectedClients.length}
             onClearSelection={() => setSelectedClients([])}
             onDeleteSelected={() => setBulkDeleteDialogOpen(true)}
-            onExportSelected={() => exportSelectedClients(sortedData.filter((c: Client) => selectedClients.includes(c.id)))}
-            onEmailSelected={() => emailSelectedClients(sortedData.filter((c: Client) => selectedClients.includes(c.id)))}
+            onExportSelected={() => exportSelectedClients(displayedClients.filter((c: Client) => selectedClients.includes(c.id)))}
+            onEmailSelected={() => emailSelectedClients(displayedClients.filter((c: Client) => selectedClients.includes(c.id)))}
             isDeleting={isDeleting}
           >
             {selectedClients.length === 2 && isAdmin && (
@@ -393,78 +483,88 @@ const ClientsProtected: React.FC = () => {
             )}
           </BulkActions>
 
-          {/* City Filter Tabs */}
-          <FilterTabs
-            tabs={[
-              { id: 'all', label: 'Tous', count: globalTotals.totalCount || 0 },
-              { id: 'LUBUMBASHI', label: 'Lubumbashi', count: sortedData.filter((c: Client) => c.ville?.toUpperCase() === 'LUBUMBASHI').length },
-              { id: 'KINSHASA', label: 'Kinshasa', count: sortedData.filter((c: Client) => c.ville?.toUpperCase() === 'KINSHASA').length },
-              { id: 'LIKASI', label: 'Likasi', count: sortedData.filter((c: Client) => c.ville?.toUpperCase() === 'LIKASI').length },
-            ]}
-            activeTab={cityFilter}
-            onTabChange={(tab) => {
-              setCityFilter(tab);
-              setCurrentPage(1);
-            }}
-            variant="pills"
-            className="mb-4"
-          />
+          {/* Toolbar and Filters */}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="relative flex-1 min-w-[280px] max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Rechercher par nom ou téléphone..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-10 input-base"
+                />
+              </div>
 
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Rechercher par nom ou téléphone..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-10"
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <FilterTabs
+                  tabs={[
+                    { id: 'all', label: 'Tous', count: globalTotals.totalCount || 0 },
+                    { id: 'LUBUMBASHI', label: 'Lubumbashi', count: sortedData.filter((c: Client) => c.ville?.toUpperCase() === 'LUBUMBASHI').length },
+                    { id: 'KINSHASA', label: 'Kinshasa', count: sortedData.filter((c: Client) => c.ville?.toUpperCase() === 'KINSHASA').length },
+                    { id: 'LIKASI', label: 'Likasi', count: sortedData.filter((c: Client) => c.ville?.toUpperCase() === 'LIKASI').length },
+                  ].filter(tab => tab.count > 0 || tab.id === 'all')}
+                  activeTab={cityFilter}
+                  onTabChange={(tab) => {
+                    setCityFilter(tab);
+                    setCurrentPage(1);
+                  }}
+                  variant="pills"
+                />
+
+                <FilterTabs
+                  tabs={[
+                    { id: 'all', label: 'Tous', count: sortedData.length },
+                    { id: 'overdue', label: 'En retard', count: sortedData.filter((c) => intelligenceByClient[c.id]?.isOverdue).length, icon: <AlertTriangle className="h-4 w-4" /> },
+                    { id: 'inactive', label: 'Inactifs 90j', count: sortedData.filter((c) => intelligenceByClient[c.id]?.isInactive90d).length, icon: <Clock3 className="h-4 w-4" /> },
+                  ]}
+                  activeTab={businessFilter}
+                  onTabChange={(tab) => setBusinessFilter(tab as 'all' | 'overdue' | 'inactive')}
+                  variant="pills"
+                />
+
+                <ColumnSelector
+                  columns={columnsConfig}
+                  onColumnsChange={setColumnsConfig}
+                />
+
+                <ExportDropdown
+                  onExport={(format) => {
+                    if (format === 'csv') exportClients();
+                  }}
+                  disabled={sortedData.length === 0}
+                  selectedCount={selectedClients.length}
+                />
+
+                <PermissionGuard module="clients" permission="create">
+                  <Button className="btn-primary" onClick={handleAddClient}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nouveau Client
+                  </Button>
+                </PermissionGuard>
+              </div>
             </div>
           </div>
 
           {/* Clients Table */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <CardTitle>Liste des Clients</CardTitle>
-                  {selectedClients.length > 0 && (
-                    <span className="text-sm text-gray-500">
-                      {selectedClients.length} sur {sortedData.length} sélectionné(s)
-                    </span>
-                  )}
-                </div>
-                <div className="flex space-x-2">
-                  <ExportDropdown
-                    onExport={(format) => {
-                      if (format === 'csv') exportClients();
-                      // Excel and PDF can be implemented later
-                    }}
-                    disabled={sortedData.length === 0}
-                    selectedCount={selectedClients.length}
-                  />
-
-                  <ColumnSelector
-                    columns={columnsConfig}
-                    onColumnsChange={setColumnsConfig}
-                  />
-
-                  <PermissionGuard module="clients" permission="create">
-                    <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddClient}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Nouveau Client
-                    </Button>
-                  </PermissionGuard>
-                </div>
+          <Card className="card-base">
+            <CardHeader className="pb-0 border-b-0">
+              <div className="flex items-center gap-4">
+                <CardTitle className="section-title">Liste des Clients</CardTitle>
+                {selectedClients.length > 0 && (
+                  <span className="small-text">
+                    {selectedClients.length} sur {displayedClients.length} sélectionné(s)
+                  </span>
+                )}
               </div>
             </CardHeader>
             <CardContent>
               <UnifiedDataTable<Client>
-                data={sortedData}
+                data={displayedClients}
+
                 loading={isLoading && safeClients.length === 0}
                 emptyMessage="Aucun client"
                 emptySubMessage="Commencez par ajouter votre premier client"
@@ -561,9 +661,9 @@ const ClientsProtected: React.FC = () => {
                     key: 'id',
                     title: 'ID',
                     sortable: true,
-                    className: 'min-w-[120px]',
-                    render: (value: any, client: Client, index: number) => (
-                      <span className="font-medium">
+                    className: 'min-w-[120px] hidden lg:table-cell', // Hide ID by default on small screens
+                    render: (value: unknown, client: Client, index: number) => (
+                      <span className="small-text font-medium">
                         {generateReadableId(client.id, index)}
                       </span>
                     )
@@ -572,10 +672,10 @@ const ClientsProtected: React.FC = () => {
                     key: 'nom',
                     title: 'Nom',
                     sortable: true,
-                    render: (value: any, client: Client) => (
+                    render: (value: unknown, client: Client) => (
                       <button
                         onClick={() => handleViewClientHistory(client)}
-                        className="text-left hover:text-green-500 hover:underline transition-colors cursor-pointer font-medium"
+                        className="text-left hover:text-primary hover:underline transition-colors cursor-pointer label-base"
                         title={sanitizeClientName(client.nom || '')}
                       >
                         {sanitizeClientName(client.nom || '').split(' ').map(word =>
@@ -588,10 +688,10 @@ const ClientsProtected: React.FC = () => {
                     key: 'telephone',
                     title: 'Téléphone',
                     sortable: true,
-                    render: (value: any) => (
-                      <div className="flex items-center space-x-1">
-                        <Phone className="h-4 w-4 text-gray-400" />
-                        <span>{sanitizePhoneNumber(value || '')}</span>
+                    render: (value: unknown) => (
+                      <div className="flex items-center space-x-1 whitespace-nowrap">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-mono">{sanitizePhoneNumber(value as string || '')}</span>
                       </div>
                     )
                   },
@@ -599,10 +699,10 @@ const ClientsProtected: React.FC = () => {
                     key: 'ville',
                     title: 'Ville',
                     sortable: true,
-                    render: (value: any) => (
+                    render: (value: unknown) => (
                       <div className="flex items-center space-x-1">
-                        <MapPin className="h-4 w-4 text-gray-400" />
-                        <span>{sanitizeCityName(value || '')}</span>
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span className="body-text">{sanitizeCityName(value as string || '')}</span>
                       </div>
                     )
                   },
@@ -611,9 +711,9 @@ const ClientsProtected: React.FC = () => {
                     title: 'Total Payé',
                     sortable: true,
                     align: 'right' as const,
-                    render: (value: any) => (
-                      <span className="font-medium text-green-500">
-                        {formatCurrency(value || 0)}
+                    render: (value: unknown) => (
+                      <span className={cn("font-medium text-mono", Number(value as number) === 0 ? "text-muted-foreground" : "text-foreground")}>
+                        {formatCurrency(value as number || 0)}
                       </span>
                     )
                   }] : []),
@@ -621,26 +721,54 @@ const ClientsProtected: React.FC = () => {
                     key: 'created_at',
                     title: 'Date',
                     sortable: true,
-                    render: (value: any) => (
-                      <span className="text-sm text-gray-600">
-                        {new Date(value).toLocaleDateString('fr-FR')}
+                    render: (value: unknown) => (
+                      <span className="small-text whitespace-nowrap">
+                        {new Date(value as string | number | Date).toLocaleDateString('fr-FR')}
                       </span>
                     )
+                  },
+                  {
+                    key: 'last_activity',
+                    title: 'Dernière activité',
+                    sortable: false,
+                    render: (_value: unknown, client: Client) => {
+                      const last = intelligenceByClient[client.id]?.lastActivityAt || client.created_at;
+                      return <span className="small-text whitespace-nowrap">{new Date(last).toLocaleDateString('fr-FR')}</span>;
+                    }
+                  },
+                  {
+                    key: 'client_status',
+                    title: 'Statut client',
+                    sortable: false,
+                    render: (_value: unknown, client: Client) => {
+                      const intel = intelligenceByClient[client.id];
+                      if (intel?.isOverdue) return <Badge className="badge-warning">En retard</Badge>;
+                      if (intel?.isInactive90d) return <Badge className="badge-neutral">Inactif 90j</Badge>;
+                      return <Badge className="badge-success">Actif</Badge>;
+                    }
+                  },
+                  {
+                    key: 'profitability_score',
+                    title: 'Rentabilité',
+                    sortable: false,
+                    align: 'right' as const,
+                    render: (_value: unknown, client: Client) => {
+                      const score = intelligenceByClient[client.id]?.profitabilityScore ?? 0;
+                      const tone = score >= 60 ? 'text-status-success' : score >= 30 ? 'text-status-warning' : 'text-status-error';
+                      return <span className={cn('text-mono font-medium', tone)}>{score}%</span>;
+                    }
                   }
                 ].filter(col => columnsConfig.find(c => c.key === col.key)?.visible)}
               />
 
-              {/* Pagination avec sélecteur de taille */}
               {pagination && (
-                <div className="mt-6 flex items-center justify-between">
+                <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-4">
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-600">Afficher</span>
+                    <span className="small-text">Afficher</span>
                     <Select value="10" onValueChange={(value) => {
-                      // Note: La taille de page est gérée côté serveur
-                      // Cette UI est préparée pour une future implémentation
                       console.log('Page size:', value);
                     }}>
-                      <SelectTrigger className="w-20">
+                      <SelectTrigger className="w-20 input-base">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -650,8 +778,8 @@ const ClientsProtected: React.FC = () => {
                         <SelectItem value="100">100</SelectItem>
                       </SelectContent>
                     </Select>
-                    <span className="text-sm text-gray-600">par page</span>
-                    <span className="text-sm text-gray-500 ml-4">
+                    <span className="small-text">par page</span>
+                    <span className="small-text ml-4 hidden sm:inline">
                       {pagination.count} client{pagination.count > 1 ? 's' : ''} au total
                     </span>
                   </div>

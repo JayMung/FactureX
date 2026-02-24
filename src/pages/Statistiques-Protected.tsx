@@ -181,95 +181,71 @@ const StatistiquesProtected: React.FC = () => {
                         {periodOptions.map((option) => (
                             <TabsContent key={option.value} value={option.value} className="space-y-6">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    <Card className="border-l-4 border-l-green-500">
-                                        <CardContent className="p-5">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Revenus</p>
-                                                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                                                        {isLoading ? '...' : formatCurrency(stats?.totalRevenue || 0)}
-                                                    </p>
-                                                    {stats?.revenueChange !== 0 && (
-                                                        <div className="flex items-center gap-1 mt-2">
-                                                            {stats?.revenueChange > 0 ? (
-                                                                <TrendingUp className="h-3 w-3 text-green-500" />
-                                                            ) : (
-                                                                <TrendingDown className="h-3 w-3 text-red-500" />
-                                                            )}
-                                                            <span className={stats?.revenueChange > 0 ? 'text-green-500 text-xs' : 'text-red-500 text-xs'}>
-                                                                {stats?.revenueChange > 0 ? '+' : ''}{stats?.revenueChange}%
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="p-3 rounded-full bg-green-500 text-white">
-                                                    <TrendingUp className="h-5 w-5" />
-                                                </div>
+                                    {/* Revenus — vert */}
+                                    <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-400 to-emerald-600 p-5 text-white shadow-md">
+                                        <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
+                                        <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
+                                        <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
+                                            <TrendingUp className="h-5 w-5 text-white" />
+                                        </div>
+                                        <p className="text-3xl font-bold leading-none truncate">
+                                            {isLoading ? '...' : formatCurrency(stats?.totalRevenue || 0)}
+                                        </p>
+                                        <p className="mt-1 text-sm text-white/80">Revenus</p>
+                                        {stats?.revenueChange !== 0 && (
+                                            <div className="mt-2 flex items-center gap-1 text-xs text-white/70">
+                                                {stats?.revenueChange > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                                <span>{stats?.revenueChange > 0 ? '+' : ''}{stats?.revenueChange}%</span>
                                             </div>
-                                        </CardContent>
-                                    </Card>
+                                        )}
+                                    </div>
 
-                                    <Card className="border-l-4 border-l-red-500">
-                                        <CardContent className="p-5">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Dépenses</p>
-                                                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                                                        {isLoading ? '...' : formatCurrency(stats?.totalDepenses || 0)}
-                                                    </p>
-                                                    {stats?.depensesChange !== 0 && (
-                                                        <div className="flex items-center gap-1 mt-2">
-                                                            {stats?.depensesChange > 0 ? (
-                                                                <TrendingUp className="h-3 w-3 text-red-500" />
-                                                            ) : (
-                                                                <TrendingDown className="h-3 w-3 text-green-500" />
-                                                            )}
-                                                            <span className={stats?.depensesChange > 0 ? 'text-red-500 text-xs' : 'text-green-500 text-xs'}>
-                                                                {stats?.depensesChange > 0 ? '+' : ''}{stats?.depensesChange}%
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="p-3 rounded-full bg-red-500 text-white">
-                                                    <TrendingDown className="h-5 w-5" />
-                                                </div>
+                                    {/* Dépenses — rouge */}
+                                    <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-red-400 to-red-600 p-5 text-white shadow-md">
+                                        <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
+                                        <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
+                                        <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
+                                            <TrendingDown className="h-5 w-5 text-white" />
+                                        </div>
+                                        <p className="text-3xl font-bold leading-none truncate">
+                                            {isLoading ? '...' : formatCurrency(stats?.totalDepenses || 0)}
+                                        </p>
+                                        <p className="mt-1 text-sm text-white/80">Dépenses</p>
+                                        {stats?.depensesChange !== 0 && (
+                                            <div className="mt-2 flex items-center gap-1 text-xs text-white/70">
+                                                {stats?.depensesChange > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                                <span>{stats?.depensesChange > 0 ? '+' : ''}{stats?.depensesChange}%</span>
                                             </div>
-                                        </CardContent>
-                                    </Card>
+                                        )}
+                                    </div>
 
-                                    <Card className="border-l-4 border-l-blue-500">
-                                        <CardContent className="p-5">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Transferts/Swap</p>
-                                                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                                                        {isLoading ? '...' : formatCurrency(stats?.totalTransferts || 0)}
-                                                    </p>
-                                                    <p className="text-xs text-gray-500 mt-2">{stats?.transactionsCount || 0} opérations</p>
-                                                </div>
-                                                <div className="p-3 rounded-full bg-blue-500 text-white">
-                                                    <ArrowRightLeft className="h-5 w-5" />
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+                                    {/* Transferts — bleu */}
+                                    <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 p-5 text-white shadow-md">
+                                        <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
+                                        <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
+                                        <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
+                                            <ArrowRightLeft className="h-5 w-5 text-white" />
+                                        </div>
+                                        <p className="text-3xl font-bold leading-none truncate">
+                                            {isLoading ? '...' : formatCurrency(stats?.totalTransferts || 0)}
+                                        </p>
+                                        <p className="mt-1 text-sm text-white/80">Transferts/Swap</p>
+                                        <p className="mt-1 text-xs text-white/60">{stats?.transactionsCount || 0} opérations</p>
+                                    </div>
 
-                                    <Card className="border-l-4 border-l-purple-500">
-                                        <CardContent className="p-5">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Solde Net</p>
-                                                    <p className={`text-2xl font-bold mt-1 ${(stats?.soldeNet || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                        {isLoading ? '...' : formatCurrency(stats?.soldeNet || 0)}
-                                                    </p>
-                                                    <p className="text-xs text-gray-500 mt-2">Revenus - Dépenses</p>
-                                                </div>
-                                                <div className="p-3 rounded-full bg-purple-500 text-white">
-                                                    <DollarSign className="h-5 w-5" />
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+                                    {/* Solde Net — violet */}
+                                    <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-purple-400 to-purple-600 p-5 text-white shadow-md">
+                                        <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
+                                        <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
+                                        <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
+                                            <DollarSign className="h-5 w-5 text-white" />
+                                        </div>
+                                        <p className="text-3xl font-bold leading-none truncate">
+                                            {isLoading ? '...' : formatCurrency(stats?.soldeNet || 0)}
+                                        </p>
+                                        <p className="mt-1 text-sm text-white/80">Solde Net</p>
+                                        <p className="mt-1 text-xs text-white/60">Revenus - Dépenses</p>
+                                    </div>
                                 </div>
 
                                 <Card>

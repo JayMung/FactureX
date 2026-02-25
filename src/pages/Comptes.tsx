@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
+import { FilterTabs } from '@/components/ui/filter-tabs';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Edit2, Trash2, Wallet, Building, DollarSign, Grid3x3, List, Smartphone, CreditCard, Banknote, Eye } from 'lucide-react';
+import { Plus, Edit2, Trash2, Wallet, Building, DollarSign, Grid3x3, List, Smartphone, CreditCard, Banknote, Eye, Building2, Wifi, MoreHorizontal as MoreH } from 'lucide-react';
+import { TrendBadge } from '@/components/comptes/TrendBadge';
 import { showSuccess, showError } from '@/utils/toast';
 import type { CompteFinancier, CreateCompteFinancierData, UpdateCompteFinancierData } from '@/types';
 import { cn } from '@/lib/utils';
@@ -47,6 +49,11 @@ const Comptes: React.FC = () => {
   const isMobile = useIsMobile();
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [compteForDetail, setCompteForDetail] = useState<CompteFinancier | null>(null);
+  const [typeTab, setTypeTab] = useState<'all' | 'mobile_money' | 'banque' | 'cash'>('all');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [compteToDelete, setCompteToDelete] = useState<CompteFinancier | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState<CreateCompteFinancierData>({
     nom: '',
     type_compte: 'mobile_money',
@@ -100,15 +107,25 @@ const Comptes: React.FC = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleDelete = async (compte: CompteFinancier) => {
-    if (window.confirm(`Êtes-vous sûr de vouloir supprimer le compte "${compte.nom}" ?`)) {
-      try {
-        await deleteCompte(compte.id);
-        showSuccess('Compte supprimé avec succès');
-      } catch (error: any) {
-        console.error('Error deleting compte:', error);
-        showError(error.message || 'Erreur lors de la suppression du compte');
-      }
+  const handleDelete = (compte: CompteFinancier) => {
+    setCompteToDelete(compte);
+    setDeleteConfirmName('');
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!compteToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteCompte(compteToDelete.id);
+      showSuccess(`Compte "${compteToDelete.nom}" supprimé avec succès`);
+      setDeleteDialogOpen(false);
+      setCompteToDelete(null);
+    } catch (error: any) {
+      console.error('Error deleting compte:', error);
+      showError(error.message || 'Erreur lors de la suppression du compte');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -141,6 +158,19 @@ const Comptes: React.FC = () => {
       default:
         return type;
     }
+  };
+
+  const getBankCardGradient = (nom: string, type: string) => {
+    const n = nom.toLowerCase();
+    if (n.includes('airtel')) return 'from-red-600 via-red-500 to-rose-400';
+    if (n.includes('orange')) return 'from-orange-500 via-orange-400 to-amber-300';
+    if (n.includes('m-pesa') || n.includes('mpesa')) return 'from-green-700 via-green-500 to-emerald-400';
+    if (n.includes('illicocash') || n.includes('illico')) return 'from-blue-700 via-blue-500 to-cyan-400';
+    if (n.includes('alipay')) return 'from-blue-600 via-sky-500 to-cyan-400';
+    if (n.includes('cash') || n.includes('bureau')) return 'from-emerald-700 via-emerald-500 to-teal-400';
+    if (type === 'banque') return 'from-slate-700 via-slate-500 to-blue-400';
+    if (type === 'cash') return 'from-emerald-700 via-emerald-500 to-teal-400';
+    return 'from-purple-700 via-purple-500 to-violet-400';
   };
 
   const getAccountColor = (nom: string, type: string) => {
@@ -212,6 +242,8 @@ const Comptes: React.FC = () => {
   const banqueComptes = getComptesByType('banque');
   const cashComptes = getComptesByType('cash');
 
+  const filteredComptes = typeTab === 'all' ? comptes : comptes.filter(c => c.type_compte === typeTab);
+
   const compteColumns = [
     {
       key: 'nom',
@@ -262,19 +294,19 @@ const Comptes: React.FC = () => {
       render: (_: any, item: CompteFinancier) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
+            <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleViewDetail(item)}>
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewDetail(item); }}>
               <Eye className="mr-2 h-4 w-4" /> Voir détails
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleEdit(item)}>
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(item); }}>
               <Edit2 className="mr-2 h-4 w-4" /> Modifier
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => handleDelete(item)} className="text-red-600">
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDelete(item); }} className="text-red-600">
               <Trash2 className="mr-2 h-4 w-4" /> Supprimer
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -541,56 +573,121 @@ const Comptes: React.FC = () => {
         </div>
       </div>
 
+      <FilterTabs
+        tabs={[
+          { id: 'all', label: 'Tous', count: comptes.length },
+          { id: 'mobile_money', label: 'Mobile Money', count: mobileMoneyComptes.length },
+          { id: 'banque', label: 'Banque', count: banqueComptes.length },
+          { id: 'cash', label: 'Cash', count: cashComptes.length },
+        ]}
+        activeTab={typeTab}
+        onTabChange={(id) => setTypeTab(id as 'all' | 'mobile_money' | 'banque' | 'cash')}
+        variant="pills"
+      />
+
+      {/* Cards view — visual bank card style */}
+      {(viewMode === 'cards' || (viewMode === 'auto' && isMobile)) ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-44 rounded-2xl bg-gray-200 dark:bg-gray-700 animate-pulse" />
+            ))
+          ) : filteredComptes.length === 0 ? (
+            <div className="col-span-full text-center py-12 text-gray-500">Aucun compte trouvé</div>
+          ) : (
+            filteredComptes.map((item) => {
+              const gradient = getBankCardGradient(item.nom, item.type_compte);
+              const symbol = item.devise === 'USD' ? '$' : item.devise === 'CNY' ? '¥' : '';
+              const suffix = item.devise === 'CDF' ? ' FC' : '';
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => handleViewDetail(item)}
+                  className={cn(
+                    'relative overflow-hidden rounded-2xl p-5 cursor-pointer shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5',
+                    `bg-gradient-to-br ${gradient}`
+                  )}
+                >
+                  {/* Decorative circles */}
+                  <div className="absolute -top-6 -right-6 h-32 w-32 rounded-full bg-white/10" />
+                  <div className="absolute top-3 -right-3 h-16 w-16 rounded-full bg-white/10" />
+                  <div className="absolute -bottom-8 -left-4 h-24 w-24 rounded-full bg-black/10" />
+
+                  {/* Header row */}
+                  <div className="relative flex items-start justify-between mb-6">
+                    <div>
+                      <span className="text-white/60 text-[10px] font-semibold uppercase tracking-widest">
+                        {getAccountTypeLabel(item.type_compte)}
+                      </span>
+                      <p className="text-white font-bold text-lg leading-tight mt-0.5">{item.nom}</p>
+                      {item.numero_compte && (
+                        <p className="text-white/50 text-xs font-mono mt-0.5">{item.numero_compte}</p>
+                      )}
+                    </div>
+                    <div className="text-white/60">
+                      {item.type_compte === 'mobile_money' ? <Wifi className="h-6 w-6" /> :
+                       item.type_compte === 'banque' ? <Building2 className="h-6 w-6" /> :
+                       <Banknote className="h-6 w-6" />}
+                    </div>
+                  </div>
+
+                  {/* Balance */}
+                  <div className="relative">
+                    <p className="text-white/60 text-[10px] uppercase tracking-widest">Solde actuel</p>
+                    <p className="text-2xl font-bold text-white mt-0.5">
+                      {symbol}{item.solde_actuel.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{suffix}
+                    </p>
+                    <div className="mt-1.5">
+                      <TrendBadge compteId={item.id} soldeActuel={item.solde_actuel} devise={item.devise} variant="card" />
+                    </div>
+                  </div>
+
+                  {/* Status badge */}
+                  <div className="absolute top-4 right-4">
+                    {!item.is_active && (
+                      <span className="bg-red-500/40 text-white border border-red-400/40 text-[10px] px-2 py-0.5 rounded-full font-medium">
+                        Inactif
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Actions overlay */}
+                  <div className="relative mt-4 flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      className="text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg p-1.5 transition-colors"
+                      onClick={() => handleEdit(item)}
+                      title="Modifier"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      className="text-white/70 hover:text-red-200 bg-white/10 hover:bg-red-500/30 rounded-lg p-1.5 transition-colors"
+                      onClick={() => handleDelete(item)}
+                      title="Supprimer"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
       <UnifiedDataTable
-        data={comptes}
+        data={filteredComptes}
         loading={loading}
-        viewMode={viewMode}
+        viewMode="table"
         onViewModeChange={setViewMode}
-        showViewToggle={false} // Disable internal toggle to avoid duplication
-        onRowClick={handleViewDetail} // Open details on row click
+        showViewToggle={false}
+        onRowClick={handleViewDetail}
         emptyMessage="Aucun compte trouvé"
         emptySubMessage="Créez votre premier compte financier"
         columns={compteColumns.filter(c => columnsConfig[c.key] !== false)}
-        cardConfig={{
-          titleKey: 'nom',
-          titleRender: (item) => {
-            const colors = getAccountColor(item.nom, item.type_compte);
-            return (
-              <div className="flex items-center gap-2">
-                <span className={cn('p-1 rounded bg-gray-100 dark:bg-gray-800', colors.text)}>
-                  {getAccountIcon(item.type_compte)}
-                </span>
-                <span className={cn('font-bold', colors.text)}>{item.nom}</span>
-              </div>
-            );
-          },
-          subtitleRender: (item) => (
-            <div className="flex flex-col gap-1">
-              <span className="text-sm text-gray-500">{getAccountTypeLabel(item.type_compte)}</span>
-              {item.numero_compte && <span className="font-mono text-xs text-gray-400">{item.numero_compte}</span>}
-            </div>
-          ),
-          badgeKey: 'type_compte',
-          badgeRender: (item) => {
-            const colors = getAccountColor(item.nom, item.type_compte);
-            return <Badge className={colors.badge}>{getAccountTypeLabel(item.type_compte)}</Badge>
-          },
-          infoFields: [
-            {
-              key: 'solde_actuel',
-              label: 'Solde',
-              render: (val, item) => {
-                const colors = getAccountColor(item.nom, item.type_compte);
-                return (
-                  <span className={cn('text-lg font-bold', colors.text)}>
-                    {item.devise === 'USD' ? '$' : item.devise === 'CNY' ? '¥' : ''}{val.toFixed(2)} {item.devise === 'CDF' ? 'FC' : ''}
-                  </span>
-                )
-              }
-            }
-          ]
-        }}
       />
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -704,6 +801,114 @@ const Comptes: React.FC = () => {
           setCompteForDetail(null);
         }}
       />
+
+      {/* Modal de suppression avec confirmation du nom */}
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
+        if (!open && !isDeleting) {
+          setDeleteDialogOpen(false);
+          setCompteToDelete(null);
+          setDeleteConfirmName('');
+        }
+      }}>
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-950">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <DialogTitle className="text-lg">Supprimer le compte</DialogTitle>
+            </div>
+            <DialogDescription className="text-sm text-gray-600 dark:text-gray-400 pt-1">
+              Cette action est <strong>irréversible</strong>. Le compte et tout son historique de mouvements seront définitivement supprimés.
+            </DialogDescription>
+          </DialogHeader>
+
+          {compteToDelete && (
+            <div className="space-y-4 py-2">
+              {/* Aperçu du compte à supprimer */}
+              <div className={cn(
+                'rounded-xl p-4 flex items-center gap-3',
+                `bg-gradient-to-br ${getBankCardGradient(compteToDelete.nom, compteToDelete.type_compte)}`
+              )}>
+                <div className="text-white/80">
+                  {compteToDelete.type_compte === 'mobile_money' ? <Wifi className="h-5 w-5" /> :
+                   compteToDelete.type_compte === 'banque' ? <Building2 className="h-5 w-5" /> :
+                   <Banknote className="h-5 w-5" />}
+                </div>
+                <div>
+                  <p className="font-bold text-white text-sm">{compteToDelete.nom}</p>
+                  <p className="text-white/60 text-xs">
+                    {compteToDelete.devise === 'USD' ? '$' : compteToDelete.devise === 'CNY' ? '¥' : ''}
+                    {compteToDelete.solde_actuel.toFixed(2)}
+                    {compteToDelete.devise === 'CDF' ? ' FC' : ''}
+                  </p>
+                </div>
+              </div>
+
+              {/* Saisie de confirmation */}
+              <div className="space-y-2">
+                <Label className="text-sm text-gray-700 dark:text-gray-300">
+                  Pour confirmer, saisissez le nom du compte :{' '}
+                  <span className="font-mono font-bold text-gray-900 dark:text-white">
+                    {compteToDelete.nom}
+                  </span>
+                </Label>
+                <Input
+                  value={deleteConfirmName}
+                  onChange={(e) => setDeleteConfirmName(e.target.value)}
+                  placeholder={`Tapez "${compteToDelete.nom}"`}
+                  className={cn(
+                    'transition-colors',
+                    deleteConfirmName === compteToDelete.nom
+                      ? 'border-red-500 focus-visible:ring-red-500'
+                      : ''
+                  )}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && deleteConfirmName === compteToDelete.nom && !isDeleting) {
+                      confirmDelete();
+                    }
+                  }}
+                />
+                {deleteConfirmName.length > 0 && deleteConfirmName !== compteToDelete.nom && (
+                  <p className="text-xs text-red-500">Le nom ne correspond pas.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setCompteToDelete(null);
+                setDeleteConfirmName('');
+              }}
+              disabled={isDeleting}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={confirmDelete}
+              disabled={!compteToDelete || deleteConfirmName !== compteToDelete.nom || isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Suppression...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Supprimer définitivement
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

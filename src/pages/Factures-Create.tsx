@@ -56,6 +56,7 @@ const FacturesCreate: React.FC = () => {
     mode_livraison: 'aerien',
     devise: 'USD',
     date_emission: new Date().toISOString().split('T')[0],
+    date_echeance: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0],
     statut: 'brouillon',
     conditions_vente: '',
     notes: '',

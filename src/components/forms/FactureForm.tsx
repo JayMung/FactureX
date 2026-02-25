@@ -45,7 +45,8 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
     devise: 'USD' as 'USD' | 'CDF',
     conditions_vente: '',
     notes: '',
-    date_emission: new Date().toISOString().split('T')[0]
+    date_emission: new Date().toISOString().split('T')[0],
+    date_echeance: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0]
   });
 
   const [items, setItems] = useState<FactureItemForm[]>([
@@ -113,7 +114,8 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
         devise: facture.devise,
         conditions_vente: facture.conditions_vente || '',
         notes: facture.notes || '',
-        date_emission: facture.date_emission
+        date_emission: facture.date_emission,
+        date_echeance: facture.date_echeance || new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0]
       });
 
       // Charger les items
@@ -166,7 +168,8 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
         devise: 'USD',
         conditions_vente: defaultConditionsVente,
         notes: '',
-        date_emission: new Date().toISOString().split('T')[0]
+        date_emission: new Date().toISOString().split('T')[0],
+        date_echeance: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0]
       });
       setItems([{
         tempId: '1',

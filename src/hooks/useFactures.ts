@@ -27,7 +27,8 @@ export const useFactures = (page: number = 1, filters?: FactureFilters, options?
     totalCount: 0,
     totalAmount: 0,
     totalPaid: 0,
-    totalOutstanding: 0
+    totalOutstanding: 0,
+    totalRetard: 0
   });
   const pageSize = options?.pageSize ?? DEFAULT_PAGE_SIZE;
   const sort = options?.sort;
@@ -59,6 +60,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters, options?
         totalAmount: number;
         totalPaid: number;
         totalOutstanding: number;
+        totalRetard: number;
       };
 
       const rows = rpcData.data || [];
@@ -75,13 +77,14 @@ export const useFactures = (page: number = 1, filters?: FactureFilters, options?
       });
 
       setGlobalTotals({
-        totalUSD: 0,
+        totalUSD: 0, // Conservés pour compatibilité si besoin
         totalCDF: 0,
         totalFrais: 0,
         totalCount,
         totalAmount: rpcData.totalAmount || 0,
         totalPaid: rpcData.totalPaid || 0,
-        totalOutstanding: rpcData.totalOutstanding || 0
+        totalOutstanding: rpcData.totalOutstanding || 0,
+        totalRetard: rpcData.totalRetard || 0
       });
 
       setRetryCount(0);
@@ -161,7 +164,8 @@ export const useFactures = (page: number = 1, filters?: FactureFilters, options?
         notes: data.notes,
         informations_bancaires: data.informations_bancaires,
         created_by: user.id,
-        date_emission: data.date_emission
+        date_emission: data.date_emission,
+        date_echeance: data.date_echeance
       };
 
       const itemsArray = data.items.map((item) => ({ ...item }));
@@ -212,6 +216,7 @@ export const useFactures = (page: number = 1, filters?: FactureFilters, options?
       if (data.mode_livraison) updateData.mode_livraison = data.mode_livraison;
       if (data.devise) updateData.devise = data.devise;
       if (data.date_emission) updateData.date_emission = data.date_emission;
+      if (data.date_echeance) updateData.date_echeance = data.date_echeance;
       if (data.statut) updateData.statut = data.statut;
       if (data.conditions_vente !== undefined) updateData.conditions_vente = data.conditions_vente;
       if (data.notes !== undefined) updateData.notes = data.notes;

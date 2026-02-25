@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, DollarSign, TrendingUp, Calendar, Filter, Download, Trash2, Edit } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, DollarSign, TrendingUp, Calendar, Download, Trash2, Edit, Search, Package, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,9 @@ import { useFactures } from '@/hooks/useFactures';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 import { useColisList } from '@/hooks/useColisList';
 import { ClientCombobox } from '@/components/ui/client-combobox';
+import { FilterTabs } from '@/components/ui/filter-tabs';
+import { PeriodFilterTabs } from '@/components/ui/period-filter-tabs';
+import { getDateRange, PeriodFilter } from '@/utils/dateUtils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -58,6 +61,38 @@ export default function Encaissements() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingPaiement, setEditingPaiement] = useState<any | null>(null);
+  const [typeTab, setTypeTab] = useState<'all' | 'facture' | 'colis'>('all');
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    if (periodFilter !== 'all') {
+      const { current } = getDateRange(periodFilter);
+      if (current.start && current.end) {
+        setFilters(prev => ({
+          ...prev,
+          date_debut: format(current.start!, 'yyyy-MM-dd'),
+          date_fin: format(current.end!, 'yyyy-MM-dd'),
+        }));
+      }
+    } else {
+      setFilters(prev => ({ ...prev, date_debut: '', date_fin: '' }));
+    }
+    setPage(1);
+  }, [periodFilter]);
+
+  useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      type_paiement: typeTab === 'all' ? undefined : typeTab as 'facture' | 'colis',
+    }));
+    setPage(1);
+  }, [typeTab]);
+
+  useEffect(() => {
+    setFilters(prev => ({ ...prev, search: searchTerm || '' }));
+    setPage(1);
+  }, [searchTerm]);
   
   // Déclarer formData AVANT de l'utiliser dans les hooks
   const [formData, setFormData] = useState<CreatePaiementData>({
@@ -240,9 +275,15 @@ export default function Encaissements() {
                     <Label>Facture *</Label>
                     <Select
                       value={formData.facture_id}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, facture_id: value })
-                      }
+                      onValueChange={(value) => {
+                        const selectedFacture = filteredFactures?.find(f => f.id === value);
+                        const soldeRestant = (selectedFacture as any)?.solde_restant ?? selectedFacture?.total_general ?? 0;
+                        setFormData({
+                          ...formData,
+                          facture_id: value,
+                          montant_paye: soldeRestant > 0 ? soldeRestant : formData.montant_paye,
+                        });
+                      }}
                       disabled={!formData.client_id}
                       required
                     >
@@ -255,12 +296,12 @@ export default function Encaissements() {
                             .filter((facture) => typeof facture?.id === 'string' && facture.id.trim().length > 0)
                             .map((facture) => (
                             <SelectItem key={String(facture.id)} value={String(facture.id)}>
-                              {facture.facture_number || 'N/A'} - {facture.total_general || 0} {facture.devise || 'USD'}
+                              {facture.facture_number || 'N/A'} — Reste: {((facture as any).solde_restant ?? facture.total_general ?? 0).toFixed(2)} {facture.devise || 'USD'}
                             </SelectItem>
                           ))
                         ) : (
                           <SelectItem value="__no_facture__" disabled>
-                            {formData.client_id ? 'Aucune facture impayée' : 'Sélectionnez un client d\'abord'}
+                            {formData.client_id ? 'Aucune facture disponible' : 'Sélectionnez un client d\'abord'}
                           </SelectItem>
                         )}
                       </SelectContent>
@@ -456,129 +497,68 @@ export default function Encaissements() {
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filtres
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <Select
-                value={filters.type_paiement || 'all'}
-                onValueChange={(value) =>
-                  setFilters({ ...filters, type_paiement: value === 'all' ? undefined : value as 'facture' | 'colis' })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Tous" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous</SelectItem>
-                  <SelectItem value="facture">Facture</SelectItem>
-                  <SelectItem value="colis">Colis</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Client</Label>
-              <Select
-                value={filters.client_id || 'all'}
-                onValueChange={(value) =>
-                  setFilters({ ...filters, client_id: value === 'all' ? '' : value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Tous" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous</SelectItem>
-                  {clients && clients.length > 0 && clients
-                    .filter((client) => typeof client?.id === 'string' && client.id.trim().length > 0)
-                    .map((client) => (
-                    <SelectItem key={String(client.id)} value={String(client.id)}>
-                      {client.nom}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Compte</Label>
-              <Select
-                value={filters.compte_id || 'all'}
-                onValueChange={(value) =>
-                  setFilters({ ...filters, compte_id: value === 'all' ? '' : value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Tous" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous</SelectItem>
-                  {comptesData && comptesData.length > 0 && comptesData
-                    .filter((compte) => typeof compte?.id === 'string' && compte.id.trim().length > 0)
-                    .map((compte) => (
+      {/* Filter bar */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <FilterTabs
+            tabs={[
+              { id: 'all', label: 'Tous' },
+              { id: 'facture', label: 'Factures', icon: <FileText className="h-3.5 w-3.5" /> },
+              { id: 'colis', label: 'Colis', icon: <Package className="h-3.5 w-3.5" /> },
+            ]}
+            activeTab={typeTab}
+            onTabChange={(id) => setTypeTab(id as 'all' | 'facture' | 'colis')}
+            variant="pills"
+          />
+          <PeriodFilterTabs
+            period={periodFilter}
+            onPeriodChange={(p) => setPeriodFilter(p)}
+            showAllOption
+          />
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Rechercher un client, une référence..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="flex gap-2">
+            <ClientCombobox
+              clients={[{ id: '', nom: 'Tous les clients', telephone: '', ville: '', created_at: '' }, ...(clients || [])]}
+              value={filters.client_id || ''}
+              onValueChange={(value) => setFilters({ ...filters, client_id: value === '' ? '' : value })}
+              placeholder="Client"
+              emptyMessage="Aucun client trouvé"
+            />
+            <Select
+              value={filters.compte_id || 'all'}
+              onValueChange={(value) => setFilters({ ...filters, compte_id: value === 'all' ? '' : value })}
+            >
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Compte" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les comptes</SelectItem>
+                {comptesData && comptesData
+                  .filter((c) => typeof c?.id === 'string' && c.id.trim().length > 0)
+                  .map((compte) => (
                     <SelectItem key={String(compte.id)} value={String(compte.id)}>
                       {compte.nom}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Date début</Label>
-              <Input
-                type="date"
-                value={filters.date_debut}
-                onChange={(e) =>
-                  setFilters({ ...filters, date_debut: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Date fin</Label>
-              <Input
-                type="date"
-                value={filters.date_fin}
-                onChange={(e) =>
-                  setFilters({ ...filters, date_fin: e.target.value })
-                }
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-end">
-            <Button
-              variant="outline"
-              onClick={() =>
-                setFilters({
-                  type_paiement: undefined,
-                  client_id: '',
-                  compte_id: '',
-                  date_debut: '',
-                  date_fin: '',
-                  search: '',
-                })
-              }
-            >
-              Réinitialiser
-            </Button>
-            <Button variant="outline" onClick={exportToCSV} className="w-full sm:w-auto">
-              <Download className="mr-2 h-4 w-4" />
-              Exporter CSV
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={exportToCSV}>
+              <Download className="h-4 w-4 mr-2" />
+              Export
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Table */}
       <Card>

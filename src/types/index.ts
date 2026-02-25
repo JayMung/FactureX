@@ -270,6 +270,7 @@ export interface Facture {
   statut: 'brouillon' | 'en_attente' | 'validee' | 'payee' | 'annulee';
   client_id: string;
   date_emission: string;
+  date_echeance?: string;
   date_validation?: string;
   valide_par?: string;
   mode_livraison: 'aerien' | 'maritime';
@@ -280,6 +281,10 @@ export interface Facture {
   frais: number;
   frais_transport_douane: number;
   total_general: number;
+  montant_paye?: number;
+  solde_restant?: number;
+  statut_paiement?: 'non_paye' | 'partiellement_payee' | 'payee' | 'impayee';
+  est_en_retard?: boolean;
   conditions_vente?: string;
   notes?: string;
   informations_bancaires?: string;
@@ -312,6 +317,7 @@ export interface CreateFactureData {
   mode_livraison: 'aerien' | 'maritime';
   devise: 'USD' | 'CDF' | 'CNY';
   date_emission: string;
+  date_echeance?: string;
   statut?: 'brouillon' | 'en_attente' | 'validee' | 'annulee';
   conditions_vente?: string;
   notes?: string;
@@ -330,6 +336,7 @@ export interface UpdateFactureData {
   mode_livraison?: 'aerien' | 'maritime';
   devise?: 'USD' | 'CDF' | 'CNY';
   date_emission?: string;
+  date_echeance?: string;
   statut?: 'brouillon' | 'en_attente' | 'validee' | 'annulee';
   conditions_vente?: string;
   notes?: string;

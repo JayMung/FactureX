@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { 
   Receipt, 
   FileText, 
@@ -86,7 +87,7 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
     clientId: client?.id
   });
   
-  const colis = (colisData as any[]) || [];
+  const colis: Colis[] = (colisData as Colis[]) || [];
 
   const formatCurrencyValue = (amount: number, currency: string) => {
     if (currency === 'USD') {
@@ -115,11 +116,11 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
   };
 
   const getFactureStatusBadge = (statut: string) => {
-    const variants: Record<string, { variant: any; className: string; label: string }> = {
-      brouillon: { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-800', label: 'Brouillon' },
-      en_attente: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800', label: 'En attente' },
-      validee: { variant: 'default' as const, className: 'bg-green-500 text-white', label: 'Validée' },
-      annulee: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800', label: 'Annulée' }
+    const variants: Record<string, { variant: 'secondary' | 'default' | 'destructive'; className: string; label: string }> = {
+      brouillon: { variant: 'secondary', className: 'bg-gray-100 text-gray-800', label: 'Brouillon' },
+      en_attente: { variant: 'secondary', className: 'bg-yellow-100 text-yellow-800', label: 'En attente' },
+      validee: { variant: 'default', className: 'bg-green-500 text-white', label: 'Validée' },
+      annulee: { variant: 'destructive', className: 'bg-red-100 text-red-800', label: 'Annulée' }
     };
     
     const config = variants[statut] || variants.brouillon;
@@ -186,31 +187,30 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
   if (!client) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} modal>
-      <DialogContent 
-        className="max-w-6xl max-h-[90vh] overflow-y-auto p-4 sm:p-6"
-        onInteractOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent 
+        className="w-full sm:max-w-2xl overflow-y-auto p-4 sm:p-6"
+        side="right"
       >
-        <DialogHeader>
-          <DialogTitle className="text-lg sm:text-xl font-bold">
-            Historique complet - {client.nom.split(' ').map(word => 
+        <SheetHeader>
+          <SheetTitle className="heading-3">
+            Détails du client - {client.nom.split(' ').map(word => 
               word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
             ).join(' ')}
-          </DialogTitle>
-        </DialogHeader>
+          </SheetTitle>
+        </SheetHeader>
 
         {/* Client Info Header Card - Mobile Optimized */}
-        <Card className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border-green-200">
-          <CardContent className="p-3 sm:p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <Card className="card-clean mt-6">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col gap-4">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-green-500 rounded-full">
-                  <User className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                <div className="p-2.5 bg-primary/10 rounded-xl">
+                  <User className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Nom complet</p>
-                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
+                  <p className="small-text uppercase tracking-wide">Nom complet</p>
+                  <p className="label-base">
                     {client.nom.split(' ').map(word => 
                       word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
                     ).join(' ')}
@@ -218,21 +218,21 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
                 </div>
               </div>
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-500 rounded-full">
-                  <Phone className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                <div className="p-2.5 bg-blue-500/10 rounded-xl">
+                  <Phone className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Téléphone</p>
-                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">{client.telephone}</p>
+                  <p className="small-text uppercase tracking-wide">Téléphone</p>
+                  <p className="label-base text-mono">{client.telephone}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-purple-500 rounded-full">
-                  <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                <div className="p-2.5 bg-purple-500/10 rounded-xl">
+                  <MapPin className="h-5 w-5 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Ville</p>
-                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">{client.ville}</p>
+                  <p className="small-text uppercase tracking-wide">Ville</p>
+                  <p className="label-base">{client.ville}</p>
                 </div>
               </div>
             </div>
@@ -567,9 +567,7 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs sm:text-sm text-gray-600">Total Colis</p>
-                      <p className="text-xl sm:text-2xl font-bold text-gray-900">
-                        {colis?.length || 0}
-                      </p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900">{colis.length}</p>
                     </div>
                     <Package className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500" />
                   </div>
@@ -582,7 +580,7 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
                     <div>
                       <p className="text-xs sm:text-sm text-gray-600">Aériens</p>
                       <p className="text-xl sm:text-2xl font-bold text-green-600">
-                        {colis?.filter((c: any) => c.type_livraison === 'aerien').length || 0}
+                        {colis.filter((c) => c.type_livraison === 'aerien').length}
                       </p>
                     </div>
                     <Package className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
@@ -596,7 +594,7 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
                     <div>
                       <p className="text-xs sm:text-sm text-gray-600">Maritimes</p>
                       <p className="text-xl sm:text-2xl font-bold text-blue-600">
-                        {colis?.filter((c: any) => c.type_livraison === 'maritime').length || 0}
+                        {colis.filter((c) => c.type_livraison === 'maritime').length}
                       </p>
                     </div>
                     <Package className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500" />
@@ -610,7 +608,7 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
                     <div>
                       <p className="text-xs sm:text-sm text-gray-600">Poids Total</p>
                       <p className="text-xl sm:text-2xl font-bold text-purple-600">
-                        {colis?.reduce((sum: number, c: any) => sum + (c.poids || 0), 0).toFixed(1) || 0} kg
+                        {colis.reduce((sum, c) => sum + (c.poids || 0), 0).toFixed(1)} kg
                       </p>
                     </div>
                     <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-purple-500" />
@@ -624,9 +622,7 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
               <CardHeader>
                 <CardTitle className="flex items-center justify-between text-base sm:text-lg">
                   <span>Liste des Colis</span>
-                  <Badge variant="outline">
-                    {colis?.length || 0} colis
-                  </Badge>
+                  <Badge variant="outline">{colis.length} colis</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -643,45 +639,48 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
                       </div>
                     ))}
                   </div>
-                ) : !colis || colis.length === 0 ? (
+                ) : colis.length === 0 ? (
                   <div className="text-center py-8">
                     <Package className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                     <p className="text-gray-500">Aucun colis trouvé</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {colis.map((colisItem: any) => (
+                    {colis.map((colisItem) => (
                       <div key={colisItem.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 gap-3 sm:gap-0">
                         <div className="flex items-center space-x-3 sm:space-x-4">
                           <div className={`p-2 rounded-full ${colisItem.type_livraison === 'aerien' ? 'bg-green-100' : 'bg-blue-100'}`}>
-                            <Package className={`h-4 w-4 ${colisItem.type_livraison === 'aerien' ? 'text-green-600' : 'text-blue-600'}`} />
+                            <Package className={`h-4 w-4 sm:h-5 sm:w-5 ${colisItem.type_livraison === 'aerien' ? 'text-green-600' : 'text-blue-600'}`} />
                           </div>
                           <div>
-                            <p className="text-sm sm:text-base font-medium">
-                              {colisItem.type_livraison === 'aerien' ? '✈️ Aérien' : '🚢 Maritime'}
+                            <p className="font-medium text-sm sm:text-base">
+                              {colisItem.type_livraison === 'aerien' ? 'Fret Aérien' : 'Fret Maritime'}
                             </p>
                             <p className="text-xs sm:text-sm text-gray-500">
-                              {colisItem.quantite} colis • {colisItem.poids} kg
+                              {new Date(colisItem.created_at).toLocaleDateString('fr-FR')} • {colisItem.poids} kg
                             </p>
-                            {colisItem.tracking_chine && (
-                              <p className="text-xs text-gray-400">
-                                Tracking: {colisItem.tracking_chine}
-                              </p>
-                            )}
                           </div>
                         </div>
-                        <div className="text-left sm:text-right">
-                          <Badge variant={colisItem.statut === 'livre' ? 'default' : 'secondary'} className="mb-1">
+                        <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0">
+                          <div className="text-left sm:text-right">
+                            <p className="font-bold text-sm sm:text-base">{colisItem.frais_expedition} USD</p>
+                            <p className="text-xs sm:text-sm text-gray-500">
+                              Bénéfice: <span className="text-green-600 font-medium">+{colisItem.benefice} USD</span>
+                            </p>
+                          </div>
+                          <Badge
+                            className={
+                              colisItem.statut === 'En attente'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : colisItem.statut === 'Expédié'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : colisItem.statut === 'Livré'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-gray-100 text-gray-800'
+                            }
+                          >
                             {colisItem.statut}
                           </Badge>
-                          <p className="text-sm sm:text-base font-medium text-green-600">
-                            {formatCurrencyValue(colisItem.montant_a_payer, 'USD')}
-                          </p>
-                          {colisItem.transitaire && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              {colisItem.transitaire.nom}
-                            </p>
-                          )}
                         </div>
                       </div>
                     ))}
@@ -691,8 +690,8 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
             </Card>
           </TabsContent>
         </Tabs>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 };
 

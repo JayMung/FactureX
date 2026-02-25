@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -36,7 +36,10 @@ import {
   XCircle,
   TrendingUp,
   Send,
-  Calendar
+  Calendar,
+  X,
+  Hash,
+  Clock
 } from 'lucide-react';
 import { startOfDay, startOfWeek, startOfMonth, startOfYear, endOfDay, endOfWeek, endOfMonth, endOfYear, subDays } from 'date-fns';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
@@ -48,8 +51,14 @@ import { ExportDropdown } from '@/components/ui/export-dropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { usePermissions } from '../hooks/usePermissions';
 import { useFactures } from '../hooks/useFactures';
+import { useAllClients } from '../hooks/useClients';
+import { ClientCombobox } from '@/components/ui/client-combobox';
+import { usePayerHealthBatch } from '../hooks/usePayerHealthBatch';
+import { getHealthColor, getHealthLabel } from '../hooks/useClientPayerHealth';
 import Pagination from '../components/ui/pagination-custom';
 import FactureDetailsModal from '../components/modals/FactureDetailsModal';
+import FactureQuickView from '../components/factures/FactureQuickView';
+import { PaiementDialog } from '../components/paiements/PaiementDialog';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
 import type { Facture } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
@@ -67,6 +76,9 @@ const FacturesProtected: React.FC = () => {
   });
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [numberSearch, setNumberSearch] = useState('');
+  const [clientIdFilter, setClientIdFilter] = useState('');
+  const [minAmountFilter, setMinAmountFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statutFilter, setStatutFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('month');
@@ -75,19 +87,26 @@ const FacturesProtected: React.FC = () => {
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | undefined>(undefined);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [factureToView, setFactureToView] = useState<Facture | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
+  const [quickViewFacture, setQuickViewFacture] = useState<Facture | null>(null);
   const [selectedFactures, setSelectedFactures] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [factureToDelete, setFactureToDelete] = useState<string | null>(null);
+  const [paiementDialogOpen, setPaiementDialogOpen] = useState(false);
+  const [factureForPaiement, setFactureForPaiement] = useState<Facture | null>(null);
   const navigate = useNavigate();
   const { checkPermission, isAdmin } = usePermissions();
   const isMobile = useIsMobile();
+  const { clients: allClients } = useAllClients();
   const [viewMode, setViewMode] = useState<'table' | 'cards' | 'auto'>('auto');
   const [columnsConfig, setColumnsConfig] = useState<ColumnConfig[]>([
     { key: 'mode_livraison', label: 'Mode', visible: true },
     { key: 'facture_number', label: 'N° Facture', visible: true, required: true },
-    { key: 'clients', label: 'Client', visible: true, required: true }, // Key matches data field
+    { key: 'clients', label: 'Client', visible: true, required: true },
     { key: 'date_emission', label: 'Date', visible: true },
+    { key: 'date_echeance', label: 'Échéance', visible: true },
     { key: 'total_general', label: 'Montant', visible: true },
+    { key: 'solde_restant', label: 'Reste à payer', visible: true },
     { key: 'statut', label: 'Statut', visible: true },
     { key: 'actions', label: 'Actions', visible: true, required: true }
   ]);
@@ -138,12 +157,25 @@ const FacturesProtected: React.FC = () => {
     {
       type: typeFilter === 'all' ? undefined : (typeFilter as 'devis' | 'facture'),
       statut: statutFilter === 'all' ? undefined : statutFilter,
-      search: searchTerm || undefined,
+      search: numberSearch || searchTerm || undefined,
+      clientId: clientIdFilter || undefined,
       dateFrom,
       dateTo
     },
     { pageSize, sort: sortConfig }
   );
+
+  const minAmount = useMemo(() => parseFloat(minAmountFilter) || 0, [minAmountFilter]);
+  const sortedData = useMemo(() => {
+    if (minAmount <= 0) return factures;
+    return factures.filter(f => f.total_general >= minAmount);
+  }, [factures, minAmount]);
+
+  const clientIdsInView = useMemo(
+    () => factures.map(f => (f as any).client_id ?? f.clients?.id).filter(Boolean) as string[],
+    [factures]
+  );
+  const { healthMap } = usePayerHealthBatch(clientIdsInView);
 
   const handleSort = (key: string) => {
     setSortConfig(current => ({
@@ -151,8 +183,6 @@ const FacturesProtected: React.FC = () => {
       direction: current?.key === key && current.direction === 'asc' ? 'desc' : 'asc'
     }));
   };
-
-  const sortedData = factures;
 
   const formatCurrency = (amount: number, devise: string) => {
     const formatted = amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -165,7 +195,9 @@ const FacturesProtected: React.FC = () => {
       en_attente: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800', label: 'En attente' },
       validee: { variant: 'default' as const, className: 'bg-green-500 text-white', label: 'Validée' },
       payee: { variant: 'default' as const, className: 'bg-blue-500 text-white', label: 'Payée' },
-      annulee: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800', label: 'Annulée' }
+      annulee: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800', label: 'Annulée' },
+      partiellement_payee: { variant: 'secondary' as const, className: 'bg-purple-100 text-purple-800', label: 'Part. payée' },
+      envoyee: { variant: 'secondary' as const, className: 'bg-indigo-100 text-indigo-800', label: 'Envoyée' }
     };
 
     const config = variants[statut] || variants.brouillon;
@@ -227,7 +259,8 @@ const FacturesProtected: React.FC = () => {
   };
 
   const handleViewDetails = (facture: Facture) => {
-    navigate(`/factures/view/${facture.id}`);
+    setQuickViewFacture(facture);
+    setQuickViewOpen(true);
   };
 
   const handleEdit = (facture: Facture) => {
@@ -444,70 +477,9 @@ const FacturesProtected: React.FC = () => {
             );
           })()}
 
-          {/* Stats Cards - Modern Gradient Design */}
+          {/* Stats Cards - KPIs Recouvrement */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-            {/* Total USD (admin uniquement) */}
-            {isAdmin && (
-              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 shadow-lg">
-                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-                <div className="relative">
-                  <div className="flex items-center justify-between">
-                    <div className="rounded-lg bg-white/20 p-2">
-                      <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                    </div>
-                    <span className="text-[10px] md:text-xs font-medium text-emerald-100">USD</span>
-                  </div>
-                  <div className="mt-3">
-                    <p className="text-lg md:text-2xl font-bold text-white">
-                      {formatCurrency(globalTotals.totalUSD, 'USD')}
-                    </p>
-                    <p className="mt-0.5 text-xs md:text-sm text-emerald-100">Total USD</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Total CDF (admin uniquement) */}
-            {isAdmin && (
-              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 md:p-5 shadow-lg">
-                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-                <div className="relative">
-                  <div className="flex items-center justify-between">
-                    <div className="rounded-lg bg-white/20 p-2">
-                      <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                    </div>
-                    <span className="text-[10px] md:text-xs font-medium text-blue-100">CDF</span>
-                  </div>
-                  <div className="mt-3">
-                    <p className="text-lg md:text-2xl font-bold text-white">
-                      {formatCurrency(globalTotals.totalCDF, 'CDF')}
-                    </p>
-                    <p className="mt-0.5 text-xs md:text-sm text-blue-100">Total CDF</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Total Factures */}
-            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-4 md:p-5 shadow-lg">
-              <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-              <div className="relative">
-                <div className="flex items-center justify-between">
-                  <div className="rounded-lg bg-white/20 p-2">
-                    <FileText className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                  </div>
-                  <span className="text-[10px] md:text-xs font-medium text-purple-100">Total</span>
-                </div>
-                <div className="mt-3">
-                  <p className="text-lg md:text-2xl font-bold text-white">
-                    {globalTotals.totalCount || 0}
-                  </p>
-                  <p className="mt-0.5 text-xs md:text-sm text-purple-100">Factures</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Frais */}
+            {/* Reste à recouvrer */}
             <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 p-4 md:p-5 shadow-lg">
               <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
               <div className="relative">
@@ -515,13 +487,90 @@ const FacturesProtected: React.FC = () => {
                   <div className="rounded-lg bg-white/20 p-2">
                     <AlertCircle className="h-4 w-4 md:h-5 md:w-5 text-white" />
                   </div>
-                  <span className="text-[10px] md:text-xs font-medium text-orange-100">Frais</span>
+                  <span className="text-[10px] md:text-xs font-medium text-orange-100">À recouvrer</span>
                 </div>
                 <div className="mt-3">
                   <p className="text-lg md:text-2xl font-bold text-white">
-                    {formatCurrency(globalTotals.totalFrais, 'USD')}
+                    {formatCurrency(globalTotals.totalOutstanding ?? 0, 'USD')}
                   </p>
-                  <p className="mt-0.5 text-xs md:text-sm text-orange-100">Total Frais</p>
+                  <p className="mt-0.5 text-xs md:text-sm text-orange-100">Reste à payer</p>
+                </div>
+              </div>
+            </div>
+
+            {/* En Retard */}
+            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-red-500 to-red-600 p-4 md:p-5 shadow-lg">
+              <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+              <div className="relative">
+                <div className="flex items-center justify-between">
+                  <div className="rounded-lg bg-white/20 p-2">
+                    <XCircle className="h-4 w-4 md:h-5 md:w-5 text-white" />
+                  </div>
+                  <span className="text-[10px] md:text-xs font-medium text-red-100">Urgent</span>
+                </div>
+                <div className="mt-3">
+                  <p className="text-lg md:text-2xl font-bold text-white">
+                    {formatCurrency(globalTotals.totalRetard ?? 0, 'USD')}
+                  </p>
+                  <p className="mt-0.5 text-xs md:text-sm text-red-100">En retard</p>
+                </div>
+              </div>
+            </div>
+
+            {/* C.A. total (admin) ou Total Payé (opérateur) */}
+            {isAdmin ? (
+              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 shadow-lg">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+                <div className="relative">
+                  <div className="flex items-center justify-between">
+                    <div className="rounded-lg bg-white/20 p-2">
+                      <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-white" />
+                    </div>
+                    <span className="text-[10px] md:text-xs font-medium text-emerald-100">C.A.</span>
+                  </div>
+                  <div className="mt-3">
+                    <p className="text-lg md:text-2xl font-bold text-white">
+                      {formatCurrency(globalTotals.totalAmount ?? 0, 'USD')}
+                    </p>
+                    <p className="mt-0.5 text-xs md:text-sm text-emerald-100">Total Facturé</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 shadow-lg">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+                <div className="relative">
+                  <div className="flex items-center justify-between">
+                    <div className="rounded-lg bg-white/20 p-2">
+                      <CheckCircle className="h-4 w-4 md:h-5 md:w-5 text-white" />
+                    </div>
+                    <span className="text-[10px] md:text-xs font-medium text-emerald-100">Encaissé</span>
+                  </div>
+                  <div className="mt-3">
+                    <p className="text-lg md:text-2xl font-bold text-white">
+                      {formatCurrency(globalTotals.totalPaid ?? 0, 'USD')}
+                    </p>
+                    <p className="mt-0.5 text-xs md:text-sm text-emerald-100">Total Payé</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Volume total */}
+            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 md:p-5 shadow-lg">
+              <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
+              <div className="relative">
+                <div className="flex items-center justify-between">
+                  <div className="rounded-lg bg-white/20 p-2">
+                    <FileText className="h-4 w-4 md:h-5 md:w-5 text-white" />
+                  </div>
+                  <span className="text-[10px] md:text-xs font-medium text-blue-100">Volume</span>
+                </div>
+                <div className="mt-3">
+                  <p className="text-lg md:text-2xl font-bold text-white">
+                    {globalTotals.totalCount || 0}
+                  </p>
+                  <p className="mt-0.5 text-xs md:text-sm text-blue-100">Total Factures</p>
                 </div>
               </div>
             </div>
@@ -531,12 +580,14 @@ const FacturesProtected: React.FC = () => {
           <div className="mb-6">
             <FilterTabs
               tabs={[
-                { id: 'all', label: 'Tous', count: globalTotals.totalCount || 0 }, // You might want to filter counts properly if available
+                { id: 'all', label: 'Tous', count: globalTotals.totalCount || 0 },
                 { id: 'brouillon', label: 'Brouillon' },
                 { id: 'en_attente', label: 'En attente' },
                 { id: 'validee', label: 'Validée' },
+                { id: 'partiellement_payee', label: 'Part. payée' },
                 { id: 'payee', label: 'Payée' },
-                { id: 'annulee', label: 'Annulée' }
+                { id: 'annulee', label: 'Annulée' },
+                { id: 'en_retard', label: '🔴 En retard' }
               ]}
               activeTab={statutFilter}
               onTabChange={(id) => {
@@ -547,25 +598,33 @@ const FacturesProtected: React.FC = () => {
             />
           </div>
 
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          {/* Filters — Row 1: Recherche N° + Client + Période + Type */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-3">
+            <div className="relative flex-1 min-w-0">
+              <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Rechercher par numéro ou client..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-10"
+                placeholder="N° facture..."
+                value={numberSearch}
+                onChange={(e) => { setNumberSearch(e.target.value); setCurrentPage(1); }}
+                className="pl-10 pr-8"
+              />
+              {numberSearch && (
+                <button onClick={() => { setNumberSearch(''); setCurrentPage(1); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex-[2] min-w-0">
+              <ClientCombobox
+                clients={allClients || []}
+                value={clientIdFilter}
+                onValueChange={(val) => { setClientIdFilter(val); setCurrentPage(1); }}
+                placeholder="Filtrer par client..."
               />
             </div>
 
-            <Select value={dateFilter} onValueChange={(value) => {
-              setDateFilter(value);
-              setCurrentPage(1);
-            }}>
+            <Select value={dateFilter} onValueChange={(value) => { setDateFilter(value); setCurrentPage(1); }}>
               <SelectTrigger className="w-full sm:w-40">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-gray-500" />
@@ -581,11 +640,8 @@ const FacturesProtected: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <Select value={typeFilter} onValueChange={(value) => {
-              setTypeFilter(value);
-              setCurrentPage(1);
-            }}>
-              <SelectTrigger className="w-full sm:w-48">
+            <Select value={typeFilter} onValueChange={(value) => { setTypeFilter(value); setCurrentPage(1); }}>
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
@@ -594,7 +650,59 @@ const FacturesProtected: React.FC = () => {
                 <SelectItem value="facture">Facture</SelectItem>
               </SelectContent>
             </Select>
-            {/* Status Select removed in favor of FilterTabs */}
+          </div>
+
+          {/* Filters — Row 2: Recherche libre + Filtre montant min */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Recherche libre (client, référence...)..."
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                className="pl-10 pr-8"
+              />
+              {searchTerm && (
+                <button onClick={() => { setSearchTerm(''); setCurrentPage(1); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="relative w-full sm:w-52">
+              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                type="number"
+                min="0"
+                placeholder="Montant min ($)"
+                value={minAmountFilter}
+                onChange={(e) => { setMinAmountFilter(e.target.value); setCurrentPage(1); }}
+                className="pl-10 pr-8"
+              />
+              {minAmountFilter && (
+                <button onClick={() => { setMinAmountFilter(''); setCurrentPage(1); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {(numberSearch || clientIdFilter || minAmountFilter || searchTerm) && (
+              <Button
+                {...({ variant: 'outline' } as any)}
+                size="sm"
+                className="shrink-0 text-gray-500"
+                onClick={() => {
+                  setNumberSearch('');
+                  setClientIdFilter('');
+                  setMinAmountFilter('');
+                  setSearchTerm('');
+                  setCurrentPage(1);
+                }}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Effacer filtres
+              </Button>
+            )}
           </div>
 
           {/* Factures Table */}
@@ -670,7 +778,29 @@ const FacturesProtected: React.FC = () => {
                     key: 'clients',
                     title: 'Client',
                     sortable: true,
-                    render: (value: any) => (value?.nom || 'N/A')
+                    render: (value: any, facture: Facture) => {
+                      const cid = value?.id ?? (facture as any).client_id;
+                      const clientObj = value?.nom ? value : (allClients || []).find(c => c.id === cid);
+                      if (!clientObj) return <span className="text-gray-500">N/A</span>;
+                      const health = healthMap[cid];
+                      return (
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="font-medium text-blue-600 hover:text-blue-700 cursor-pointer hover:underline transition-colors"
+                            onClick={() => navigate('/clients', { state: { openClientId: cid } })}
+                            title="Voir la fiche client"
+                          >
+                            {clientObj.nom}
+                          </span>
+                          {health && health.health !== 'unknown' && (
+                            <span
+                              className={cn('inline-block h-2 w-2 rounded-full shrink-0', getHealthColor(health.health))}
+                              title={`${getHealthLabel(health.health)} — ${health.tauxRetard}% retard`}
+                            />
+                          )}
+                        </div>
+                      );
+                    }
                   },
                   {
                     key: 'date_emission',
@@ -681,6 +811,39 @@ const FacturesProtected: React.FC = () => {
                         {new Date(value).toLocaleDateString('fr-FR')}
                       </span>
                     )
+                  },
+                  {
+                    key: 'date_echeance',
+                    title: 'Échéance',
+                    sortable: true,
+                    render: (value: any, facture: Facture) => {
+                      if (!value) return <span className="text-gray-400 text-sm">—</span>;
+                      const isLate = (facture as any).est_en_retard;
+                      const date = new Date(value).toLocaleDateString('fr-FR');
+                      return (
+                        <span className={cn('text-sm font-medium', isLate ? 'text-red-600' : 'text-gray-700')}>
+                          {isLate && <AlertCircle className="inline h-3 w-3 mr-1" />}
+                          {date}
+                        </span>
+                      );
+                    }
+                  },
+                  {
+                    key: 'solde_restant',
+                    title: 'Reste à payer',
+                    sortable: true,
+                    align: 'right' as const,
+                    render: (value: any, facture: Facture) => {
+                      const solde = value ?? 0;
+                      if (solde <= 0) {
+                        return <span className="text-xs font-medium text-emerald-600">Soldé</span>;
+                      }
+                      return (
+                        <span className="text-sm font-semibold text-orange-600">
+                          {formatCurrency(solde, facture.devise)}
+                        </span>
+                      );
+                    }
                   },
                   ...(isAdmin ? [{
                     key: 'total_general',
@@ -773,6 +936,28 @@ const FacturesProtected: React.FC = () => {
                           <Eye className="h-4 w-4" />
                         </Button>
 
+                        {checkPermission('finances', 'create') && facture.statut !== 'annulee' && ((facture as any).solde_restant ?? facture.total_general) > 0 && (
+                          <Button
+                            {...({ variant: "ghost" } as any)}
+                            size="sm"
+                            onClick={() => { setFactureForPaiement(facture); setPaiementDialogOpen(true); }}
+                            title="Enregistrer un paiement"
+                            className="text-emerald-600 hover:bg-emerald-50"
+                          >
+                            <DollarSign className="h-4 w-4" />
+                          </Button>
+                        )}
+
+                        <Button
+                          {...({ variant: "ghost" } as any)}
+                          size="sm"
+                          onClick={() => navigate(`/factures/view/${facture.id}`)}
+                          title="Télécharger PDF"
+                          className="text-gray-500 hover:bg-gray-50"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+
                         <PermissionGuard module="factures" permission="create">
                           <Button
                             {...({ variant: "ghost" } as any)}
@@ -823,7 +1008,10 @@ const FacturesProtected: React.FC = () => {
                     </span>
                   ),
                   subtitleKey: 'clients',
-                  subtitleRender: (item) => <span className="text-gray-600">{item.clients?.nom || 'N/A'}</span>,
+                  subtitleRender: (item) => {
+                    const nom = item.clients?.nom || (allClients || []).find(c => c.id === (item as any).client_id)?.nom;
+                    return <span className="text-gray-600">{nom || 'N/A'}</span>;
+                  },
                   badgeKey: 'statut',
                   badgeRender: (item) => getStatutBadge(item.statut),
                   infoFields: [
@@ -898,6 +1086,33 @@ const FacturesProtected: React.FC = () => {
                 setDetailsModalOpen(false);
                 setFactureToView(null);
               }}
+            />
+          )}
+
+          {/* Quick View Slide-over */}
+          <FactureQuickView
+            facture={quickViewFacture}
+            open={quickViewOpen}
+            onClose={() => {
+              setQuickViewOpen(false);
+              setQuickViewFacture(null);
+            }}
+            onEdit={(f) => handleEdit(f)}
+          />
+
+          {/* Dialog enregistrement paiement */}
+          {factureForPaiement && (
+            <PaiementDialog
+              open={paiementDialogOpen}
+              onOpenChange={(v) => { setPaiementDialogOpen(v); if (!v) setFactureForPaiement(null); }}
+              type="facture"
+              factureId={factureForPaiement.id}
+              clientId={(factureForPaiement as any).client_id ?? factureForPaiement.clients?.id ?? ''}
+              clientNom={factureForPaiement.clients?.nom ?? (allClients || []).find(c => c.id === (factureForPaiement as any).client_id)?.nom ?? ''}
+              montantTotal={factureForPaiement.total_general}
+              montantRestant={(factureForPaiement as any).solde_restant ?? factureForPaiement.total_general}
+              numeroFacture={factureForPaiement.facture_number}
+              onSuccess={() => { refetch(); }}
             />
           )}
 

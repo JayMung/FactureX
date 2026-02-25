@@ -27,23 +27,23 @@ const BulkActions: React.FC<BulkActionsProps> = ({
   if (selectedCount === 0) return null;
 
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-            {selectedCount} client{selectedCount > 1 ? 's' : ''} sélectionné{selectedCount > 1 ? 's' : ''}
+    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
+      <div className="bg-card text-card-foreground border border-border shadow-2xl rounded-full px-4 py-3 flex items-center gap-4">
+        <div className="flex items-center gap-2 pr-4 border-r border-border">
+          <Badge variant="secondary" className="badge-info">
+            {selectedCount}
           </Badge>
-          <span className="text-sm text-blue-700">
-            Actions groupées disponibles
+          <span className="small-text font-medium">
+            client{selectedCount > 1 ? 's' : ''} sélectionné{selectedCount > 1 ? 's' : ''}
           </span>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={onEmailSelected}
-            className="border-blue-200 text-blue-700 hover:bg-blue-100"
+            className="text-muted-foreground hover:text-primary rounded-full h-8"
           >
             <Mail className="mr-2 h-4 w-4" />
             Contacter
@@ -52,20 +52,20 @@ const BulkActions: React.FC<BulkActionsProps> = ({
           {children}
 
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={onExportSelected}
-            className="border-green-200 text-green-700 hover:bg-green-100"
+            className="text-muted-foreground hover:text-success rounded-full h-8"
           >
             <Download className="mr-2 h-4 w-4" />
             Exporter
           </Button>
 
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={onDeleteSelected}
-            className="border-red-200 text-red-700 hover:bg-red-100"
+            className="text-muted-foreground hover:text-error hover:bg-red-500/10 rounded-full h-8"
             disabled={isDeleting}
           >
             {isDeleting ? (
@@ -80,12 +80,14 @@ const BulkActions: React.FC<BulkActionsProps> = ({
               </>
             )}
           </Button>
+        </div>
 
+        <div className="pl-2 ml-2 border-l border-border">
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={onClearSelection}
-            className="text-gray-600 hover:text-gray-800"
+            className="text-muted-foreground hover:text-foreground rounded-full h-8 w-8"
           >
             <X className="h-4 w-4" />
           </Button>

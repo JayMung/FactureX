@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
-import StatCard from '../components/dashboard/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,14 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DollarSign,
   Users,
-  Receipt,
   TrendingUp,
-  TrendingDown,
   Activity,
-  User,
-  Settings,
   FileText,
-  Eye,
   Plus,
   Shield,
   BarChart3,
@@ -80,25 +74,22 @@ const IndexProtected: React.FC = () => {
   // Stats pour Factures & Revenus uniquement (Vue d'ensemble) - Admin seulement
   const overviewStats = isAdmin ? [
     {
-      title: 'Total Factures',
-      value: isLoading ? '...' : (stats?.facturesCount || 0).toString(),
-      change: stats?.facturesCount > 0 ? { value: 8, isPositive: true } : undefined,
-      icon: <FileText className="h-6 w-6 text-white" />,
+      title: 'Montant Facturé',
+      value: isLoading ? '...' : formatCurrencyValue(stats?.facturesAmountUSD || 0, 'USD'),
+      icon: <DollarSign className="h-6 w-6 text-white" />,
       iconBg: 'bg-green-500',
       borderColor: 'border-l-green-400'
     },
     {
-      title: 'Montant Facturé USD',
-      value: isLoading ? '...' : formatCurrencyValue(stats?.facturesAmountUSD || 0, 'USD'),
-      change: stats?.facturesAmountUSD > 0 ? { value: 12, isPositive: true } : undefined,
-      icon: <DollarSign className="h-6 w-6 text-white" />,
+      title: 'Total Factures',
+      value: isLoading ? '...' : (stats?.facturesCount || 0).toString(),
+      icon: <FileText className="h-6 w-6 text-white" />,
       iconBg: 'bg-blue-500',
       borderColor: 'border-l-blue-400'
     },
     {
-      title: 'Total Frais',
+      title: 'Commissions Perçues',
       value: isLoading ? '...' : formatCurrencyValue(stats?.totalFrais || 0, 'USD'),
-      change: stats?.totalFrais > 0 ? { value: 8, isPositive: true } : undefined,
       icon: <DollarSign className="h-6 w-6 text-white" />,
       iconBg: 'bg-purple-500',
       borderColor: 'border-l-purple-400'
@@ -106,17 +97,14 @@ const IndexProtected: React.FC = () => {
     {
       title: 'Factures Validées',
       value: isLoading ? '...' : (stats?.facturesValidees || 0).toString(),
-      change: stats?.facturesValidees > 0 ? { value: 10, isPositive: true } : undefined,
       icon: <TrendingUp className="h-6 w-6 text-white" />,
       iconBg: 'bg-orange-500',
       borderColor: 'border-l-orange-400'
     }
   ] : [
-    // Stats pour opérateurs (uniquement factures de base, sans montants)
     {
       title: 'Total Factures',
       value: isLoading ? '...' : (stats?.facturesCount || 0).toString(),
-      change: stats?.facturesCount > 0 ? { value: 5, isPositive: true } : undefined,
       icon: <FileText className="h-6 w-6 text-white" />,
       iconBg: 'bg-green-500',
       borderColor: 'border-l-green-400'
@@ -124,7 +112,6 @@ const IndexProtected: React.FC = () => {
     {
       title: 'Factures Validées',
       value: isLoading ? '...' : (stats?.facturesValidees || 0).toString(),
-      change: stats?.facturesValidees > 0 ? { value: 3, isPositive: true } : undefined,
       icon: <TrendingUp className="h-6 w-6 text-white" />,
       iconBg: 'bg-blue-500',
       borderColor: 'border-l-blue-400'
@@ -132,7 +119,6 @@ const IndexProtected: React.FC = () => {
     {
       title: 'Total Clients',
       value: isLoading ? '...' : (stats?.clientsCount || 0).toString(),
-      change: stats?.clientsCount > 0 ? { value: 2, isPositive: true } : undefined,
       icon: <Users className="h-6 w-6 text-white" />,
       iconBg: 'bg-orange-500',
       borderColor: 'border-l-orange-400'
@@ -140,7 +126,6 @@ const IndexProtected: React.FC = () => {
     {
       title: 'Factures en Attente',
       value: isLoading ? '...' : (stats?.facturesEnAttente || 0).toString(),
-      change: stats?.facturesEnAttente > 0 ? { value: 1, isPositive: false } : undefined,
       icon: <Activity className="h-6 w-6 text-white" />,
       iconBg: 'bg-purple-500',
       borderColor: 'border-l-purple-400'
@@ -192,8 +177,8 @@ const IndexProtected: React.FC = () => {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <Shield className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Erreur de chargement</h1>
-            <p className="text-gray-600 mb-4">
+            <h1 className="heading-3 mb-2">Erreur de chargement</h1>
+            <p className="body-text mb-4">
               Impossible de charger les données du tableau de bord.
             </p>
             <Button
@@ -211,18 +196,18 @@ const IndexProtected: React.FC = () => {
   return (
     <ProtectedRouteEnhanced>
       <Layout>
-        <div className="space-y-5 animate-in fade-in duration-300">
+        <div className="container-section animate-in fade-in duration-300">
           {/* Welcome Section - Plus compact */}
           <div className="banner-compact flex items-center justify-between">
             <div>
-              <h1 className="text-xl md:text-2xl font-semibold">Bienvenue sur FactureX</h1>
-              <p className="text-green-100/90 text-sm mt-0.5">Gérez vos transferts USD/CDF en toute simplicité</p>
+              <h1 className="heading-3 text-white">Bienvenue sur FactureX</h1>
+              <p className="body-text text-white/80 mt-0.5">Gérez vos transferts USD/CDF en toute simplicité</p>
             </div>
           </div>
 
           {/* Incomplete transactions warning badge — admin only */}
           {isAdmin && stats?.incompleteTransactionsCount > 0 && (
-            <div className="flex items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2.5 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-200">
+            <div className="flex items-center gap-2 rounded-lg badge-warning px-4 py-2.5 text-sm">
               <AlertTriangle className="h-4 w-4 flex-shrink-0" />
               <span className="font-medium">
                 {stats.incompleteTransactionsCount} transaction{stats.incompleteTransactionsCount > 1 ? 's' : ''} incomplète{stats.incompleteTransactionsCount > 1 ? 's' : ''}
@@ -231,46 +216,39 @@ const IndexProtected: React.FC = () => {
           )}
 
           {/* Tabs - Plus épuré */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
-            <TabsList className="inline-flex bg-gray-100/80 dark:bg-gray-800/80 p-1.5 rounded-xl gap-1 w-auto">
-              <TabsTrigger
-                value="overview"
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all
-                  text-gray-500 dark:text-gray-400
-                  hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50
-                  data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-emerald-500/20"
-              >
-                <Activity className="h-4 w-4" />
-                <span className="hidden sm:inline">Vue d'ensemble</span>
-                <span className="sm:hidden">Aperçu</span>
-              </TabsTrigger>
-              {isAdmin && (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="container-section">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <TabsList className="inline-flex bg-muted/80 p-1.5 rounded-xl gap-1 w-auto">
                 <TabsTrigger
-                  value="analytics"
-                  className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all
-                    text-gray-500 dark:text-gray-400
-                    hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50
-                    data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-emerald-500/20"
+                  value="overview"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-base text-muted-foreground hover:text-foreground hover:bg-accent/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md"
                 >
-                  <BarChart3 className="h-4 w-4" />
-                  <span className="hidden sm:inline">Analytics avancés</span>
-                  <span className="sm:hidden">Analytics</span>
+                  <Activity className="h-4 w-4" />
+                  <span className="hidden sm:inline">Vue d&apos;ensemble</span>
+                  <span className="sm:hidden">Aperçu</span>
                 </TabsTrigger>
-              )}
-            </TabsList>
+                {isAdmin && (
+                  <TabsTrigger
+                    value="analytics"
+                    className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-base text-muted-foreground hover:text-foreground hover:bg-accent/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    <span className="hidden sm:inline">Analytics avancés</span>
+                    <span className="sm:hidden">Analytics</span>
+                  </TabsTrigger>
+                )}
+              </TabsList>
+              <PeriodFilterTabs
+                period={periodFilter}
+                onPeriodChange={setPeriodFilter}
+                showAllOption={true}
+              />
+            </div>
 
             {/* Vue d'ensemble */}
-            <TabsContent value="overview" className="space-y-5">
-              <div className="flex justify-end">
-                <PeriodFilterTabs
-                  period={periodFilter}
-                  onPeriodChange={setPeriodFilter}
-                  showAllOption={true}
-                />
-              </div>
-
+            <TabsContent value="overview" className="container-section">
               {/* Stats Cards - Modern Gradient Design */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {overviewStats.map((stat, index) => {
                   const gradientColors = [
                     'from-emerald-500 to-emerald-600',
@@ -279,22 +257,15 @@ const IndexProtected: React.FC = () => {
                     'from-orange-500 to-orange-600'
                   ];
                   return (
-                    <div key={index} className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${gradientColors[index % 4]} p-4 md:p-5 shadow-lg`}>
+                    <div key={index} className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${gradientColors[index % 4]} p-4 md:p-5 shadow-card transition-base hover:shadow-card-hover hover:-translate-y-0.5`}>
                       <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
                       <div className="relative">
-                        <div className="flex items-center justify-between">
-                          <div className="rounded-lg bg-white/20 p-2">
-                            {React.cloneElement(stat.icon, { className: 'h-4 w-4 md:h-5 md:w-5 text-white' })}
-                          </div>
-                          {stat.change && (
-                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] md:text-xs font-medium ${stat.change.isPositive ? 'bg-white/20 text-white' : 'bg-red-200/30 text-white'}`}>
-                              {stat.change.isPositive ? '+' : '-'}{stat.change.value}%
-                            </span>
-                          )}
+                        <div className="rounded-lg bg-white/20 p-2 w-fit">
+                          {React.cloneElement(stat.icon, { className: 'h-4 w-4 md:h-5 md:w-5 text-white' })}
                         </div>
                         <div className="mt-3">
-                          <p className="text-lg md:text-2xl font-bold text-white truncate">{stat.value}</p>
-                          <p className="mt-0.5 text-xs md:text-sm text-white/80">{stat.title}</p>
+                          <p className="text-lg md:text-2xl font-bold text-white truncate text-mono">{stat.value}</p>
+                          <p className="mt-0.5 text-xs md:text-sm text-white/80 font-medium">{stat.title}</p>
                         </div>
                       </div>
                     </div>
@@ -304,7 +275,6 @@ const IndexProtected: React.FC = () => {
 
               {/* Activity Feed + Quick Actions */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Activity Feed */}
                 <div className="lg:col-span-2">
                   <ActivityFeed showViewAll={true} />
                 </div>
@@ -314,10 +284,10 @@ const IndexProtected: React.FC = () => {
                   <CardHeader className="p-4 pb-3">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Productivité</p>
-                        <CardTitle className="text-lg font-bold text-gray-900 dark:text-white">Actions rapides</CardTitle>
+                        <p className="small-text uppercase tracking-wide">Productivité</p>
+                        <CardTitle className="heading-4">Actions rapides</CardTitle>
                       </div>
-                      <Badge variant="outline" className="text-xs border-green-200 text-green-700 bg-green-50">
+                      <Badge variant="outline" className="text-xs badge-success">
                         {quickActions.length} raccourci{quickActions.length > 1 ? 's' : ''}
                       </Badge>
                     </div>
@@ -329,12 +299,12 @@ const IndexProtected: React.FC = () => {
                           <a
                             key={action.id}
                             href={action.href}
-                            className={`group block rounded-xl border bg-white/60 p-4 transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-lg ${action.borderClasses}`}
+                            className={`group block card-clean p-4 hover:-translate-y-0.5 ${action.borderClasses}`}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div>
-                                <p className="text-sm font-semibold text-gray-900">{action.title}</p>
-                                <p className="text-xs text-gray-500 mt-1 leading-relaxed">{action.description}</p>
+                                <p className="label-base">{action.title}</p>
+                                <p className="small-text mt-1 leading-relaxed">{action.description}</p>
                               </div>
                               <span className={`rounded-full p-2 ${action.iconClasses}`}>
                                 <action.icon className="h-4 w-4" />
@@ -344,7 +314,7 @@ const IndexProtected: React.FC = () => {
                               <span className={`inline-flex items-center rounded-full px-2.5 py-1 font-medium ${action.badgeClasses}`}>
                                 {action.badge}
                               </span>
-                              <span className="inline-flex items-center gap-1 text-gray-500 group-hover:text-gray-900 font-medium">
+                              <span className="inline-flex items-center gap-1 text-muted-foreground group-hover:text-foreground font-medium transition-colors-fast">
                                 Accéder
                                 <ArrowUpRight className="h-3.5 w-3.5" />
                               </span>
@@ -374,7 +344,7 @@ const IndexProtected: React.FC = () => {
 
             {/* Analytics avancés */}
             <TabsContent value="analytics">
-              <AdvancedDashboard />
+              <AdvancedDashboard period={periodFilter} />
             </TabsContent>
           </Tabs>
         </div>

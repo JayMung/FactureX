@@ -141,11 +141,12 @@ export const useMouvementsComptes = (page: number = 1, filters: MouvementFilters
   };
 };
 
-// Hook to get mouvements for a specific compte
-export const useCompteMouvements = (compteId: string, limit: number = 10) => {
+// Hook to get mouvements for a specific compte with pagination
+export const useCompteMouvements = (compteId: string, limit: number = 10, page: number = 1) => {
   const [mouvements, setMouvements] = useState<MouvementCompte[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
 
   const fetchMouvements = useCallback(async () => {
     if (!compteId) return;
@@ -154,26 +155,31 @@ export const useCompteMouvements = (compteId: string, limit: number = 10) => {
       setIsLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+
+      const { data, error: fetchError, count } = await supabase
         .from('mouvements_comptes')
         .select(`
           *,
           transaction:transactions(id, motif, type_transaction, client_id)
-        `)
+        `, { count: 'exact' })
         .eq('compte_id', compteId)
         .order('date_mouvement', { ascending: false })
-        .limit(limit);
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (fetchError) throw fetchError;
 
       setMouvements(data || []);
+      setTotalCount(count || 0);
     } catch (err: any) {
       console.error('Error fetching compte mouvements:', err);
       setError(err.message || 'Erreur lors du chargement des mouvements');
     } finally {
       setIsLoading(false);
     }
-  }, [compteId, limit]);
+  }, [compteId, limit, page]);
 
   useEffect(() => {
     fetchMouvements();
@@ -183,6 +189,8 @@ export const useCompteMouvements = (compteId: string, limit: number = 10) => {
     mouvements,
     isLoading,
     error,
+    totalCount,
+    totalPages: Math.ceil(totalCount / limit),
     refetch: fetchMouvements
   };
 };
@@ -366,6 +374,105 @@ export const useGlobalBalance = () => {
   }, []);
 
   return { balance, isLoading };
+};
+
+// P7: Hook to compare current month solde vs previous month for trend indicator
+export const useCompteTrend = (compteId: string, soldeActuel: number) => {
+  const [trend, setTrend] = useState<{ diff: number; pct: number; direction: 'up' | 'down' | 'flat' } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!compteId) return;
+    const fetch = async () => {
+      try {
+        setIsLoading(true);
+        const now = new Date();
+        const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+        const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+
+        // Get the last mouvement before start of current month = solde fin du mois précédent
+        const { data } = await supabase
+          .from('mouvements_comptes')
+          .select('solde_apres, date_mouvement')
+          .eq('compte_id', compteId)
+          .gte('date_mouvement', startOfPrevMonth)
+          .lte('date_mouvement', endOfPrevMonth)
+          .order('date_mouvement', { ascending: false })
+          .limit(1);
+
+        if (data && data.length > 0) {
+          const soldePrevMonth = data[0].solde_apres;
+          const diff = soldeActuel - soldePrevMonth;
+          const pct = soldePrevMonth !== 0 ? (diff / Math.abs(soldePrevMonth)) * 100 : 0;
+          setTrend({
+            diff,
+            pct,
+            direction: diff > 0.01 ? 'up' : diff < -0.01 ? 'down' : 'flat'
+          });
+        } else {
+          setTrend({ diff: 0, pct: 0, direction: 'flat' });
+        }
+      } catch (err) {
+        console.error('Error fetching trend:', err);
+        setTrend(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetch();
+  }, [compteId, soldeActuel]);
+
+  return { trend, isLoading };
+};
+
+// P14: Hook to get daily net flux over last 30 days for sparkline
+export const useCompteSparkline = (compteId: string, devise: string = 'USD') => {
+  const [points, setPoints] = useState<Array<{ day: string; net: number }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!compteId) return;
+    const fetch = async () => {
+      try {
+        setIsLoading(true);
+        const since = new Date();
+        since.setDate(since.getDate() - 29);
+        since.setHours(0, 0, 0, 0);
+
+        const { data } = await supabase
+          .from('mouvements_comptes')
+          .select('type_mouvement, montant, date_mouvement')
+          .eq('compte_id', compteId)
+          .gte('date_mouvement', since.toISOString())
+          .order('date_mouvement', { ascending: true });
+
+        // Build a map of day → net
+        const dayMap: Record<string, number> = {};
+        for (let i = 0; i < 30; i++) {
+          const d = new Date(since);
+          d.setDate(d.getDate() + i);
+          dayMap[d.toISOString().slice(0, 10)] = 0;
+        }
+
+        data?.forEach(m => {
+          const day = m.date_mouvement.slice(0, 10);
+          if (day in dayMap) {
+            dayMap[day] += m.type_mouvement === 'credit' ? m.montant : -m.montant;
+          }
+        });
+
+        setPoints(Object.entries(dayMap).map(([day, net]) => ({ day, net })));
+      } catch (err) {
+        console.error('Error fetching sparkline:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetch();
+  }, [compteId]);
+
+  return { points, isLoading };
 };
 
 

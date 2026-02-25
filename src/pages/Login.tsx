@@ -6,14 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Eye, EyeOff, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, CheckCircle2, Shield, BarChart3, FileText, Zap } from 'lucide-react';
 import { serverRateLimiter, getClientIdentifier, formatResetTime } from '@/lib/rate-limit-server';
 import {
   logLoginSuccess,
   logLoginFailed,
   logRateLimitExceeded
 } from '@/services/securityLogger';
-import { sessionManager, useSessionSecurity } from '@/lib/security/session-management';
+import { sessionManager } from '@/lib/security/session-management';
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
@@ -27,15 +27,6 @@ const Login = () => {
   const [resetEmailSent, setResetEmailSent] = useState(false);
   
   const navigate = useNavigate();
-
-  // Initialize session security
-  useSessionSecurity({
-    enableTimeout: true,
-    enableConcurrentLimit: true,
-    enableRegeneration: true,
-    customTimeout: 15 * 60 * 1000, // 15 minutes
-    maxSessions: 3
-  });
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,77 +120,111 @@ const Login = () => {
     }
   };
 
+  const features = [
+    { icon: FileText, label: 'Facturation', desc: 'Créez et gérez vos factures en quelques clics' },
+    { icon: BarChart3, label: 'Finances', desc: 'Suivez vos revenus et dépenses en temps réel' },
+    { icon: Shield, label: 'Sécurité', desc: 'Données chiffrées et accès multi-rôles' },
+    { icon: Zap, label: 'Performance', desc: 'Interface rapide et optimisée mobile' },
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Left Side - Hero Section */}
-      <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-green-400 via-green-500 to-green-600 dark:from-green-600 dark:via-green-700 dark:to-green-800 p-8 lg:p-12 flex-col justify-between relative overflow-hidden">
+    <div className="min-h-[100dvh] flex flex-col lg:flex-row bg-background">
+
+      {/* ─── Left Panel — Brand Hero ─────────────────────────────────────── */}
+      <div className="hidden lg:flex lg:w-[52%] relative flex-col justify-between p-10 xl:p-14 overflow-hidden">
+
+        {/* Animated gradient mesh background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-green-600 via-emerald-500 to-teal-600 dark:from-green-800 dark:via-emerald-700 dark:to-teal-800" />
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-white/10 blur-[100px] animate-pulse-soft" />
+          <div className="absolute bottom-[-15%] left-[-5%] w-[500px] h-[500px] rounded-full bg-emerald-300/15 blur-[80px] animate-pulse-soft [animation-delay:1s]" />
+          <div className="absolute top-[40%] left-[30%] w-[300px] h-[300px] rounded-full bg-teal-200/10 blur-[60px] animate-pulse-soft [animation-delay:2s]" />
+        </div>
+
+        {/* Subtle grid pattern overlay */}
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
+            backgroundSize: '32px 32px',
+          }}
+        />
+
         {/* Logo */}
-        <div className="flex items-center gap-3 z-10">
-          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg">
-            <span className="text-green-500 text-xl font-bold">F</span>
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="w-11 h-11 bg-white/95 rounded-xl flex items-center justify-center shadow-lg backdrop-blur-sm">
+            <span className="text-green-600 text-xl font-extrabold tracking-tight">F</span>
           </div>
-          <span className="text-white text-2xl font-bold">FactureX</span>
-        </div>
-
-        {/* Hero Content */}
-        <div className="z-10 space-y-6">
-          <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight">
-            Simplifiez votre gestion de factures
-          </h1>
-          <p className="text-lg text-green-50 max-w-md leading-relaxed">
-            Gérez vos factures, clients et finances en toute simplicité avec FactureX
-          </p>
-
-          {/* Pagination Dots */}
-          <div className="flex gap-2 pt-4">
-            <div className="w-8 h-1 bg-white rounded-full"></div>
-            <div className="w-1 h-1 bg-white/40 rounded-full"></div>
-            <div className="w-1 h-1 bg-white/40 rounded-full"></div>
+          <div>
+            <span className="text-white text-2xl font-bold tracking-tight">FactureX</span>
+            <span className="block text-white/60 text-xs font-medium tracking-wide uppercase">ERP Finances</span>
           </div>
         </div>
 
-        {/* Background Image/Illustration */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-20">
-          <img
-            src="/login-hero.png"
-            alt="FactureX Illustration"
-            className="w-full h-full object-cover mix-blend-overlay"
-          />
+        {/* Hero copy */}
+        <div className="relative z-10 space-y-8 max-w-lg">
+          <div className="space-y-4">
+            <h1 className="text-4xl xl:text-5xl font-extrabold text-white leading-[1.1] tracking-tight">
+              Pilotez vos finances
+              <span className="block text-white/80 font-semibold">en toute confiance.</span>
+            </h1>
+            <p className="text-base text-white/70 leading-relaxed max-w-md">
+              Factures, clients, trésorerie et logistique — tout votre ERP financier dans une interface moderne et sécurisée.
+            </p>
+          </div>
+
+          {/* Feature cards — glassmorphism */}
+          <div className="grid grid-cols-2 gap-3">
+            {features.map((f) => (
+              <div
+                key={f.label}
+                className="group rounded-xl border border-white/10 bg-white/[0.07] backdrop-blur-md p-4 transition-all duration-200 hover:bg-white/[0.12] hover:border-white/20 hover:translate-y-[-2px]"
+              >
+                <f.icon className="h-5 w-5 text-white/80 mb-2.5 transition-transform duration-200 group-hover:scale-110" aria-hidden="true" />
+                <p className="text-sm font-semibold text-white">{f.label}</p>
+                <p className="text-xs text-white/50 mt-0.5 leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Decorative Elements */}
-        <div className="absolute top-20 right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 left-20 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
+        {/* Footer trust badge */}
+        <div className="relative z-10 flex items-center gap-2 text-white/40 text-xs">
+          <Shield className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>Chiffrement AES-256 &middot; Multi-tenant &middot; RGPD</span>
+        </div>
       </div>
 
-      {/* Right Side - Login Form */}
-      <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-900 p-6 sm:p-8 lg:p-12">
-        <div className="w-full max-w-md space-y-8">
+      {/* ─── Right Panel — Auth Form ─────────────────────────────────────── */}
+      <div className="flex-1 flex items-center justify-center p-6 pb-10 sm:p-8 lg:p-12 xl:p-16">
+        <div className="w-full max-w-[420px] space-y-8">
+
           {/* Mobile Logo */}
-          <div className="md:hidden text-center">
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-md">
-              <span className="text-white text-2xl font-bold">F</span>
+          <div className="lg:hidden text-center">
+            <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md">
+              <span className="text-primary-foreground text-2xl font-extrabold">F</span>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">FactureX</h2>
+            <h2 className="text-xl font-bold text-foreground">FactureX</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">ERP Finances & Logistique</p>
           </div>
 
           {!showForgotPassword ? (
-            // --- LOGIN FORM ---
-            <>
-              {/* Form Header */}
-              <div className="space-y-2 text-center md:text-left">
-                <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-                  Bienvenue sur FactureX!
+            // ─── LOGIN FORM ───────────────────────────────────────────
+            <div className="space-y-7 animate-fade-in">
+              {/* Header */}
+              <div className="space-y-1.5 text-center lg:text-left">
+                <h1 className="text-2xl lg:text-[28px] font-bold text-foreground tracking-tight">
+                  Bon retour !
                 </h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Connectez-vous à votre compte
+                <p className="text-sm text-muted-foreground">
+                  Connectez-vous pour accéder à votre espace
                 </p>
               </div>
 
-              {/* Error Alert */}
+              {/* Error */}
               {error && (
-                <Alert className="border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800">
-                  <AlertDescription className="text-red-800 dark:text-red-200 text-sm">
+                <Alert variant="destructive" className="animate-fade-in">
+                  <AlertDescription className="text-sm">
                     {error}
                   </AlertDescription>
                 </Alert>
@@ -207,10 +232,10 @@ const Login = () => {
 
               {/* Form */}
               <form onSubmit={handleSignIn} className="space-y-5">
-                {/* Email Field */}
+                {/* Email */}
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Votre Email
+                  <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                    Adresse email
                   </Label>
                   <Input
                     id="email"
@@ -218,23 +243,25 @@ const Login = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    disabled={loading}
+                    autoComplete="email"
                     placeholder="vous@exemple.com"
-                    className="h-12 border-gray-300 dark:border-gray-600 focus:border-green-500 focus:ring-green-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400"
+                    className="h-11 rounded-lg border-border bg-background text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-primary"
                   />
                 </div>
 
-                {/* Password Field */}
+                {/* Password */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <Label htmlFor="password" className="text-sm font-medium text-foreground">
                       Mot de passe
                     </Label>
                     <button
                       type="button"
                       onClick={() => setShowForgotPassword(true)}
-                      className="text-sm text-green-600 hover:text-green-700 dark:text-green-500 dark:hover:text-green-400 font-medium transition-colors"
+                      className="text-xs font-medium text-primary hover:text-primary/80 transition-colors duration-150"
                     >
-                      Mot de passe oublié?
+                      Mot de passe oublié ?
                     </button>
                   </div>
                   <div className="relative">
@@ -244,83 +271,82 @@ const Login = () => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
+                      disabled={loading}
+                      autoComplete="current-password"
                       placeholder="••••••••"
-                      className="h-12 pr-10 border-gray-300 dark:border-gray-600 focus:border-green-500 focus:ring-green-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400"
+                      className="h-11 pr-10 rounded-lg border-border bg-background text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-primary"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors duration-150 cursor-pointer"
                     >
-                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
                     </button>
                   </div>
                 </div>
 
-                {/* Remember Me Checkbox */}
-                <div className="flex items-center">
-                  <input
-                    id="remember"
-                    type="checkbox"
-                    className="h-4 w-4 text-green-500 focus:ring-green-500 border-gray-300 rounded"
-                  />
-                  <Label htmlFor="remember" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                    Se souvenir de moi
-                  </Label>
-                </div>
-
-                {/* Submit Button */}
+                {/* Submit */}
                 <Button
                   type="submit"
-                  className="w-full h-12 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 text-base font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                  disabled={loading}
+                  size="lg"
+                  loading={loading}
+                  className="w-full h-11 text-sm font-semibold rounded-lg shadow-sm hover:shadow-md"
                 >
-                  {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                  Connexion
+                  Se connecter
                 </Button>
               </form>
-            </>
+
+              {/* Divider + footer */}
+              <div className="pt-2 text-center">
+                <p className="text-xs text-muted-foreground/60">
+                  Plateforme sécurisée &middot; Accès réservé aux utilisateurs autorisés
+                </p>
+              </div>
+            </div>
           ) : (
-            // --- FORGOT PASSWORD FORM ---
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            // ─── FORGOT PASSWORD FORM ─────────────────────────────────
+            <div className="space-y-6 animate-fade-in">
               <button
                 onClick={() => {
                   setShowForgotPassword(false);
                   setResetEmailSent(false);
                   setError('');
                 }}
-                className="flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                aria-label="Retour à la connexion"
+                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors duration-150 cursor-pointer group"
               >
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Retour à la connexion
+                <ArrowLeft className="w-4 h-4 transition-transform duration-150 group-hover:-translate-x-0.5" />
+                Retour
               </button>
 
-              <div className="space-y-2 text-center md:text-left">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  Mot de passe oublié
+              <div className="space-y-1.5 text-center lg:text-left">
+                <h1 className="text-2xl font-bold text-foreground tracking-tight">
+                  Réinitialiser le mot de passe
                 </h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Entrez votre adresse email et nous vous enverrons un lien pour réinitialiser votre mot de passe.
+                <p className="text-sm text-muted-foreground">
+                  Entrez votre email pour recevoir un lien de réinitialisation.
                 </p>
               </div>
 
               {error && (
-                <Alert className="border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800">
-                  <AlertDescription className="text-red-800 dark:text-red-200 text-sm">
+                <Alert variant="destructive" className="animate-fade-in">
+                  <AlertDescription className="text-sm">
                     {error}
                   </AlertDescription>
                 </Alert>
               )}
 
               {resetEmailSent ? (
-                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6 text-center space-y-4">
-                  <div className="w-12 h-12 bg-green-100 dark:bg-green-800 rounded-full flex items-center justify-center mx-auto">
-                    <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-300" />
+                <div className="rounded-xl border border-green-200 dark:border-green-500/20 bg-green-50 dark:bg-green-500/10 p-6 text-center space-y-4 animate-scale-in">
+                  <div className="w-12 h-12 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-medium text-green-900 dark:text-green-100">Email envoyé !</h3>
-                    <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                      Si un compte existe avec l'adresse {email}, vous recevrez les instructions de réinitialisation.
+                    <h3 className="text-base font-semibold text-green-900 dark:text-green-100">Email envoyé !</h3>
+                    <p className="text-sm text-green-700 dark:text-green-300 mt-1 leading-relaxed">
+                      Si un compte existe avec l'adresse <span className="font-medium">{email}</span>, vous recevrez les instructions.
                     </p>
                   </div>
                   <Button
@@ -337,8 +363,8 @@ const Login = () => {
               ) : (
                 <form onSubmit={handleResetPassword} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="reset-email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Votre Email
+                    <Label htmlFor="reset-email" className="text-sm font-medium text-foreground">
+                      Adresse email
                     </Label>
                     <Input
                       id="reset-email"
@@ -347,16 +373,18 @@ const Login = () => {
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       placeholder="vous@exemple.com"
-                      className="h-12 border-gray-300 dark:border-gray-600 focus:border-green-500 focus:ring-green-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400"
+                      autoComplete="email"
+                      disabled={loading}
+                      className="h-11 rounded-lg border-border bg-background text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-primary"
                     />
                   </div>
 
                   <Button
                     type="submit"
-                    className="w-full h-12 bg-green-600 hover:bg-green-700 text-white text-base font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                    disabled={loading}
+                    size="lg"
+                    loading={loading}
+                    className="w-full h-11 text-sm font-semibold rounded-lg shadow-sm hover:shadow-md"
                   >
-                    {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
                     Envoyer le lien
                   </Button>
                 </form>

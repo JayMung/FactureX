@@ -3,11 +3,20 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import Layout from '@/components/layout/Layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Plus,
   Trash2,
@@ -18,21 +27,10 @@ import {
   Palette,
   Tag,
   Save,
-  X,
-  Grid3x3,
-  List
+  Search,
+  AlertTriangle,
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
-import { UnifiedDataTable } from '@/components/ui/unified-data-table';
-import { useIsMobile } from '@/hooks/use-mobile';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu';
-import { MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Icônes disponibles pour les catégories
@@ -90,12 +88,16 @@ interface FinanceCategory {
 export const CategoriesFinances = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [categories, setCategories] = useState<FinanceCategory[]>([]);
+  const [usageCounts, setUsageCounts] = useState<Record<string, number>>({});
   const [activeTab, setActiveTab] = useState<'revenue' | 'depense'>('revenue');
-  const [showForm, setShowForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [formModalOpen, setFormModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<FinanceCategory | null>(null);
-  const [viewMode, setViewMode] = useState<'table' | 'cards' | 'auto'>('auto');
-  const isMobile = useIsMobile();
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<FinanceCategory | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
 
   const [formData, setFormData] = useState({
     nom: '',
@@ -108,7 +110,25 @@ export const CategoriesFinances = () => {
 
   useEffect(() => {
     fetchCategories();
+    fetchUsageCounts();
   }, []);
+
+  const fetchUsageCounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('categorie')
+        .not('categorie', 'is', null);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data || []).forEach((row: any) => {
+        if (row.categorie) counts[row.categorie] = (counts[row.categorie] || 0) + 1;
+      });
+      setUsageCounts(counts);
+    } catch (error: any) {
+      console.error('Error fetching usage counts:', error);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -117,15 +137,11 @@ export const CategoriesFinances = () => {
         .from('finance_categories')
         .select('*')
         .order('nom');
-
       if (error) throw error;
       setCategories(data || []);
     } catch (error: any) {
       console.error('Error fetching categories:', error);
-      // Si la table n'existe pas encore, on continue sans erreur
-      if (error.code !== '42P01') {
-        showError('Erreur lors du chargement des catégories');
-      }
+      if (error.code !== '42P01') showError('Erreur lors du chargement des catégories');
     } finally {
       setLoading(false);
     }
@@ -133,49 +149,26 @@ export const CategoriesFinances = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!formData.nom || !formData.code) {
-      showError('Veuillez remplir tous les champs obligatoires');
-      return;
-    }
-
+    if (!formData.nom || !formData.code) { showError('Veuillez remplir tous les champs obligatoires'); return; }
     setSaving(true);
     try {
       if (editingCategory) {
-        // Mise à jour
-        const { error } = await supabase
-          .from('finance_categories')
-          .update({
-            nom: formData.nom,
-            code: formData.code.toUpperCase(),
-            type: formData.type,
-            icon: formData.icon,
-            couleur: formData.couleur,
-            description: formData.description
-          })
-          .eq('id', editingCategory.id);
-
+        const { error } = await supabase.from('finance_categories').update({
+          nom: formData.nom, code: formData.code.toUpperCase(), type: formData.type,
+          icon: formData.icon, couleur: formData.couleur, description: formData.description
+        }).eq('id', editingCategory.id);
         if (error) throw error;
         showSuccess('Catégorie mise à jour');
       } else {
-        // Création
-        const { error } = await supabase
-          .from('finance_categories')
-          .insert([{
-            nom: formData.nom,
-            code: formData.code.toUpperCase(),
-            type: formData.type,
-            icon: formData.icon,
-            couleur: formData.couleur,
-            description: formData.description,
-            is_active: true
-          }]);
-
+        const { error } = await supabase.from('finance_categories').insert([{
+          nom: formData.nom, code: formData.code.toUpperCase(), type: formData.type,
+          icon: formData.icon, couleur: formData.couleur, description: formData.description, is_active: true
+        }]);
         if (error) throw error;
         showSuccess('Catégorie créée');
       }
-
-      resetForm();
+      setFormModalOpen(false);
+      setEditingCategory(null);
       fetchCategories();
     } catch (error: any) {
       showError(error.message || 'Erreur lors de la sauvegarde');
@@ -184,111 +177,50 @@ export const CategoriesFinances = () => {
     }
   };
 
-  const handleEdit = (category: FinanceCategory) => {
-    setEditingCategory(category);
-    setFormData({
-      nom: category.nom,
-      code: category.code,
-      type: category.type,
-      icon: category.icon,
-      couleur: category.couleur,
-      description: category.description || ''
-    });
-    setShowForm(true);
+  const openCreateModal = () => {
+    setEditingCategory(null);
+    setFormData({ nom: '', code: '', type: activeTab, icon: 'dollar-sign', couleur: activeTab === 'revenue' ? '#22c55e' : '#ef4444', description: '' });
+    setFormModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette catégorie?')) return;
+  const openEditModal = (cat: FinanceCategory) => {
+    setEditingCategory(cat);
+    setFormData({ nom: cat.nom, code: cat.code, type: cat.type, icon: cat.icon, couleur: cat.couleur, description: cat.description || '' });
+    setFormModalOpen(true);
+  };
 
+  const openDeleteModal = (cat: FinanceCategory) => {
+    setCategoryToDelete(cat);
+    setDeleteConfirmName('');
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!categoryToDelete) return;
+    setIsDeleting(true);
     try {
-      const { error } = await supabase
-        .from('finance_categories')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await supabase.from('finance_categories').delete().eq('id', categoryToDelete.id);
       if (error) throw error;
-      showSuccess('Catégorie supprimée');
+      showSuccess(`Catégorie "${categoryToDelete.nom}" supprimée`);
+      setDeleteModalOpen(false);
+      setCategoryToDelete(null);
       fetchCategories();
     } catch (error: any) {
       showError(error.message || 'Erreur lors de la suppression');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      nom: '',
-      code: '',
-      type: activeTab,
-      icon: 'dollar-sign',
-      couleur: activeTab === 'revenue' ? '#22c55e' : '#ef4444',
-      description: ''
-    });
-    setEditingCategory(null);
-    setShowForm(false);
-  };
+  const getIconEmoji = (v: string) => AVAILABLE_ICONS.find(i => i.value === v)?.icon || '📁';
+  const getUsageCount = (item: FinanceCategory) => (usageCounts[item.nom] || 0) + (usageCounts[item.code] || 0);
 
-  const openNewForm = () => {
-    resetForm();
-    setFormData(prev => ({
-      ...prev,
-      type: activeTab,
-      couleur: activeTab === 'revenue' ? '#22c55e' : '#ef4444'
-    }));
-    setShowForm(true);
-  };
-
-  const filteredCategories = categories.filter(c => c.type === activeTab);
-  const getIconEmoji = (iconValue: string) => {
-    return AVAILABLE_ICONS.find(i => i.value === iconValue)?.icon || '📁';
-  };
-
-  const categoryColumns = [
-    {
-      key: 'nom',
-      title: 'Catégorie',
-      sortable: true,
-      render: (value: string, item: FinanceCategory) => (
-        <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg"
-            style={{ backgroundColor: item.couleur }}
-          >
-            {getIconEmoji(item.icon)}
-          </div>
-          <div>
-            <p className="font-medium">{item.nom}</p>
-            <p className="text-xs text-gray-500">{item.code}</p>
-          </div>
-        </div>
-      )
-    },
-    {
-      key: 'description',
-      title: 'Description',
-      hiddenOn: 'md' as const,
-      render: (value: string) => <span className="text-gray-500 italic text-sm">{value || '-'}</span>
-    },
-    {
-      key: 'actions',
-      title: '',
-      align: 'right' as const,
-      render: (_: any, item: FinanceCategory) => (
-        <div className="flex items-center justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
-            <Edit2 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-red-600 hover:bg-red-50"
-            onClick={() => handleDelete(item.id)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      )
-    }
-  ];
+  const filteredCategories = categories
+    .filter(c => c.type === activeTab)
+    .filter(c => !searchTerm ||
+      c.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.description || '').toLowerCase().includes(searchTerm.toLowerCase()));
 
   if (loading) {
     return (
@@ -303,15 +235,21 @@ export const CategoriesFinances = () => {
   return (
     <Layout>
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Catégories Financières</h1>
             <p className="text-gray-500">Gérez les catégories de revenus et dépenses</p>
           </div>
+          <Button onClick={openCreateModal} className="bg-green-500 hover:bg-green-600">
+            <Plus className="mr-2 h-4 w-4" />
+            Nouvelle catégorie
+          </Button>
         </div>
 
+        {/* Tabs + Search */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'revenue' | 'depense')}>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
             <TabsList>
               <TabsTrigger value="revenue" className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" />
@@ -322,190 +260,233 @@ export const CategoriesFinances = () => {
                 Dépenses
               </TabsTrigger>
             </TabsList>
-
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 mr-2">
-                <button
-                  type="button"
-                  className={cn(
-                    'p-1.5 rounded-md transition-all',
-                    viewMode === 'cards' ? 'bg-white shadow-sm' : 'hover:bg-gray-200 text-gray-500'
-                  )}
-                  onClick={() => setViewMode('cards')}
-                  title="Vue Grille"
-                >
-                  <Grid3x3 className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  className={cn(
-                    'p-1.5 rounded-md transition-all',
-                    viewMode === 'table' ? 'bg-white shadow-sm' : 'hover:bg-gray-200 text-gray-500'
-                  )}
-                  onClick={() => setViewMode('table')}
-                  title="Vue Liste"
-                >
-                  <List className="h-4 w-4" />
-                </button>
-              </div>
-              <Button onClick={openNewForm} className="bg-green-500 hover:bg-green-600">
-                <Plus className="mr-2 h-4 w-4" />
-                Nouvelle catégorie
-              </Button>
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Rechercher..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
             </div>
           </div>
 
-          {/* Formulaire */}
-          {showForm && (
-            <Card className="mb-6 border-2 border-dashed border-green-300">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Tag className="h-5 w-5" />
-                    {editingCategory ? 'Modifier la catégorie' : 'Nouvelle catégorie'}
-                  </span>
-                  <Button variant="ghost" size="sm" onClick={resetForm}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="nom">Nom *</Label>
-                      <Input
-                        id="nom"
-                        value={formData.nom}
-                        onChange={(e) => setFormData(prev => ({ ...prev, nom: e.target.value }))}
-                        placeholder="Ex: Paiement Fournisseur"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="code">Code *</Label>
-                      <Input
-                        id="code"
-                        value={formData.code}
-                        onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                        placeholder="Ex: FOURNISSEUR"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description (optionnel)</Label>
-                    <Input
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Description de la catégorie"
-                    />
-                  </div>
-
-                  {/* Sélection d'icône */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Palette className="h-4 w-4" />
-                      Icône
-                    </Label>
-                    <div className="flex flex-wrap gap-2">
-                      {AVAILABLE_ICONS.map((icon) => (
-                        <button
-                          key={icon.value}
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, icon: icon.value }))}
-                          className={`p-2 text-xl rounded-lg border-2 transition-all ${formData.icon === icon.value
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                            }`}
-                          title={icon.label}
+          {/* Category cards */}
+          {filteredCategories.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">
+              <Tag className="h-12 w-12 mx-auto mb-3 opacity-30" />
+              <p className="font-medium">Aucune catégorie{searchTerm ? ' correspondante' : ''}</p>
+              <p className="text-sm mt-1">
+                {searchTerm ? 'Modifiez votre recherche' : "Cliquez sur «\u00a0Nouvelle catégorie\u00a0» pour commencer"}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredCategories.map((cat) => {
+                const count = getUsageCount(cat);
+                return (
+                  <Card key={cat.id} className="group hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0"
+                            style={{ backgroundColor: cat.couleur }}
+                          >
+                            {getIconEmoji(cat.icon)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold truncate">{cat.nom}</p>
+                            <p className="text-xs text-gray-500 font-mono">{cat.code}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => openEditModal(cat)}
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => openDeleteModal(cat)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      {cat.description && (
+                        <p className="text-xs text-gray-500 mt-2 line-clamp-2">{cat.description}</p>
+                      )}
+                      <div className="mt-3">
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            'text-xs',
+                            count > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                          )}
                         >
-                          {icon.icon}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Sélection de couleur */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Palette className="h-4 w-4" />
-                      Couleur
-                    </Label>
-                    <div className="flex flex-wrap gap-2">
-                      {AVAILABLE_COLORS.map((color) => (
-                        <button
-                          key={color.value}
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, couleur: color.value }))}
-                          className={`w-8 h-8 rounded-full border-2 transition-all ${formData.couleur === color.value
-                            ? 'ring-2 ring-offset-2 ring-gray-400'
-                            : ''
-                            }`}
-                          style={{ backgroundColor: color.value }}
-                          title={color.label}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Aperçu */}
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <Label className="text-sm text-gray-500 mb-2 block">Aperçu</Label>
-                    <div
-                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-white"
-                      style={{ backgroundColor: formData.couleur }}
-                    >
-                      <span className="text-lg">{getIconEmoji(formData.icon)}</span>
-                      <span className="font-medium">{formData.nom || 'Nom de la catégorie'}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button type="submit" disabled={saving} className="bg-green-500 hover:bg-green-600">
-                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                      {editingCategory ? 'Mettre à jour' : 'Créer'}
-                    </Button>
-                    <Button type="button" variant="outline" onClick={resetForm}>
-                      Annuler
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
+                          {count} {count === 1 ? 'transaction' : 'transactions'}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           )}
-
-          {/* Liste des catégories */}
-          {/* Liste des catégories Unified */}
-          <UnifiedDataTable
-            data={filteredCategories}
-            loading={loading}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-            emptyMessage={`Aucune catégorie de ${activeTab === 'revenue' ? 'revenue' : 'dépense'}`}
-            emptySubMessage="Cliquez sur 'Nouvelle catégorie' pour commencer"
-            columns={categoryColumns}
-            cardConfig={{
-              titleKey: 'nom',
-              titleRender: (item) => (
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg"
-                    style={{ backgroundColor: item.couleur }}
-                  >
-                    {getIconEmoji(item.icon)}
-                  </div>
-                  <span className="font-medium">{item.nom}</span>
-                </div>
-              ),
-              subtitleKey: 'code',
-              infoFields: [
-                { key: 'description', label: 'Description' }
-              ]
-            }}
-          />
         </Tabs>
       </div>
+
+      {/* Modal Création / Édition */}
+      <Dialog open={formModalOpen} onOpenChange={setFormModalOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Tag className="h-5 w-5" />
+              {editingCategory ? 'Modifier la catégorie' : 'Nouvelle catégorie'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingCategory ? 'Modifiez les informations de la catégorie.' : 'Créez une nouvelle catégorie financière.'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="modal-nom">Nom *</Label>
+                <Input
+                  id="modal-nom"
+                  value={formData.nom}
+                  onChange={(e) => setFormData(prev => ({ ...prev, nom: e.target.value }))}
+                  placeholder="Ex: Paiement Fournisseur"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="modal-code">Code *</Label>
+                <Input
+                  id="modal-code"
+                  value={formData.code}
+                  onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                  placeholder="Ex: FOURNISSEUR"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="modal-description">Description (optionnel)</Label>
+              <Input
+                id="modal-description"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Description de la catégorie"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Palette className="h-4 w-4" />
+                Icône
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {AVAILABLE_ICONS.map((icon) => (
+                  <button
+                    key={icon.value}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, icon: icon.value }))}
+                    className={cn(
+                      'p-2 text-xl rounded-lg border-2 transition-all',
+                      formData.icon === icon.value ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'
+                    )}
+                    title={icon.label}
+                  >
+                    {icon.icon}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Palette className="h-4 w-4" />
+                Couleur
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {AVAILABLE_COLORS.map((color) => (
+                  <button
+                    key={color.value}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, couleur: color.value }))}
+                    className={cn(
+                      'w-8 h-8 rounded-full border-2 border-transparent transition-all',
+                      formData.couleur === color.value ? 'ring-2 ring-offset-2 ring-gray-400' : ''
+                    )}
+                    style={{ backgroundColor: color.value }}
+                    title={color.label}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-xs text-gray-500 mb-2">Aperçu</p>
+              <div
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-white"
+                style={{ backgroundColor: formData.couleur }}
+              >
+                <span className="text-lg">{getIconEmoji(formData.icon)}</span>
+                <span className="font-medium">{formData.nom || 'Nom de la catégorie'}</span>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setFormModalOpen(false)}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={saving} className="bg-green-500 hover:bg-green-600">
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {editingCategory ? 'Mettre à jour' : 'Créer'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Suppression */}
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Supprimer la catégorie
+            </DialogTitle>
+            <DialogDescription>
+              Cette action est irréversible. Tapez{' '}
+              <span className="font-semibold text-gray-900">"{categoryToDelete?.nom}"</span>{' '}
+              pour confirmer la suppression.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Input
+              placeholder={categoryToDelete?.nom || ''}
+              value={deleteConfirmName}
+              onChange={(e) => setDeleteConfirmName(e.target.value)}
+              className="border-red-200 focus-visible:ring-red-400"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteConfirmName !== categoryToDelete?.nom || isDeleting}
+              onClick={confirmDelete}
+            >
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };

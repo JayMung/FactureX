@@ -76,12 +76,12 @@ export function EnhancedTable<T>({
 
   if (loading) {
     return (
-      <div className="overflow-x-auto rounded-xl shadow-sm border border-gray-100">
+      <div className="overflow-x-auto rounded-xl shadow-card border border-border">
         <table className="w-full min-w-[900px]">
-          <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+          <thead className="table-header-gradient">
             <tr>
               {bulkSelect && (
-                <th className="text-left py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm w-12">
+                <th className="text-left py-4 px-3 md:px-4 font-semibold text-foreground text-sm w-12">
                   <Skeleton className="h-4 w-4" />
                 </th>
               )}
@@ -89,7 +89,7 @@ export function EnhancedTable<T>({
                 <th
                   key={index}
                   className={cn(
-                    "text-left py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm",
+                    "text-left py-4 px-3 md:px-4 font-semibold text-foreground text-sm",
                     column.hidden && "hidden",
                     column.hiddenOn === 'md' && "hidden md:table-cell",
                     column.hiddenOn === 'lg' && "hidden lg:table-cell",
@@ -102,15 +102,15 @@ export function EnhancedTable<T>({
                 </th>
               ))}
               {actionsColumn && (
-                <th className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm w-16">
+                <th className="text-center py-4 px-3 md:px-4 font-semibold text-foreground text-sm w-16">
                   <Skeleton className="h-4 w-4" />
                 </th>
               )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-border">
             {Array.from({ length: 5 }).map((_, index) => (
-              <tr key={index} className="hover:bg-gradient-to-r hover:from-blue-50/30 hover:to-indigo-50/30 transition-all duration-200 border-b border-gray-50">
+              <tr key={index} className="table-row-hover border-b border-border/50">
                 {bulkSelect && (
                   <td className="py-3 px-3 md:px-4">
                     <Skeleton className="h-4 w-4" />
@@ -148,22 +148,22 @@ export function EnhancedTable<T>({
   if (data.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <MoreVertical className="h-8 w-8 text-gray-400" />
+        <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+          <MoreVertical className="h-8 w-8 text-muted-foreground" />
         </div>
-        <p className="text-gray-500 text-lg">{emptyMessage}</p>
-        <p className="text-gray-400 text-sm mt-2">{emptySubMessage}</p>
+        <p className="text-muted-foreground text-lg">{emptyMessage}</p>
+        <p className="text-muted-foreground/70 text-sm mt-2">{emptySubMessage}</p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl shadow-sm border border-gray-100">
+    <div className="overflow-x-auto rounded-xl shadow-card border border-border">
       <table className={cn("w-full min-w-[900px]", className)}>
-        <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+        <thead className="table-header-gradient">
           <tr>
             {bulkSelect && (
-              <th className="text-left py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm w-12">
+              <th className="text-left py-4 px-3 md:px-4 font-semibold text-foreground text-sm w-12">
                 <input
                   type="checkbox"
                   checked={bulkSelect.isAllSelected}
@@ -173,7 +173,8 @@ export function EnhancedTable<T>({
                     }
                   }}
                   onChange={(e) => bulkSelect.onSelectAll(e.target.checked)}
-                  className="rounded border-gray-300"
+                  className="rounded border-input"
+                  aria-label="Select all"
                 />
               </th>
             )}
@@ -181,16 +182,17 @@ export function EnhancedTable<T>({
               <th
                 key={index}
                 className={cn(
-                  "text-left py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm",
+                  "text-left py-4 px-3 md:px-4 font-semibold text-foreground text-sm",
                   column.hidden && "hidden",
                   column.hiddenOn === 'md' && "hidden md:table-cell",
                   column.hiddenOn === 'lg' && "hidden lg:table-cell",
                   column.align === 'center' && "text-center",
                   column.align === 'right' && "text-right",
-                  column.sortable && "cursor-pointer hover:bg-blue-100/50 transition-colors",
+                  column.sortable && "cursor-pointer hover:bg-accent/50 transition-colors duration-100",
                   column.className
                 )}
                 onClick={() => handleSort(column)}
+                aria-sort={sortKey === column.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined}
               >
                 <div className="inline-flex items-center gap-2 whitespace-nowrap text-sm">
                   {column.title}
@@ -199,7 +201,7 @@ export function EnhancedTable<T>({
               </th>
             ))}
             {actionsColumn && (
-              <th className="text-center py-4 px-3 md:px-4 font-semibold text-gray-800 text-sm w-16">
+              <th className="text-center py-4 px-3 md:px-4 font-semibold text-foreground text-sm w-16">
                 <span className="flex items-center justify-center whitespace-nowrap">
                   {actionsColumn.header || <MoreVertical className="h-4 w-4" />}
                 </span>
@@ -207,13 +209,13 @@ export function EnhancedTable<T>({
             )}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-border">
           {data.map((item, index) => (
             <tr
               key={bulkSelect?.getId(item) || index}
               className={cn(
-                "hover:bg-gradient-to-r hover:from-blue-50/30 hover:to-indigo-50/30 transition-all duration-200 border-b border-gray-50",
-                bulkSelect?.selected.includes(bulkSelect?.getId(item)) && "bg-blue-50/50",
+                "table-row-hover border-b border-border/50",
+                bulkSelect?.selected.includes(bulkSelect?.getId(item)) && "bg-primary/5",
                 rowClassName?.(item, index)
               )}
             >
@@ -223,7 +225,8 @@ export function EnhancedTable<T>({
                     type="checkbox"
                     checked={bulkSelect.selected.includes(bulkSelect.getId(item))}
                     onChange={(e) => bulkSelect.onSelectItem(bulkSelect.getId(item), e.target.checked)}
-                    className="rounded border-gray-300"
+                    className="rounded border-input"
+                    aria-label="Select row"
                   />
                 </td>
               )}
@@ -233,7 +236,7 @@ export function EnhancedTable<T>({
                   <td
                     key={colIndex}
                     className={cn(
-                      "py-3 px-3 md:px-4",
+                      "py-3 px-3 md:px-4 text-sm",
                       column.hidden && "hidden",
                       column.hiddenOn === 'md' && "hidden md:table-cell",
                       column.hiddenOn === 'lg' && "hidden lg:table-cell",

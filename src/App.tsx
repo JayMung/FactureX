@@ -50,7 +50,8 @@ const ComptesFinancesProtected = lazy(() => import("./pages/Comptes-Finances-Pro
 const CategoriesFinances = lazy(() => import("./pages/Categories-Finances"));
 const ApiKeys = lazy(() => import("./pages/ApiKeys"));
 const Webhooks = lazy(() => import("./pages/Webhooks"));
-const StatistiquesProtected = lazy(() => import("./pages/Statistiques-Protected"));
+const StatistiquesProtected = lazy(() => import('./pages/Statistiques-Protected'));
+const FinancesDashboard = lazy(() => import('./pages/Finances-Dashboard'));
 const ColisMaritimePage = lazy(() => import('./pages/Colis-Maritime'));
 const Rapports = lazy(() => import("./pages/Rapports"));
 const AdminSetup = lazy(() => import("./pages/AdminSetup"));
@@ -175,6 +176,11 @@ const App = () => (
                 <Route path="/comptes" element={
                   <ProtectedRouteEnhanced requiredModule="finances">
                     <ComptesFinancesProtected />
+                  </ProtectedRouteEnhanced>
+                } />
+                <Route path="/finances/dashboard" element={
+                  <ProtectedRouteEnhanced requiredModule="finances">
+                    <FinancesDashboard />
                   </ProtectedRouteEnhanced>
                 } />
                 <Route path="/finances/categories" element={

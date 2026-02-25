@@ -14,6 +14,9 @@ interface StatCardProps {
   };
   icon?: React.ReactNode;
   className?: string;
+  color?: string;
+  borderColor?: string;
+  hero?: boolean;
 }
 
 const StatCard: React.FC<StatCardProps> = ({ 
@@ -21,7 +24,10 @@ const StatCard: React.FC<StatCardProps> = ({
   value, 
   change, 
   icon, 
-  className 
+  className,
+  color,
+  borderColor,
+  hero = false,
 }) => {
   const formatValue = (val: string | number) => {
     if (typeof val === 'string') {
@@ -31,30 +37,27 @@ const StatCard: React.FC<StatCardProps> = ({
   };
 
   return (
-    <Card className={cn("stat-card cursor-pointer", className)}>
+    <Card className={cn("stat-card", borderColor && `border-l-4 ${borderColor}`, className)}>
       <CardContent className="p-5">
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-2 flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
-            <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate">
+            <p className={cn(hero ? "body-text font-medium" : "small-text font-medium")}>{title}</p>
+            <p className={cn("font-bold text-foreground truncate text-mono", hero ? "heading-1" : "heading-2")}>
               {formatValue(value)}
             </p>
             {change && (
-              <p className={cn(
-                "text-xs font-medium flex items-center gap-1",
-                change.isPositive ? "text-success" : "text-error"
-              )}>
+              <div className={change.isPositive ? "trend-positive" : "trend-negative"}>
                 {change.isPositive ? (
                   <TrendingUp className="h-3 w-3" />
                 ) : (
                   <TrendingDown className="h-3 w-3" />
                 )}
-                {Math.abs(change.value)}% par rapport au mois dernier
-              </p>
+                <span>{Math.abs(change.value)}%</span>
+              </div>
             )}
           </div>
           {icon && (
-            <div className="text-gray-400 dark:text-gray-500 flex-shrink-0">
+            <div className={cn("flex-shrink-0", color ? `p-2.5 rounded-xl ${color}` : "text-muted-foreground")}>
               {icon}
             </div>
           )}

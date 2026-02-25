@@ -225,11 +225,17 @@ const getTransactionColumnsCombined = (props: any) => {
         key: 'mode_paiement',
         title: 'Compte',
         sortable: true,
-        render: (value: any) => (
-          <span className="font-medium whitespace-nowrap">
-            {value === 'AIRTEL_MONEY' ? 'Airtel Money' : value === 'CASH' ? 'Cash' : value === 'M_PESA' ? 'M-Pesa' : value?.replace('_', ' ')}
-          </span>
-        )
+        render: (_: any, item: any) => {
+          const accountName = item.compte_destination?.nom || item.compte_source?.nom;
+          const fallback = item.mode_paiement
+            ? item.mode_paiement.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+            : '—';
+          return (
+            <span className="font-medium whitespace-nowrap text-blue-700">
+              {accountName || fallback}
+            </span>
+          );
+        }
       },
       defaultActions
     ];

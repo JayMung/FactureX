@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   CheckCircle, 
   Clock, 
   RotateCcw, 
   XCircle, 
-  ChevronDown 
+  ChevronDown,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,18 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   onStatusChange,
   canUpdate
 }) => {
+  const [validating, setValidating] = useState(false);
+
+  const handleQuickValidate = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setValidating(true);
+    try {
+      await onStatusChange(transaction, 'Servi');
+    } finally {
+      setValidating(false);
+    }
+  };
+
   const getStatusIcon = (s: string) => {
     switch (s) {
       case "Servi": return <CheckCircle className="h-4 w-4 text-green-600" />;
@@ -64,6 +77,22 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   }
 
   return (
+    <div className="flex items-center gap-1.5">
+      {status === 'En attente' && (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={handleQuickValidate}
+          disabled={validating}
+          title="Valider rapidement"
+          className="h-7 px-2 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-md"
+        >
+          {validating
+            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            : <><CheckCircle className="h-3.5 w-3.5 mr-1" />Valider</>
+          }
+        </Button>
+      )}
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button 
@@ -103,5 +132,6 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    </div>
   );
 };

@@ -4,20 +4,22 @@ import { usePageSetup } from '@/hooks/use-page-setup';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
     FileText,
     Download,
-    Calendar as CalendarIcon,
+    Eye,
     TrendingUp,
     TrendingDown,
     DollarSign,
-    PieChart
+    PieChart,
+    Loader2
 } from 'lucide-react';
 import { ReportService, ReportData } from '@/services/reportService';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfMonth } from 'date-fns';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UnifiedDataTable, type TableColumn } from '@/components/ui/unified-data-table';
+import { UnifiedDataTable } from '@/components/ui/unified-data-table';
 import Pagination from '@/components/ui/pagination-custom';
 
 const Rapports = () => {
@@ -33,9 +35,16 @@ const Rapports = () => {
     const [exporting, setExporting] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10;
+    const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [generatingPreview, setGeneratingPreview] = useState(false);
 
 
     const fetchReport = async () => {
+        if (startDate > endDate) {
+            toast.error('La date de début doit être antérieure à la date de fin');
+            return;
+        }
         setLoading(true);
         try {
             const report = await ReportService.getFinancialReport(
@@ -84,6 +93,34 @@ const Rapports = () => {
         }
     };
 
+    const handlePreviewPDF = async () => {
+        if (!data) return;
+        setGeneratingPreview(true);
+        const toastId = toast.loading('Préparation de la prévisualisation...');
+        try {
+            const blob = await ReportService.generatePDFBlob(
+                new Date(startDate),
+                new Date(endDate),
+                data.period,
+                data.summary
+            );
+            if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+            const url = URL.createObjectURL(blob);
+            setPdfUrl(url);
+            setPreviewOpen(true);
+            toast.success('Prévisualisation prête', { id: toastId });
+        } catch (error) {
+            console.error('Preview error:', error);
+            toast.error('Prévisualisation non disponible — téléchargez le PDF', { id: toastId });
+        } finally {
+            setGeneratingPreview(false);
+        }
+    };
+
+    const handleClosePreview = () => {
+        setPreviewOpen(false);
+    };
+
     const handleExportExcel = () => {
         if (!data) return;
         ReportService.exportToExcel(data, `Rapport_Financier_${startDate}_${endDate}`);
@@ -94,11 +131,6 @@ const Rapports = () => {
         <Layout>
             <div className="space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="hidden">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Rapports Financiers</h1>
-                        <p className="text-gray-500 dark:text-gray-400">Générez des bilans et exportez vos données</p>
-                    </div>
-
                     <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
                         <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-gray-500">Du</span>
@@ -114,6 +146,7 @@ const Rapports = () => {
                             <Input
                                 type="date"
                                 value={endDate}
+                                min={startDate}
                                 onChange={(e) => setEndDate(e.target.value)}
                                 className="w-40"
                             />
@@ -188,10 +221,33 @@ const Rapports = () => {
                             <p className="mt-2 text-xs text-blue-600 dark:text-blue-400">Transactions enregistrées</p>
                         </CardContent>
                     </Card>
+
+                    <Card className="border-purple-100 dark:border-purple-900 bg-purple-50/30 dark:bg-purple-950/20">
+                        <CardHeader className="pb-2">
+                            <div className="flex justify-between items-start">
+                                <CardTitle className="text-sm font-medium text-purple-800 dark:text-purple-300">Solde Net (USD)</CardTitle>
+                                <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-full">
+                                    <DollarSign className="h-4 w-4 text-purple-600" />
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            {loading ? <Skeleton className="h-8 w-24" /> : (
+                                <div className={`text-2xl font-bold ${
+                                    (data?.summary.netProfit ?? 0) >= 0
+                                        ? 'text-emerald-700 dark:text-emerald-300'
+                                        : 'text-red-700 dark:text-red-300'
+                                }`}>
+                                    {data?.summary.netProfit.toFixed(2)} $
+                                </div>
+                            )}
+                            <p className="mt-2 text-xs text-purple-600 dark:text-purple-400">Recettes − Dépenses (USD)</p>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 {/* Actions */}
-                <div className="flex justify-end gap-3">
+                <div className="flex justify-end gap-3 flex-wrap">
                     <Button
                         variant="outline"
                         onClick={handleExportExcel}
@@ -202,14 +258,65 @@ const Rapports = () => {
                         Exporter Excel
                     </Button>
                     <Button
+                        variant="outline"
+                        onClick={handlePreviewPDF}
+                        disabled={!data || loading || generatingPreview}
+                        className="flex items-center gap-2 border-blue-600 text-blue-600 hover:bg-blue-50"
+                    >
+                        {generatingPreview ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <Eye className="h-4 w-4" />
+                        )}
+                        {generatingPreview ? 'Chargement...' : 'Prévisualiser'}
+                    </Button>
+                    <Button
                         onClick={handleExportPDF}
                         disabled={!data || loading || exporting}
                         className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                     >
                         <FileText className="h-4 w-4" />
-                        {exporting ? 'Génération...' : 'Générer PDF'}
+                        {exporting ? 'Génération...' : 'Télécharger PDF'}
                     </Button>
                 </div>
+
+                {/* PDF Preview Dialog */}
+                <Dialog open={previewOpen} onOpenChange={(open) => { if (!open) handleClosePreview(); }}>
+                    <DialogContent className="max-w-4xl w-full h-[90vh] flex flex-col p-0 gap-0">
+                        <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
+                            <div className="flex items-center justify-between">
+                                <DialogTitle className="flex items-center gap-2">
+                                    <FileText className="h-5 w-5 text-emerald-600" />
+                                    Rapport Financier — {startDate} au {endDate}
+                                </DialogTitle>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        size="sm"
+                                        onClick={handleExportPDF}
+                                        disabled={exporting}
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+                                    >
+                                        <Download className="h-3.5 w-3.5 mr-1" />
+                                        Télécharger
+                                    </Button>
+                                </div>
+                            </div>
+                        </DialogHeader>
+                        <div className="flex-1 overflow-hidden">
+                            {pdfUrl ? (
+                                <iframe
+                                    src={pdfUrl}
+                                    className="w-full h-full border-0"
+                                    title="Prévisualisation du rapport PDF"
+                                />
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-gray-400">
+                                    Chargement de la prévisualisation...
+                                </div>
+                            )}
+                        </div>
+                    </DialogContent>
+                </Dialog>
 
                 {/* Details Table with Pagination */}
                 <Card>
@@ -229,14 +336,22 @@ const Rapports = () => {
                                 {
                                     key: 'type_transaction',
                                     title: 'Type',
-                                    render: (val) => (
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${val === 'revenue'
+                                    render: (val) => {
+                                        const label = val === 'revenue' ? 'RECETTE'
+                                            : (val === 'depense' || val === 'expense') ? 'DÉPENSE'
+                                            : (val === 'transfert' || val === 'swap') ? 'TRANSFERT'
+                                            : val?.toUpperCase();
+                                        const cls = val === 'revenue'
                                             ? 'bg-emerald-100 text-emerald-700'
-                                            : 'bg-red-100 text-red-700'
-                                            }`}>
-                                            {val}
-                                        </span>
-                                    )
+                                            : (val === 'depense' || val === 'expense')
+                                            ? 'bg-red-100 text-red-700'
+                                            : 'bg-blue-100 text-blue-700';
+                                        return (
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${cls}`}>
+                                                {label}
+                                            </span>
+                                        );
+                                    }
                                 },
                                 {
                                     key: 'client',

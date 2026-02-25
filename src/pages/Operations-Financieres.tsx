@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import ConfirmDialog from '@/components/ui/confirm-dialog';
 import Layout from '@/components/layout/Layout';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
@@ -13,22 +14,23 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Plus,
   TrendingDown,
   TrendingUp,
   ArrowDownCircle,
   ArrowUpCircle,
   Download,
   Search,
-  Trash2,
-  Edit,
-  MoreVertical
+  Trash2
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import Pagination from '@/components/ui/pagination-custom';
 import { showSuccess, showError } from '@/utils/toast';
+import { UnifiedDataTable, TableColumn } from '@/components/ui/unified-data-table';
+import { FilterTabs } from '@/components/ui/filter-tabs';
+import { PeriodFilterTabs } from '@/components/ui/period-filter-tabs';
+import { getDateRange, PeriodFilter } from '@/utils/dateUtils';
 
 const OperationsFinancieres: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -36,8 +38,35 @@ const OperationsFinancieres: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<'all' | 'depense' | 'revenue'>('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [operationType, setOperationType] = useState<'depense' | 'revenue'>('depense');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [operationToDelete, setOperationToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
+  const [dateFrom, setDateFrom] = useState<string | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (periodFilter !== 'all') {
+      const { current } = getDateRange(periodFilter);
+      if (current.start && current.end) {
+        setDateFrom(format(current.start, 'yyyy-MM-dd'));
+        setDateTo(format(current.end, 'yyyy-MM-dd'));
+      }
+    } else {
+      setDateFrom(undefined);
+      setDateTo(undefined);
+    }
+    setCurrentPage(1);
+  }, [periodFilter]);
 
   const { comptes } = useComptesFinanciers();
+  const memoFilters = useMemo(() => ({
+    typeTransaction: typeFilter === 'all' ? ['depense', 'revenue'] : [typeFilter],
+    search: searchTerm || undefined,
+    dateFrom,
+    dateTo,
+  }), [typeFilter, searchTerm, dateFrom, dateTo]);
+
   const { 
     transactions, 
     pagination, 
@@ -45,7 +74,7 @@ const OperationsFinancieres: React.FC = () => {
     createTransaction,
     deleteTransaction,
     refetch 
-  } = useTransactions(currentPage);
+  } = useTransactions(currentPage, memoFilters);
   
   // Récupérer le solde global de tous les comptes
   const { balance: globalBalance, isLoading: balanceLoading } = useGlobalBalance();
@@ -63,30 +92,52 @@ const OperationsFinancieres: React.FC = () => {
     date_paiement: format(new Date(), 'yyyy-MM-dd')
   });
 
-  // Filter only depense and revenue transactions
-  const operationsFinancieres = transactions.filter(t => 
+  // Filter only depense and revenue from the hook-returned transactions (server-filtered)
+  const searchedOperations = transactions.filter(t =>
     t.type_transaction === 'depense' || t.type_transaction === 'revenue'
   );
 
-  // Apply type filter
-  const filteredOperations = operationsFinancieres.filter(op => {
-    if (typeFilter === 'all') return true;
-    return op.type_transaction === typeFilter;
-  });
+  const typeFilterTabs = [
+    { id: 'all', label: 'Tous' },
+    { id: 'depense', label: 'Dépenses', icon: <ArrowDownCircle className="h-3.5 w-3.5" /> },
+    { id: 'revenue', label: 'Revenus', icon: <ArrowUpCircle className="h-3.5 w-3.5" /> },
+  ];
 
-  // Apply search filter
-  const searchedOperations = filteredOperations.filter(op => {
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase();
-    return (
-      op.motif?.toLowerCase().includes(search) ||
-      op.montant.toString().includes(search) ||
-      op.id.toLowerCase().includes(search)
-    );
-  });
-
-  // Les statistiques globales viennent maintenant du hook useOperationsFinancieres
-  // qui récupère TOUTES les opérations sans pagination
+  const columns: TableColumn<typeof searchedOperations[0]>[] = [
+    {
+      key: 'date_paiement',
+      title: 'Date',
+      render: (val) => format(new Date(val), 'dd/MM/yyyy', { locale: fr }),
+    },
+    {
+      key: 'type_transaction',
+      title: 'Type',
+      render: (val) => getTypeBadge(val),
+    },
+    {
+      key: 'motif',
+      title: 'Description',
+      render: (val) => val || '-',
+    },
+    {
+      key: 'compte',
+      title: 'Compte',
+      render: (_val, item) =>
+        item.type_transaction === 'depense'
+          ? item.compte_source?.nom || '-'
+          : item.compte_destination?.nom || '-',
+    },
+    {
+      key: 'montant',
+      title: 'Montant',
+      align: 'right',
+      render: (val, item) => (
+        <span className={item.type_transaction === 'depense' ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>
+          {item.type_transaction === 'depense' ? '-' : '+'}{formatCurrency(val, item.devise)}
+        </span>
+      ),
+    },
+  ];
 
   const handleOpenDialog = (type: 'depense' | 'revenue') => {
     setOperationType(type);
@@ -102,19 +153,26 @@ const OperationsFinancieres: React.FC = () => {
     setIsCreateDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette opération ? Cette action est irréversible.')) {
-      return;
-    }
+  const handleDelete = (id: string) => {
+    setOperationToDelete(id);
+    setDeleteDialogOpen(true);
+  };
 
+  const confirmDelete = async () => {
+    if (!operationToDelete) return;
+    setIsDeleting(true);
     try {
-      await deleteTransaction(id);
+      await deleteTransaction(operationToDelete);
       showSuccess('Opération supprimée avec succès');
       refetch();
       refetchStats();
     } catch (error: any) {
       console.error('Erreur lors de la suppression:', error);
       showError(error.message || 'Erreur lors de la suppression de l\'opération');
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setOperationToDelete(null);
     }
   };
 
@@ -172,7 +230,7 @@ const OperationsFinancieres: React.FC = () => {
   const exportToCSV = () => {
     const headers = ['Date', 'Type', 'Description', 'Montant', 'Compte'];
     const rows = searchedOperations.map(op => [
-      format(new Date(op.date_paiement), 'dd/MM/yyyy'),
+      format(new Date(op.date_paiement as string), 'dd/MM/yyyy'),
       op.type_transaction === 'depense' ? 'Dépense' : 'Revenu',
       op.motif || '',
       op.montant.toString(),
@@ -296,168 +354,79 @@ const OperationsFinancieres: React.FC = () => {
           </Card>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-4">
-          <div className="flex flex-col sm:flex-row gap-2 flex-1">
+        {/* Filters row */}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <FilterTabs
+              tabs={typeFilterTabs}
+              activeTab={typeFilter}
+              onTabChange={(id) => { setTypeFilter(id as 'all' | 'depense' | 'revenue'); setCurrentPage(1); }}
+              variant="pills"
+            />
+            <PeriodFilterTabs
+              period={periodFilter}
+              onPeriodChange={(p) => setPeriodFilter(p)}
+              showAllOption
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center justify-between">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Rechercher..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                 className="pl-10"
               />
             </div>
-            <Select value={typeFilter} onValueChange={(value: any) => setTypeFilter(value)}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les types</SelectItem>
-                <SelectItem value="depense">Dépenses</SelectItem>
-                <SelectItem value="revenue">Revenus</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button onClick={exportToCSV} variant="outline" className="w-full sm:w-auto">
-              <Download className="h-4 w-4 mr-2" />
-              Exporter
-            </Button>
-            <Button onClick={() => handleOpenDialog('depense')} variant="outline" className="w-full sm:w-auto text-red-600 border-red-600 hover:bg-red-50">
-              <ArrowDownCircle className="h-4 w-4 mr-2" />
-              Nouvelle Dépense
-            </Button>
-            <Button onClick={() => handleOpenDialog('revenue')} className="w-full sm:w-auto bg-green-600 hover:bg-green-700">
-              <ArrowUpCircle className="h-4 w-4 mr-2" />
-              Nouveau Revenu
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={exportToCSV} variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Exporter
+              </Button>
+              <Button onClick={() => handleOpenDialog('depense')} variant="outline" size="sm" className="text-red-600 border-red-600 hover:bg-red-50">
+                <ArrowDownCircle className="h-4 w-4 mr-2" />
+                Dépense
+              </Button>
+              <Button onClick={() => handleOpenDialog('revenue')} size="sm" className="bg-green-600 hover:bg-green-700">
+                <ArrowUpCircle className="h-4 w-4 mr-2" />
+                Revenu
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Table */}
-        <Card>
-          <CardContent className="p-0">
-            {/* Mobile Card View */}
-            <div className="block lg:hidden">
-              {loading ? (
-                <div className="p-8 text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
-                </div>
-              ) : searchedOperations.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  Aucune opération trouvée
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {searchedOperations.map((operation) => (
-                    <div key={operation.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          {getTypeBadge(operation.type_transaction)}
-                          <span className="text-sm text-gray-500">
-                            {format(new Date(operation.date_paiement), 'dd/MM/yyyy', { locale: fr })}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{operation.motif || '-'}</p>
-                          <p className="text-xs text-gray-500">
-                            {operation.type_transaction === 'depense' 
-                              ? operation.compte_source?.nom 
-                              : operation.compte_destination?.nom}
-                          </p>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className={`text-lg font-bold ${
-                            operation.type_transaction === 'depense' ? 'text-red-600' : 'text-green-600'
-                          }`}>
-                            {operation.type_transaction === 'depense' ? '-' : '+'}
-                            {formatCurrency(operation.montant, operation.devise)}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(operation.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Desktop Table View */}
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-800">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Description</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Compte</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Montant</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
-                      </td>
-                    </tr>
-                  ) : searchedOperations.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                        Aucune opération trouvée
-                      </td>
-                    </tr>
-                  ) : (
-                    searchedOperations.map((operation) => (
-                      <tr key={operation.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <td className="px-4 py-3 text-sm">
-                          {format(new Date(operation.date_paiement), 'dd/MM/yyyy', { locale: fr })}
-                        </td>
-                        <td className="px-4 py-3">
-                          {getTypeBadge(operation.type_transaction)}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {operation.motif || '-'}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {operation.type_transaction === 'depense' 
-                            ? operation.compte_source?.nom 
-                            : operation.compte_destination?.nom}
-                        </td>
-                        <td className={`px-4 py-3 text-right text-sm font-bold ${
-                          operation.type_transaction === 'depense' ? 'text-red-600' : 'text-green-600'
-                        }`}>
-                          {operation.type_transaction === 'depense' ? '-' : '+'}
-                          {formatCurrency(operation.montant, operation.devise)}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(operation.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+        {/* UnifiedDataTable */}
+        <UnifiedDataTable
+          data={searchedOperations}
+          columns={columns}
+          loading={loading}
+          emptyMessage="Aucune opération trouvée"
+          emptySubMessage="Modifiez vos filtres ou créez une nouvelle opération"
+          cardConfig={{
+            titleKey: 'motif',
+            titleRender: (item) => <span className="font-medium">{item.motif || '-'}</span>,
+            subtitleKey: 'type_transaction',
+            subtitleRender: (item) =>
+              item.type_transaction === 'depense'
+                ? item.compte_source?.nom || '-'
+                : item.compte_destination?.nom || '-',
+            badgeRender: (item) => getTypeBadge(item.type_transaction),
+          }}
+          actionsColumn={{
+            header: 'Actions',
+            render: (item) => (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDelete(item.id)}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            ),
+          }}
+        />
 
         {/* Pagination */}
         {pagination && pagination.totalPages > 1 && (
@@ -567,6 +536,18 @@ const OperationsFinancieres: React.FC = () => {
             </form>
           </DialogContent>
         </Dialog>
+
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title="Supprimer l'opération"
+          description="Êtes-vous sûr de vouloir supprimer cette opération ? Cette action est irréversible."
+          confirmText="Supprimer"
+          cancelText="Annuler"
+          onConfirm={confirmDelete}
+          isConfirming={isDeleting}
+          type="delete"
+        />
       </div>
     </Layout>
   );

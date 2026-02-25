@@ -98,7 +98,7 @@ export const useFinanceStatsByPeriod = (period: PeriodFilter = 'month') => {
                 // Fetch transactions for current period
                 const { data: currentData, error: currentError } = await supabase
                     .from('transactions')
-                    .select('montant, motif, type_transaction, devise, benefice')
+                    .select('montant, motif, type_transaction, devise, benefice, categorie')
                     .gte('created_at', currentRange.start.toISOString())
                     .lte('created_at', currentRange.end.toISOString());
 
@@ -107,7 +107,7 @@ export const useFinanceStatsByPeriod = (period: PeriodFilter = 'month') => {
                 // Fetch transactions for previous period
                 const { data: previousData, error: previousError } = await supabase
                     .from('transactions')
-                    .select('montant, motif, type_transaction, devise, benefice')
+                    .select('montant, motif, type_transaction, devise, benefice, categorie')
                     .gte('created_at', previousRange.start.toISOString())
                     .lte('created_at', previousRange.end.toISOString());
 

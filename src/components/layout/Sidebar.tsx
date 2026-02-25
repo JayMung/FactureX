@@ -125,6 +125,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     permission?: string;
   }> = [
       {
+        icon: LayoutDashboard,
+        label: 'Trésorerie',
+        path: '/finances/dashboard',
+      },
+      {
         icon: Receipt,
         label: 'Transactions',
         path: '/transactions',

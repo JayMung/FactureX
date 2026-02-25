@@ -16,8 +16,11 @@ import {
   ArrowDownCircle,
   Calendar,
   Filter,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Activity
 } from 'lucide-react';
+import { SparklineChart } from '@/components/comptes/SparklineChart';
+import { TrendBadge } from '@/components/comptes/TrendBadge';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -246,6 +249,35 @@ const MouvementsComptes: React.FC = () => {
         </div>
       </div>
 
+
+      {/* P14: Sparkline contextuel quand un compte est filtré */}
+      {compteFilter !== 'all' && (() => {
+        const selectedCompte = comptes.find(c => c.id === compteFilter);
+        if (!selectedCompte) return null;
+        return (
+          <Card className="border-dashed border-2 border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/20">
+            <CardContent className="py-4 px-5">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Activity className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                      Flux net — {selectedCompte.nom} — 30 derniers jours
+                    </span>
+                  </div>
+                  <TrendBadge
+                    compteId={selectedCompte.id}
+                    soldeActuel={selectedCompte.solde_actuel}
+                    devise={selectedCompte.devise}
+                    variant="inline"
+                  />
+                </div>
+                <SparklineChart compteId={selectedCompte.id} devise={selectedCompte.devise} />
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Filters - Cleaner Design */}
       <div className="bg-white dark:bg-gray-900 rounded-xl border p-4 shadow-sm">

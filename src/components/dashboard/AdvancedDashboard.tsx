@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import StatCard from './StatCard';
+import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 // @ts-ignore - Temporary workaround for react-router-dom types
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import {
   Users,
@@ -35,10 +36,14 @@ import { showSuccess } from '@/utils/toast';
 interface SidebarProps {
   isMobileOpen?: boolean;
   currentPath?: string;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
-  currentPath
+  currentPath,
+  collapsed = false,
+  onToggleCollapse
 }) => {
   const { user } = useAuth();
   const { getAccessibleModules, checkPermission, isAdmin } = usePermissions();
@@ -190,116 +195,208 @@ const Sidebar: React.FC<SidebarProps> = ({
     showSuccess('Déconnexion réussie');
   };
 
+  // Helper pour obtenir la classe de l'icône selon l'état
+  const getIconClass = (isActive: boolean) => {
+    const baseClass = collapsed ? "h-7 w-7" : "h-5 w-5";
+    return `${baseClass} flex-shrink-0 transition-all duration-300 ${isActive ? 'text-[#21ac74]' : 'text-[#21ac74]/70 group-hover:text-[#21ac74]'}`;
+  };
 
   return (
-    <div className="bg-sidebar text-sidebar-foreground flex flex-col h-full w-[260px] border-r border-sidebar-border">
+    <div className="bg-sidebar text-sidebar-foreground flex flex-col h-full w-full border-r border-sidebar-border overflow-hidden">
       {/* Logo */}
-      <div className="h-16 px-5 flex items-center border-b border-sidebar-border">
-        <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: '#21ac74' }}>
+      <div className={`h-16 ${collapsed ? 'px-3' : 'px-5'} flex items-center border-b border-sidebar-border transition-all duration-300`}>
+        <div className={`flex items-center ${collapsed ? '' : 'space-x-3'} overflow-hidden flex-1`}>
+          <motion.div 
+            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#21ac74]"
+            whileHover={{ scale: 1.05 }}
+            transition={{ duration: 0.2 }}
+          >
             <span className="text-white font-bold text-base">F</span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-base font-semibold tracking-tight text-sidebar-foreground">FactureX</h1>
-            <p className="text-2xs text-muted-foreground">Transferts simplifiés</p>
-          </div>
+          </motion.div>
+          {!collapsed && (
+            <motion.div 
+              className="min-w-0 flex-1"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <h1 className="text-base font-semibold tracking-tight text-sidebar-foreground">FactureX</h1>
+              <p className="text-2xs text-muted-foreground">Transferts simplifiés</p>
+            </motion.div>
+          )}
         </div>
+        {/* Bouton collapse */}
+        {onToggleCollapse && (
+          <motion.button
+            onClick={onToggleCollapse}
+            className="p-1.5 rounded-lg hover:bg-sidebar-accent transition-all duration-200 flex-shrink-0"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            animate={{ rotate: collapsed ? 180 : 0 }}
+            transition={{ duration: 0.3 }}
+            title={collapsed ? "Développer" : "Réduire"}
+          >
+            <ChevronLeft className="h-4 w-4 text-sidebar-foreground/60" />
+          </motion.button>
+        )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 overflow-y-auto">
-        <ul className="space-y-1">
-          {mainNavItems.map((item) => (
-            <li key={item.path}>
-              <Link
-                to={item.path}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
-                  currentPath === item.path
-                    ? "bg-sidebar-accent text-sidebar-primary font-semibold"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                )}
-              >
-                <item.icon className="h-5 w-5 flex-shrink-0" />
-                <span className="truncate">{item.label}</span>
-              </Link>
-            </li>
-          ))}
+      <nav className={`flex-1 ${collapsed ? 'px-2' : 'px-3'} py-4 overflow-y-auto overflow-x-hidden`}>
+        <ul className="space-y-2">
+          {mainNavItems.map((item) => {
+            const isActive = currentPath === item.path;
+            return (
+              <li key={item.path}>
+                <Link
+                  to={item.path}
+                  className={cn(
+                    "group flex items-center rounded-xl text-sm font-medium transition-all duration-300 relative",
+                    collapsed 
+                      ? "justify-center px-2 py-3" 
+                      : "gap-3 px-3 py-2.5",
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-primary font-semibold"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                  title={collapsed ? item.label : undefined}
+                >
+                  <motion.div
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <item.icon className={getIconClass(isActive)} />
+                  </motion.div>
+                  {!collapsed && (
+                    <motion.span 
+                      className="truncate"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.2, delay: 0.1 }}
+                    >
+                      {item.label}
+                    </motion.span>
+                  )}
+                  {/* Tooltip pour mode collapsed */}
+                  {collapsed && (
+                    <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                      {item.label}
+                    </div>
+                  )}
+                </Link>
+              </li>
+            );
+          })}
 
-          {/* Menu Finances avec sous-menus */}
+          {/* Menu Finances */}
           {hasFinancesAccess && (
             <li>
               <button
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+                  "group w-full flex items-center rounded-xl text-sm font-medium transition-all duration-300",
+                  collapsed 
+                    ? "justify-center px-2 py-3" 
+                    : "gap-3 px-3 py-2.5",
                   isOnFinancesPage
                     ? "bg-sidebar-accent text-sidebar-primary"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 )}
-                onClick={() => setFinancesMenuOpen(!financesMenuOpen)}
+                onClick={() => !collapsed && setFinancesMenuOpen(!financesMenuOpen)}
+                disabled={collapsed}
+                title={collapsed ? "Finances" : undefined}
               >
-                <Wallet className="h-5 w-5 flex-shrink-0" />
-                <span className="flex-1 text-left truncate">Finances</span>
-                {financesMenuOpen ? (
-                  <ChevronDown className="h-4 w-4 flex-shrink-0 opacity-60" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 flex-shrink-0 opacity-60" />
+                <motion.div whileHover={{ scale: 1.1 }} transition={{ duration: 0.2 }}>
+                  <Wallet className={getIconClass(isOnFinancesPage)} />
+                </motion.div>
+                {!collapsed && (
+                  <>
+                    <span className="flex-1 text-left truncate">Finances</span>
+                    {financesMenuOpen ? (
+                      <ChevronDown className="h-4 w-4 flex-shrink-0 opacity-60" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 flex-shrink-0 opacity-60" />
+                    )}
+                  </>
                 )}
               </button>
 
-              {/* Sous-menus Finances */}
-              {financesMenuOpen && (
-                <ul className="mt-1 ml-3 pl-3 border-l-2 border-sidebar-border space-y-0.5">
+              {/* Sous-menus Finances - cachés en mode collapsed */}
+              {!collapsed && financesMenuOpen && (
+                <motion.ul 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="mt-1 ml-3 pl-3 border-l-2 border-sidebar-border space-y-0.5"
+                >
                   {financesSubMenuItems.map((subItem) => {
-                    // Vérifier les permissions pour chaque sous-menu
                     if (subItem.permission && !isAdmin) {
                       return null;
                     }
+                    const isSubActive = currentPath === subItem.path;
                     return (
                       <li key={subItem.path}>
                         <Link
                           to={subItem.path}
                           className={cn(
                             "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200",
-                            currentPath === subItem.path
+                            isSubActive
                               ? "bg-sidebar-accent text-sidebar-primary font-medium"
                               : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                           )}
                         >
-                          <subItem.icon className="h-4 w-4 flex-shrink-0" />
+                          <subItem.icon className="h-4 w-4 flex-shrink-0 text-[#21ac74]" />
                           <span className="truncate">{subItem.label}</span>
                         </Link>
                       </li>
                     );
                   })}
-                </ul>
+                </motion.ul>
               )}
             </li>
           )}
 
-          {/* Menu Colis avec sous-menus */}
+          {/* Menu Colis */}
           <li>
             <button
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+                "group w-full flex items-center rounded-xl text-sm font-medium transition-all duration-300",
+                collapsed 
+                  ? "justify-center px-2 py-3" 
+                  : "gap-3 px-3 py-2.5",
                 currentPath?.startsWith('/colis')
                   ? "bg-sidebar-accent text-sidebar-primary"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
               )}
-              onClick={() => setColisMenuOpen(!colisMenuOpen)}
+              onClick={() => !collapsed && setColisMenuOpen(!colisMenuOpen)}
+              disabled={collapsed}
+              title={collapsed ? "Colis" : undefined}
             >
-              <Package className="h-5 w-5 flex-shrink-0" />
-              <span className="flex-1 text-left truncate">Colis</span>
-              {colisMenuOpen ? (
-                <ChevronDown className="h-4 w-4 flex-shrink-0 opacity-60" />
-              ) : (
-                <ChevronRight className="h-4 w-4 flex-shrink-0 opacity-60" />
+              <motion.div whileHover={{ scale: 1.1 }} transition={{ duration: 0.2 }}>
+                <Package className={getIconClass(currentPath?.startsWith('/colis') || false)} />
+              </motion.div>
+              {!collapsed && (
+                <>
+                  <span className="flex-1 text-left truncate">Colis</span>
+                  {colisMenuOpen ? (
+                    <ChevronDown className="h-4 w-4 flex-shrink-0 opacity-60" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 flex-shrink-0 opacity-60" />
+                  )}
+                </>
               )}
             </button>
 
-            {/* Sous-menus Colis */}
-            {colisMenuOpen && (
-              <ul className="mt-1 ml-3 pl-3 border-l-2 border-sidebar-border space-y-0.5">
+            {/* Sous-menus Colis - cachés en mode collapsed */}
+            {!collapsed && colisMenuOpen && (
+              <motion.ul 
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="mt-1 ml-3 pl-3 border-l-2 border-sidebar-border space-y-0.5"
+              >
                 {colisSubMenuItems.filter(subItem => !subItem.disabled).map((subItem) => (
                   <li key={subItem.path}>
                     <Link
@@ -311,55 +408,88 @@ const Sidebar: React.FC<SidebarProps> = ({
                           : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                       )}
                     >
-                      <subItem.icon className="h-4 w-4 flex-shrink-0" />
+                      <subItem.icon className="h-4 w-4 flex-shrink-0 text-[#21ac74]" />
                       <span className="truncate">{subItem.label}</span>
                     </Link>
                   </li>
                 ))}
-              </ul>
+              </motion.ul>
             )}
           </li>
         </ul>
       </nav>
 
-      {/* Paramètres placé en bas, au-dessus des infos utilisateur */}
+      {/* Paramètres */}
       {settingsItem && (
-        <div className="px-3 pb-2">
+        <div className={`${collapsed ? 'px-2' : 'px-3'} pb-2`}>
           <Link
             to={settingsItem.path}
             className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+              "group flex items-center rounded-xl text-sm font-medium transition-all duration-300 relative",
+              collapsed 
+                ? "justify-center px-2 py-3" 
+                : "gap-3 px-3 py-2.5",
               currentPath === settingsItem.path
                 ? "bg-sidebar-accent text-sidebar-primary font-semibold"
                 : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
             )}
+            title={collapsed ? settingsItem.label : undefined}
           >
-            <settingsItem.icon className="h-5 w-5 flex-shrink-0" />
-            <span className="truncate">{settingsItem.label}</span>
+            <motion.div whileHover={{ scale: 1.1 }} transition={{ duration: 0.2 }}>
+              <settingsItem.icon className={getIconClass(currentPath === settingsItem.path)} />
+            </motion.div>
+            {!collapsed && (
+              <motion.span 
+                className="truncate"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2, delay: 0.1 }}
+              >
+                {settingsItem.label}
+              </motion.span>
+            )}
+            {/* Tooltip pour mode collapsed */}
+            {collapsed && (
+              <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                {settingsItem.label}
+              </div>
+            )}
           </Link>
         </div>
       )}
 
       {/* User Info */}
-      <div className="p-4 border-t border-sidebar-border">
-        <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#21ac74' }}>
+      <div className={`p-4 border-t border-sidebar-border ${collapsed ? 'flex justify-center' : ''}`}>
+        <div className={`flex items-center ${collapsed ? '' : 'space-x-3'} overflow-hidden`}>
+          <motion.div 
+            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#21ac74]"
+            whileHover={{ scale: 1.05 }}
+            transition={{ duration: 0.2 }}
+          >
             <span className="text-white font-semibold text-sm">
               {user?.email?.charAt(0).toUpperCase() || 'U'}
             </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-sidebar-foreground truncate">
-              {user?.user_metadata?.first_name ?
-                `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}` :
-                user?.email || 'Utilisateur'
-              }
-            </p>
-            <p className="text-2xs text-muted-foreground truncate">
-              {user?.app_metadata?.role === 'super_admin' ? 'Super Admin' :
-                user?.app_metadata?.role === 'admin' ? 'Admin' : 'Opérateur'}
-            </p>
-          </div>
+          </motion.div>
+          {!collapsed && (
+            <motion.div 
+              className="flex-1 min-w-0"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <p className="text-sm font-medium text-sidebar-foreground truncate">
+                {user?.user_metadata?.first_name ?
+                  `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}` :
+                  user?.email || 'Utilisateur'
+                }
+              </p>
+              <p className="text-2xs text-muted-foreground truncate">
+                {user?.app_metadata?.role === 'super_admin' ? 'Super Admin' :
+                  user?.app_metadata?.role === 'admin' ? 'Admin' : 'Opérateur'}
+              </p>
+            </motion.div>
+          )}
         </div>
       </div>
     </div>

@@ -1,9 +1,17 @@
 # FactureX
 
-**Version** : 1.0.3  
+**Version** : 2.0.0  
 **Status** : ✅ Production Ready
 
-Application de gestion de factures, clients, transactions et colis pour entreprises.
+Application de gestion de factures, clients, transactions, colis et finances pour entreprises.
+
+## 🎉 Nouveautés v2.0
+
+- **Cotheme Design System** : Interface modernisée avec nouveaux composants UI
+- **Sécurité renforcée** : Architecture des rôles unifiée, permissions granulaires
+- **Finances corrigées** : Swaps cross-currency, solde global, taux synchronisés
+- **Colis audités** : Génération automatique montant, sécurité DELETE admin-only
+- **Dashboard amélioré** : Analytics et visualisations modernisées
 
 ---
 

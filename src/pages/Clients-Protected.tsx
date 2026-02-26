@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { Button } from '@/components/ui/button';
+import { KpiCard } from '@/components/ui/kpi-card';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,12 +19,19 @@ import {
   Users,
   DollarSign,
   MapPin,
-  AlertTriangle,
-  Clock3,
   CheckSquare,
   Phone,
-  ArrowRightLeft
+  ArrowRightLeft,
+  MoreHorizontal
 } from 'lucide-react';
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 import StatCard from '../components/dashboard/StatCard';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,7 +45,6 @@ import PermissionGuard from '../components/auth/PermissionGuard';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import { usePermissions } from '../hooks/usePermissions';
 import { UnifiedDataTable, type TableColumn } from '@/components/ui/unified-data-table';
-import { FilterTabs, type FilterTab } from '@/components/ui/filter-tabs';
 import { ColumnSelector, type ColumnConfig } from '@/components/ui/column-selector';
 import { ExportDropdown } from '@/components/ui/export-dropdown';
 import { useClients } from '../hooks/useClients';
@@ -71,8 +78,6 @@ const ClientsProtected: React.FC = () => {
   });
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [cityFilter, setCityFilter] = useState('all');
-  const [businessFilter, setBusinessFilter] = useState<'all' | 'overdue' | 'inactive'>('all');
   const [currentPage, setCurrentPage] = useState(1);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -133,8 +138,7 @@ const ClientsProtected: React.FC = () => {
     deleteClient,
     refetch
   } = useClients(currentPage, {
-    search: searchTerm || undefined,
-    ville: cityFilter === 'all' ? undefined : cityFilter
+    search: searchTerm || undefined
   });
 
   const safeClients = useMemo<Client[]>(() => (clients as Client[] | undefined) ?? [], [clients]);
@@ -218,14 +222,8 @@ const ClientsProtected: React.FC = () => {
   }, [safeClients]);
 
   const displayedClients = useMemo(() => {
-    if (businessFilter === 'overdue') {
-      return sortedData.filter((c) => intelligenceByClient[c.id]?.isOverdue);
-    }
-    if (businessFilter === 'inactive') {
-      return sortedData.filter((c) => intelligenceByClient[c.id]?.isInactive90d);
-    }
     return sortedData;
-  }, [businessFilter, intelligenceByClient, sortedData]);
+  }, [sortedData]);
 
   const handleDeleteClient = (client: Client) => {
     setClientToDelete(client);
@@ -310,10 +308,8 @@ const ClientsProtected: React.FC = () => {
   };
 
   const generateReadableId = (clientId: string, index: number) => {
-    // Utiliser les derniers caractères de l'ID UUID pour garantir l'unicité
-    const shortId = clientId.slice(-6).toUpperCase();
-    const paddedNumber = (index + 1).toString().padStart(3, '0');
-    return `CL${paddedNumber}-${shortId}`;
+    // Retourner un simple code à 4 caractères
+    return String(index + 1).padStart(4, '0');
   };
 
   const exportClients = async () => {
@@ -347,7 +343,7 @@ const ClientsProtected: React.FC = () => {
             p_page: 1,
             p_page_size: 100000,
             p_search: searchTerm || null,
-            p_ville: cityFilter === 'all' ? null : cityFilter
+            p_ville: null
           });
 
         if (rpcError) throw rpcError;
@@ -402,65 +398,19 @@ const ClientsProtected: React.FC = () => {
     <ProtectedRouteEnhanced requiredModule="clients" requiredPermission="read">
       <Layout>
         <div className="space-y-6 animate-in fade-in duration-300">
-          {/* Stats Cards - Colorful Design */}
+          {/* Stats Cards - FreshCart style */}
           <div className="grid-responsive-4">
-            {/* Total Clients — vert */}
-            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-400 to-emerald-600 p-5 text-white shadow-md">
-              <div className="absolute top-3 right-3 bg-white/20 rounded-full px-2 py-0.5 text-xs font-semibold">Total</div>
-              <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
-              <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
-              <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
-                <Users className="h-5 w-5 text-white" />
-              </div>
-              <p className="text-3xl font-bold leading-none">{globalTotals.totalCount || 0}</p>
-              <p className="mt-1 text-sm text-white/80">Clients</p>
-            </div>
+            <KpiCard title="Clients" value={globalTotals.totalCount || 0} icon={Users} iconColor="#21ac74" iconBg="#dcfce7" />
 
-            {/* Total Encaissé / Pays — bleu */}
             {isAdmin ? (
-              <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 p-5 text-white shadow-md">
-                <div className="absolute top-3 right-3 bg-white/20 rounded-full px-2 py-0.5 text-xs font-semibold">USD</div>
-                <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
-                <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
-                <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
-                  <DollarSign className="h-5 w-5 text-white" />
-                </div>
-                <p className="text-3xl font-bold leading-none truncate">{formatCurrency(globalTotals.totalPaye)}</p>
-                <p className="mt-1 text-sm text-white/80">Total Payé</p>
-              </div>
+              <KpiCard title="Total Payé" value={formatCurrency(globalTotals.totalPaye)} icon={DollarSign} iconColor="#3b82f6" iconBg="#dbeafe" />
             ) : (
-              <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 p-5 text-white shadow-md">
-                <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
-                <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
-                <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
-                  <MapPin className="h-5 w-5 text-white" />
-                </div>
-                <p className="text-3xl font-bold leading-none">{new Set(sortedData.map((c: Client) => c.pays)).size}</p>
-                <p className="mt-1 text-sm text-white/80">Pays</p>
-              </div>
+              <KpiCard title="Pays" value={new Set(sortedData.map((c: Client) => c.pays)).size} icon={MapPin} iconColor="#3b82f6" iconBg="#dbeafe" />
             )}
 
-            {/* Villes — violet */}
-            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-purple-400 to-purple-600 p-5 text-white shadow-md">
-              <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
-              <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
-              <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
-                <MapPin className="h-5 w-5 text-white" />
-              </div>
-              <p className="text-3xl font-bold leading-none">{new Set(sortedData.map((c: Client) => c.ville)).size}</p>
-              <p className="mt-1 text-sm text-white/80">Villes</p>
-            </div>
+            <KpiCard title="Villes" value={new Set(sortedData.map((c: Client) => c.ville)).size} icon={MapPin} iconColor="#8b5cf6" iconBg="#ede9fe" />
 
-            {/* Sélectionnés — orange */}
-            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-orange-400 to-orange-600 p-5 text-white shadow-md">
-              <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
-              <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
-              <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
-                <CheckSquare className="h-5 w-5 text-white" />
-              </div>
-              <p className="text-3xl font-bold leading-none">{selectedClients.length}</p>
-              <p className="mt-1 text-sm text-white/80">Sélectionnés</p>
-            </div>
+            <KpiCard title="Sélectionnés" value={selectedClients.length} icon={CheckSquare} iconColor="#f59e0b" iconBg="#fef3c7" />
           </div>
 
           {/* Bulk Actions */}
@@ -485,7 +435,7 @@ const ClientsProtected: React.FC = () => {
 
           {/* Toolbar and Filters */}
           <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
               <div className="relative flex-1 min-w-[280px] max-w-md">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
@@ -500,32 +450,6 @@ const ClientsProtected: React.FC = () => {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <FilterTabs
-                  tabs={[
-                    { id: 'all', label: 'Tous', count: globalTotals.totalCount || 0 },
-                    { id: 'LUBUMBASHI', label: 'Lubumbashi', count: sortedData.filter((c: Client) => c.ville?.toUpperCase() === 'LUBUMBASHI').length },
-                    { id: 'KINSHASA', label: 'Kinshasa', count: sortedData.filter((c: Client) => c.ville?.toUpperCase() === 'KINSHASA').length },
-                    { id: 'LIKASI', label: 'Likasi', count: sortedData.filter((c: Client) => c.ville?.toUpperCase() === 'LIKASI').length },
-                  ].filter(tab => tab.count > 0 || tab.id === 'all')}
-                  activeTab={cityFilter}
-                  onTabChange={(tab) => {
-                    setCityFilter(tab);
-                    setCurrentPage(1);
-                  }}
-                  variant="pills"
-                />
-
-                <FilterTabs
-                  tabs={[
-                    { id: 'all', label: 'Tous', count: sortedData.length },
-                    { id: 'overdue', label: 'En retard', count: sortedData.filter((c) => intelligenceByClient[c.id]?.isOverdue).length, icon: <AlertTriangle className="h-4 w-4" /> },
-                    { id: 'inactive', label: 'Inactifs 90j', count: sortedData.filter((c) => intelligenceByClient[c.id]?.isInactive90d).length, icon: <Clock3 className="h-4 w-4" /> },
-                  ]}
-                  activeTab={businessFilter}
-                  onTabChange={(tab) => setBusinessFilter(tab as 'all' | 'overdue' | 'inactive')}
-                  variant="pills"
-                />
-
                 <ColumnSelector
                   columns={columnsConfig}
                   onColumnsChange={setColumnsConfig}
@@ -621,38 +545,53 @@ const ClientsProtected: React.FC = () => {
                   isPartiallySelected: isPartiallySelected
                 }}
                 actionsColumn={{
+                  header: 'Actions',
                   render: (client: Client, index: number) => (
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleViewClientHistory(client)}
-                        title="Voir l'historique"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                    <div className="flex items-center justify-end">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 p-0"
+                          >
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem
+                            onClick={() => handleViewClientHistory(client)}
+                            className="cursor-pointer"
+                          >
+                            <Eye className="mr-2 h-4 w-4 text-blue-600" />
+                            Voir l'historique
+                          </DropdownMenuItem>
 
-                      <PermissionGuard module="clients" permission="update">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditClient(client)}
-                          className="hover:bg-green-50"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </PermissionGuard>
+                          <PermissionGuard module="clients" permission="update">
+                            <DropdownMenuItem
+                              onClick={() => handleEditClient(client)}
+                              className="cursor-pointer"
+                            >
+                              <Edit className="mr-2 h-4 w-4 text-green-600" />
+                              Modifier
+                            </DropdownMenuItem>
+                          </PermissionGuard>
 
-                      <PermissionGuard module="clients" permission="delete">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-600 hover:bg-red-50"
-                          onClick={() => handleDeleteClient(client)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </PermissionGuard>
+                          <PermissionGuard module="clients" permission="delete">
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteClient(client)}
+                                className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Supprimer
+                              </DropdownMenuItem>
+                            </>
+                          </PermissionGuard>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   )
                 }}

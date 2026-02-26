@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Plus, Search, Filter, Package, Calendar, DollarSign, Eye, Edit, Trash2, MoreVertical, ChevronDown, CheckCircle, Clock, X, Truck, MapPin, AlertCircle, Plane, PackageCheck, CreditCard, QrCode, ShoppingCart, User, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { KpiCard } from '@/components/ui/kpi-card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +17,8 @@ import { useDeleteColis } from '@/hooks/useDeleteColis';
 import { useUpdateColisStatut } from '@/hooks/useUpdateColisStatut';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/utils';
-import { showSuccess, showError } from '@/lib/notifications';
+import { showSuccess, showError } from '@/utils/toast';
+import { cn } from '@/lib/utils';
 import { PermissionGuard } from '@/components/auth/PermissionGuard';
 import type { Colis } from '@/types';
 import SortableHeader from '@/components/ui/sortable-header';
@@ -129,6 +131,9 @@ const ColisAeriens: React.FC = () => {
       toast.error('Erreur lors de la mise à jour de la date d\'arrivée');
     }
   };
+  const [selectedColisIds, setSelectedColisIds] = useState<string[]>([]);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const { deleteColis, deleteMultipleColis } = useDeleteColis();
   const [selectedColis, setSelectedColis] = useState<Colis | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -285,16 +290,54 @@ const ColisAeriens: React.FC = () => {
     );
   };
 
-  // Générer un ID de colis lisible
-  const generateColisId = (colis: Colis) => {
-    const date = new Date(colis.created_at || '');
-    const year = date.getFullYear().toString().slice(-2);
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const shortId = colis.id.slice(0, 6).toUpperCase();
-    return `CA-${year}${month}-${shortId}`;
+  // Générer un ID de colis lisible (4 caractères)
+  const generateColisId = (colis: Colis, index?: number) => {
+    // Retourner un simple code à 4 caractères basé sur l'index ou la date
+    if (index !== undefined) {
+      return String(index + 1).padStart(4, '0');
+    }
+    // Fallback: utiliser les 4 derniers caractères de l'UUID
+    return colis.id.slice(-4).toUpperCase();
   };
 
-  // Ouvrir le modal de détails
+  // Gérer la sélection multiple
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedColisIds(paginatedColis.map(c => c.id));
+    } else {
+      setSelectedColisIds([]);
+    }
+  };
+
+  const handleSelectItem = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedColisIds(prev => [...prev, id]);
+    } else {
+      setSelectedColisIds(prev => prev.filter(itemId => itemId !== id));
+    }
+  };
+
+  const isAllSelected = paginatedColis.length > 0 && selectedColisIds.length === paginatedColis.length;
+  const isPartiallySelected = selectedColisIds.length > 0 && selectedColisIds.length < paginatedColis.length;
+
+  // Ouvrir le dialogue de suppression en masse
+  const handleBulkDelete = () => {
+    if (selectedColisIds.length === 0) {
+      showError('Veuillez sélectionner au moins un colis');
+      return;
+    }
+    setBulkDeleteDialogOpen(true);
+  };
+
+  // Confirmer la suppression en masse
+  const handleConfirmBulkDelete = async () => {
+    const result = await deleteMultipleColis(selectedColisIds);
+    if (result.failCount === 0) {
+      setSelectedColisIds([]);
+      setBulkDeleteDialogOpen(false);
+      loadColis();
+    }
+  };
   const handleViewDetails = (colis: Colis, event?: React.MouseEvent) => {
     event?.preventDefault();
     event?.stopPropagation();
@@ -348,34 +391,16 @@ const ColisAeriens: React.FC = () => {
   const handleConfirmDelete = async () => {
     if (!colisToDelete) return;
 
-    try {
-      // Supprimer le colis
-      const { error, count } = await supabase
-        .from('colis')
-        .delete({ count: 'exact' })
-        .eq('id', colisToDelete.id);
-
-      if (error) {
-        console.error('Error deleting colis:', error);
-        throw error;
-      }
-
-      if (count === 0) {
-        throw new Error('Colis non trouvé ou permissions insuffisantes');
-      }
-
+    const success = await deleteColis(colisToDelete.id);
+    if (success) {
       // Supprimer immédiatement de l'état local pour une UI réactive
       setColis(prevColis => prevColis.filter(c => c.id !== colisToDelete.id));
-
-      showSuccess('Colis supprimé avec succès');
+      // Retirer des sélectionnés si présent
+      setSelectedColisIds(prev => prev.filter(id => id !== colisToDelete.id));
       setDeleteDialogOpen(false);
       setColisToDelete(null);
-
       // Recharger pour synchroniser avec la base de données
       setTimeout(() => loadColis(), 500);
-    } catch (error) {
-      console.error('Error deleting colis:', error);
-      showError('Erreur lors de la suppression du colis');
     }
   };
 
@@ -395,7 +420,7 @@ const ColisAeriens: React.FC = () => {
             title="Voir les détails du colis"
             type="button"
           >
-            {generateColisId(c)}
+            {generateColisId(c, startIndex + index)}
           </button>
         </div>
       )
@@ -598,7 +623,7 @@ const ColisAeriens: React.FC = () => {
     {
       key: 'actions',
       title: '',
-      align: 'right',
+      align: 'right' as const,
       render: (value: any, c: any) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -687,79 +712,12 @@ const ColisAeriens: React.FC = () => {
               />
             </div>
 
-            {/* En-tête avec statistiques - Modern Gradient Design */}
+            {/* Stats Cards - FreshCart style */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-              {/* Total Colis */}
-              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 md:p-5 shadow-lg">
-                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-                <div className="relative">
-                  <div className="flex items-center justify-between">
-                    <div className="rounded-lg bg-white/20 p-2">
-                      <Package className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                    </div>
-                    <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] md:text-xs font-medium text-white">
-                      Total
-                    </span>
-                  </div>
-                  <div className="mt-3">
-                    <p className="text-lg md:text-2xl font-bold text-white">{stats.total}</p>
-                    <p className="mt-0.5 text-xs md:text-sm text-blue-100">Colis aériens</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* En Transit */}
-              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-500 to-amber-500 p-4 md:p-5 shadow-lg">
-                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-                <div className="relative">
-                  <div className="flex items-center justify-between">
-                    <div className="rounded-lg bg-white/20 p-2">
-                      <Plane className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                    </div>
-                    <span className="text-[10px] md:text-xs font-medium text-yellow-100">En vol</span>
-                  </div>
-                  <div className="mt-3">
-                    <p className="text-lg md:text-2xl font-bold text-white">{stats.enTransit}</p>
-                    <p className="mt-0.5 text-xs md:text-sm text-yellow-100">En transit</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Arrivés */}
-              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 shadow-lg">
-                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-                <div className="relative">
-                  <div className="flex items-center justify-between">
-                    <div className="rounded-lg bg-white/20 p-2">
-                      <Package className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                    </div>
-                    <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] md:text-xs font-medium text-white">
-                      ✓
-                    </span>
-                  </div>
-                  <div className="mt-3">
-                    <p className="text-lg md:text-2xl font-bold text-white">{stats.arrives}</p>
-                    <p className="mt-0.5 text-xs md:text-sm text-emerald-100">Arrivés</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Total Poids */}
-              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-red-500 to-red-600 p-4 md:p-5 shadow-lg">
-                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-                <div className="relative">
-                  <div className="flex items-center justify-between">
-                    <div className="rounded-lg bg-white/20 p-2">
-                      <Package className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                    </div>
-                    <span className="text-[10px] md:text-xs font-medium text-red-100">kg</span>
-                  </div>
-                  <div className="mt-3">
-                    <p className="text-lg md:text-2xl font-bold text-white">{stats.poidsTotal ? `${stats.poidsTotal.toFixed(1)}` : '0'}</p>
-                    <p className="mt-0.5 text-xs md:text-sm text-red-100">Poids total (kg)</p>
-                  </div>
-                </div>
-              </div>
+              <KpiCard title="Colis aériens" value={stats.total} icon={Package} iconColor="#3b82f6" iconBg="#dbeafe" />
+              <KpiCard title="En transit" value={stats.enTransit} icon={Plane} iconColor="#f59e0b" iconBg="#fef3c7" />
+              <KpiCard title="Arrivés" value={stats.arrives} icon={Package} iconColor="#21ac74" iconBg="#dcfce7" />
+              <KpiCard title="Poids total (kg)" value={stats.poidsTotal ? `${stats.poidsTotal.toFixed(1)}` : '0'} icon={Package} iconColor="#ef4444" iconBg="#fee2e2" />
             </div>
 
             {/* Tableau des colis */}
@@ -771,6 +729,16 @@ const ColisAeriens: React.FC = () => {
                     Liste des Colis Aériens ({filteredColis.length})
                   </CardTitle>
                   <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    {selectedColisIds.length > 0 && (
+                      <Button
+                        variant="destructive"
+                        onClick={handleBulkDelete}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Supprimer ({selectedColisIds.length})
+                      </Button>
+                    )}
                     <ColumnSelector
                       columns={selectorColumns}
                       onColumnsChange={onColumnsChange}
@@ -869,6 +837,14 @@ const ColisAeriens: React.FC = () => {
                   sortKey={sortConfig?.key}
                   sortDirection={sortConfig?.direction}
                   columns={visibleColumns}
+                  bulkSelect={{
+                    selected: selectedColisIds,
+                    onSelectAll: handleSelectAll,
+                    onSelectItem: handleSelectItem,
+                    getId: (item) => item.id,
+                    isAllSelected,
+                    isPartiallySelected
+                  }}
                   cardConfig={{
                     titleKey: 'tracking_chine',
                     titleRender: (item) => (
@@ -1145,6 +1121,40 @@ const ColisAeriens: React.FC = () => {
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Supprimer
+                  </button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Dialogue de confirmation de suppression en masse */}
+          <Dialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-red-600">Confirmer la suppression en masse</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600">
+                  Êtes-vous sûr de vouloir supprimer <strong>{selectedColisIds.length} colis</strong> ?
+                </p>
+                <p className="text-sm text-red-600 font-medium">
+                  ⚠️ Cette action est irréversible. Les paiements associés seront également supprimés.
+                </p>
+                <div className="flex justify-end space-x-2 pt-4">
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                    onClick={() => setBulkDeleteDialogOpen(false)}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2"
+                    onClick={handleConfirmBulkDelete}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer {selectedColisIds.length} colis
                   </button>
                 </div>
               </div>

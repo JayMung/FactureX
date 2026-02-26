@@ -400,62 +400,90 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
             <CardContent>
               <div className="space-y-4">
                 {items.map((item) => (
-                  <div key={item.tempId} className="grid grid-cols-12 gap-4 items-center">
-                    <div className="col-span-1">
-                      <Label className="text-xs">N°</Label>
-                      <div className="font-medium text-center">{item.numero_ligne}</div>
-                    </div>
+                  <div key={item.tempId} className="border rounded-lg p-4 space-y-3">
+                    {/* Ligne 1: N°, Description, Quantité, Prix, Montant, Delete */}
+                    <div className="grid grid-cols-12 gap-4 items-start">
+                      <div className="col-span-1">
+                        <Label className="text-xs">N°</Label>
+                        <div className="font-medium text-center">{item.numero_ligne}</div>
+                      </div>
 
-                    <div className="col-span-5">
-                      <Label className="text-xs">Description *</Label>
-                      <Textarea
-                        id={`description-${item.tempId}`}
-                        value={item.description}
-                        onChange={(e) => updateItem(item.tempId, 'description', e.target.value)}
-                        placeholder="Description du produit"
-                        rows={3}
-                        className="resize-none"
-                      />
-                    </div>
+                      <div className="col-span-5">
+                        <Label className="text-xs">Description *</Label>
+                        <Textarea
+                          id={`description-${item.tempId}`}
+                          value={item.description}
+                          onChange={(e) => updateItem(item.tempId, 'description', e.target.value)}
+                          placeholder="Description du produit"
+                          rows={2}
+                          className="resize-none"
+                        />
+                      </div>
 
-                    <div className="col-span-2">
-                      <Label className="text-xs">Quantité *</Label>
-                      <Input
-                        type="number"
-                        value={item.quantite}
-                        onChange={(e) => updateItem(item.tempId, 'quantite', parseInt(e.target.value) || 0)}
-                        min="1"
-                      />
-                    </div>
+                      <div className="col-span-2">
+                        <Label className="text-xs">Quantité *</Label>
+                        <Input
+                          type="number"
+                          value={item.quantite}
+                          onChange={(e) => updateItem(item.tempId, 'quantite', parseInt(e.target.value) || 0)}
+                          min="1"
+                        />
+                      </div>
 
-                    <div className="col-span-2">
-                      <Label className="text-xs">Prix unitaire *</Label>
-                      <Input
-                        type="number"
-                        value={item.prix_unitaire}
-                        onChange={(e) => updateItem(item.tempId, 'prix_unitaire', parseFloat(e.target.value) || 0)}
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
+                      <div className="col-span-2">
+                        <Label className="text-xs">Prix unitaire *</Label>
+                        <Input
+                          type="number"
+                          value={item.prix_unitaire}
+                          onChange={(e) => updateItem(item.tempId, 'prix_unitaire', parseFloat(e.target.value) || 0)}
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
 
-                    <div className="col-span-1">
-                      <Label className="text-xs">Montant</Label>
-                      <div className="font-medium text-green-600">
-                        {formatCurrency(item.montant_total, formData.devise)}
+                      <div className="col-span-1">
+                        <Label className="text-xs">Montant</Label>
+                        <div className="font-medium text-green-600 text-sm">
+                          {formatCurrency(item.montant_total, formData.devise)}
+                        </div>
+                      </div>
+
+                      <div className="col-span-1">
+                        <Label className="text-xs">&nbsp;</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeItem(item.tempId)}
+                          disabled={items.length === 1}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
 
-                    <div className="col-span-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeItem(item.tempId)}
-                        disabled={items.length === 1}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    {/* Ligne 2: URL Image et URL Produit */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs">URL Image du produit</Label>
+                        <Input
+                          type="url"
+                          value={item.image_url}
+                          onChange={(e) => updateItem(item.tempId, 'image_url', e.target.value)}
+                          placeholder="https://..."
+                          className="text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Lien du produit</Label>
+                        <Input
+                          type="url"
+                          value={item.product_url}
+                          onChange={(e) => updateItem(item.tempId, 'product_url', e.target.value)}
+                          placeholder="https://..."
+                          className="text-sm"
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}

@@ -137,7 +137,7 @@ const ResetPassword = () => {
             <div className="flex flex-col space-y-2">
               <Button 
                 onClick={() => navigate('/login')}
-                className="w-full bg-green-500 hover:bg-green-600"
+                className="w-full"
               >
                 Retour à la connexion
               </Button>
@@ -154,27 +154,27 @@ const ResetPassword = () => {
   // Succès
   if (isSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="h-8 w-8 text-green-500" />
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: '#dcfce7' }}>
+              <CheckCircle className="h-8 w-8" style={{ color: '#21ac74' }} />
             </div>
-            <CardTitle className="text-green-600">Mot de passe mis à jour !</CardTitle>
+            <CardTitle className="text-primary">Mot de passe mis à jour !</CardTitle>
             <CardDescription>
               Votre mot de passe a été modifié avec succès.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Alert className="bg-green-50 border-green-200">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              <AlertDescription className="text-green-700">
+            <Alert style={{ background: '#f0fdf4', borderColor: '#21ac74' }}>
+              <CheckCircle className="h-4 w-4" style={{ color: '#21ac74' }} />
+              <AlertDescription className="text-foreground">
                 Vous allez être redirigé vers la page de connexion...
               </AlertDescription>
             </Alert>
             <Button 
               onClick={() => navigate('/login')}
-              className="w-full bg-green-500 hover:bg-green-600"
+              className="w-full"
             >
               Se connecter maintenant
             </Button>
@@ -186,10 +186,10 @@ const ResetPassword = () => {
 
   // Formulaire de réinitialisation
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: '#21ac74' }}>
             <Lock className="h-8 w-8 text-white" />
           </div>
           <CardTitle>Nouveau mot de passe</CardTitle>
@@ -265,7 +265,7 @@ const ResetPassword = () => {
 
             <Button 
               type="submit" 
-              className="w-full bg-green-500 hover:bg-green-600"
+              className="w-full"
               disabled={isLoading}
             >
               {isLoading ? (

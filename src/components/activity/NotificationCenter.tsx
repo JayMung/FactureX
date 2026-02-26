@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Bell,
   X,
@@ -41,28 +41,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className }) =>
   const { activities, unreadCount, markAsRead } = useRealTimeActivity(10);
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
-  // Convertir les activités en notifications
-  useEffect(() => {
-    const newNotifications = activities.slice(0, 10).map(activity => ({
-      id: activity.id,
-      title: activity.action,
-      message: `${(activity.user as any)?.first_name} ${(activity.user as any)?.last_name} - ${activity.cible || 'Système'}`,
-      type: getActivityType(activity.action),
-      timestamp: new Date(activity.created_at),
-      read: false
-    }));
-
-    setNotifications(prev => {
-      // Garder les notifications existantes et ajouter les nouvelles
-      const existingIds = new Set(prev.map(n => n.id));
-      const newItems = newNotifications.filter(n => !existingIds.has(n.id));
-
-      return [...newItems, ...prev].slice(0, 20); // Garder max 20 notifications
-    });
-  }, [activities]);
-
+  // Define helper function BEFORE useMemo
   const getActivityType = (action: string): 'info' | 'success' | 'warning' | 'error' => {
     if (action.includes('Création') || action.includes('créé')) return 'success';
     if (action.includes('Modification') || action.includes('modifié')) return 'info';
@@ -70,6 +50,21 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className }) =>
     if (action.includes('Auth') && action.includes('échec')) return 'error';
     return 'info';
   };
+
+  // Convert activities to notifications directly (no useEffect needed)
+  const notifications: NotificationItem[] = useMemo(() => {
+    return activities.slice(0, 10).map(activity => ({
+      id: activity.id,
+      title: activity.action,
+      message: `${(activity.user as any)?.first_name} ${(activity.user as any)?.last_name} - ${activity.cible || 'Système'}`,
+      type: getActivityType(activity.action),
+      timestamp: new Date(activity.created_at),
+      read: false
+    }));
+  }, [activities]);
+
+  // Local read state management
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -105,26 +100,26 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className }) =>
   };
 
   const handleMarkAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
-    );
-
-    // Marquer comme lu dans le système
+    setReadIds(prev => new Set([...prev, id]));
     markAsRead();
   };
 
   const handleMarkAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    // Marquer toutes les activités comme lues
+    setReadIds(new Set(notifications.map(n => n.id)));
     markAsRead();
   };
 
   const handleClearAll = () => {
-    setNotifications([]);
+    setReadIds(new Set());
     markAsRead();
   };
 
-  const unreadNotifications = notifications.filter(n => !n.read);
+  // Combine notifications with read state
+  const notificationsWithReadState = useMemo(() => {
+    return notifications.map(n => ({ ...n, read: readIds.has(n.id) }));
+  }, [notifications, readIds]);
+
+  const unreadNotifications = notificationsWithReadState.filter(n => !n.read);
 
   return (
     <div className={cn("relative", className)}>
@@ -175,7 +170,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className }) =>
           {/* Actions bar */}
           <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50">
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              {notifications.length} notification{notifications.length > 1 ? 's' : ''}
+              {notificationsWithReadState.length} notification{notificationsWithReadState.length > 1 ? 's' : ''}
             </span>
             <div className="flex items-center gap-1">
               {unreadNotifications.length > 0 && (
@@ -203,7 +198,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className }) =>
 
           {/* Notifications list */}
           <div className="max-h-[60vh] sm:max-h-80 overflow-y-auto">
-            {notifications.length === 0 ? (
+            {notificationsWithReadState.length === 0 ? (
               <div className="text-center py-10 px-4">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
                   <CheckCircle className="h-8 w-8 text-emerald-500" />
@@ -215,7 +210,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className }) =>
               </div>
             ) : (
               <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                {notifications.map((notification) => (
+                {notificationsWithReadState.map((notification) => (
                   <div
                     key={notification.id}
                     className={cn(

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Eye, EyeOff, ArrowLeft, CheckCircle2, Shield, BarChart3, FileText, Zap } from 'lucide-react';
 import { serverRateLimiter, getClientIdentifier, formatResetTime } from '@/lib/rate-limit-server';
+import { showSuccess } from '@/utils/toast';
 import {
   logLoginSuccess,
   logLoginFailed,
@@ -71,6 +72,8 @@ const Login = () => {
         await sessionManager.regenerateSession();
 
         await logLoginSuccess(email);
+        const firstName = data.user.user_metadata?.first_name;
+        showSuccess(firstName ? `Bienvenue, ${firstName} !` : 'Connexion réussie. Bienvenue !');
         navigate('/');
       } else {
         throw new Error('Erreur lors de la création de la session');
@@ -134,11 +137,11 @@ const Login = () => {
       <div className="hidden lg:flex lg:w-[52%] relative flex-col justify-between p-10 xl:p-14 overflow-hidden">
 
         {/* Animated gradient mesh background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-green-600 via-emerald-500 to-teal-600 dark:from-green-800 dark:via-emerald-700 dark:to-teal-800" />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, #21ac74 0%, #178a5c 60%, #0f6b45 100%)' }} />
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-white/10 blur-[100px] animate-pulse-soft" />
-          <div className="absolute bottom-[-15%] left-[-5%] w-[500px] h-[500px] rounded-full bg-emerald-300/15 blur-[80px] animate-pulse-soft [animation-delay:1s]" />
-          <div className="absolute top-[40%] left-[30%] w-[300px] h-[300px] rounded-full bg-teal-200/10 blur-[60px] animate-pulse-soft [animation-delay:2s]" />
+          <div className="absolute bottom-[-15%] left-[-5%] w-[500px] h-[500px] rounded-full bg-white/8 blur-[80px] animate-pulse-soft [animation-delay:1s]" />
+          <div className="absolute top-[40%] left-[30%] w-[300px] h-[300px] rounded-full bg-white/5 blur-[60px] animate-pulse-soft [animation-delay:2s]" />
         </div>
 
         {/* Subtle grid pattern overlay */}
@@ -153,7 +156,7 @@ const Login = () => {
         {/* Logo */}
         <div className="relative z-10 flex items-center gap-3">
           <div className="w-11 h-11 bg-white/95 rounded-xl flex items-center justify-center shadow-lg backdrop-blur-sm">
-            <span className="text-green-600 text-xl font-extrabold tracking-tight">F</span>
+            <span className="text-xl font-extrabold tracking-tight" style={{ color: '#21ac74' }}>F</span>
           </div>
           <div>
             <span className="text-white text-2xl font-bold tracking-tight">FactureX</span>
@@ -339,13 +342,13 @@ const Login = () => {
               )}
 
               {resetEmailSent ? (
-                <div className="rounded-xl border border-green-200 dark:border-green-500/20 bg-green-50 dark:bg-green-500/10 p-6 text-center space-y-4 animate-scale-in">
-                  <div className="w-12 h-12 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
-                    <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+                <div className="rounded-xl border p-6 text-center space-y-4 animate-scale-in" style={{ borderColor: '#21ac74', background: '#f0fdf4' }}>
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto" style={{ background: '#dcfce7' }}>
+                    <CheckCircle2 className="w-6 h-6" style={{ color: '#21ac74' }} />
                   </div>
                   <div>
-                    <h3 className="text-base font-semibold text-green-900 dark:text-green-100">Email envoyé !</h3>
-                    <p className="text-sm text-green-700 dark:text-green-300 mt-1 leading-relaxed">
+                    <h3 className="text-base font-semibold text-foreground">Email envoyé !</h3>
+                    <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
                       Si un compte existe avec l'adresse <span className="font-medium">{email}</span>, vous recevrez les instructions.
                     </p>
                   </div>

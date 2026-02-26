@@ -279,8 +279,8 @@ const FacturesView: React.FC = () => {
             </Button>
             
             <div className="flex flex-col items-center gap-2 flex-1">
-              <div className="p-2 bg-green-50 rounded-lg">
-                <FileText className="h-6 w-6 text-green-500" />
+              <div className="p-2 rounded-lg" style={{ background: '#dcfce7' }}>
+                <FileText className="h-6 w-6" style={{ color: '#21ac74' }} />
               </div>
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900 text-center">
                 {facture.type === 'devis' ? 'Devis' : 'Facture'} #{facture.facture_number}
@@ -297,7 +297,7 @@ const FacturesView: React.FC = () => {
                 <Button
                   variant="outline"
                   onClick={handleEdit}
-                  className="border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700"
+                  className="border-primary text-primary hover:bg-primary/10"
                 >
                   <Edit className="mr-2 h-4 w-4" />
                   Modifier
@@ -313,7 +313,7 @@ const FacturesView: React.FC = () => {
               <Button
                 onClick={handleGeneratePDF}
                 disabled={generatingPDF}
-                className="bg-green-500 hover:bg-green-600 text-white"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 {generatingPDF ? (
                   <>
@@ -504,7 +504,7 @@ const FacturesView: React.FC = () => {
                                   href={item.product_url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-green-500 hover:text-green-600 inline-flex items-center"
+                                  className="text-primary hover:text-primary/80 inline-flex items-center"
                                   title="Voir le produit"
                                 >
                                   <ExternalLink className="h-4 w-4" />
@@ -525,7 +525,7 @@ const FacturesView: React.FC = () => {
                       <div key={item.id || index} className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
                         {/* Header avec numéro et image */}
                         <div className="flex items-start gap-3 mb-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center font-bold text-sm">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm" style={{ background: '#dcfce7', color: '#21ac74' }}>
                             {item.numero_ligne}
                           </div>
                           <div className="flex-shrink-0">
@@ -553,7 +553,7 @@ const FacturesView: React.FC = () => {
                                 href={item.product_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-green-500 hover:text-green-600 p-1"
+                                className="text-primary hover:text-primary/80 p-1"
                                 title="Voir le produit"
                               >
                                 <ExternalLink className="h-4 w-4" />
@@ -578,9 +578,9 @@ const FacturesView: React.FC = () => {
                               {item.poids} <span className="text-xs">kg</span>
                             </p>
                           </div>
-                          <div className="bg-green-50 rounded p-2 border border-green-200">
-                            <p className="text-xs text-green-600 mb-1">Total</p>
-                            <p className="font-bold text-green-600">{formatCurrency(item.montant_total, facture.devise)}</p>
+                          <div className="rounded p-2 border" style={{ background: '#f0fdf4', borderColor: '#21ac74' }}>
+                            <p className="text-xs mb-1" style={{ color: '#21ac74' }}>Total</p>
+                            <p className="font-bold" style={{ color: '#21ac74' }}>{formatCurrency(item.montant_total, facture.devise)}</p>
                           </div>
                         </div>
                       </div>
@@ -595,10 +595,10 @@ const FacturesView: React.FC = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="space-y-3 max-w-md ml-auto">
-                <div className="flex justify-between items-center pb-3 border-b-2 border-green-500">
+                <div className="flex justify-between items-center pb-3 border-b-2" style={{ borderColor: '#21ac74' }}>
                   <div className="flex items-center">
-                    <Calculator className="mr-2 h-5 w-5 text-green-600" />
-                    <span className="font-bold text-lg text-green-600">Récapitulatif</span>
+                    <Calculator className="mr-2 h-5 w-5" style={{ color: '#21ac74' }} />
+                    <span className="font-bold text-lg" style={{ color: '#21ac74' }}>Récapitulatif</span>
                   </div>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b">
@@ -619,9 +619,9 @@ const FacturesView: React.FC = () => {
                     {formatCurrency(facture.frais_transport_douane, facture.devise)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center py-3 bg-green-50 rounded-lg px-4">
-                  <span className="font-bold text-lg text-green-600">Total général</span>
-                  <span className="font-bold text-2xl text-green-600">
+                <div className="flex justify-between items-center py-3 rounded-lg px-4" style={{ background: '#f0fdf4' }}>
+                  <span className="font-bold text-lg" style={{ color: '#21ac74' }}>Total général</span>
+                  <span className="font-bold text-2xl" style={{ color: '#21ac74' }}>
                     {formatCurrency(facture.total_general, facture.devise)}
                   </span>
                 </div>
@@ -668,7 +668,7 @@ const FacturesView: React.FC = () => {
                   <Button
                     onClick={handleConvertToFacture}
                     disabled={actionLoading}
-                    className="bg-green-500 hover:bg-green-600"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Convertir en facture
@@ -735,7 +735,7 @@ const FacturesView: React.FC = () => {
               <div className="flex flex-col gap-3">
                 <Button
                   onClick={handleDownloadPDF}
-                  className="w-full bg-green-500 hover:bg-green-600"
+                  className="w-full"
                   size="lg"
                 >
                   <Download className="mr-2 h-5 w-5" />

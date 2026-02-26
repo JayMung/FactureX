@@ -1,13 +1,14 @@
 /**
- * FactureX Design Tokens
+ * Cotheme Design Tokens
  * Single source of truth for all design primitives.
+ * Built for OKLCH color space, multi-preset theming, density modes.
  * These tokens feed into Tailwind config, CSS variables, and component variants.
  */
 
 // ─── Color Palette ───────────────────────────────────────────────────────────
 
 export const colors = {
-  /** Brand / Primary — Emerald green, financial trust */
+  /** Brand / Primary — Emerald green (default preset), financial trust */
   primary: {
     50:  '#ECFDF5',
     100: '#D1FAE5',
@@ -22,7 +23,7 @@ export const colors = {
     950: '#022C22',
   },
 
-  /** Accent — Indigo, for CTAs and highlights */
+  /** Accent — Used for sidebar hover, secondary highlights */
   accent: {
     50:  '#EEF2FF',
     100: '#E0E7FF',
@@ -89,6 +90,19 @@ export const colors = {
   },
 } as const;
 
+// ─── Color Presets (OKLCH) ──────────────────────────────────────────────────
+
+export const colorPresets = {
+  emerald: { hue: 160, chroma: 0.19 },
+  blue:    { hue: 240, chroma: 0.19 },
+  violet:  { hue: 280, chroma: 0.19 },
+  rose:    { hue: 350, chroma: 0.19 },
+  orange:  { hue: 50,  chroma: 0.19 },
+  slate:   { hue: 260, chroma: 0.02 },
+} as const;
+
+export type ColorPreset = keyof typeof colorPresets;
+
 // ─── Typography ──────────────────────────────────────────────────────────────
 
 export const typography = {
@@ -97,14 +111,15 @@ export const typography = {
     mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
   },
 
-  /** Font sizes — [fontSize, lineHeight] */
+  /** Font sizes — matches Tailwind defaults + Cotheme-specific 10px for section headers */
   fontSize: {
-    'xs':   ['0.75rem',  { lineHeight: '1rem' }],
-    'sm':   ['0.875rem', { lineHeight: '1.25rem' }],
-    'base': ['1rem',     { lineHeight: '1.5rem' }],
-    'lg':   ['1.125rem', { lineHeight: '1.75rem' }],
-    'xl':   ['1.25rem',  { lineHeight: '1.75rem' }],
-    '2xl':  ['1.5rem',   { lineHeight: '2rem' }],
+    '2xs':  ['0.625rem', { lineHeight: '0.875rem' }],  // 10px — sidebar section headers
+    'xs':   ['0.75rem',  { lineHeight: '1rem' }],       // 12px — badges, small labels
+    'sm':   ['0.875rem', { lineHeight: '1.25rem' }],    // 14px — body text, menu items
+    'base': ['1rem',     { lineHeight: '1.5rem' }],     // 16px — default
+    'lg':   ['1.125rem', { lineHeight: '1.75rem' }],    // 18px — dialog title
+    'xl':   ['1.25rem',  { lineHeight: '1.75rem' }],    // 20px — subheadings
+    '2xl':  ['1.5rem',   { lineHeight: '2rem' }],       // 24px — metric numbers
     '3xl':  ['1.875rem', { lineHeight: '2.25rem' }],
     '4xl':  ['2.25rem',  { lineHeight: '2.5rem' }],
     '5xl':  ['3rem',     { lineHeight: '1' }],
@@ -123,6 +138,7 @@ export const typography = {
     tight:   '-0.025em',
     normal:  '0em',
     wide:    '0.025em',
+    widest:  '0.1em',   // uppercase section titles
   },
 } as const;
 
@@ -160,13 +176,13 @@ export const spacing = {
 export const borderRadius = {
   none: '0px',
   sm:   '0.25rem',   // 4px
-  DEFAULT: '0.375rem', // 6px
-  md:   '0.5rem',    // 8px
-  lg:   '0.75rem',   // 12px
-  xl:   '1rem',      // 16px
-  '2xl':'1.25rem',   // 20px
+  DEFAULT: '0.375rem', // 6px  — rounded-md (buttons, inputs)
+  md:   '0.375rem',  // 6px
+  lg:   '0.5rem',    // 8px  — cards, sidebar sections
+  xl:   '0.75rem',   // 12px — metric cards, large panels
+  '2xl':'1rem',      // 16px
   '3xl':'1.5rem',    // 24px
-  full: '9999px',
+  full: '9999px',    // avatars, badges
 } as const;
 
 // ─── Shadows ─────────────────────────────────────────────────────────────────
@@ -179,15 +195,15 @@ export const shadows = {
   xl:   '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
   '2xl':'0 25px 50px -12px rgb(0 0 0 / 0.25)',
   inner:'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
-  /** Card elevation — subtle lift */
-  card: '0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.06)',
-  /** Card hover — elevated */
-  'card-hover': '0 8px 24px -4px rgb(0 0 0 / 0.08), 0 2px 8px -2px rgb(0 0 0 / 0.04)',
+  /** Card elevation — subtle lift (shadow-sm equivalent) */
+  card: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+  /** Card hover — elevated (shadow-md equivalent) */
+  'card-hover': '0 4px 6px -1px rgb(0 0 0 / 0.1)',
   /** Dropdown / Popover */
   dropdown: '0 4px 16px -2px rgb(0 0 0 / 0.12), 0 2px 4px -2px rgb(0 0 0 / 0.06)',
-  /** Focus ring glow */
-  'focus-primary': '0 0 0 3px rgba(16, 185, 129, 0.25)',
-  'focus-danger':  '0 0 0 3px rgba(239, 68, 68, 0.25)',
+  /** Focus ring glow — uses OKLCH primary */
+  'focus-primary': '0 0 0 3px oklch(0.55 0.19 160 / 0.25)',
+  'focus-danger':  '0 0 0 3px oklch(0.637 0.237 25 / 0.25)',
 } as const;
 
 // ─── Borders ─────────────────────────────────────────────────────────────────
@@ -208,14 +224,14 @@ export const transitions = {
   duration: {
     fast:    '100ms',
     default: '150ms',
-    normal:  '200ms',
-    slow:    '300ms',
+    normal:  '200ms',   // hover effects, color transitions
+    slow:    '300ms',   // sidebar expand/collapse, layout changes
     slower:  '500ms',
   },
   easing: {
-    default:  'cubic-bezier(0.4, 0, 0.2, 1)',
+    default:  'cubic-bezier(0.4, 0, 0.2, 1)',  // ease-in-out
     in:       'cubic-bezier(0.4, 0, 1, 1)',
-    out:      'cubic-bezier(0, 0, 0.2, 1)',
+    out:      'cubic-bezier(0, 0, 0.2, 1)',     // ease-out (entrance)
     inOut:    'cubic-bezier(0.4, 0, 0.2, 1)',
     bounce:   'cubic-bezier(0.34, 1.56, 0.64, 1)',
   },
@@ -240,26 +256,27 @@ export const zIndex = {
 // ─── Breakpoints ─────────────────────────────────────────────────────────────
 
 export const breakpoints = {
-  xs:  '475px',
   sm:  '640px',
   md:  '768px',
   lg:  '1024px',
   xl:  '1280px',
-  '2xl': '1400px',
+  '2xl': '1536px',
 } as const;
 
 // ─── Layout ──────────────────────────────────────────────────────────────────
 
 export const layout = {
   sidebar: {
-    width: '280px',
-    collapsedWidth: '72px',
+    width: '260px',
+    collapsedWidth: '48px',
+    mobileWidth: '288px',
   },
-  topbar: {
+  header: {
     height: '64px',
   },
   container: {
-    maxWidth: '1400px',
+    fluid: '100%',
+    boxed: '1280px',
     padding: {
       mobile: '1rem',
       tablet: '1.5rem',
@@ -268,10 +285,30 @@ export const layout = {
   },
 } as const;
 
+// ─── Density Modes ───────────────────────────────────────────────────────────
+
+export const density = {
+  compact:     { factor: 0.75, label: 'Compact' },
+  comfortable: { factor: 1,    label: 'Comfortable' },
+  spacious:    { factor: 1.25, label: 'Spacious' },
+} as const;
+
+export type DensityMode = keyof typeof density;
+
+// ─── Layout Modes ────────────────────────────────────────────────────────────
+
+export const layoutModes = {
+  sidebar: 'layout-sidebar',
+  topnav:  'layout-topnav',
+} as const;
+
+export type LayoutMode = keyof typeof layoutModes;
+
 // ─── Composite Export ────────────────────────────────────────────────────────
 
 export const tokens = {
   colors,
+  colorPresets,
   typography,
   spacing,
   borderRadius,
@@ -281,6 +318,8 @@ export const tokens = {
   zIndex,
   breakpoints,
   layout,
+  density,
+  layoutModes,
 } as const;
 
 export type DesignTokens = typeof tokens;

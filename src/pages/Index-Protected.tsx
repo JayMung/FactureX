@@ -76,59 +76,59 @@ const IndexProtected: React.FC = () => {
     {
       title: 'Montant Facturé',
       value: isLoading ? '...' : formatCurrencyValue(stats?.facturesAmountUSD || 0, 'USD'),
-      icon: <DollarSign className="h-6 w-6 text-white" />,
-      iconBg: 'bg-green-500',
-      borderColor: 'border-l-green-400'
+      icon: DollarSign,
+      iconColor: '#21ac74',
+      iconBg: '#dcfce7'
     },
     {
       title: 'Total Factures',
       value: isLoading ? '...' : (stats?.facturesCount || 0).toString(),
-      icon: <FileText className="h-6 w-6 text-white" />,
-      iconBg: 'bg-blue-500',
-      borderColor: 'border-l-blue-400'
+      icon: FileText,
+      iconColor: '#3b82f6',
+      iconBg: '#dbeafe'
     },
     {
       title: 'Commissions Perçues',
       value: isLoading ? '...' : formatCurrencyValue(stats?.totalFrais || 0, 'USD'),
-      icon: <DollarSign className="h-6 w-6 text-white" />,
-      iconBg: 'bg-purple-500',
-      borderColor: 'border-l-purple-400'
+      icon: DollarSign,
+      iconColor: '#8b5cf6',
+      iconBg: '#ede9fe'
     },
     {
       title: 'Factures Validées',
       value: isLoading ? '...' : (stats?.facturesValidees || 0).toString(),
-      icon: <TrendingUp className="h-6 w-6 text-white" />,
-      iconBg: 'bg-orange-500',
-      borderColor: 'border-l-orange-400'
+      icon: TrendingUp,
+      iconColor: '#f59e0b',
+      iconBg: '#fef3c7'
     }
   ] : [
     {
       title: 'Total Factures',
       value: isLoading ? '...' : (stats?.facturesCount || 0).toString(),
-      icon: <FileText className="h-6 w-6 text-white" />,
-      iconBg: 'bg-green-500',
-      borderColor: 'border-l-green-400'
+      icon: FileText,
+      iconColor: '#21ac74',
+      iconBg: '#dcfce7'
     },
     {
       title: 'Factures Validées',
       value: isLoading ? '...' : (stats?.facturesValidees || 0).toString(),
-      icon: <TrendingUp className="h-6 w-6 text-white" />,
-      iconBg: 'bg-blue-500',
-      borderColor: 'border-l-blue-400'
+      icon: TrendingUp,
+      iconColor: '#3b82f6',
+      iconBg: '#dbeafe'
     },
     {
       title: 'Total Clients',
       value: isLoading ? '...' : (stats?.clientsCount || 0).toString(),
-      icon: <Users className="h-6 w-6 text-white" />,
-      iconBg: 'bg-orange-500',
-      borderColor: 'border-l-orange-400'
+      icon: Users,
+      iconColor: '#f59e0b',
+      iconBg: '#fef3c7'
     },
     {
       title: 'Factures en Attente',
       value: isLoading ? '...' : (stats?.facturesEnAttente || 0).toString(),
-      icon: <Activity className="h-6 w-6 text-white" />,
-      iconBg: 'bg-purple-500',
-      borderColor: 'border-l-purple-400'
+      icon: Activity,
+      iconColor: '#8b5cf6',
+      iconBg: '#ede9fe'
     }
   ];
 
@@ -140,9 +140,9 @@ const IndexProtected: React.FC = () => {
       icon: Plus,
       href: '/transactions',
       badge: 'Finance',
-      badgeClasses: 'bg-emerald-50 text-emerald-700 border border-emerald-100',
-      iconClasses: 'bg-emerald-500/15 text-emerald-600',
-      borderClasses: 'border-emerald-100/60 hover:border-emerald-200/80',
+      badgeClasses: 'bg-success/10 text-success border border-success/20',
+      iconClasses: 'bg-primary/15 text-primary',
+      borderClasses: 'border-primary/20 hover:border-primary/40',
       adminOnly: true,
       guard: { module: 'finances', permission: 'create' } as const
     },
@@ -153,9 +153,9 @@ const IndexProtected: React.FC = () => {
       icon: Users,
       href: '/clients',
       badge: 'CRM',
-      badgeClasses: 'bg-sky-50 text-sky-700 border border-sky-100',
-      iconClasses: 'bg-sky-500/15 text-sky-600',
-      borderClasses: 'border-sky-100/70 hover:border-sky-200/80',
+      badgeClasses: 'bg-info/10 text-info border border-info/20',
+      iconClasses: 'bg-info/15 text-info',
+      borderClasses: 'border-info/20 hover:border-info/40',
       guard: { module: 'clients', permission: 'create' } as const
     },
     {
@@ -165,9 +165,9 @@ const IndexProtected: React.FC = () => {
       icon: Activity,
       href: '/activity-logs',
       badge: 'Sécurité',
-      badgeClasses: 'bg-slate-100 text-slate-700 border border-slate-200',
-      iconClasses: 'bg-slate-500/15 text-slate-600',
-      borderClasses: 'border-slate-100/80 hover:border-slate-200'
+      badgeClasses: 'bg-muted text-muted-foreground border border-border',
+      iconClasses: 'bg-muted text-muted-foreground',
+      borderClasses: 'border-border hover:border-border/80'
     }
   ].filter(action => !action.adminOnly || isAdmin);
 
@@ -247,27 +247,19 @@ const IndexProtected: React.FC = () => {
 
             {/* Vue d'ensemble */}
             <TabsContent value="overview" className="container-section">
-              {/* Stats Cards - Modern Gradient Design */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+              {/* Stats Cards — FreshCart style: white cards with colored icons */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
                 {overviewStats.map((stat, index) => {
-                  const gradientColors = [
-                    'from-emerald-500 to-emerald-600',
-                    'from-blue-500 to-blue-600',
-                    'from-purple-500 to-purple-600',
-                    'from-orange-500 to-orange-600'
-                  ];
+                  const Icon = stat.icon;
                   return (
-                    <div key={index} className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${gradientColors[index % 4]} p-4 md:p-5 shadow-card transition-base hover:shadow-card-hover hover:-translate-y-0.5`}>
-                      <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-                      <div className="relative">
-                        <div className="rounded-lg bg-white/20 p-2 w-fit">
-                          {React.cloneElement(stat.icon, { className: 'h-4 w-4 md:h-5 md:w-5 text-white' })}
-                        </div>
-                        <div className="mt-3">
-                          <p className="text-lg md:text-2xl font-bold text-white truncate text-mono">{stat.value}</p>
-                          <p className="mt-0.5 text-xs md:text-sm text-white/80 font-medium">{stat.title}</p>
+                    <div key={index} className="bg-card rounded-2xl p-4 md:p-5 border border-border shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="rounded-xl p-2.5" style={{ background: stat.iconBg }}>
+                          <Icon className="h-5 w-5" style={{ color: stat.iconColor }} />
                         </div>
                       </div>
+                      <p className="text-2xl md:text-3xl font-bold text-foreground truncate tabular-nums">{stat.value}</p>
+                      <p className="mt-1 text-xs md:text-sm text-muted-foreground font-medium">{stat.title}</p>
                     </div>
                   );
                 })}

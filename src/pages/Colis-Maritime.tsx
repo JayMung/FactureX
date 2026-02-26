@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { KpiCard } from '@/components/ui/kpi-card';
 import { Input } from '@/components/ui/input';
 import { Ship, Package, Plus, Search, Filter } from 'lucide-react';
 import { useColisMaritime } from '@/hooks/useColisMaritime';
@@ -110,85 +111,12 @@ const ColisMaritimePage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Stats Cards Overview - Modern Gradient Design */}
+                {/* Stats Cards - FreshCart style */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-                    {/* Colis en Attente */}
-                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-500 to-amber-500 p-4 md:p-5 shadow-lg">
-                        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-                        <div className="relative">
-                            <div className="flex items-center justify-between">
-                                <div className="rounded-lg bg-white/20 p-2">
-                                    <Package className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                                </div>
-                                <span className="text-[10px] md:text-xs font-medium text-yellow-100">Attente</span>
-                            </div>
-                            <div className="mt-3">
-                                <p className="text-lg md:text-2xl font-bold text-white">
-                                    {colis.filter(c => c.statut === 'Reçu Entrepôt Chine').length}
-                                </p>
-                                <p className="mt-0.5 text-xs md:text-sm text-yellow-100">Colis en attente</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Volume Total */}
-                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 md:p-5 shadow-lg">
-                        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-                        <div className="relative">
-                            <div className="flex items-center justify-between">
-                                <div className="rounded-lg bg-white/20 p-2">
-                                    <Ship className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                                </div>
-                                <span className="text-[10px] md:text-xs font-medium text-blue-100">m³</span>
-                            </div>
-                            <div className="mt-3">
-                                <p className="text-lg md:text-2xl font-bold text-white">
-                                    {colis.reduce((acc, curr) => acc + (Number(curr.cbm) || 0), 0).toFixed(2)}
-                                </p>
-                                <p className="mt-0.5 text-xs md:text-sm text-blue-100">Volume total</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Containers en Mer */}
-                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 p-4 md:p-5 shadow-lg">
-                        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-                        <div className="relative">
-                            <div className="flex items-center justify-between">
-                                <div className="rounded-lg bg-white/20 p-2">
-                                    <Ship className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                                </div>
-                                <span className="text-[10px] md:text-xs font-medium text-indigo-100">En mer</span>
-                            </div>
-                            <div className="mt-3">
-                                <p className="text-lg md:text-2xl font-bold text-white">
-                                    {containers.filter(c => c.statut === 'En transit').length}
-                                </p>
-                                <p className="mt-0.5 text-xs md:text-sm text-indigo-100">Containers</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Arrivés à Kin */}
-                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 shadow-lg">
-                        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-                        <div className="relative">
-                            <div className="flex items-center justify-between">
-                                <div className="rounded-lg bg-white/20 p-2">
-                                    <Package className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                                </div>
-                                <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] md:text-xs font-medium text-white">
-                                    ✓
-                                </span>
-                            </div>
-                            <div className="mt-3">
-                                <p className="text-lg md:text-2xl font-bold text-white">
-                                    {containers.filter(c => c.statut === 'Arrivé').length}
-                                </p>
-                                <p className="mt-0.5 text-xs md:text-sm text-emerald-100">Arrivés à Kin</p>
-                            </div>
-                        </div>
-                    </div>
+                    <KpiCard title="Colis en attente" value={colis.filter(c => c.statut === 'Reçu Entrepôt Chine').length} icon={Package} iconColor="#f59e0b" iconBg="#fef3c7" />
+                    <KpiCard title="Volume total (m³)" value={colis.reduce((acc, curr) => acc + (Number(curr.cbm) || 0), 0).toFixed(2)} icon={Ship} iconColor="#3b82f6" iconBg="#dbeafe" />
+                    <KpiCard title="Containers en mer" value={containers.filter(c => c.statut === 'En transit').length} icon={Ship} iconColor="#6366f1" iconBg="#e0e7ff" />
+                    <KpiCard title="Arrivés à Kin" value={containers.filter(c => c.statut === 'Arrivé').length} icon={Package} iconColor="#21ac74" iconBg="#dcfce7" />
                 </div>
 
 

@@ -192,16 +192,16 @@ const Sidebar: React.FC<SidebarProps> = ({
 
 
   return (
-    <div className="bg-gradient-to-b from-emerald-600 via-emerald-600 to-emerald-700 dark:from-emerald-700 dark:via-emerald-800 dark:to-emerald-900 text-white flex flex-col h-full w-64 shadow-xl">
+    <div className="bg-sidebar text-sidebar-foreground flex flex-col h-full w-[260px] border-r border-sidebar-border">
       {/* Logo */}
-      <div className="p-5 border-b border-white/10">
+      <div className="h-16 px-5 flex items-center border-b border-sidebar-border">
         <div className="flex items-center space-x-3">
-          <div className="w-11 h-11 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
-            <span className="text-emerald-600 font-bold text-xl">F</span>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: '#21ac74' }}>
+            <span className="text-white font-bold text-base">F</span>
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-bold tracking-tight">FactureX</h1>
-            <p className="text-xs text-emerald-200/80">Transferts simplifiés</p>
+            <h1 className="text-base font-semibold tracking-tight text-sidebar-foreground">FactureX</h1>
+            <p className="text-2xs text-muted-foreground">Transferts simplifiés</p>
           </div>
         </div>
       </div>
@@ -216,8 +216,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
                   currentPath === item.path
-                    ? "bg-white text-emerald-700 shadow-lg shadow-emerald-900/20"
-                    : "text-white/80 hover:bg-white/10 hover:text-white"
+                    ? "bg-sidebar-accent text-sidebar-primary font-semibold"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 )}
               >
                 <item.icon className="h-5 w-5 flex-shrink-0" />
@@ -233,8 +233,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
                   isOnFinancesPage
-                    ? "bg-white/15 text-white"
-                    : "text-white/80 hover:bg-white/10 hover:text-white"
+                    ? "bg-sidebar-accent text-sidebar-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 )}
                 onClick={() => setFinancesMenuOpen(!financesMenuOpen)}
               >
@@ -249,7 +249,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
               {/* Sous-menus Finances */}
               {financesMenuOpen && (
-                <ul className="mt-1 ml-3 pl-3 border-l-2 border-white/10 space-y-0.5">
+                <ul className="mt-1 ml-3 pl-3 border-l-2 border-sidebar-border space-y-0.5">
                   {financesSubMenuItems.map((subItem) => {
                     // Vérifier les permissions pour chaque sous-menu
                     if (subItem.permission && !isAdmin) {
@@ -262,8 +262,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                           className={cn(
                             "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200",
                             currentPath === subItem.path
-                              ? "bg-white text-emerald-700 font-medium shadow-md"
-                              : "text-white/70 hover:bg-white/10 hover:text-white"
+                              ? "bg-sidebar-accent text-sidebar-primary font-medium"
+                              : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                           )}
                         >
                           <subItem.icon className="h-4 w-4 flex-shrink-0" />
@@ -283,8 +283,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
                 currentPath?.startsWith('/colis')
-                  ? "bg-white/15 text-white"
-                  : "text-white/80 hover:bg-white/10 hover:text-white"
+                  ? "bg-sidebar-accent text-sidebar-primary"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
               )}
               onClick={() => setColisMenuOpen(!colisMenuOpen)}
             >
@@ -299,7 +299,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
             {/* Sous-menus Colis */}
             {colisMenuOpen && (
-              <ul className="mt-1 ml-3 pl-3 border-l-2 border-white/10 space-y-0.5">
+              <ul className="mt-1 ml-3 pl-3 border-l-2 border-sidebar-border space-y-0.5">
                 {colisSubMenuItems.filter(subItem => !subItem.disabled).map((subItem) => (
                   <li key={subItem.path}>
                     <Link
@@ -307,8 +307,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                       className={cn(
                         "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200",
                         currentPath === subItem.path
-                          ? "bg-white text-emerald-700 font-medium shadow-md"
-                          : "text-white/70 hover:bg-white/10 hover:text-white"
+                          ? "bg-sidebar-accent text-sidebar-primary font-medium"
+                          : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                       )}
                     >
                       <subItem.icon className="h-4 w-4 flex-shrink-0" />
@@ -330,8 +330,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             className={cn(
               "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
               currentPath === settingsItem.path
-                ? "bg-white text-emerald-700 shadow-lg"
-                : "text-white/80 hover:bg-white/10 hover:text-white"
+                ? "bg-sidebar-accent text-sidebar-primary font-semibold"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
             )}
           >
             <settingsItem.icon className="h-5 w-5 flex-shrink-0" />
@@ -341,23 +341,23 @@ const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       {/* User Info */}
-      <div className="p-4 border-t border-white/10 bg-black/10">
+      <div className="p-4 border-t border-sidebar-border">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-md">
-            <span className="text-emerald-600 font-bold text-sm">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#21ac74' }}>
+            <span className="text-white font-semibold text-sm">
               {user?.email?.charAt(0).toUpperCase() || 'U'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-medium truncate">
+            <p className="text-sm font-medium text-sidebar-foreground truncate">
               {user?.user_metadata?.first_name ?
                 `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}` :
                 user?.email || 'Utilisateur'
               }
             </p>
-            <p className="text-xs text-emerald-200/70 truncate">
-              {user?.app_metadata?.role === 'super_admin' ? '👑 Super Admin' :
-                user?.app_metadata?.role === 'admin' ? '👑 Admin' : 'Opérateur'}
+            <p className="text-2xs text-muted-foreground truncate">
+              {user?.app_metadata?.role === 'super_admin' ? 'Super Admin' :
+                user?.app_metadata?.role === 'admin' ? 'Admin' : 'Opérateur'}
             </p>
           </div>
         </div>

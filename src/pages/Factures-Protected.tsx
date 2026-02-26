@@ -6,11 +6,12 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { Button } from '@/components/ui/button';
+import { KpiCard } from '@/components/ui/kpi-card';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,13 +40,13 @@ import {
   Calendar,
   X,
   Hash,
-  Clock
+  Clock,
+  MoreHorizontal
 } from 'lucide-react';
 import { startOfDay, startOfWeek, startOfMonth, startOfYear, endOfDay, endOfWeek, endOfMonth, endOfYear, subDays } from 'date-fns';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import { UnifiedDataTable } from '@/components/ui/unified-data-table';
-import { FilterTabs } from '@/components/ui/filter-tabs';
 import { ColumnSelector, type ColumnConfig } from '@/components/ui/column-selector';
 import { ExportDropdown } from '@/components/ui/export-dropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -63,6 +64,7 @@ import ConfirmDialog from '@/components/ui/confirm-dialog';
 import type { Facture } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import {
   sanitizeUserContent,
   validateContentSecurity,
@@ -78,7 +80,6 @@ const FacturesProtected: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [numberSearch, setNumberSearch] = useState('');
   const [clientIdFilter, setClientIdFilter] = useState('');
-  const [minAmountFilter, setMinAmountFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statutFilter, setStatutFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('month');
@@ -165,11 +166,10 @@ const FacturesProtected: React.FC = () => {
     { pageSize, sort: sortConfig }
   );
 
-  const minAmount = useMemo(() => parseFloat(minAmountFilter) || 0, [minAmountFilter]);
+  const minAmount = 0;
   const sortedData = useMemo(() => {
-    if (minAmount <= 0) return factures;
-    return factures.filter(f => f.total_general >= minAmount);
-  }, [factures, minAmount]);
+    return factures;
+  }, [factures]);
 
   const clientIdsInView = useMemo(
     () => factures.map(f => (f as any).client_id ?? f.clients?.id).filter(Boolean) as string[],
@@ -258,8 +258,23 @@ const FacturesProtected: React.FC = () => {
     }
   };
 
-  const handleViewDetails = (facture: Facture) => {
-    setQuickViewFacture(facture);
+  const handleViewDetails = async (facture: Facture) => {
+    // If clients data is not loaded, fetch it
+    if (!facture.clients?.nom && (facture as any).client_id) {
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('id, nom, telephone, email, ville')
+        .eq('id', (facture as any).client_id)
+        .single();
+      
+      if (clientData) {
+        setQuickViewFacture({ ...facture, clients: clientData });
+      } else {
+        setQuickViewFacture(facture);
+      }
+    } else {
+      setQuickViewFacture(facture);
+    }
     setQuickViewOpen(true);
   };
 
@@ -477,129 +492,42 @@ const FacturesProtected: React.FC = () => {
             );
           })()}
 
-          {/* Stats Cards - KPIs Recouvrement */}
+          {/* Stats Cards - FreshCart style */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-            {/* Reste à recouvrer */}
-            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 p-4 md:p-5 shadow-lg">
-              <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-              <div className="relative">
-                <div className="flex items-center justify-between">
-                  <div className="rounded-lg bg-white/20 p-2">
-                    <AlertCircle className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                  </div>
-                  <span className="text-[10px] md:text-xs font-medium text-orange-100">À recouvrer</span>
-                </div>
-                <div className="mt-3">
-                  <p className="text-lg md:text-2xl font-bold text-white">
-                    {formatCurrency(globalTotals.totalOutstanding ?? 0, 'USD')}
-                  </p>
-                  <p className="mt-0.5 text-xs md:text-sm text-orange-100">Reste à payer</p>
-                </div>
-              </div>
-            </div>
-
-            {/* En Retard */}
-            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-red-500 to-red-600 p-4 md:p-5 shadow-lg">
-              <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-              <div className="relative">
-                <div className="flex items-center justify-between">
-                  <div className="rounded-lg bg-white/20 p-2">
-                    <XCircle className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                  </div>
-                  <span className="text-[10px] md:text-xs font-medium text-red-100">Urgent</span>
-                </div>
-                <div className="mt-3">
-                  <p className="text-lg md:text-2xl font-bold text-white">
-                    {formatCurrency(globalTotals.totalRetard ?? 0, 'USD')}
-                  </p>
-                  <p className="mt-0.5 text-xs md:text-sm text-red-100">En retard</p>
-                </div>
-              </div>
-            </div>
-
-            {/* C.A. total (admin) ou Total Payé (opérateur) */}
+            <KpiCard title="Reste a payer" value={formatCurrency(globalTotals.totalOutstanding ?? 0, 'USD')} icon={AlertCircle} iconColor="#f59e0b" iconBg="#fef3c7" />
+            <KpiCard title="En retard" value={formatCurrency(globalTotals.totalRetard ?? 0, 'USD')} icon={XCircle} iconColor="#ef4444" iconBg="#fee2e2" />
             {isAdmin ? (
-              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 shadow-lg">
-                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-                <div className="relative">
-                  <div className="flex items-center justify-between">
-                    <div className="rounded-lg bg-white/20 p-2">
-                      <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                    </div>
-                    <span className="text-[10px] md:text-xs font-medium text-emerald-100">C.A.</span>
-                  </div>
-                  <div className="mt-3">
-                    <p className="text-lg md:text-2xl font-bold text-white">
-                      {formatCurrency(globalTotals.totalAmount ?? 0, 'USD')}
-                    </p>
-                    <p className="mt-0.5 text-xs md:text-sm text-emerald-100">Total Facturé</p>
-                  </div>
-                </div>
-              </div>
+              <KpiCard title="Total Facture" value={formatCurrency(globalTotals.totalAmount ?? 0, 'USD')} icon={TrendingUp} iconColor="#21ac74" iconBg="#dcfce7" />
             ) : (
-              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 shadow-lg">
-                <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-                <div className="relative">
-                  <div className="flex items-center justify-between">
-                    <div className="rounded-lg bg-white/20 p-2">
-                      <CheckCircle className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                    </div>
-                    <span className="text-[10px] md:text-xs font-medium text-emerald-100">Encaissé</span>
-                  </div>
-                  <div className="mt-3">
-                    <p className="text-lg md:text-2xl font-bold text-white">
-                      {formatCurrency(globalTotals.totalPaid ?? 0, 'USD')}
-                    </p>
-                    <p className="mt-0.5 text-xs md:text-sm text-emerald-100">Total Payé</p>
-                  </div>
-                </div>
-              </div>
+              <KpiCard title="Total Paye" value={formatCurrency(globalTotals.totalPaid ?? 0, 'USD')} icon={CheckCircle} iconColor="#21ac74" iconBg="#dcfce7" />
             )}
-
-            {/* Volume total */}
-            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 md:p-5 shadow-lg">
-              <div className="absolute top-0 right-0 -mt-4 -mr-4 h-20 w-20 rounded-full bg-white/10"></div>
-              <div className="relative">
-                <div className="flex items-center justify-between">
-                  <div className="rounded-lg bg-white/20 p-2">
-                    <FileText className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                  </div>
-                  <span className="text-[10px] md:text-xs font-medium text-blue-100">Volume</span>
-                </div>
-                <div className="mt-3">
-                  <p className="text-lg md:text-2xl font-bold text-white">
-                    {globalTotals.totalCount || 0}
-                  </p>
-                  <p className="mt-0.5 text-xs md:text-sm text-blue-100">Total Factures</p>
-                </div>
-              </div>
-            </div>
+            <KpiCard title="Total Factures" value={globalTotals.totalCount || 0} icon={FileText} iconColor="#3b82f6" iconBg="#dbeafe" />
           </div>
 
-          {/* Status Filter Tabs */}
-          <div className="mb-6">
-            <FilterTabs
-              tabs={[
-                { id: 'all', label: 'Tous', count: globalTotals.totalCount || 0 },
-                { id: 'brouillon', label: 'Brouillon' },
-                { id: 'en_attente', label: 'En attente' },
-                { id: 'validee', label: 'Validée' },
-                { id: 'partiellement_payee', label: 'Part. payée' },
-                { id: 'payee', label: 'Payée' },
-                { id: 'annulee', label: 'Annulée' },
-                { id: 'en_retard', label: '🔴 En retard' }
-              ]}
-              activeTab={statutFilter}
-              onTabChange={(id) => {
-                setStatutFilter(id);
-                setCurrentPage(1);
-              }}
-              variant="pills"
-            />
-          </div>
-
-          {/* Filters — Row 1: Recherche N° + Client + Période + Type */}
+          {/* Filters — Row 1: Statut + Recherche N° + Client + Période + Type */}
           <div className="flex flex-col sm:flex-row gap-3 mb-3">
+            {/* Statut Dropdown */}
+            <Select value={statutFilter} onValueChange={(value) => { setStatutFilter(value); setCurrentPage(1); }}>
+              <SelectTrigger className="w-full sm:w-44">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-gray-500" />
+                  <SelectValue placeholder="Statut" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Filtrer par statut</SelectLabel>
+                  <SelectItem value="all">Tous ({globalTotals.totalCount || 0})</SelectItem>
+                  <SelectItem value="brouillon">Brouillon</SelectItem>
+                  <SelectItem value="en_attente">En attente</SelectItem>
+                  <SelectItem value="validee">Validée</SelectItem>
+                  <SelectItem value="partiellement_payee">Partiellement payée</SelectItem>
+                  <SelectItem value="payee">Payée</SelectItem>
+                  <SelectItem value="annulee">Annulée</SelectItem>
+                  <SelectItem value="en_retard">🔴 En retard</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
             <div className="relative flex-1 min-w-0">
               <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
@@ -669,24 +597,7 @@ const FacturesProtected: React.FC = () => {
               )}
             </div>
 
-            <div className="relative w-full sm:w-52">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                type="number"
-                min="0"
-                placeholder="Montant min ($)"
-                value={minAmountFilter}
-                onChange={(e) => { setMinAmountFilter(e.target.value); setCurrentPage(1); }}
-                className="pl-10 pr-8"
-              />
-              {minAmountFilter && (
-                <button onClick={() => { setMinAmountFilter(''); setCurrentPage(1); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-
-            {(numberSearch || clientIdFilter || minAmountFilter || searchTerm) && (
+            {(numberSearch || clientIdFilter || searchTerm) && (
               <Button
                 {...({ variant: 'outline' } as any)}
                 size="sm"
@@ -694,7 +605,6 @@ const FacturesProtected: React.FC = () => {
                 onClick={() => {
                   setNumberSearch('');
                   setClientIdFilter('');
-                  setMinAmountFilter('');
                   setSearchTerm('');
                   setCurrentPage(1);
                 }}
@@ -779,15 +689,23 @@ const FacturesProtected: React.FC = () => {
                     title: 'Client',
                     sortable: true,
                     render: (value: any, facture: Facture) => {
+                      // Extraire l'ID client depuis l'objet clients ou client_id
                       const cid = value?.id ?? (facture as any).client_id;
+                      if (!cid) return <span className="text-gray-500">N/A</span>;
+                      
+                      // Chercher le client dans allClients si value.nom n'existe pas
                       const clientObj = value?.nom ? value : (allClients || []).find(c => c.id === cid);
-                      if (!clientObj) return <span className="text-gray-500">N/A</span>;
+                      if (!clientObj?.nom) return <span className="text-gray-500">Client inconnu</span>;
+                      
                       const health = healthMap[cid];
                       return (
                         <div className="flex items-center gap-1.5">
                           <span
                             className="font-medium text-blue-600 hover:text-blue-700 cursor-pointer hover:underline transition-colors"
-                            onClick={() => navigate('/clients', { state: { openClientId: cid } })}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate('/clients', { state: { openClientId: cid } });
+                            }}
                             title="Voir la fiche client"
                           >
                             {clientObj.nom}
@@ -926,73 +844,79 @@ const FacturesProtected: React.FC = () => {
                     title: 'Actions',
                     align: 'right' as const,
                     render: (value: any, facture: Facture) => (
-                      <div className="flex items-center justify-end space-x-2">
-                        <Button
-                          {...({ variant: "ghost" } as any)}
-                          size="sm"
-                          onClick={() => handleViewDetails(facture)}
-                          title="Voir les détails"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                      <div className="flex items-center justify-end">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              {...({ variant: "ghost" } as any)}
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                            >
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem
+                              onClick={() => handleViewDetails(facture)}
+                              className="cursor-pointer"
+                            >
+                              <Eye className="mr-2 h-4 w-4 text-blue-600" />
+                              Voir les détails
+                            </DropdownMenuItem>
 
-                        {checkPermission('finances', 'create') && facture.statut !== 'annulee' && ((facture as any).solde_restant ?? facture.total_general) > 0 && (
-                          <Button
-                            {...({ variant: "ghost" } as any)}
-                            size="sm"
-                            onClick={() => { setFactureForPaiement(facture); setPaiementDialogOpen(true); }}
-                            title="Enregistrer un paiement"
-                            className="text-emerald-600 hover:bg-emerald-50"
-                          >
-                            <DollarSign className="h-4 w-4" />
-                          </Button>
-                        )}
+                            {checkPermission('finances', 'create') && facture.statut !== 'annulee' && ((facture as any).solde_restant ?? facture.total_general) > 0 && (
+                              <DropdownMenuItem
+                                onClick={() => { setFactureForPaiement(facture); setPaiementDialogOpen(true); }}
+                                className="cursor-pointer"
+                              >
+                                <DollarSign className="mr-2 h-4 w-4 text-emerald-600" />
+                                Enregistrer un paiement
+                              </DropdownMenuItem>
+                            )}
 
-                        <Button
-                          {...({ variant: "ghost" } as any)}
-                          size="sm"
-                          onClick={() => navigate(`/factures/view/${facture.id}`)}
-                          title="Télécharger PDF"
-                          className="text-gray-500 hover:bg-gray-50"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
+                            <DropdownMenuItem
+                              onClick={() => navigate(`/factures/view/${facture.id}`)}
+                              className="cursor-pointer"
+                            >
+                              <Download className="mr-2 h-4 w-4 text-gray-600" />
+                              Télécharger PDF
+                            </DropdownMenuItem>
 
-                        <PermissionGuard module="factures" permission="create">
-                          <Button
-                            {...({ variant: "ghost" } as any)}
-                            size="sm"
-                            onClick={() => handleDuplicate(facture)}
-                            title="Dupliquer"
-                            className="text-blue-600 hover:bg-blue-50"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        </PermissionGuard>
+                            {checkPermission('factures', 'create') && (
+                              <DropdownMenuItem
+                                onClick={() => handleDuplicate(facture)}
+                                className="cursor-pointer"
+                              >
+                                <Copy className="mr-2 h-4 w-4 text-purple-600" />
+                                Dupliquer
+                              </DropdownMenuItem>
+                            )}
 
-                        <PermissionGuard module="factures" permission="update">
-                          <Button
-                            {...({ variant: "ghost" } as any)}
-                            size="sm"
-                            onClick={() => handleEdit(facture)}
-                            title="Modifier"
-                            className="hover:bg-green-50"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </PermissionGuard>
+                            {checkPermission('factures', 'update') && (
+                              <DropdownMenuItem
+                                onClick={() => handleEdit(facture)}
+                                className="cursor-pointer"
+                              >
+                                <Edit className="mr-2 h-4 w-4 text-green-600" />
+                                Modifier
+                              </DropdownMenuItem>
+                            )}
 
-                        <PermissionGuard module="factures" permission="delete">
-                          <Button
-                            {...({ variant: "ghost" } as any)}
-                            size="sm"
-                            className="text-red-600 hover:bg-red-50"
-                            onClick={() => handleDelete(facture.id)}
-                            title="Supprimer"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </PermissionGuard>
+                            {checkPermission('factures', 'delete') && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleDelete(facture.id)}
+                                  className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Supprimer
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     )
                   }

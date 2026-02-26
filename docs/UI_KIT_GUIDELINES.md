@@ -1,6 +1,17 @@
-# FactureX — UI Kit & Design System
+# Cotheme — UI Kit & Design System Guidelines
 
-> Single source of truth for all UI patterns, tokens, and component usage.
+> **Version** : 3.0 — Dernière mise à jour : 2026-03-15
+> **Mainteneur** : Équipe Design System FactureX
+> **Color Space** : OKLCH (perceptually uniform)
+
+## Philosophie
+
+Le design system Cotheme repose sur quatre principes fondamentaux :
+
+1. **Token-first** — Toute valeur visuelle (couleur, espacement, typographie) provient du fichier `tokens.ts`. Aucune valeur "magique" dans le code.
+2. **Composants CVA** — Les variantes sont gérées via `class-variance-authority` pour la cohérence.
+3. **OKLCH Color Space** — Toutes les couleurs utilisent OKLCH pour l'uniformité perceptuelle. Les CSS variables dans `globals.css` utilisent `oklch()`.
+4. **Density & Presets** — Supporte plusieurs palettes de couleurs (presets) et modes de densité (compact, comfortable, spacious).
 
 ---
 
@@ -48,17 +59,41 @@ Import from `@/lib/design-system`:
 import { colors, spacing, shadows, typography, transitions } from '@/lib/design-system';
 ```
 
-### Color Palette
+### Color System (OKLCH)
 
-| Token       | Role                          | Light          | Dark           |
-|-------------|-------------------------------|----------------|----------------|
-| `primary`   | Brand actions, CTAs           | Emerald 500    | Emerald 500    |
-| `accent`    | Highlights, secondary CTAs    | Indigo 500     | Indigo 400     |
-| `neutral`   | Text, backgrounds, borders    | Slate scale    | Slate scale    |
-| `success`   | Positive states               | Green 500      | Green 400      |
-| `warning`   | Caution states                | Amber 500      | Amber 400      |
-| `danger`    | Error/destructive states      | Red 500        | Red 400        |
-| `info`      | Informational states          | Blue 500       | Blue 400       |
+All colors are defined in OKLCH color space for perceptual uniformity. CSS variables use `oklch()` directly.
+
+| Token          | Role                       | Light OKLCH                | Dark OKLCH                 |
+|----------------|----------------------------|----------------------------|----------------------------|
+| `primary`      | Brand actions, CTAs        | `oklch(0.55 0.19 160)`    | `oklch(0.6 0.19 160)`     |
+| `secondary`    | Secondary surfaces         | `oklch(0.97 0 0)`         | `oklch(0.25 0.02 260)`    |
+| `muted`        | Muted text, backgrounds    | `oklch(0.97 0 0)`         | `oklch(0.25 0.02 260)`    |
+| `accent`       | Hover states, highlights   | `oklch(0.97 0 0)`         | `oklch(0.25 0.02 260)`    |
+| `destructive`  | Error/destructive actions  | `oklch(0.637 0.237 25)`   | `oklch(0.5 0.2 25)`       |
+| `success`      | Positive states            | `oklch(0.627 0.194 149)`  | `oklch(0.627 0.194 149)`  |
+| `warning`      | Caution states             | `oklch(0.75 0.183 55)`    | `oklch(0.75 0.183 55)`    |
+| `info`         | Informational states       | `oklch(0.6 0.19 240)`     | `oklch(0.6 0.19 240)`     |
+
+### Color Presets
+
+Switchable via CSS class on `<html>` element:
+
+| Preset      | Hue  | Chroma | CSS Class          |
+|-------------|------|--------|--------------------|
+| Emerald     | 160  | 0.19   | `.preset-emerald`  |
+| Blue        | 240  | 0.19   | `.preset-blue`     |
+| Violet      | 300  | 0.18   | `.preset-violet`   |
+| Rose        | 350  | 0.20   | `.preset-rose`     |
+| Orange      | 55   | 0.20   | `.preset-orange`   |
+| Slate       | 260  | 0.02   | `.preset-slate`    |
+
+### Density Modes
+
+| Mode        | Factor | CSS Class            |
+|-------------|--------|----------------------|
+| Compact     | 0.75   | `.density-compact`   |
+| Comfortable | 1.00   | `.density-comfortable` |
+| Spacious    | 1.25   | `.density-spacious`  |
 
 ### Spacing (4px grid)
 
@@ -67,33 +102,57 @@ import { colors, spacing, shadows, typography, transitions } from '@/lib/design-
 5 = 20px   |  6 = 24px |  8 = 32px |  10 = 40px |  12 = 48px
 ```
 
+### Typography
+
+| Token     | Family                          | Notes                      |
+|-----------|---------------------------------|----------------------------|
+| `sans`    | Geist Sans → Inter → system-ui  | Primary UI font            |
+| `mono`    | Geist Mono → JetBrains Mono     | Code, tabular numbers      |
+
+| Size    | Value    | Use case                       |
+|---------|----------|--------------------------------|
+| `2xs`   | 10px     | Sidebar section headers, badges|
+| `xs`    | 12px     | Captions, meta text            |
+| `sm`    | 14px     | Body text, labels              |
+| `base`  | 16px     | Default body                   |
+| `lg`    | 18px     | Section titles                 |
+| `xl`    | 20px     | Page subtitles                 |
+| `2xl`   | 24px     | Page titles                    |
+| `3xl`   | 30px     | Hero headings                  |
+
 ### Border Radius
 
 ```
-sm = calc(var(--radius) - 4px)    → ~8px
-md = calc(var(--radius) - 2px)    → ~10px
-lg = var(--radius)                → 12px (default)
-xl = calc(var(--radius) + 4px)    → ~16px
-2xl = calc(var(--radius) + 8px)   → ~20px
+sm = calc(var(--radius) - 4px)    → ~6px
+md = calc(var(--radius) - 2px)    → ~8px
+lg = var(--radius)                → 10px (0.625rem)
+xl = calc(var(--radius) + 4px)    → ~14px
+2xl = calc(var(--radius) + 8px)   → ~18px
 full = 9999px                     → pill shape
 ```
 
 ### Shadow System
 
-| Token         | Use case                |
-|---------------|-------------------------|
-| `xs`          | Subtle depth            |
-| `card`        | Card resting state      |
-| `card-hover`  | Card hover elevation    |
-| `md`          | Dropdowns               |
-| `dropdown`    | Popovers, menus         |
-| `lg`          | Modals                  |
-| `focus-primary` | Focus ring glow       |
+| Token           | Use case                |
+|-----------------|-------------------------|
+| `xs`            | Subtle depth            |
+| `card`          | Card resting state      |
+| `card-hover`    | Card hover elevation    |
+| `md`            | Dropdowns               |
+| `dropdown`      | Popovers, menus         |
+| `lg`            | Modals                  |
+| `focus-primary` | Focus ring glow (OKLCH) |
 
 ### Transitions
 
-All interactive elements use `duration-150` (150ms) with `ease-in-out`.
-Hover shadows use `duration-200`.
+| Duration | Use case                     |
+|----------|------------------------------|
+| `100ms`  | Color changes                |
+| `150ms`  | Interactive elements (hover) |
+| `200ms`  | Shadow transitions           |
+| `300ms`  | Layout changes (sidebar)     |
+
+Easing: `cubic-bezier(0.4, 0, 0.2, 1)` for interactions, `ease-in-out` for layout.
 
 ---
 
@@ -287,28 +346,43 @@ Available in `src/styles/design-system.css`:
 ### Typography
 - `.heading-1` through `.heading-4`
 - `.body-text`, `.small-text`, `.label-base`, `.text-mono`
+- `.section-label` — 10px uppercase tracking-widest (sidebar section headers)
 
 ### Layout
 - `.container-page` — max-w-7xl with responsive padding
+- `.container-fluid`, `.container-boxed` — layout modes
 - `.grid-responsive-2`, `.grid-responsive-3`, `.grid-responsive-4`
 - `.mobile-full-width`, `.mobile-stack`, `.mobile-hide`, `.desktop-hide`
 
 ### Cards & Surfaces
 - `.card-base`, `.card-clean`, `.stat-card`
+- `.metric-card`, `.metric-card-icon`, `.metric-card-value`, `.metric-card-sparkline`
 - `.banner-gradient-green`, `.banner-compact`
 
 ### Status
 - `.badge-success`, `.badge-error`, `.badge-warning`, `.badge-info`, `.badge-neutral`
+- `.badge-sidebar` — sidebar notification badge (primary/15 bg)
 - `.text-status-success`, `.text-status-error`, `.text-status-warning`, `.text-status-info`
 - `.trend-positive`, `.trend-negative`, `.trend-neutral`
 
+### Sidebar & Header (Cotheme)
+- `.sidebar-section-header` — uppercase 10px section labels
+- `.sidebar-nav-item`, `.sidebar-nav-item-active`
+- `.sidebar-collapse-btn` — collapse button positioned on edge
+- `.header-sticky` — sticky header with backdrop-blur
+
 ### Interactive
 - `.focus-ring`, `.focus-ring-primary`, `.focus-ring-danger`
-- `.transition-base`, `.transition-colors-fast`, `.transition-shadow-hover`
+- `.transition-base`, `.transition-colors-fast`, `.transition-shadow-hover`, `.transition-layout`
 - `.bg-hover`, `.table-row-hover`
 
+### Animation
+- `.stagger-entrance` — staggered slide-in-up for child elements (80ms intervals)
+- `.notification-dot` — positioned dot indicator
+
 ### Loading
-- `.skeleton`, `.skeleton-shimmer`
+- `.skeleton` — `bg-accent` pulse animation
+- `.skeleton-shimmer` — gradient shimmer effect
 
 ---
 
@@ -347,38 +421,67 @@ Available in `src/styles/design-system.css`:
 
 ## 6. Dark Mode
 
-All components are dark-mode ready via CSS variables:
+All components are dark-mode ready via CSS variables in OKLCH:
 
 ```css
 /* Light */
-:root { --primary: 160 84% 39%; }
+:root { --primary: oklch(0.55 0.19 160); }
 
 /* Dark */
-.dark { --primary: 160 84% 39%; }
+.dark { --primary: oklch(0.6 0.19 160); }
 ```
 
 ### Rules
 - Never use hardcoded colors like `bg-white` — use `bg-background` or `bg-card`
 - Never use `text-gray-900` — use `text-foreground`
-- For status colors, use the semantic variants: `bg-green-50 dark:bg-green-500/10`
+- For status colors, use semantic CSS variable classes: `bg-success/10 text-success`
+- Sidebar uses `bg-sidebar`, `text-sidebar-foreground`, `bg-sidebar-accent`
 - Table headers use CSS variables: `--table-header-from`, `--table-header-to`
+- Scrollbar styles adapt automatically via `.dark` class
 
 ---
 
-## 7. Do's and Don'ts
+## 7. Layout Structure
+
+### Sidebar (260px)
+- **Width**: 260px expanded, 48px collapsed
+- **Logo area**: 64px height, `bg-sidebar-primary` icon
+- **Navigation**: `bg-sidebar-accent` for active items, `text-sidebar-primary` for active text
+- **Section headers**: `text-2xs uppercase tracking-widest` (`.sidebar-section-header`)
+- **Sub-menus**: `border-l-2 border-sidebar-border` left accent line
+
+### Header (64px)
+- **Height**: 64px
+- **Background**: `bg-background/95` with `backdrop-blur-sm`
+- **Border**: `border-b border-border`
+- **Position**: `sticky top-0 z-40`
+
+### Main Content
+- **Background**: `bg-background`
+- **Padding**: `p-4 md:p-6`
+- **Container**: max-width 1280px (boxed mode) or full-width (fluid mode)
+
+---
+
+## 8. Do's and Don'ts
 
 ### DO
 - Use CVA component variants instead of inline Tailwind for common patterns
-- Use CSS variables (`hsl(var(--primary))`) for theme colors
+- Use CSS variables (`var(--primary)`) for theme colors — OKLCH format
 - Use `transition-all duration-150` for interactive elements
 - Use `rounded-lg` (or `rounded-xl` for cards) consistently
 - Use `shadow-card` for cards, `shadow-card-hover` for hover states
 - Import from `@/components/ui/*` for all UI components
+- Use `.stagger-entrance` for dashboard metric card grids
+- Use `text-2xs` for sidebar section headers and badges
+- Test with multiple color presets (not just emerald)
 
 ### DON'T
 - Duplicate styles inline — extract to design-system.css or a component
-- Use hardcoded hex colors — use CSS variables or Tailwind tokens
+- Use hardcoded hex/HSL colors — use OKLCH CSS variables or Tailwind tokens
+- Use `hsl(var(...))` — variables are now raw OKLCH values, use `var(--primary)` directly
 - Mix animation durations — stick to 100/150/200/300ms
 - Ignore dark mode — always test both themes
 - Skip focus states — every interactive element needs a focus ring
 - Use `!important` — fix specificity issues properly
+- Hardcode sidebar/header colors — always use `sidebar-*` and semantic vars

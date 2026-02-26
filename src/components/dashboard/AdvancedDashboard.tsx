@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import StatCard from './StatCard';
+import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -176,136 +176,120 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
         </Button>
       </div>
 
-      {/* Cartes de statistiques — Colorful Design */}
+      {/* Cartes de statistiques — Cotheme Design */}
       <div className="grid-responsive-4">
-        {/* Revenus totaux — vert */}
-        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-400 to-emerald-600 p-5 text-white shadow-md">
-          <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
-          <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
-          <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
-            <DollarSign className="h-5 w-5 text-white" />
-          </div>
-          <p className="text-3xl font-bold leading-none truncate">{formatCurrency(analytics.totalRevenueUSD, 'USD')}</p>
-          <p className="mt-1 text-sm text-white/80">Revenus totaux</p>
-          {analytics.revenueChange && (
-            <div className="mt-2 flex items-center gap-1 text-xs text-white/70">
-              {analytics.revenueChange.isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-              <span>{Math.abs(analytics.revenueChange.value)}%</span>
-            </div>
-          )}
-        </div>
+        <StatCard
+          title="Revenus totaux"
+          value={formatCurrency(analytics.totalRevenueUSD, 'USD')}
+          icon={DollarSign}
+          iconColor="text-primary"
+          trend={analytics.revenueChange ? { 
+            value: analytics.revenueChange.value, 
+            label: "vs période prec." 
+          } : undefined}
+          className="bg-card shadow-sm hover:shadow-md transition-all border-border"
+        />
 
-        {/* Marge brute — bleu */}
-        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 p-5 text-white shadow-md">
-          <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
-          <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
-          <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
-            <Receipt className="h-5 w-5 text-white" />
-          </div>
-          <p className="text-3xl font-bold leading-none truncate">{formatCurrency(analytics.netMarginUSD, 'USD')}</p>
-          <p className="mt-1 text-sm text-white/80">Marge brute</p>
-          {analytics.marginChange && (
-            <div className="mt-2 flex items-center gap-1 text-xs text-white/70">
-              {analytics.marginChange.isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-              <span>{Math.abs(analytics.marginChange.value)}%</span>
-            </div>
-          )}
-        </div>
+        <StatCard
+          title="Marge brute"
+          value={formatCurrency(analytics.netMarginUSD, 'USD')}
+          icon={Receipt}
+          iconColor="text-info"
+          trend={analytics.marginChange ? { 
+            value: analytics.marginChange.value, 
+            label: "vs période prec." 
+          } : undefined}
+          className="bg-card shadow-sm hover:shadow-md transition-all border-border"
+        />
 
-        {/* Clients actifs — violet */}
-        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-purple-400 to-purple-600 p-5 text-white shadow-md">
-          <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
-          <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
-          <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
-            <Users className="h-5 w-5 text-white" />
-          </div>
-          <p className="text-3xl font-bold leading-none">{analytics.activeClients.toLocaleString()}</p>
-          <p className="mt-1 text-sm text-white/80">Clients actifs</p>
-        </div>
+        <StatCard
+          title="Clients actifs"
+          value={analytics.activeClients.toLocaleString()}
+          icon={Users}
+          iconColor="text-purple-500"
+          className="bg-card shadow-sm hover:shadow-md transition-all border-border"
+        />
 
-        {/* Bénéfice net — orange */}
-        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-orange-400 to-orange-600 p-5 text-white shadow-md">
-          <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
-          <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
-          <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
-            <TrendingUp className="h-5 w-5 text-white" />
-          </div>
-          <p className="text-3xl font-bold leading-none truncate">{formatCurrency(analytics.netProfitUSD, 'USD')}</p>
-          <p className="mt-1 text-sm text-white/80">Bénéfice net</p>
-          {analytics.profitChange && (
-            <div className="mt-2 flex items-center gap-1 text-xs text-white/70">
-              {analytics.profitChange.isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-              <span>{Math.abs(analytics.profitChange.value)}%</span>
-            </div>
-          )}
-        </div>
+        <StatCard
+          title="Bénéfice net"
+          value={formatCurrency(analytics.netProfitUSD, 'USD')}
+          icon={TrendingUp}
+          iconColor="text-warning"
+          trend={analytics.profitChange ? { 
+            value: analytics.profitChange.value, 
+            label: "vs période prec." 
+          } : undefined}
+          className="bg-card shadow-sm hover:shadow-md transition-all border-border"
+        />
       </div>
 
       {/* Graphique principal */}
-      <Card className="card-base">
-        <CardHeader>
+      <Card className="col-span-full lg:col-span-2 bg-card rounded-2xl border border-border shadow-sm p-2">
+        <CardHeader className="pb-4">
           <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <BarChart3 className="h-5 w-5 text-muted-foreground" />
-              <span className="section-title">
-                {chartType === 'revenue' && 'Évolution des revenus'}
+            <div>
+              <h2 className="text-lg font-bold text-foreground">
+                {chartType === 'revenue' && 'Aperçu des Revenus'}
                 {chartType === 'transactions' && 'Évolution des transactions'}
                 {chartType === 'clients' && 'Évolution des clients'}
-              </span>
+              </h2>
+              <p className="text-sm text-muted-foreground">Flux mensuel</p>
             </div>
-            <Badge variant="outline" className="small-text badge-neutral">
-              {period === '24h' && 'Dernières 24h'}
-              {period === '7d' && 'Derniers 7 jours'}
-              {period === '30d' && 'Derniers 30 jours'}
-              {period === '90d' && 'Derniers 90 jours'}
-            </Badge>
+            <div className="flex gap-2 items-center">
+              <Badge variant="outline" className="text-xs font-medium text-slate-500 bg-slate-50 border-none">
+                {period === '24h' && 'Dernières 24h'}
+                {period === '7d' && 'Derniers 7 jours'}
+                {period === '30d' && 'Derniers 30 jours'}
+                {period === '90d' && 'Derniers 90 jours'}
+              </Badge>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={260}>
             {chartType === 'revenue' ? (
               <AreaChart data={analytics.dailyStats}>
                 <defs>
                   <linearGradient id="colorUSD" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#059669" stopOpacity={0.1} />
+                    <stop offset="95%" stopColor="#059669" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="colorCDF" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1} />
+                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="4 4" stroke="#e5e7eb" />
-                <XAxis dataKey="date" stroke="#94a3b8" style={{ fontSize: '12px' }} tickMargin={12} />
-                <YAxis stroke="#94a3b8" style={{ fontSize: '12px' }} tickFormatter={(val) => `${val / 1000}k`} />
-                <Tooltip content={<ChartTooltip />} />
-                <Legend formatter={(value) => <span className="small-text">{value}</span>} />
-                <Area type="monotone" dataKey="revenueUSD" stroke="#10b981" fillOpacity={1} fill="url(#colorUSD)" name="Revenus USD" />
-                <Area type="monotone" dataKey="supplierCostUSD" stroke="#3b82f6" fillOpacity={1} fill="url(#colorCDF)" name="Coût Fournisseur USD" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="date" stroke="#94a3b8" style={{ fontSize: '10px', fontWeight: 'bold' }} tickMargin={16} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" style={{ fontSize: '10px' }} tickFormatter={(val) => `${val / 1000}k`} tickLine={false} axisLine={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{stroke: '#e2e8f0', strokeWidth: 2, strokeDasharray: '4 4'}} />
+                <Legend formatter={(value) => <span className="text-xs text-slate-500 font-medium">{value}</span>} iconType="circle" wrapperStyle={{paddingTop: '20px'}} />
+                <Area type="monotone" dataKey="revenueUSD" stroke="#059669" strokeWidth={3} fillOpacity={1} fill="url(#colorUSD)" name="Revenus USD" activeDot={{r: 6, fill: '#059669', stroke: '#fff', strokeWidth: 2}} />
+                <Area type="monotone" dataKey="supplierCostUSD" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorCDF)" name="Coût Fournisseur USD" activeDot={{r: 6, fill: '#2563eb', stroke: '#fff', strokeWidth: 2}} />
               </AreaChart>
             ) : chartType === 'transactions' ? (
-              <BarChart data={analytics.dailyStats}>
-                <CartesianGrid strokeDasharray="4 4" stroke="#e5e7eb" />
-                <XAxis dataKey="date" stroke="#94a3b8" style={{ fontSize: '12px' }} tickMargin={12} />
-                <YAxis stroke="#94a3b8" style={{ fontSize: '12px' }} />
-                <Tooltip content={<ChartTooltip />} />
-                <Legend formatter={(value) => <span className="small-text">{value}</span>} />
-                <Bar dataKey="netMarginUSD" fill="#3b82f6" radius={[8, 8, 0, 0]} name="Marge Nette USD" />
+              <BarChart data={analytics.dailyStats} barSize={24}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="date" stroke="#94a3b8" style={{ fontSize: '10px', fontWeight: 'bold' }} tickMargin={16} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" style={{ fontSize: '10px' }} tickLine={false} axisLine={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{fill: '#f8fafc'}} />
+                <Legend formatter={(value) => <span className="text-xs text-slate-500 font-medium">{value}</span>} iconType="circle" wrapperStyle={{paddingTop: '20px'}} />
+                <Bar dataKey="netMarginUSD" fill="#2563eb" radius={[6, 6, 6, 6]} name="Marge Nette USD" />
               </BarChart>
             ) : (
               <LineChart data={analytics.dailyStats}>
-                <CartesianGrid strokeDasharray="4 4" stroke="#e5e7eb" />
-                <XAxis dataKey="date" stroke="#94a3b8" style={{ fontSize: '12px' }} tickMargin={12} />
-                <YAxis stroke="#94a3b8" style={{ fontSize: '12px' }} />
-                <Tooltip content={<ChartTooltip />} />
-                <Legend formatter={(value) => <span className="small-text">{value}</span>} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="date" stroke="#94a3b8" style={{ fontSize: '10px', fontWeight: 'bold' }} tickMargin={16} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" style={{ fontSize: '10px' }} tickLine={false} axisLine={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{stroke: '#e2e8f0', strokeWidth: 2, strokeDasharray: '4 4'}} />
+                <Legend formatter={(value) => <span className="text-xs text-slate-500 font-medium">{value}</span>} iconType="circle" wrapperStyle={{paddingTop: '20px'}} />
                 <Line
                   type="monotone"
                   dataKey="activeClients"
                   stroke="#9333ea"
-                  strokeWidth={2}
-                  dot={{ fill: '#9333ea', r: 4 }}
-                  activeDot={{ r: 6 }}
+                  strokeWidth={3}
+                  dot={{ fill: '#fff', stroke: '#9333ea', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, fill: '#9333ea', stroke: '#fff', strokeWidth: 2 }}
                   name="Clients actifs"
                 />
               </LineChart>
@@ -314,68 +298,88 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
         </CardContent>
       </Card>
 
-      {/* Graphiques secondaires */}
+      {/* Activités Récentes & Transactions */}
       <div className="grid-responsive-2">
-        <Card className="card-base">
+        <Card className="bg-card rounded-2xl border border-border shadow-sm p-2">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <PieChart className="h-5 w-5 text-muted-foreground" />
-              <span className="section-title">Répartition par devise</span>
+            <CardTitle className="text-lg font-bold text-foreground">
+              Top transactions récentes
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {analytics.currencyBreakdown.length === 0 ? (
-                <p className="body-text text-center py-4">Aucune donnée de devise</p>
+            <div className="space-y-6">
+              {analytics.topTransactions.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">Aucune transaction</p>
               ) : (
-                analytics.currencyBreakdown.map((item) => (
-                  <div key={item.currency} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className={cn(
-                        'w-4 h-4 rounded',
-                        item.currency === 'USD' ? 'bg-green-500' :
-                        item.currency === 'CDF' ? 'bg-blue-500' : 'bg-orange-500'
-                      )}></div>
-                      <span>{item.currency}</span>
-                      <span className="small-text">({item.count} txn)</span>
+                analytics.topTransactions.slice(0, 5).map((transaction, i) => (
+                  <div key={transaction.id} className="flex gap-4 items-center">
+                    <div className={cn(
+                      "h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0",
+                      i % 3 === 0 ? "bg-emerald-50 text-emerald-600" :
+                      i % 3 === 1 ? "bg-blue-50 text-blue-600" :
+                      "bg-purple-50 text-purple-600"
+                    )}>
+                      <Receipt className="h-5 w-5" />
                     </div>
-                    <span className="label-base text-mono">
-                      {formatCurrency(item.total, item.currency)}
-                    </span>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start">
+                        <p className="text-sm font-bold text-slate-900">{transaction.client_name}</p>
+                        <span className="text-xs text-slate-400">
+                          {new Date(transaction.created_at).toLocaleDateString('fr-FR')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                        <p className="text-xs text-slate-500 truncate max-w-[150px]">
+                          {transaction.motif || 'Paiement'}
+                        </p>
+                        <p className="text-sm font-bold text-slate-900">
+                          {formatCurrency(transaction.montant, transaction.devise)}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 ))
               )}
             </div>
+            {analytics.topTransactions.length > 0 && (
+              <Button variant="outline" className="w-full mt-6 rounded-xl border-slate-200 text-primary font-bold hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-100 transition-all">
+                Voir tout l'historique
+              </Button>
+            )}
           </CardContent>
         </Card>
 
-        <Card className="card-base">
+        <Card className="bg-card rounded-2xl border border-border shadow-sm p-2">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Activity className="h-5 w-5 text-muted-foreground" />
-              <span className="section-title">Top transactions récentes</span>
+            <CardTitle className="text-lg font-bold text-foreground">
+              Répartition par devise
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {analytics.topTransactions.length === 0 ? (
-                <p className="body-text text-center py-4">Aucune transaction</p>
+            <div className="space-y-6">
+              {analytics.currencyBreakdown.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">Aucune donnée de devise</p>
               ) : (
-                analytics.topTransactions.slice(0, 5).map((transaction) => (
-                  <div key={transaction.id} className="flex items-center justify-between">
-                    <div>
-                      <p className="label-base">{transaction.client_name}</p>
-                      <p className="small-text">
-                        {new Date(transaction.created_at).toLocaleDateString('fr-FR')}
-                      </p>
+                analytics.currencyBreakdown.map((item) => (
+                  <div key={item.currency} className="flex gap-4 items-center">
+                    <div className={cn(
+                      "h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0",
+                      item.currency === 'USD' ? "bg-emerald-50 text-emerald-600" :
+                      item.currency === 'CDF' ? "bg-blue-50 text-blue-600" :
+                      "bg-orange-50 text-orange-600"
+                    )}>
+                      <Wallet className="h-5 w-5" />
                     </div>
-                    <div className="text-right">
-                      <p className="label-base text-mono">
-                        {formatCurrency(transaction.montant, transaction.devise)}
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start">
+                        <p className="text-sm font-bold text-slate-900">Portefeuille {item.currency}</p>
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-50 text-slate-500">
+                          {item.count} txn
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-slate-900 mt-1">
+                        {formatCurrency(item.total, item.currency)}
                       </p>
-                      {transaction.motif && (
-                        <span className="small-text">{transaction.motif}</span>
-                      )}
                     </div>
                   </div>
                 ))

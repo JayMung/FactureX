@@ -19,7 +19,8 @@ import {
   X,
   History,
   List,
-  FileSearch
+  FileSearch,
+  Image as ImageIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
@@ -27,6 +28,7 @@ import { generateFacturePDF } from '@/utils/pdfGenerator';
 import { showError } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useClientPayerHealth, getHealthColor, getHealthLabel } from '@/hooks/useClientPayerHealth';
+import ImagePreview from '@/components/ui/ImagePreview';
 import type { Facture, FactureItem } from '@/types';
 
 interface FactureQuickViewProps {
@@ -425,19 +427,49 @@ const FactureQuickView: React.FC<FactureQuickViewProps> = ({ facture, open, onCl
             ) : items.length === 0 ? (
               <p className="text-sm text-gray-400 italic">Aucun article</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {items.map((item, idx) => (
-                  <div key={item.id ?? idx} className="flex items-start justify-between gap-2 text-sm py-2 border-b border-gray-100 last:border-0">
-                    <div className="min-w-0">
-                      <p className="font-medium text-gray-800 truncate">{item.description}</p>
+                  <div key={item.id ?? idx} className="flex gap-3 py-2 border-b border-gray-100 last:border-0">
+                    {/* Image */}
+                    <div className="flex-shrink-0">
+                      {item.image_url ? (
+                        <ImagePreview 
+                          url={item.image_url} 
+                          alt={`Article ${item.numero_ligne}`}
+                          size="sm"
+                          className="border rounded w-16 h-16"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center">
+                          <ImageIcon className="h-6 w-6 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-800">{item.description}</p>
                       <p className="text-xs text-gray-400">
                         {item.quantite} × {formatCurrency(item.prix_unitaire, facture.devise)}
                         {item.poids > 0 && ` · ${item.poids} kg`}
                       </p>
+                      {item.product_url && (
+                        <a
+                          href={item.product_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-700 mt-1"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Voir le produit
+                        </a>
+                      )}
                     </div>
-                    <span className="font-semibold text-gray-700 shrink-0">
-                      {formatCurrency(item.montant_total, facture.devise)}
-                    </span>
+                    {/* Amount */}
+                    <div className="flex-shrink-0 text-right">
+                      <span className="font-semibold text-gray-700">
+                        {formatCurrency(item.montant_total, facture.devise)}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>

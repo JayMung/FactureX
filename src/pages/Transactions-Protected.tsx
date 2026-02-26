@@ -857,10 +857,8 @@ const TransactionsProtected: React.FC = () => {
   const { totalUSD, totalFrais, totalBenefice, totalDepenses } = globalTotals;
 
   const generateReadableId = (transactionId: string, index: number) => {
-    // Utiliser les derniers caractères de l'ID UUID pour garantir l'unicité
-    const shortId = transactionId.slice(-6).toUpperCase();
-    const paddedNumber = (index + 1).toString().padStart(3, '0');
-    return `TX${paddedNumber}-${shortId}`;
+    // Retourner un simple code à 4 caractères
+    return String(index + 1).padStart(4, '0');
   };
 
   const exportTransactions = () => {
@@ -1042,49 +1040,65 @@ const TransactionsProtected: React.FC = () => {
             );
           })()}
 
-          {/* Tabs de navigation */}
+          {/* Tabs de navigation - Dropdown */}
           <Tabs value={activeTab} onValueChange={(value) => {
             setActiveTab(value as 'clients' | 'internes' | 'swaps');
-            setCurrentPage(1); // Reset pagination on tab change
-            setSelectedTransactions(new Set()); // Clear selection
+            setCurrentPage(1);
+            setSelectedTransactions(new Set());
           }} className="w-full">
+            {/* Navigation Dropdown */}
             <div className="flex justify-center mb-6">
-              <TabsList className="inline-flex w-full max-w-2xl p-1.5 bg-gray-100/80 dark:bg-gray-800/80 rounded-xl gap-1">
-                <TabsTrigger
-                  value="clients"
-                  className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all
-                    text-gray-500 dark:text-gray-400
-                    hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-700/50
-                    data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-emerald-500/20"
-                >
-                  <DollarSign className="h-4 w-4" />
-                  <span className="hidden sm:inline">Transactions Client</span>
-                  <span className="sm:hidden">Clients</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="internes"
-                  className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all
-                    text-gray-500 dark:text-gray-400
-                    hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-700/50
-                    data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-orange-500/20"
-                >
-                  <Receipt className="h-4 w-4" />
-                  <span className="hidden sm:inline">Opérations Internes</span>
-                  <span className="sm:hidden">Internes</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="swaps"
-                  className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all
-                    text-gray-500 dark:text-gray-400
-                    hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-700/50
-                    data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-blue-500/20"
-                >
-                  <Wallet className="h-4 w-4" />
-                  <span className="hidden sm:inline">Swaps Comptes</span>
-                  <span className="sm:hidden">Swaps</span>
-                </TabsTrigger>
-              </TabsList>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="inline-flex items-center gap-2 px-4 py-2 h-10 rounded-xl border-gray-200 bg-white hover:bg-gray-50 min-w-[200px] justify-between"
+                  >
+                    <span className="flex items-center gap-2">
+                      {activeTab === 'clients' && <DollarSign className="h-4 w-4 text-primary" />}
+                      {activeTab === 'internes' && <Receipt className="h-4 w-4 text-orange-500" />}
+                      {activeTab === 'swaps' && <Wallet className="h-4 w-4 text-blue-500" />}
+                      <span className="font-medium">
+                        {activeTab === 'clients' && 'Transactions Client'}
+                        {activeTab === 'internes' && 'Opérations Internes'}
+                        {activeTab === 'swaps' && 'Swaps Comptes'}
+                      </span>
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" className="min-w-[200px]">
+                  <DropdownMenuItem
+                    onClick={() => setActiveTab('clients')}
+                    className={activeTab === 'clients' ? "bg-gray-50 cursor-pointer" : "cursor-pointer"}
+                  >
+                    <span className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-primary" />
+                      <span>Transactions Client</span>
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setActiveTab('internes')}
+                    className={activeTab === 'internes' ? "bg-gray-50 cursor-pointer" : "cursor-pointer"}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Receipt className="h-4 w-4 text-orange-500" />
+                      <span>Opérations Internes</span>
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setActiveTab('swaps')}
+                    className={activeTab === 'swaps' ? "bg-gray-50 cursor-pointer" : "cursor-pointer"}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Wallet className="h-4 w-4 text-blue-500" />
+                      <span>Swaps Comptes</span>
+                    </span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
+
 
 
             {/* Stats Cards - Design System */}

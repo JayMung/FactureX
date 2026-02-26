@@ -64,7 +64,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <SessionActivityTracker>
-      <div className="h-screen flex bg-gray-100 dark:bg-gray-900">
+      <div className="h-screen flex bg-background">
         {/* Backdrop pour mobile avec animation */}
         <AnimatePresence>
           {sidebarOpen && !isDesktop && (
@@ -109,7 +109,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             user={user}
             onMenuToggle={toggleMobileSidebar}
           />
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-white dark:bg-bg-dark p-4 md:p-6 transition-opacity duration-200">
+          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 md:p-6 transition-opacity duration-200">
             {children}
           </main>
         </div>

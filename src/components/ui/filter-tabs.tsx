@@ -3,6 +3,14 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export interface FilterTab {
     id: string;
@@ -16,7 +24,7 @@ interface FilterTabsProps {
     activeTab: string;
     onTabChange: (tabId: string) => void;
     className?: string;
-    variant?: 'default' | 'pills' | 'underline';
+    variant?: 'default' | 'pills' | 'underline' | 'dropdown';
 }
 
 /**
@@ -28,8 +36,69 @@ export function FilterTabs({
     activeTab,
     onTabChange,
     className,
-    variant = 'pills'
+    variant = 'dropdown'
 }: FilterTabsProps) {
+    const activeTabData = tabs.find(t => t.id === activeTab) || tabs[0];
+
+    // Dropdown variant (default)
+    if (variant === 'dropdown') {
+        return (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="outline"
+                        className={cn(
+                            "inline-flex items-center gap-2 px-4 py-2 h-10 rounded-xl border-gray-200 bg-white hover:bg-gray-50",
+                            className
+                        )}
+                    >
+                        {activeTabData.icon}
+                        <span>{activeTabData.label}</span>
+                        {activeTabData.count !== undefined && (
+                            <Badge
+                                variant="secondary"
+                                className="ml-1 text-xs px-2 py-0.5 rounded-full bg-emerald-500 text-white"
+                            >
+                                {activeTabData.count}
+                            </Badge>
+                        )}
+                        <ChevronDown className="h-4 w-4 ml-1 text-gray-400" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-[160px]">
+                    {tabs.map((tab) => (
+                        <DropdownMenuItem
+                            key={tab.id}
+                            onClick={() => onTabChange(tab.id)}
+                            className={cn(
+                                "cursor-pointer flex items-center justify-between",
+                                activeTab === tab.id && "bg-gray-50"
+                            )}
+                        >
+                            <span className="flex items-center gap-2">
+                                {tab.icon}
+                                {tab.label}
+                            </span>
+                            {tab.count !== undefined && (
+                                <Badge
+                                    variant="secondary"
+                                    className={cn(
+                                        "text-xs px-2 py-0.5 rounded-full",
+                                        activeTab === tab.id
+                                            ? "bg-emerald-500 text-white"
+                                            : "bg-gray-100 text-gray-600"
+                                    )}
+                                >
+                                    {tab.count}
+                                </Badge>
+                            )}
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        );
+    }
+
     if (variant === 'underline') {
         return (
             <div className={cn("border-b border-gray-200", className)}>

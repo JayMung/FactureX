@@ -3,13 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
 import { useSupabaseQuery } from './useSupabaseQuery';
 
-// Fonction utilitaire pour générer un ID de colis lisible
-export const generateColisId = (colisId: string, createdAt: string): string => {
-  const date = new Date(createdAt);
-  const year = date.getFullYear().toString().slice(-2);
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const shortId = colisId.slice(0, 6).toUpperCase();
-  return `CA-${year}${month}-${shortId}`;
+// Fonction utilitaire pour générer un ID de colis lisible (4 caractères)
+export const generateColisId = (colisId: string, createdAt?: string): string => {
+  // Retourner un simple code à 4 caractères basé sur les 4 derniers caractères de l'UUID
+  return colisId.slice(-4).toUpperCase();
 };
 
 export interface Paiement {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FilterTabs } from '@/components/ui/filter-tabs';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 import { Button } from '@/components/ui/button';
+import { KpiCard } from '@/components/ui/kpi-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -167,9 +168,9 @@ const Comptes: React.FC = () => {
     if (n.includes('m-pesa') || n.includes('mpesa')) return 'from-green-700 via-green-500 to-emerald-400';
     if (n.includes('illicocash') || n.includes('illico')) return 'from-blue-700 via-blue-500 to-cyan-400';
     if (n.includes('alipay')) return 'from-blue-600 via-sky-500 to-cyan-400';
-    if (n.includes('cash') || n.includes('bureau')) return 'from-emerald-700 via-emerald-500 to-teal-400';
+    if (n.includes('cash') || n.includes('bureau')) return 'from-green-700 via-green-500 to-green-400';
     if (type === 'banque') return 'from-slate-700 via-slate-500 to-blue-400';
-    if (type === 'cash') return 'from-emerald-700 via-emerald-500 to-teal-400';
+    if (type === 'cash') return 'from-green-700 via-green-500 to-green-400';
     return 'from-purple-700 via-purple-500 to-violet-400';
   };
 
@@ -217,11 +218,11 @@ const Comptes: React.FC = () => {
         };
       case 'cash':
         return {
-          bg: 'bg-emerald-50 dark:bg-emerald-950/20',
-          border: 'border-emerald-200 dark:border-emerald-800',
-          icon: 'bg-emerald-500',
-          text: 'text-emerald-700 dark:text-emerald-300',
-          badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
+          bg: 'bg-green-50 dark:bg-green-950/20',
+          border: 'border-green-200 dark:border-green-800',
+          icon: 'bg-primary',
+          text: 'text-primary',
+          badge: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
         };
       default:
         return {
@@ -289,7 +290,7 @@ const Comptes: React.FC = () => {
     },
     {
       key: 'actions',
-      title: '',
+      title: 'Actions',
       align: 'right' as const,
       render: (_: any, item: CompteFinancier) => (
         <DropdownMenu>
@@ -496,81 +497,12 @@ const Comptes: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Cards - Enhanced Design */}
+      {/* Summary Cards - FreshCart style */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Comptes Card */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 p-5 shadow-lg">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/5"></div>
-          <div className="relative">
-            <div className="flex items-center justify-between">
-              <div className="rounded-lg bg-white/10 p-2.5">
-                <Wallet className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-xs font-medium text-slate-400">Actifs</span>
-            </div>
-            <div className="mt-4">
-              <p className="text-3xl font-bold text-white">{activeComptes.length}</p>
-              <p className="mt-1 text-sm text-slate-400">Comptes financiers</p>
-            </div>
-          </div>
-        </div>
-
-        {/* USD Balance Card */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-5 shadow-lg">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10"></div>
-          <div className="relative">
-            <div className="flex items-center justify-between">
-              <div className="rounded-lg bg-white/20 p-2.5">
-                <DollarSign className="h-5 w-5 text-white" />
-              </div>
-              <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
-                USD
-              </span>
-            </div>
-            <div className="mt-4">
-              <p className="text-3xl font-bold text-white">${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              <p className="mt-1 text-sm text-emerald-100">Dollars américains</p>
-            </div>
-          </div>
-        </div>
-
-        {/* CDF Balance Card */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-5 shadow-lg">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10"></div>
-          <div className="relative">
-            <div className="flex items-center justify-between">
-              <div className="rounded-lg bg-white/20 p-2.5">
-                <Banknote className="h-5 w-5 text-white" />
-              </div>
-              <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
-                CDF
-              </span>
-            </div>
-            <div className="mt-4">
-              <p className="text-3xl font-bold text-white">{totalCDF.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} FC</p>
-              <p className="mt-1 text-sm text-blue-100">Francs congolais</p>
-            </div>
-          </div>
-        </div>
-
-        {/* CNY Balance Card */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-5 shadow-lg">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10"></div>
-          <div className="relative">
-            <div className="flex items-center justify-between">
-              <div className="rounded-lg bg-white/20 p-2.5">
-                <CreditCard className="h-5 w-5 text-white" />
-              </div>
-              <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
-                CNY
-              </span>
-            </div>
-            <div className="mt-4">
-              <p className="text-3xl font-bold text-white">¥{totalCNY.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              <p className="mt-1 text-sm text-purple-100">Yuan chinois (RMB)</p>
-            </div>
-          </div>
-        </div>
+        <KpiCard title="Comptes financiers" value={activeComptes.length} icon={Wallet} iconColor="#64748b" iconBg="#f1f5f9" />
+        <KpiCard title="Solde USD" value={`$${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} icon={DollarSign} iconColor="#21ac74" iconBg="#dcfce7" />
+        <KpiCard title="Solde CDF" value={`${totalCDF.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} FC`} icon={Banknote} iconColor="#3b82f6" iconBg="#dbeafe" />
+        <KpiCard title="Solde CNY" value={`¥${totalCNY.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} icon={CreditCard} iconColor="#8b5cf6" iconBg="#ede9fe" />
       </div>
 
       <FilterTabs

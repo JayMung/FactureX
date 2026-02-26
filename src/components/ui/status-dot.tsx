@@ -5,13 +5,13 @@ import { cn } from "@/lib/utils";
 const statusDotVariants = cva("inline-block rounded-full shrink-0", {
   variants: {
     status: {
-      success: "bg-green-500",
-      warning: "bg-amber-500",
-      error: "bg-red-500",
-      info: "bg-blue-500",
-      neutral: "bg-gray-400 dark:bg-gray-500",
-      active: "bg-green-500",
-      inactive: "bg-gray-300 dark:bg-gray-600",
+      success: "bg-success",
+      warning: "bg-warning",
+      error: "bg-destructive",
+      info: "bg-info",
+      neutral: "bg-muted-foreground",
+      active: "bg-success",
+      inactive: "bg-muted-foreground/40",
     },
     size: {
       sm: "h-1.5 w-1.5",

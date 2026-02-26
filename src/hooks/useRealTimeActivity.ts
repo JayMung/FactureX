@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ActivityLog } from '@/types';
 
@@ -8,6 +8,15 @@ export const useRealTimeActivity = (limit: number = 10) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [lastFetch, setLastFetch] = useState(0);
+
+  // Use refs to avoid circular dependencies in useEffect
+  const isLoadingRef = useRef(isLoading);
+  const lastFetchRef = useRef(lastFetch);
+  
+  useEffect(() => {
+    isLoadingRef.current = isLoading;
+    lastFetchRef.current = lastFetch;
+  }, [isLoading, lastFetch]);
 
   // Mettre à jour le compteur de notifications non lues
   const markAsRead = useCallback(() => {
@@ -20,12 +29,12 @@ export const useRealTimeActivity = (limit: number = 10) => {
   const fetchRecentActivities = useCallback(async () => {
     // Débouncing - ne pas faire plus d'une requête par seconde
     const now = Date.now();
-    if (isLoading || (now - lastFetch < 1000)) {
+    if (now - lastFetchRef.current < 1000) {
       return;
     }
     
+    lastFetchRef.current = now;
     setIsLoading(true);
-    setLastFetch(now);
     
     try {
       // Récupérer les activity logs
@@ -70,7 +79,7 @@ export const useRealTimeActivity = (limit: number = 10) => {
     } finally {
       setIsLoading(false);
     }
-  }, [limit, isLoading, lastFetch]);
+  }, [limit]);
 
   // Écouter les nouvelles activités en temps réel
   useEffect(() => {

@@ -3,6 +3,7 @@ import Layout from '@/components/layout/Layout';
 import { usePageSetup } from '@/hooks/use-page-setup';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { KpiCard } from '@/components/ui/kpi-card';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -151,99 +152,18 @@ const Rapports = () => {
                                 className="w-40"
                             />
                         </div>
-                        <Button onClick={handleRefresh} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                        <Button onClick={handleRefresh} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                             Rafraîchir
                         </Button>
                     </div>
                 </div>
 
-                {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <Card className="border-emerald-100 dark:border-emerald-900 bg-emerald-50/30 dark:bg-emerald-950/20">
-                        <CardHeader className="pb-2">
-                            <div className="flex justify-between items-start">
-                                <CardTitle className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Recettes Totales (USD)</CardTitle>
-                                <div className="p-2 bg-emerald-100 dark:bg-emerald-900 rounded-full">
-                                    <TrendingUp className="h-4 w-4 text-emerald-600" />
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {loading ? <Skeleton className="h-8 w-24" /> : (
-                                <div className="text-2xl font-bold text-emerald-900 dark:text-emerald-100">
-                                    {data?.summary.totalRevenue.usd.toFixed(2)} $
-                                </div>
-                            )}
-                            <div className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 flex flex-col gap-1">
-                                <span>{data?.summary.totalRevenue.cdf.toLocaleString()} CDF</span>
-                                <span>{data?.summary.totalRevenue.cny.toFixed(2)} CNY</span>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-red-100 dark:border-red-900 bg-red-50/30 dark:bg-red-950/20">
-                        <CardHeader className="pb-2">
-                            <div className="flex justify-between items-start">
-                                <CardTitle className="text-sm font-medium text-red-800 dark:text-red-300">Dépenses Totales (USD)</CardTitle>
-                                <div className="p-2 bg-red-100 dark:bg-red-900 rounded-full">
-                                    <TrendingDown className="h-4 w-4 text-red-600" />
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {loading ? <Skeleton className="h-8 w-24" /> : (
-                                <div className="text-2xl font-bold text-red-900 dark:text-red-100">
-                                    {data?.summary.totalExpense.usd.toFixed(2)} $
-                                </div>
-                            )}
-                            <div className="mt-2 text-xs text-red-600 dark:text-red-400 flex flex-col gap-1">
-                                <span>{data?.summary.totalExpense.cdf.toLocaleString()} CDF</span>
-                                <span>{data?.summary.totalExpense.cny.toFixed(2)} CNY</span>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-blue-100 dark:border-blue-900 bg-blue-50/30 dark:bg-blue-950/20">
-                        <CardHeader className="pb-2">
-                            <div className="flex justify-between items-start">
-                                <CardTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">Volume d'activité</CardTitle>
-                                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-full">
-                                    <PieChart className="h-4 w-4 text-blue-600" />
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {loading ? <Skeleton className="h-8 w-24" /> : (
-                                <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                                    {data?.summary.transactionCount}
-                                </div>
-                            )}
-                            <p className="mt-2 text-xs text-blue-600 dark:text-blue-400">Transactions enregistrées</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-purple-100 dark:border-purple-900 bg-purple-50/30 dark:bg-purple-950/20">
-                        <CardHeader className="pb-2">
-                            <div className="flex justify-between items-start">
-                                <CardTitle className="text-sm font-medium text-purple-800 dark:text-purple-300">Solde Net (USD)</CardTitle>
-                                <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-full">
-                                    <DollarSign className="h-4 w-4 text-purple-600" />
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {loading ? <Skeleton className="h-8 w-24" /> : (
-                                <div className={`text-2xl font-bold ${
-                                    (data?.summary.netProfit ?? 0) >= 0
-                                        ? 'text-emerald-700 dark:text-emerald-300'
-                                        : 'text-red-700 dark:text-red-300'
-                                }`}>
-                                    {data?.summary.netProfit.toFixed(2)} $
-                                </div>
-                            )}
-                            <p className="mt-2 text-xs text-purple-600 dark:text-purple-400">Recettes − Dépenses (USD)</p>
-                        </CardContent>
-                    </Card>
+                {/* Summary Cards - FreshCart style */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <KpiCard title="Recettes (USD)" value={loading ? '...' : `${data?.summary.totalRevenue.usd.toFixed(2)} $`} icon={TrendingUp} iconColor="#21ac74" iconBg="#dcfce7" loading={loading} />
+                    <KpiCard title="Dépenses (USD)" value={loading ? '...' : `${data?.summary.totalExpense.usd.toFixed(2)} $`} icon={TrendingDown} iconColor="#ef4444" iconBg="#fee2e2" loading={loading} />
+                    <KpiCard title="Transactions" value={loading ? '...' : (data?.summary.transactionCount ?? 0)} icon={PieChart} iconColor="#3b82f6" iconBg="#dbeafe" loading={loading} />
+                    <KpiCard title="Solde Net (USD)" value={loading ? '...' : `${data?.summary.netProfit.toFixed(2)} $`} icon={DollarSign} iconColor="#8b5cf6" iconBg="#ede9fe" loading={loading} />
                 </div>
 
                 {/* Actions */}
@@ -252,7 +172,7 @@ const Rapports = () => {
                         variant="outline"
                         onClick={handleExportExcel}
                         disabled={!data || loading}
-                        className="flex items-center gap-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+                        className="flex items-center gap-2 border-primary text-primary hover:bg-primary/10"
                     >
                         <Download className="h-4 w-4" />
                         Exporter Excel
@@ -273,7 +193,7 @@ const Rapports = () => {
                     <Button
                         onClick={handleExportPDF}
                         disabled={!data || loading || exporting}
-                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
                     >
                         <FileText className="h-4 w-4" />
                         {exporting ? 'Génération...' : 'Télécharger PDF'}
@@ -294,7 +214,7 @@ const Rapports = () => {
                                         size="sm"
                                         onClick={handleExportPDF}
                                         disabled={exporting}
-                                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+                                        className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs"
                                     >
                                         <Download className="h-3.5 w-3.5 mr-1" />
                                         Télécharger
@@ -342,7 +262,7 @@ const Rapports = () => {
                                             : (val === 'transfert' || val === 'swap') ? 'TRANSFERT'
                                             : val?.toUpperCase();
                                         const cls = val === 'revenue'
-                                            ? 'bg-emerald-100 text-emerald-700'
+                                            ? 'bg-green-100 text-green-700'
                                             : (val === 'depense' || val === 'expense')
                                             ? 'bg-red-100 text-red-700'
                                             : 'bg-blue-100 text-blue-700';

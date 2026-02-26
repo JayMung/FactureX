@@ -99,11 +99,11 @@ const Header: React.FC<HeaderProps> = ({
     <header className="bg-background/95 backdrop-blur-sm border-b border-border sticky top-0 z-40">
       <div className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
         <div className="flex items-center justify-between gap-2 sm:gap-4">
-          {/* Left side - Menu button and title */}
+          {/* Left side - Menu button (mobile only) and title */}
           <div className="flex items-center min-w-0 flex-1">
             <button
               onClick={onMenuToggle}
-              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-all focus:outline-none focus:ring-2 focus:ring-ring flex-shrink-0"
+              className="lg:hidden p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-all focus:outline-none focus:ring-2 focus:ring-ring flex-shrink-0"
               aria-label="Basculer le menu"
               title="Afficher/Masquer le menu"
             >

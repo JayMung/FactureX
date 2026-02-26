@@ -796,46 +796,57 @@ const FacturesProtected: React.FC = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start" className="w-48">
-                            <DropdownMenuItem
-                              onClick={() => handleStatutChange(facture, 'brouillon')}
-                              className={cn(
-                                "cursor-pointer",
-                                value === 'brouillon' && 'bg-gray-50'
-                              )}
-                            >
-                              <FileText className="mr-2 h-4 w-4" />
-                              Brouillon
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleStatutChange(facture, 'envoyee')}
-                              className={cn(
-                                "cursor-pointer",
-                                value === 'envoyee' && 'bg-gray-50'
-                              )}
-                            >
-                              <Send className="mr-2 h-4 w-4" />
-                              Envoyée
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleStatutChange(facture, 'payee')}
-                              className={cn(
-                                "cursor-pointer",
-                                value === 'payee' && 'bg-gray-50'
-                              )}
-                            >
-                              <CheckCircle className="mr-2 h-4 w-4" />
-                              Payée
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleStatutChange(facture, 'annulee')}
-                              className={cn(
-                                "cursor-pointer",
-                                value === 'annulee' && 'bg-gray-50'
-                              )}
-                            >
-                              <XCircle className="mr-2 h-4 w-4" />
-                              Annulée
-                            </DropdownMenuItem>
+                            {/* Valid transitions based on database state machine:
+                                - brouillon -> validee | annulee
+                                - validee -> payee (if solde_restant = 0) | annulee
+                                - payee/annulee are terminal (no transitions)
+                            */}
+                            {value === 'brouillon' && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => handleStatutChange(facture, 'validee')}
+                                  className="cursor-pointer"
+                                >
+                                  <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                                  Validée
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleStatutChange(facture, 'annulee')}
+                                  className="cursor-pointer"
+                                >
+                                  <XCircle className="mr-2 h-4 w-4 text-red-600" />
+                                  Annulée
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {value === 'validee' && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => handleStatutChange(facture, 'payee')}
+                                  disabled={(facture as any).solde_restant > 0}
+                                  className={cn(
+                                    "cursor-pointer",
+                                    (facture as any).solde_restant > 0 && "opacity-50 cursor-not-allowed"
+                                  )}
+                                  title={(facture as any).solde_restant > 0 ? "Le solde doit être à 0 pour marquer comme payée" : undefined}
+                                >
+                                  <CheckCircle className="mr-2 h-4 w-4 text-blue-600" />
+                                  Payée {(facture as any).solde_restant > 0 && "(solde > 0)"}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleStatutChange(facture, 'annulee')}
+                                  className="cursor-pointer"
+                                >
+                                  <XCircle className="mr-2 h-4 w-4 text-red-600" />
+                                  Annulée
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {(value === 'payee' || value === 'annulee') && (
+                              <DropdownMenuItem disabled className="opacity-50 cursor-not-allowed">
+                                <span className="text-gray-500">Statut terminal - aucune transition possible</span>
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       ) : (

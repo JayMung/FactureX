@@ -176,69 +176,51 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
         </Button>
       </div>
 
-      {/* Cartes de statistiques — Colorful Design */}
+      {/* Cartes de statistiques — Cotheme Design */}
       <div className="grid-responsive-4">
-        {/* Revenus totaux — vert */}
-        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-400 to-emerald-600 p-5 text-white shadow-md">
-          <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
-          <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
-          <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
-            <DollarSign className="h-5 w-5 text-white" />
-          </div>
-          <p className="text-3xl font-bold leading-none truncate">{formatCurrency(analytics.totalRevenueUSD, 'USD')}</p>
-          <p className="mt-1 text-sm text-white/80">Revenus totaux</p>
-          {analytics.revenueChange && (
-            <div className="mt-2 flex items-center gap-1 text-xs text-white/70">
-              {analytics.revenueChange.isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-              <span>{Math.abs(analytics.revenueChange.value)}%</span>
-            </div>
-          )}
-        </div>
+        <StatCard
+          title="Revenus totaux"
+          value={formatCurrency(analytics.totalRevenueUSD, 'USD')}
+          icon={DollarSign}
+          iconColor="text-emerald-600"
+          trend={analytics.revenueChange ? { 
+            value: analytics.revenueChange.value, 
+            label: "vs période prec." 
+          } : undefined}
+          className="bg-card shadow-sm hover:shadow-md transition-all border-border"
+        />
 
-        {/* Marge brute — bleu */}
-        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 p-5 text-white shadow-md">
-          <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
-          <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
-          <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
-            <Receipt className="h-5 w-5 text-white" />
-          </div>
-          <p className="text-3xl font-bold leading-none truncate">{formatCurrency(analytics.netMarginUSD, 'USD')}</p>
-          <p className="mt-1 text-sm text-white/80">Marge brute</p>
-          {analytics.marginChange && (
-            <div className="mt-2 flex items-center gap-1 text-xs text-white/70">
-              {analytics.marginChange.isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-              <span>{Math.abs(analytics.marginChange.value)}%</span>
-            </div>
-          )}
-        </div>
+        <StatCard
+          title="Marge brute"
+          value={formatCurrency(analytics.netMarginUSD, 'USD')}
+          icon={Receipt}
+          iconColor="text-blue-600"
+          trend={analytics.marginChange ? { 
+            value: analytics.marginChange.value, 
+            label: "vs période prec." 
+          } : undefined}
+          className="bg-card shadow-sm hover:shadow-md transition-all border-border"
+        />
 
-        {/* Clients actifs — violet */}
-        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-purple-400 to-purple-600 p-5 text-white shadow-md">
-          <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
-          <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
-          <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
-            <Users className="h-5 w-5 text-white" />
-          </div>
-          <p className="text-3xl font-bold leading-none">{analytics.activeClients.toLocaleString()}</p>
-          <p className="mt-1 text-sm text-white/80">Clients actifs</p>
-        </div>
+        <StatCard
+          title="Clients actifs"
+          value={analytics.activeClients.toLocaleString()}
+          icon={Users}
+          iconColor="text-purple-600"
+          className="bg-card shadow-sm hover:shadow-md transition-all border-border"
+        />
 
-        {/* Bénéfice net — orange */}
-        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-orange-400 to-orange-600 p-5 text-white shadow-md">
-          <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/10" />
-          <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
-          <div className="mb-3 inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20">
-            <TrendingUp className="h-5 w-5 text-white" />
-          </div>
-          <p className="text-3xl font-bold leading-none truncate">{formatCurrency(analytics.netProfitUSD, 'USD')}</p>
-          <p className="mt-1 text-sm text-white/80">Bénéfice net</p>
-          {analytics.profitChange && (
-            <div className="mt-2 flex items-center gap-1 text-xs text-white/70">
-              {analytics.profitChange.isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-              <span>{Math.abs(analytics.profitChange.value)}%</span>
-            </div>
-          )}
-        </div>
+        <StatCard
+          title="Bénéfice net"
+          value={formatCurrency(analytics.netProfitUSD, 'USD')}
+          icon={TrendingUp}
+          iconColor="text-orange-600"
+          trend={analytics.profitChange ? { 
+            value: analytics.profitChange.value, 
+            label: "vs période prec." 
+          } : undefined}
+          className="bg-card shadow-sm hover:shadow-md transition-all border-border"
+        />
       </div>
 
       {/* Graphique principal */}

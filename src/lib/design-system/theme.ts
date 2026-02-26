@@ -1,150 +1,152 @@
 /**
- * FactureX Theme Configuration
+ * Cotheme Theme Configuration
  * Maps design tokens to semantic theme values for light/dark modes.
+ * Uses OKLCH color space for perceptual uniformity.
  * Used by CSS variables in globals.css and component variants.
  */
 
 import { colors } from './tokens';
 
-// ─── HSL Helpers ─────────────────────────────────────────────────────────────
+// ─── OKLCH Theme Maps ────────────────────────────────────────────────────────
 
 /**
- * CSS variable values in HSL format (without hsl() wrapper)
- * This matches shadcn/ui convention: `--primary: 142.1 76.2% 36.3%`
+ * CSS variable values in OKLCH format.
+ * These are reference maps for JS-side theme logic.
+ * The actual CSS variables are defined in globals.css using oklch() syntax.
  */
 
-// ─── Light Theme ─────────────────────────────────────────────────────────────
+// ─── Light Theme (OKLCH) ────────────────────────────────────────────────────
 
 export const lightTheme = {
   // Core
-  background:           '0 0% 100%',
-  foreground:           '215 25% 9%',
+  background:           'oklch(1 0 0)',
+  foreground:           'oklch(0.145 0 0)',
 
   // Cards & Surfaces
-  card:                 '0 0% 100%',
-  'card-foreground':    '215 25% 9%',
-  popover:              '0 0% 100%',
-  'popover-foreground': '215 25% 9%',
+  card:                 'oklch(1 0 0)',
+  'card-foreground':    'oklch(0.145 0 0)',
+  popover:              'oklch(1 0 0)',
+  'popover-foreground': 'oklch(0.145 0 0)',
 
-  // Brand
-  primary:              '160 84% 39%',
-  'primary-foreground': '0 0% 98%',
+  // Brand — Emerald (default preset)
+  primary:              'oklch(0.55 0.19 160)',
+  'primary-foreground': 'oklch(1 0 0)',
 
   // Secondary
-  secondary:            '214 32% 96%',
-  'secondary-foreground':'215 25% 9%',
+  secondary:            'oklch(0.97 0 0)',
+  'secondary-foreground':'oklch(0.145 0 0)',
 
   // Muted
-  muted:                '214 32% 96%',
-  'muted-foreground':   '215 16% 47%',
+  muted:                'oklch(0.97 0 0)',
+  'muted-foreground':   'oklch(0.55 0 0)',
 
   // Accent
-  accent:               '214 32% 96%',
-  'accent-foreground':  '215 25% 9%',
+  accent:               'oklch(0.97 0 0)',
+  'accent-foreground':  'oklch(0.145 0 0)',
 
   // Destructive
-  destructive:          '0 84% 60%',
-  'destructive-foreground': '0 0% 98%',
+  destructive:          'oklch(0.637 0.237 25)',
+  'destructive-foreground': 'oklch(1 0 0)',
 
   // Semantic status
-  success:              '142 71% 45%',
-  'success-foreground': '0 0% 98%',
-  warning:              '38 92% 50%',
-  'warning-foreground': '0 0% 9%',
-  info:                 '217 91% 60%',
-  'info-foreground':    '0 0% 98%',
+  success:              'oklch(0.627 0.194 149)',
+  'success-foreground': 'oklch(1 0 0)',
+  warning:              'oklch(0.75 0.183 55)',
+  'warning-foreground': 'oklch(0.145 0 0)',
+  info:                 'oklch(0.6 0.19 240)',
+  'info-foreground':    'oklch(1 0 0)',
 
   // Borders & Inputs
-  border:               '214 32% 91%',
-  input:                '214 32% 91%',
-  ring:                 '160 84% 39%',
+  border:               'oklch(0.92 0 0)',
+  input:                'oklch(0.92 0 0)',
+  ring:                 'oklch(0.55 0.19 160)',
 
   // Radius
-  radius:               '0.75rem',
+  radius:               '0.625rem',
 
   // Sidebar
-  'sidebar-background':          '210 20% 98%',
-  'sidebar-foreground':          '215 25% 27%',
-  'sidebar-primary':             '215 25% 10%',
-  'sidebar-primary-foreground':  '0 0% 98%',
-  'sidebar-accent':              '214 20% 95%',
-  'sidebar-accent-foreground':   '215 25% 10%',
-  'sidebar-border':              '214 20% 92%',
-  'sidebar-ring':                '217 91% 60%',
+  'sidebar-background':          'oklch(1 0 0)',
+  'sidebar-foreground':          'oklch(0.145 0 0)',
+  'sidebar-primary':             'oklch(0.55 0.19 160)',
+  'sidebar-primary-foreground':  'oklch(1 0 0)',
+  'sidebar-accent':              'oklch(0 0 0 / 0.05)',
+  'sidebar-accent-foreground':   'oklch(0.145 0 0)',
+  'sidebar-border':              'oklch(0.92 0 0)',
+  'sidebar-ring':                'oklch(0.55 0.19 160)',
 
   // Chart colors
-  'chart-1': '160 84% 39%',
-  'chart-2': '234 89% 74%',
-  'chart-3': '38 92% 50%',
-  'chart-4': '0 84% 60%',
-  'chart-5': '271 81% 56%',
+  'chart-1': 'oklch(0.55 0.19 160)',
+  'chart-2': 'oklch(0.6 0.18 200)',
+  'chart-3': 'oklch(0.5 0.2 30)',
+  'chart-4': 'oklch(0.7 0.15 280)',
+  'chart-5': 'oklch(0.65 0.16 100)',
 } as const;
 
-// ─── Dark Theme ──────────────────────────────────────────────────────────────
+// ─── Dark Theme (OKLCH) ─────────────────────────────────────────────────────
 
 export const darkTheme = {
   // Core
-  background:           '222 47% 6%',
-  foreground:           '210 40% 98%',
+  background:           'oklch(0.15 0.02 260)',
+  foreground:           'oklch(0.97 0 0)',
 
   // Cards & Surfaces
-  card:                 '222 47% 8%',
-  'card-foreground':    '210 40% 98%',
-  popover:              '222 47% 8%',
-  'popover-foreground': '210 40% 98%',
+  card:                 'oklch(0.18 0.02 260)',
+  'card-foreground':    'oklch(0.97 0 0)',
+  popover:              'oklch(0.18 0.02 260)',
+  'popover-foreground': 'oklch(0.97 0 0)',
 
-  // Brand
-  primary:              '160 84% 39%',
-  'primary-foreground': '210 40% 98%',
+  // Brand — Emerald (slightly lighter for dark)
+  primary:              'oklch(0.6 0.19 160)',
+  'primary-foreground': 'oklch(0.97 0 0)',
 
   // Secondary
-  secondary:            '217 33% 17%',
-  'secondary-foreground':'210 40% 98%',
+  secondary:            'oklch(0.25 0.02 260)',
+  'secondary-foreground':'oklch(0.97 0 0)',
 
   // Muted
-  muted:                '217 33% 17%',
-  'muted-foreground':   '215 20% 65%',
+  muted:                'oklch(0.25 0.02 260)',
+  'muted-foreground':   'oklch(0.65 0 0)',
 
   // Accent
-  accent:               '217 33% 17%',
-  'accent-foreground':  '210 40% 98%',
+  accent:               'oklch(0.25 0.02 260)',
+  'accent-foreground':  'oklch(0.97 0 0)',
 
   // Destructive
-  destructive:          '0 63% 31%',
-  'destructive-foreground': '0 0% 98%',
+  destructive:          'oklch(0.5 0.2 25)',
+  'destructive-foreground': 'oklch(0.97 0 0)',
 
   // Semantic status
-  success:              '142 71% 45%',
-  'success-foreground': '0 0% 98%',
-  warning:              '38 92% 50%',
-  'warning-foreground': '0 0% 9%',
-  info:                 '217 91% 60%',
-  'info-foreground':    '0 0% 98%',
+  success:              'oklch(0.627 0.194 149)',
+  'success-foreground': 'oklch(0.97 0 0)',
+  warning:              'oklch(0.75 0.183 55)',
+  'warning-foreground': 'oklch(0.145 0 0)',
+  info:                 'oklch(0.6 0.19 240)',
+  'info-foreground':    'oklch(0.97 0 0)',
 
   // Borders & Inputs
-  border:               '217 33% 17%',
-  input:                '217 33% 17%',
-  ring:                 '160 84% 39%',
+  border:               'oklch(0.25 0.02 260)',
+  input:                'oklch(0.25 0.02 260)',
+  ring:                 'oklch(0.6 0.19 160)',
 
   // Radius
-  radius:               '0.75rem',
+  radius:               '0.625rem',
 
   // Sidebar
-  'sidebar-background':          '222 47% 7%',
-  'sidebar-foreground':          '210 40% 96%',
-  'sidebar-primary':             '217 91% 60%',
-  'sidebar-primary-foreground':  '0 0% 100%',
-  'sidebar-accent':              '222 40% 13%',
-  'sidebar-accent-foreground':   '210 40% 96%',
-  'sidebar-border':              '222 40% 13%',
-  'sidebar-ring':                '217 91% 60%',
+  'sidebar-background':          'oklch(0.16 0.02 260)',
+  'sidebar-foreground':          'oklch(0.95 0 0)',
+  'sidebar-primary':             'oklch(0.6 0.19 160)',
+  'sidebar-primary-foreground':  'oklch(1 0 0)',
+  'sidebar-accent':              'oklch(1 0 0 / 0.06)',
+  'sidebar-accent-foreground':   'oklch(0.95 0 0)',
+  'sidebar-border':              'oklch(0.22 0.02 260)',
+  'sidebar-ring':                'oklch(0.6 0.19 160)',
 
   // Chart colors
-  'chart-1': '160 84% 39%',
-  'chart-2': '234 89% 74%',
-  'chart-3': '38 92% 50%',
-  'chart-4': '0 84% 60%',
-  'chart-5': '271 81% 56%',
+  'chart-1': 'oklch(0.6 0.19 160)',
+  'chart-2': 'oklch(0.65 0.18 200)',
+  'chart-3': 'oklch(0.6 0.2 30)',
+  'chart-4': 'oklch(0.72 0.15 280)',
+  'chart-5': 'oklch(0.68 0.16 100)',
 } as const;
 
 // ─── Semantic Color Map (for JS usage) ───────────────────────────────────────
@@ -201,28 +203,28 @@ export const semanticColors = {
 
 export const componentTheme = {
   button: {
-    borderRadius: '0.5rem',
+    borderRadius: '0.375rem',  // rounded-md
     fontWeight: '500',
     transition: 'all 150ms cubic-bezier(0.4, 0, 0.2, 1)',
   },
   input: {
-    borderRadius: '0.5rem',
-    height: '2.5rem',
+    borderRadius: '0.375rem',  // rounded-md
+    height: '2rem',            // h-8
     fontSize: '0.875rem',
   },
   card: {
-    borderRadius: '0.75rem',
-    padding: '1.5rem',
+    borderRadius: '0.75rem',   // rounded-xl
+    padding: '1.25rem',        // p-5
   },
   badge: {
     borderRadius: '9999px',
-    fontSize: '0.75rem',
+    fontSize: '0.625rem',      // text-[10px]
     fontWeight: '600',
   },
   table: {
     headerBg: 'linear-gradient(to right, var(--table-header-from), var(--table-header-to))',
-    rowHoverBg: 'rgba(16, 185, 129, 0.04)',
-    borderColor: colors.neutral[100],
+    rowHoverBg: 'var(--accent)',
+    borderColor: 'var(--border)',
   },
   modal: {
     borderRadius: '0.75rem',
@@ -230,9 +232,20 @@ export const componentTheme = {
     overlayBg: 'rgba(0, 0, 0, 0.6)',
   },
   sidebar: {
-    width: '280px',
-    collapsedWidth: '72px',
-    transition: 'width 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+    width: '260px',
+    collapsedWidth: '48px',
+    logoHeight: '64px',
+    transition: 'all 300ms ease-in-out',
+  },
+  header: {
+    height: '64px',
+    backdropBlur: '8px',
+  },
+  metricCard: {
+    borderRadius: '0.75rem',   // rounded-xl
+    padding: '1.25rem',        // p-5
+    iconSize: '2.5rem',        // h-10 w-10
+    iconContainerRadius: '0.75rem',
   },
 } as const;
 

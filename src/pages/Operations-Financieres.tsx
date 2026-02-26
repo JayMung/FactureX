@@ -20,8 +20,17 @@ import {
   ArrowUpCircle,
   Download,
   Search,
-  Trash2
+  Trash2,
+  MoreHorizontal,
+  Eye
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -300,14 +309,14 @@ const OperationsFinancieres: React.FC = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Revenus</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
+              <TrendingUp className="h-4 w-4" style={{ color: '#21ac74' }} />
             </CardHeader>
             <CardContent>
               {statsLoading ? (
                 <div className="text-xl sm:text-2xl font-bold text-gray-400">Chargement...</div>
               ) : (
                 <>
-                  <div className="text-xl sm:text-2xl font-bold text-green-600">
+                  <div className="text-xl sm:text-2xl font-bold" style={{ color: '#21ac74' }}>
                     {formatCurrency(globalStats.totalRevenus, 'USD')}
                   </div>
                   <p className="text-xs text-muted-foreground">{globalStats.nombreRevenus} opération(s)</p>
@@ -388,7 +397,7 @@ const OperationsFinancieres: React.FC = () => {
                 <ArrowDownCircle className="h-4 w-4 mr-2" />
                 Dépense
               </Button>
-              <Button onClick={() => handleOpenDialog('revenue')} size="sm" className="bg-green-600 hover:bg-green-700">
+              <Button onClick={() => handleOpenDialog('revenue')} size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                 <ArrowUpCircle className="h-4 w-4 mr-2" />
                 Revenu
               </Button>
@@ -416,14 +425,22 @@ const OperationsFinancieres: React.FC = () => {
           actionsColumn={{
             header: 'Actions',
             render: (item) => (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleDelete(item.id)}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="h-8 w-8 p-0">
+                    <span className="sr-only">Open menu</span>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => handleDelete(item.id)}
+                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ),
           }}
         />

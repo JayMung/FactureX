@@ -16,15 +16,15 @@ const badgeVariants = cva(
           "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
         outline: "text-foreground",
         success:
-          "border-green-200 dark:border-green-500/20 bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-300",
+          "border-success/20 bg-success/10 text-success",
         warning:
-          "border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300",
+          "border-warning/20 bg-warning/10 text-warning",
         error:
-          "border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300",
+          "border-destructive/20 bg-destructive/10 text-destructive",
         info:
-          "border-blue-200 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300",
+          "border-info/20 bg-info/10 text-info",
         neutral:
-          "border-gray-200 dark:border-gray-500/20 bg-gray-50 dark:bg-gray-500/10 text-gray-700 dark:text-gray-300",
+          "border-muted-foreground/20 bg-muted text-muted-foreground",
       },
     },
     defaultVariants: {
@@ -46,14 +46,14 @@ function Badge({ className, variant, dot, children, ...props }: BadgeProps) {
         <span
           className={cn(
             "mr-1.5 h-1.5 w-1.5 rounded-full",
-            variant === "success" && "bg-green-500",
-            variant === "warning" && "bg-amber-500",
-            variant === "error" && "bg-red-500",
-            variant === "info" && "bg-blue-500",
-            variant === "neutral" && "bg-gray-500",
-            variant === "destructive" && "bg-red-500",
+            variant === "success" && "bg-success",
+            variant === "warning" && "bg-warning",
+            variant === "error" && "bg-destructive",
+            variant === "info" && "bg-info",
+            variant === "neutral" && "bg-muted-foreground",
+            variant === "destructive" && "bg-destructive",
             (!variant || variant === "default") && "bg-primary",
-            variant === "secondary" && "bg-gray-500",
+            variant === "secondary" && "bg-muted-foreground",
           )}
           aria-hidden="true"
         />

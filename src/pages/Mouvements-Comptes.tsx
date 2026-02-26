@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { KpiCard } from '@/components/ui/kpi-card';
 import { Badge } from '@/components/ui/badge';
 import {
   Search,
@@ -144,109 +145,12 @@ const MouvementsComptes: React.FC = () => {
         />
       </div>
 
-      {/* Stats Cards - Enhanced Design */}
+      {/* Stats Cards - FreshCart style */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Débits Card - Real Expenses Only */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-red-500 to-red-600 p-5 shadow-lg">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10"></div>
-          <div className="relative">
-            <div className="flex items-center justify-between">
-              <div className="rounded-lg bg-white/20 p-2.5">
-                <TrendingDown className="h-5 w-5 text-white" />
-              </div>
-              <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
-                Dépenses
-              </span>
-            </div>
-            <div className="mt-4">
-              {statsLoading ? (
-                <div className="h-8 w-24 bg-white/20 animate-pulse rounded"></div>
-              ) : (
-                <>
-                  <p className="text-3xl font-bold text-white">{formatCurrency(globalStats.totalDebits, 'USD')}</p>
-                  <p className="mt-1 text-sm text-red-100">{globalStats.nombreDebits} dépenses</p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Total Crédits Card - Real Revenues Only */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-5 shadow-lg">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10"></div>
-          <div className="relative">
-            <div className="flex items-center justify-between">
-              <div className="rounded-lg bg-white/20 p-2.5">
-                <TrendingUp className="h-5 w-5 text-white" />
-              </div>
-              <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
-                Revenus
-              </span>
-            </div>
-            <div className="mt-4">
-              {statsLoading ? (
-                <div className="h-8 w-24 bg-white/20 animate-pulse rounded"></div>
-              ) : (
-                <>
-                  <p className="text-3xl font-bold text-white">{formatCurrency(globalStats.totalCredits, 'USD')}</p>
-                  <p className="mt-1 text-sm text-emerald-100">{globalStats.nombreCredits} revenus</p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Solde Net Card */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-5 shadow-lg">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10"></div>
-          <div className="relative">
-            <div className="flex items-center justify-between">
-              <div className="rounded-lg bg-white/20 p-2.5">
-                <ArrowUpCircle className="h-5 w-5 text-white" />
-              </div>
-              <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
-                Solde Global
-              </span>
-            </div>
-            <div className="mt-4">
-              {statsLoading ? (
-                <div className="h-8 w-24 bg-white/20 animate-pulse rounded"></div>
-              ) : (
-                <>
-                  <p className="text-3xl font-bold text-white">{formatCurrency(globalStats.soldeNet, 'USD')}</p>
-                  <p className="mt-1 text-sm text-blue-100">
-                    Tous les comptes actifs
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Total Mouvements Card with Swap Info */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 p-5 shadow-lg">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/5"></div>
-          <div className="relative">
-            <div className="flex items-center justify-between">
-              <div className="rounded-lg bg-white/10 p-2.5">
-                <Calendar className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-xs font-medium text-slate-400">Total</span>
-            </div>
-            <div className="mt-4">
-              {statsLoading ? (
-                <div className="h-8 w-16 bg-white/10 animate-pulse rounded"></div>
-              ) : (
-                <>
-                  <p className="text-3xl font-bold text-white">{globalStats.nombreMouvements}</p>
-                  <p className="mt-1 text-sm text-slate-400">
-                    Mouvements ({globalStats.nombreSwaps || 0} swaps)
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+        <KpiCard title="Dépenses" value={statsLoading ? '...' : formatCurrency(globalStats.totalDebits, 'USD')} icon={TrendingDown} iconColor="#ef4444" iconBg="#fee2e2" loading={statsLoading} />
+        <KpiCard title="Revenus" value={statsLoading ? '...' : formatCurrency(globalStats.totalCredits, 'USD')} icon={TrendingUp} iconColor="#21ac74" iconBg="#dcfce7" loading={statsLoading} />
+        <KpiCard title="Solde Global" value={statsLoading ? '...' : formatCurrency(globalStats.soldeNet, 'USD')} icon={ArrowUpCircle} iconColor="#3b82f6" iconBg="#dbeafe" loading={statsLoading} />
+        <KpiCard title="Mouvements" value={statsLoading ? '...' : globalStats.nombreMouvements} icon={Calendar} iconColor="#64748b" iconBg="#f1f5f9" loading={statsLoading} />
       </div>
 
 

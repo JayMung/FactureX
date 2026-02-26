@@ -34,7 +34,8 @@ import {
   KeyRound,
   Send,
   ArrowLeftRight,
-  ArrowLeft
+  ArrowLeft,
+  MoreHorizontal
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 // @ts-ignore - Temporary workaround for Supabase types
@@ -67,6 +68,7 @@ import { SettingsFacture } from './Settings-Facture';
 import { CompanySettings } from '../components/settings/CompanySettings';
 import { SettingsColis } from '../components/settings/SettingsColis';
 import { SettingsTransitaires } from '../components/settings/SettingsTransitaires';
+import { SettingsApiWebhooks } from '../components/settings/SettingsApiWebhooks';
 import {
   Dialog,
   DialogContent,
@@ -74,6 +76,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ExchangeRateHistory } from '@/components/settings/ExchangeRateHistory';
+import { SettingsTabsLayout } from '@/components/settings/SettingsTabsLayout';
 import {
   Select,
   SelectContent,
@@ -107,13 +110,13 @@ interface SettingsOption {
 const getRoleDisplay = (role: string) => {
   switch (role) {
     case 'super_admin':
-      return { text: 'Super Admin', icon: Crown, color: 'bg-yellow-500 hover:bg-yellow-600' };
+      return { text: 'Super Admin', icon: Crown, color: 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600' };
     case 'admin':
-      return { text: 'Admin', icon: Crown, color: 'bg-green-500 hover:bg-green-600' };
+      return { text: 'Admin', icon: Shield, color: 'bg-indigo-500 hover:bg-indigo-600 text-white border-indigo-600' };
     case 'operateur':
-      return { text: 'Opérateur', icon: UserCheck, color: 'bg-blue-500 hover:bg-blue-600' };
+      return { text: 'Opérateur', icon: UserCheck, color: 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-600' };
     default:
-      return { text: 'Opérateur', icon: UserCheck, color: 'bg-blue-500 hover:bg-blue-600' };
+      return { text: 'Opérateur', icon: UserCheck, color: 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-600' };
   }
 };
 
@@ -194,6 +197,12 @@ const SettingsWithPermissions = () => {
     confirmPassword: ''
   });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  // États pour les sous-onglets du Profil
+  const [profileActiveTab, setProfileActiveTab] = useState('photo');
+
+  // États pour les sous-onglets Finances
+  const [financesSubTab, setFinancesSubTab] = useState('taux');
 
   const isMobile = useIsMobile();
   const [showMobileContent, setShowMobileContent] = useState(false);
@@ -281,7 +290,7 @@ const SettingsWithPermissions = () => {
       fetchPaymentMethods();
     } else if (activeTab === 'activity-logs') {
       fetchActivityLogs();
-    } else if (activeTab === 'exchange-rates' || activeTab === 'transaction-fees') {
+    } else if (activeTab === 'finances') {
       fetchSettings();
     }
   }, [activeTab]);
@@ -750,15 +759,29 @@ const SettingsWithPermissions = () => {
   const handleSaveSettings = async (category: string, settings: Record<string, string>) => {
     setSaving(true);
     try {
+      // Récupérer l'organization_id de l'utilisateur courant
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non authentifié');
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single();
+      
+      const orgId = profile?.organization_id;
+      if (!orgId) throw new Error('Organization ID non trouvé');
+
       const updates = Object.entries(settings).map(([cle, valeur]) => ({
         categorie: category,
         cle,
-        valeur
+        valeur,
+        organization_id: orgId
       }));
 
       const { error } = await supabase
         .from('settings')
-        .upsert(updates, { onConflict: 'categorie,cle' });
+        .upsert(updates, { onConflict: 'categorie,cle,organization_id' });
 
       if (error) throw error;
       showSuccess('Paramètres sauvegardés avec succès');
@@ -775,91 +798,63 @@ const SettingsWithPermissions = () => {
     {
       id: 'profile',
       label: 'Profil',
-      icon: <UserIcon className="h-5 w-5" />,
+      icon: <div className="p-1.5 rounded-md bg-pink-100"><UserIcon className="h-4 w-4 text-pink-600" /></div>,
       description: 'Informations personnelles et photo de profil'
     },
     {
       id: 'company',
       label: 'Entreprise',
-      icon: <Building2 className="h-5 w-5" />,
+      icon: <div className="p-1.5 rounded-md bg-blue-100"><Building2 className="h-4 w-4 text-blue-600" /></div>,
       description: 'Informations entreprise et logo',
       adminOnly: false
     },
     {
       id: 'users',
       label: 'Utilisateurs',
-      icon: <Users className="h-5 w-5" />,
+      icon: <div className="p-1.5 rounded-md bg-indigo-100"><Users className="h-4 w-4 text-indigo-600" /></div>,
       description: 'Gestion des comptes utilisateurs et permissions',
-      adminOnly: true
-    },
-    {
-      id: 'finances',
-      label: 'Finances',
-      icon: <DollarSign className="h-5 w-5" />,
-      description: 'Gestion financière et permissions des comptes',
       adminOnly: true
     },
     {
       id: 'payment-methods',
       label: 'Moyens de paiement',
-      icon: <CreditCard className="h-5 w-5" />,
+      icon: <div className="p-1.5 rounded-md bg-purple-100"><CreditCard className="h-4 w-4 text-purple-600" /></div>,
       description: 'Configuration des modes de paiement',
       adminOnly: true
     },
     {
       id: 'factures',
       label: 'Factures',
-      icon: <Receipt className="h-5 w-5" />,
+      icon: <div className="p-1.5 rounded-md bg-green-100"><Receipt className="h-4 w-4 text-green-600" /></div>,
       description: 'Frais de livraison et catégories produits',
       adminOnly: false
     },
     {
       id: 'colis',
       label: 'Colis',
-      icon: <Package className="h-5 w-5" />,
+      icon: <div className="p-1.5 rounded-md bg-orange-100"><Package className="h-4 w-4 text-orange-600" /></div>,
       description: 'Fournisseurs et tarifs pour colis aériens/maritimes',
       adminOnly: false
     },
     {
-      id: 'transitaires',
-      label: 'Transitaires',
-      icon: <Truck className="h-5 w-5" />,
-      description: 'Gestion des transitaires et partenaires logistiques',
-      adminOnly: false
-    },
-    {
-      id: 'exchange-rates',
-      label: 'Taux de change',
-      icon: <ArrowLeftRight className="h-5 w-5" />,
-      description: 'Configuration des taux USD/CDF et USD/CNY',
-      adminOnly: true
-    },
-    {
-      id: 'transaction-fees',
-      label: 'Frais de transaction',
-      icon: <SettingsIcon className="h-5 w-5" />,
-      description: 'Configuration des frais par type de transaction',
+      id: 'finances',
+      label: 'Finances',
+      icon: <div className="p-1.5 rounded-md bg-cyan-100"><ArrowLeftRight className="h-4 w-4 text-cyan-600" /></div>,
+      description: 'Taux de change et frais de transaction',
       adminOnly: true
     },
     {
       id: 'activity-logs',
       label: 'Logs d\'activité',
-      icon: <History className="h-5 w-5" />,
+      icon: <div className="p-1.5 rounded-md bg-gray-100"><History className="h-4 w-4 text-gray-600" /></div>,
       description: 'Historique des actions dans l\'application',
       adminOnly: true
     },
     {
-      id: 'api-keys',
-      label: 'Clés API',
-      icon: <Key className="h-5 w-5" />,
-      description: 'Gestion des clés API pour intégrations externes',
-      adminOnly: true
-    },
-    {
-      id: 'webhooks',
-      label: 'Webhooks',
-      icon: <Webhook className="h-5 w-5" />,
-      description: 'Notifications en temps réel vers Discord, Slack, n8n',
+      id: 'api-webhooks',
+      label: 'API & Webhooks',
+      icon: <div className="p-1.5 rounded-md bg-indigo-100"><Key className="h-4 w-4 text-indigo-600" /></div>,
+      description: 'Clés API et notifications webhooks',
       adminOnly: true
     }
   ];
@@ -870,13 +865,10 @@ const SettingsWithPermissions = () => {
     'company': 'settings',
     'users': 'users',
     'payment-methods': 'payment_methods',
-    'exchange-rates': 'exchange_rates',
-    'transaction-fees': 'transaction_fees',
+    'finances': 'exchange_rates',
     'activity-logs': 'activity_logs',
     'factures': 'factures',
-    'colis': 'colis',
-    'transitaires': 'colis',
-    'finances': 'finances'
+    'colis': 'colis'
   };
 
   const filteredOptions = settingsOptions.filter(option => {
@@ -995,17 +987,39 @@ const SettingsWithPermissions = () => {
                       <p>Aucun utilisateur trouvé</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {users.map((user) => (
-                        <div key={user.id} className="card-base transition-shadow-hover flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 gap-4">
-                          <div className="flex items-center space-x-4">
-                            <div className="p-2.5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                              <UserIcon className="h-5 w-5 text-white" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{user.first_name} {user.last_name}</p>
-                              <p className="text-sm text-gray-500">{user.email}</p>
-                              <div className="flex items-center space-x-2 mt-1">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">ID</th>
+                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Nom</th>
+                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Email</th>
+                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Rôle</th>
+                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Statut</th>
+                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Inscription</th>
+                            <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {users.map((user) => (
+                            <tr key={user.id} className="border-b hover:bg-gray-50 transition-colors">
+                              <td className="py-3 px-4">
+                                <code className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 font-mono">
+                                  {String(users.indexOf(user) + 1).padStart(4, '0')}
+                                </code>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                                    <span className="text-xs font-medium text-green-700">
+                                      {(user.first_name?.[0] || '?')}{(user.last_name?.[0] || '')}
+                                    </span>
+                                  </div>
+                                  <span className="font-medium text-sm">{user.first_name} {user.last_name}</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-600">{user.email}</td>
+                              <td className="py-3 px-4">
                                 {(() => {
                                   const roleDisplay = getRoleDisplay(user.role || 'operateur');
                                   const Icon = roleDisplay.icon;
@@ -1019,68 +1033,80 @@ const SettingsWithPermissions = () => {
                                     </Badge>
                                   );
                                 })()}
+                              </td>
+                              <td className="py-3 px-4">
                                 <Badge
                                   variant={user.is_active ? 'default' : 'secondary'}
-                                  className={user.is_active ? 'bg-green-500 hover:bg-green-600' : ''}
+                                  className={user.is_active ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'}
                                 >
                                   {user.is_active ? 'Actif' : 'Inactif'}
                                 </Badge>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleManagePermissions(user)}
-                              className="hover:bg-green-50 hover:text-green-600"
-                              title="Gérer les permissions"
-                            >
-                              <Key className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleToggleUserStatus(user)}
-                              className="hover:bg-green-50 hover:text-green-600"
-                              title={user.is_active ? 'Désactiver cet utilisateur' : 'Activer cet utilisateur'}
-                            >
-                              {user.is_active ? (
-                                <UserX className="h-4 w-4" />
-                              ) : (
-                                <UserCheck className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleResetPasswordClick(user)}
-                              className="hover:bg-orange-50 hover:text-orange-600"
-                              title="Réinitialiser le mot de passe"
-                            >
-                              <KeyRound className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditUser(user)}
-                              className="hover:bg-green-50 hover:text-green-600"
-                              title="Modifier l'utilisateur"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleDeleteUser(user)}
-                              title="Supprimer l'utilisateur"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-500">
+                                {user.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric'
+                                }) : '-'}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="hover:bg-green-50 hover:text-green-600"
+                                    >
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuItem
+                                      onClick={() => handleManagePermissions(user)}
+                                      className="cursor-pointer"
+                                    >
+                                      <Key className="mr-2 h-4 w-4 text-green-600" />
+                                      Gérer les permissions
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handleToggleUserStatus(user)}
+                                      className="cursor-pointer"
+                                    >
+                                      {user.is_active ? (
+                                        <><UserX className="mr-2 h-4 w-4 text-orange-600" />Désactiver</>
+                                      ) : (
+                                        <><UserCheck className="mr-2 h-4 w-4 text-green-600" />Activer</>
+                                      )}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handleResetPasswordClick(user)}
+                                      className="cursor-pointer"
+                                    >
+                                      <KeyRound className="mr-2 h-4 w-4 text-orange-600" />
+                                      Réinitialiser mot de passe
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handleEditUser(user)}
+                                      className="cursor-pointer"
+                                    >
+                                      <Edit className="mr-2 h-4 w-4 text-blue-600" />
+                                      Modifier
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => handleDeleteUser(user)}
+                                      className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Supprimer
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </CardContent>
@@ -1090,266 +1116,201 @@ const SettingsWithPermissions = () => {
             {/* Company Tab */}
             {activeTab === 'company' && <CompanySettings />}
 
-            {/* Finances Tab */}
-            {activeTab === 'finances' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <DollarSign className="mr-2 h-5 w-5" />
-                    Gestion des permissions Financières
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Alert>
-                    <Shield className="h-4 w-4" />
-                    <AlertDescription>
-                      Le module Finances est sensible et nécessite des permissions spéciales.
-                      Seuls les administrateurs peuvent gérer les permissions financières.
-                    </AlertDescription>
-                  </Alert>
-
-                  <div className="mt-6 space-y-4">
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <h4 className="font-medium text-yellow-800 mb-2">
-                        <AlertCircle className="inline h-4 w-4 mr-2" />
-                        Permissions disponibles
-                      </h4>
-                      <ul className="text-sm text-yellow-700 space-y-1">
-                        <li>• <strong>finances.view</strong> - Voir le module financier (requis)</li>
-                        <li>• <strong>finances.transactions</strong> - Gérer les transactions clients</li>
-                        <li>• <strong>finances.depenses_revenus</strong> - Gérer les dépenses et revenus</li>
-                        <li>• <strong>finances.encaissements.*</strong> - Gérer les encaissements</li>
-                        <li>• <strong>finances.comptes.*</strong> - Gérer les comptes financiers</li>
-                        <li>• <strong>finances.mouvements.*</strong> - Voir et exporter les mouvements</li>
-                      </ul>
-                    </div>
-
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h4 className="font-medium text-blue-800 mb-2">
-                        <Info className="inline h-4 w-4 mr-2" />
-                        Comment attribuer les permissions
-                      </h4>
-                      <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
-                        <li>Allez dans l'onglet "Utilisateurs"</li>
-                        <li>Cliquez sur l'icône <Key className="inline h-3 w-3 mx-1" /> à côté d'un utilisateur</li>
-                        <li>Dans l'onglet "Modules", cochez les permissions financières</li>
-                        <li>Ou appliquez un rôle prédéfini avec accès financier</li>
-                      </ol>
-                    </div>
-
-                    <div className="bg-red-50 border border-red-100 rounded-lg p-4">
-                      <h4 className="font-medium text-red-800 mb-2">
-                        <Lock className="inline h-4 w-4 mr-2" />
-                        Restrictions de sécurité
-                      </h4>
-                      <ul className="text-sm text-red-700 space-y-1">
-                        <li>• Les opérateurs n'ont pas accès aux finances par défaut</li>
-                        <li>• Le menu "Finances" est invisible sans permissions</li>
-                        <li>• Les routes financières sont protégées</li>
-                        <li>• Toutes les actions sont auditées dans les logs de sécurité</li>
-                      </ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             {/* Profile Tab */}
             {activeTab === 'profile' && (
-              <div className="space-y-6">
+              <SettingsTabsLayout
+                tabs={[
+                  { id: 'photo', label: 'Photo de profil', icon: <Camera className="h-4 w-4" />, color: 'text-pink-500' },
+                  { id: 'info', label: 'Informations personnelles', icon: <UserIcon className="h-4 w-4" />, color: 'text-blue-500' },
+                  { id: 'security', label: 'Sécurité et mot de passe', icon: <Lock className="h-4 w-4" />, color: 'text-orange-500' }
+                ]}
+                activeTab={profileActiveTab}
+                onTabChange={setProfileActiveTab}
+              >
                 {/* Photo de profil */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <UserIcon className="mr-2 h-5 w-5" />
-                      Photo de profil
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center space-x-6">
-                      <div className="relative">
-                        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
-                          {profile?.avatar_url ? (
-                            <img
-                              src={profile.avatar_url}
-                              alt="Avatar"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <UserIcon className="h-12 w-12 text-green-500" />
-                          )}
+                {profileActiveTab === 'photo' && (
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center space-x-6">
+                        <div className="relative">
+                          <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
+                            {profile?.avatar_url ? (
+                              <img
+                                src={profile.avatar_url}
+                                alt="Avatar"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <UserIcon className="h-12 w-12 text-green-500" />
+                            )}
+                          </div>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleAvatarUpload}
+                          />
+                          <button
+                            className="absolute bottom-0 right-0 bg-green-500 hover:bg-green-600 text-white rounded-full p-2 shadow-lg transition-colors"
+                            title="Changer la photo"
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                          </button>
                         </div>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleAvatarUpload}
-                        />
-                        <button
-                          className="absolute bottom-0 right-0 bg-green-500 hover:bg-green-600 text-white rounded-full p-2 shadow-lg transition-colors"
-                          title="Changer la photo"
-                          onClick={() => fileInputRef.current?.click()}
-                        >
-                          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-                        </button>
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-lg">{profileForm.first_name} {profileForm.last_name}</h3>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {currentUserRole === 'super_admin' ? '👑 Super Administrateur' :
-                            currentUserRole === 'admin' ? '👑 Administrateur' : '👤 Opérateur'}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Membre depuis {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' }) : 'N/A'}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Informations personnelles */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Informations personnelles</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label htmlFor="email">Adresse email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={user?.email || ''}
-                        disabled
-                        className="bg-gray-50"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">L'email ne peut pas être modifié</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="first_name">Prénom</Label>
-                        <Input
-                          id="first_name"
-                          value={profileForm.first_name}
-                          onChange={(e) => setProfileForm(prev => ({ ...prev, first_name: e.target.value }))}
-                          placeholder="Votre prénom"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="last_name">Nom</Label>
-                        <Input
-                          id="last_name"
-                          value={profileForm.last_name}
-                          onChange={(e) => setProfileForm(prev => ({ ...prev, last_name: e.target.value }))}
-                          placeholder="Votre nom"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="phone">Numéro de téléphone</Label>
-                      <Input
-                        id="phone"
-                        type="tel"
-                        value={profileForm.phone || ''}
-                        onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
-                        placeholder="+243 XXX XXX XXX"
-                      />
-                    </div>
-
-                    <Button onClick={handleSaveProfile} disabled={saving} className="bg-green-500 hover:bg-green-600">
-                      {saving ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Sauvegarde...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="mr-2 h-4 w-4" />
-                          Sauvegarder les modifications
-                        </>
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                {/* Sécurité et mot de passe */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Lock className="mr-2 h-5 w-5" />
-                      Sécurité et mot de passe
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-start">
-                        <Shield className="h-5 w-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
-                        <div>
-                          <h4 className="font-medium text-blue-900">Modifier votre mot de passe</h4>
-                          <p className="text-sm text-blue-700 mt-1">
-                            Pour des raisons de sécurité, changez régulièrement votre mot de passe.
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg">{profileForm.first_name} {profileForm.last_name}</h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {currentUserRole === 'super_admin' ? '👑 Super Administrateur' :
+                              currentUserRole === 'admin' ? '👑 Administrateur' : '👤 Opérateur'}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Membre depuis {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' }) : 'N/A'}
                           </p>
                         </div>
                       </div>
-                    </div>
+                    </CardContent>
+                  </Card>
+                )}
 
-                    <div>
-                      <Label htmlFor="current_password">Mot de passe actuel</Label>
-                      <Input
-                        id="current_password"
-                        type="password"
-                        placeholder="Entrez votre mot de passe actuel"
-                        value={passwordForm.currentPassword}
-                        onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Informations personnelles */}
+                {profileActiveTab === 'info' && (
+                  <Card>
+                    <CardContent className="p-6 space-y-4">
                       <div>
-                        <Label htmlFor="new_password">Nouveau mot de passe</Label>
+                        <Label htmlFor="email">Adresse email</Label>
                         <Input
-                          id="new_password"
-                          type="password"
-                          placeholder="Minimum 6 caractères"
-                          value={passwordForm.newPassword}
-                          onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                          id="email"
+                          type="email"
+                          value={user?.email || ''}
+                          disabled
+                          className="bg-gray-50"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">L'email ne peut pas être modifié</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="first_name">Prénom</Label>
+                          <Input
+                            id="first_name"
+                            value={profileForm.first_name}
+                            onChange={(e) => setProfileForm(prev => ({ ...prev, first_name: e.target.value }))}
+                            placeholder="Votre prénom"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="last_name">Nom</Label>
+                          <Input
+                            id="last_name"
+                            value={profileForm.last_name}
+                            onChange={(e) => setProfileForm(prev => ({ ...prev, last_name: e.target.value }))}
+                            placeholder="Votre nom"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="phone">Numéro de téléphone</Label>
+                        <Input
+                          id="phone"
+                          type="tel"
+                          value={profileForm.phone || ''}
+                          onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
+                          placeholder="+243 XXX XXX XXX"
                         />
                       </div>
+
+                      <Button onClick={handleSaveProfile} disabled={saving} className="bg-green-500 hover:bg-green-600">
+                        {saving ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Sauvegarde...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Sauvegarder les modifications
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Sécurité et mot de passe */}
+                {profileActiveTab === 'security' && (
+                  <Card>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                        <div className="flex items-start">
+                          <Shield className="h-5 w-5 text-orange-500 mt-0.5 mr-3 flex-shrink-0" />
+                          <div>
+                            <h4 className="font-medium text-orange-900">Modifier votre mot de passe</h4>
+                            <p className="text-sm text-orange-700 mt-1">
+                              Pour des raisons de sécurité, changez régulièrement votre mot de passe.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
                       <div>
-                        <Label htmlFor="confirm_password">Confirmer le mot de passe</Label>
+                        <Label htmlFor="current_password">Mot de passe actuel</Label>
                         <Input
-                          id="confirm_password"
+                          id="current_password"
                           type="password"
-                          placeholder="Confirmez le nouveau mot de passe"
-                          value={passwordForm.confirmPassword}
-                          onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                          placeholder="Entrez votre mot de passe actuel"
+                          value={passwordForm.currentPassword}
+                          onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
                         />
                       </div>
-                    </div>
 
-                    <Button
-                      variant="outline"
-                      className="border-green-500 text-green-600 hover:bg-green-50"
-                      onClick={handleChangeOwnPassword}
-                      disabled={isChangingPassword}
-                    >
-                      {isChangingPassword ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Modification en cours...
-                        </>
-                      ) : (
-                        <>
-                          <Lock className="mr-2 h-4 w-4" />
-                          Changer le mot de passe
-                        </>
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="new_password">Nouveau mot de passe</Label>
+                          <Input
+                            id="new_password"
+                            type="password"
+                            placeholder="Minimum 6 caractères"
+                            value={passwordForm.newPassword}
+                            onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="confirm_password">Confirmer le mot de passe</Label>
+                          <Input
+                            id="confirm_password"
+                            type="password"
+                            placeholder="Confirmez le nouveau mot de passe"
+                            value={passwordForm.confirmPassword}
+                            onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        className="border-green-500 text-green-600 hover:bg-green-50"
+                        onClick={handleChangeOwnPassword}
+                        disabled={isChangingPassword}
+                      >
+                        {isChangingPassword ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Modification en cours...
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="mr-2 h-4 w-4" />
+                            Changer le mot de passe
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </SettingsTabsLayout>
             )}
 
             {/* Payment Methods Tab */}
@@ -1359,7 +1320,7 @@ const SettingsWithPermissions = () => {
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center">
                       <CreditCard className="mr-2 h-5 w-5" />
-                      Moyens de paiement
+                      Moyens de paiement ({paymentMethods.length})
                     </CardTitle>
                     <Button
                       onClick={() => {
@@ -1374,166 +1335,197 @@ const SettingsWithPermissions = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {paymentMethods.map((method) => (
-                      <div key={method.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                            <CreditCard className="h-5 w-5 text-green-500" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{method.name}</p>
-                            <p className="text-sm text-gray-500">{method.description}</p>
-                            <Badge
-                              variant={method.is_active ? 'default' : 'secondary'}
-                              className={method.is_active ? 'bg-green-500 hover:bg-green-600' : ''}
-                            >
-                              {method.is_active ? 'Actif' : 'Inactif'}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedPaymentMethod(method);
-                              setIsPaymentMethodFormOpen(true);
-                            }}
-                            className="hover:bg-green-50 hover:text-green-600"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => {
-                              setPaymentMethodToDelete(method);
-                              setDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  {paymentMethods.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <CreditCard className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p>Aucun moyen de paiement configuré</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">ID</th>
+                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Nom</th>
+                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Description</th>
+                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Statut</th>
+                            <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paymentMethods.map((method, index) => (
+                            <tr key={method.id} className="border-b hover:bg-gray-50 transition-colors">
+                              <td className="py-3 px-4">
+                                <code className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 font-mono">
+                                  {String(index + 1).padStart(4, '0')}
+                                </code>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                                    <CreditCard className="h-4 w-4 text-green-500" />
+                                  </div>
+                                  <span className="font-medium text-sm">{method.name}</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-600">
+                                {method.description || '-'}
+                              </td>
+                              <td className="py-3 px-4">
+                                <Badge
+                                  variant={method.is_active ? 'default' : 'secondary'}
+                                  className={method.is_active ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'}
+                                >
+                                  {method.is_active ? 'Actif' : 'Inactif'}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedPaymentMethod(method);
+                                      setIsPaymentMethodFormOpen(true);
+                                    }}
+                                    className="hover:bg-green-50 hover:text-green-600"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    onClick={() => {
+                                      setPaymentMethodToDelete(method);
+                                      setDeleteDialogOpen(true);
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
 
-            {/* Exchange Rates Tab */}
-            {activeTab === 'exchange-rates' && (
-              <>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <DollarSign className="mr-2 h-5 w-5" />
-                      Taux de change
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="usdToCdf">USD vers CDF</Label>
-                        <Input
-                          id="usdToCdf"
-                          type="number"
-                          value={exchangeRates.usdToCdf}
-                          onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCdf: e.target.value }))}
-                          placeholder="2850"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="usdToCny">USD vers CNY</Label>
-                        <Input
-                          id="usdToCny"
-                          type="number"
-                          value={exchangeRates.usdToCny}
-                          onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCny: e.target.value }))}
-                          placeholder="7.25"
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => handleSaveSettings('taux_change', exchangeRates)}
-                      disabled={saving}
-                      className="bg-green-500 hover:bg-green-600"
-                    >
-                      {saving ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Sauvegarde...
-                        </>
-                      ) : (
-                        'Sauvegarder les taux'
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                {/* Historique des taux de change */}
-                <ExchangeRateHistory limit={15} className="mt-6" />
-              </>
-            )}
-
-            {/* Transaction Fees Tab */}
-            {activeTab === 'transaction-fees' && (
+            {/* Finances Tab */}
+            {activeTab === 'finances' && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <SettingsIcon className="mr-2 h-5 w-5" />
-                    Frais de transaction
+                    <ArrowLeftRight className="mr-2 h-5 w-5" />
+                    Finances
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="transfert">Transfert (%)</Label>
-                      <Input
-                        id="transfert"
-                        type="number"
-                        value={transactionFees.transfert}
-                        onChange={(e) => setTransactionFees(prev => ({ ...prev, transfert: e.target.value }))}
-                        placeholder="5"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="commande">Commande (%)</Label>
-                      <Input
-                        id="commande"
-                        type="number"
-                        value={transactionFees.commande}
-                        onChange={(e) => setTransactionFees(prev => ({ ...prev, commande: e.target.value }))}
-                        placeholder="10"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="partenaire">Partenaire (%)</Label>
-                      <Input
-                        id="partenaire"
-                        type="number"
-                        value={transactionFees.partenaire}
-                        onChange={(e) => setTransactionFees(prev => ({ ...prev, partenaire: e.target.value }))}
-                        placeholder="3"
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    onClick={() => handleSaveSettings('frais', transactionFees)}
-                    disabled={saving}
-                    className="bg-green-500 hover:bg-green-600"
+                <CardContent>
+                  <SettingsTabsLayout
+                    tabs={[
+                      { id: 'taux', label: 'Taux de change', icon: <DollarSign className="h-4 w-4" />, color: 'text-cyan-500' },
+                      { id: 'frais', label: 'Frais de transaction', icon: <SettingsIcon className="h-4 w-4" />, color: 'text-amber-500' }
+                    ]}
+                    activeTab={financesSubTab}
+                    onTabChange={setFinancesSubTab}
                   >
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Sauvegarde...
-                      </>
-                    ) : (
-                      'Sauvegarder les frais'
+                    {financesSubTab === 'taux' && (
+                      <div className="space-y-4 pt-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="usdToCdf">USD vers CDF</Label>
+                            <Input
+                              id="usdToCdf"
+                              type="number"
+                              value={exchangeRates.usdToCdf}
+                              onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCdf: e.target.value }))}
+                              placeholder="2850"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="usdToCny">USD vers CNY</Label>
+                            <Input
+                              id="usdToCny"
+                              type="number"
+                              value={exchangeRates.usdToCny}
+                              onChange={(e) => setExchangeRates(prev => ({ ...prev, usdToCny: e.target.value }))}
+                              placeholder="7.25"
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() => handleSaveSettings('taux_change', exchangeRates)}
+                          disabled={saving}
+                          className="bg-green-500 hover:bg-green-600"
+                        >
+                          {saving ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Sauvegarde...
+                            </>
+                          ) : (
+                            'Sauvegarder les taux'
+                          )}
+                        </Button>
+                        <ExchangeRateHistory limit={10} className="mt-4" />
+                      </div>
                     )}
-                  </Button>
+
+                    {financesSubTab === 'frais' && (
+                      <div className="space-y-4 pt-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <Label htmlFor="transfert">Transfert (%)</Label>
+                            <Input
+                              id="transfert"
+                              type="number"
+                              value={transactionFees.transfert}
+                              onChange={(e) => setTransactionFees(prev => ({ ...prev, transfert: e.target.value }))}
+                              placeholder="5"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="commande">Commande (%)</Label>
+                            <Input
+                              id="commande"
+                              type="number"
+                              value={transactionFees.commande}
+                              onChange={(e) => setTransactionFees(prev => ({ ...prev, commande: e.target.value }))}
+                              placeholder="10"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="partenaire">Partenaire (%)</Label>
+                            <Input
+                              id="partenaire"
+                              type="number"
+                              value={transactionFees.partenaire}
+                              onChange={(e) => setTransactionFees(prev => ({ ...prev, partenaire: e.target.value }))}
+                              placeholder="3"
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() => handleSaveSettings('frais', transactionFees)}
+                          disabled={saving}
+                          className="bg-green-500 hover:bg-green-600"
+                        >
+                          {saving ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Sauvegarde...
+                            </>
+                          ) : (
+                            'Sauvegarder les frais'
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </SettingsTabsLayout>
                 </CardContent>
               </Card>
             )}
@@ -1626,163 +1618,8 @@ const SettingsWithPermissions = () => {
             {/* Colis Settings Tab */}
             {activeTab === 'colis' && <SettingsColis />}
 
-            {/* Transitaires Settings Tab */}
-            {activeTab === 'transitaires' && <SettingsTransitaires />}
-
-            {/* API Keys Tab */}
-            {activeTab === 'api-keys' && (
-              <div className="space-y-6">
-                <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-blue-900 dark:text-blue-100">
-                      <AlertCircle className="mr-2 h-5 w-5" />
-                      Gestion des Clés API
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-blue-800 dark:text-blue-200">
-                    <p className="mb-4">
-                      Les clés API vous permettent d'intégrer FactureX avec des outils externes comme n8n, Discord, ou vos propres applications.
-                    </p>
-                    <Button
-                      onClick={() => navigate('/api-keys')}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      <Key className="mr-2 h-4 w-4" />
-                      Gérer les Clés API
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Documentation API</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <h3 className="font-semibold mb-2">Endpoints Disponibles</h3>
-                      <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
-                        <li><code className="bg-gray-100 px-2 py-1 rounded">GET /api-transactions</code> - Récupérer les transactions</li>
-                        <li><code className="bg-gray-100 px-2 py-1 rounded">GET /api-clients</code> - Récupérer les clients</li>
-                        <li><code className="bg-gray-100 px-2 py-1 rounded">GET /api-factures</code> - Récupérer les factures</li>
-                        <li><code className="bg-gray-100 px-2 py-1 rounded">GET /api-colis</code> - Récupérer les colis</li>
-                        <li><code className="bg-gray-100 px-2 py-1 rounded">GET /api-stats</code> - Récupérer les statistiques</li>
-                        <li><code className="bg-gray-100 px-2 py-1 rounded">POST /api-webhooks</code> - Gérer les webhooks</li>
-                      </ul>
-                    </div>
-
-                    <div>
-                      <h3 className="font-semibold mb-2">Types de Clés</h3>
-                      <div className="space-y-2">
-                        <div className="flex items-start space-x-2">
-                          <Badge className="bg-blue-500">Public</Badge>
-                          <span className="text-sm text-gray-600">100 req/h - Lecture seule des stats</span>
-                        </div>
-                        <div className="flex items-start space-x-2">
-                          <Badge className="bg-green-500">Secret</Badge>
-                          <span className="text-sm text-gray-600">1000 req/h - Lecture + Webhooks</span>
-                        </div>
-                        <div className="flex items-start space-x-2">
-                          <Badge className="bg-red-500">Admin</Badge>
-                          <span className="text-sm text-gray-600">5000 req/h - Accès complet</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Webhooks Tab */}
-            {activeTab === 'webhooks' && (
-              <div className="space-y-6">
-                <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950 dark:border-purple-800">
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-purple-900 dark:text-purple-100">
-                      <AlertCircle className="mr-2 h-5 w-5" />
-                      Gestion des Webhooks
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-purple-800 dark:text-purple-200">
-                    <p className="mb-4">
-                      Les webhooks vous permettent de recevoir des notifications en temps réel lorsque des événements se produisent dans FactureX.
-                    </p>
-                    <Button
-                      onClick={() => navigate('/webhooks')}
-                      className="bg-purple-600 hover:bg-purple-700"
-                    >
-                      <Webhook className="mr-2 h-4 w-4" />
-                      Gérer les Webhooks
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Événements Disponibles</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <h3 className="font-semibold mb-2">Transactions</h3>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline">transaction.created</Badge>
-                        <Badge variant="outline">transaction.validated</Badge>
-                        <Badge variant="outline">transaction.deleted</Badge>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="font-semibold mb-2">Factures</h3>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline">facture.created</Badge>
-                        <Badge variant="outline">facture.validated</Badge>
-                        <Badge variant="outline">facture.paid</Badge>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="font-semibold mb-2">Clients</h3>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline">client.created</Badge>
-                        <Badge variant="outline">client.updated</Badge>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="font-semibold mb-2">Colis</h3>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline">colis.created</Badge>
-                        <Badge variant="outline">colis.delivered</Badge>
-                        <Badge variant="outline">colis.status_changed</Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Formats Supportés</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-start space-x-3">
-                      <Badge className="bg-gray-500">JSON</Badge>
-                      <span className="text-sm text-gray-600">Format standard pour toutes les intégrations</span>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <Badge className="bg-indigo-500">Discord</Badge>
-                      <span className="text-sm text-gray-600">Embeds riches avec couleurs et champs</span>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <Badge className="bg-purple-500">Slack</Badge>
-                      <span className="text-sm text-gray-600">Messages formatés pour Slack</span>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <Badge className="bg-orange-500">n8n</Badge>
-                      <span className="text-sm text-gray-600">Format optimisé pour n8n workflows</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+            {/* API & Webhooks Tab */}
+            {activeTab === 'api-webhooks' && <SettingsApiWebhooks />}
 
           </div>
           )}

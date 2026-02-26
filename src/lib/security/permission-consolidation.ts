@@ -12,6 +12,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { logSecurityEvent } from '@/lib/security/error-handling';
+import { PREDEFINED_ROLES } from '@/types';
 
 export interface ConsolidatedPermission {
   user_id: string;
@@ -51,9 +52,9 @@ export class PermissionConsolidationService {
       const isAdmin = effectiveRole === 'admin' || effectiveRole === 'super_admin';
       const adminRoleType = isAdmin ? effectiveRole as 'admin' | 'super_admin' : undefined;
 
-      // If admin, return all permissions
-      if (isAdmin) {
-        const allPermissions = this.getAllModulePermissions();
+      // If admin, return permissions based on PREDEFINED_ROLES
+      if (isAdmin && adminRoleType) {
+        const allPermissions = this.getAdminModulePermissions(adminRoleType);
         return {
           user_id: userId,
           is_admin: true,
@@ -278,15 +279,26 @@ export class PermissionConsolidationService {
   }
 
   /**
-   * Get all module permissions for admin users
+   * Get all module permissions for admin users based on their specific role
    */
-  private getAllModulePermissions(): Record<string, any> {
+  private getAdminModulePermissions(role: 'admin' | 'super_admin'): Record<string, any> {
+    const roleConfig = PREDEFINED_ROLES.find(r => r.name === role);
+    if (roleConfig) {
+      return roleConfig.permissions;
+    }
+
+    // Fallback to super_admin permissions if role not found (shouldn't happen)
     return {
       'clients': { can_read: true, can_create: true, can_update: true, can_delete: true },
       'finances': { can_read: true, can_create: true, can_update: true, can_delete: true },
       'factures': { can_read: true, can_create: true, can_update: true, can_delete: true },
+      'colis': { can_read: true, can_create: true, can_update: true, can_delete: true },
       'settings': { can_read: true, can_create: true, can_update: true, can_delete: true },
+      'payment_methods': { can_read: true, can_create: true, can_update: true, can_delete: true },
+      'exchange_rates': { can_read: true, can_create: true, can_update: true, can_delete: true },
+      'transaction_fees': { can_read: true, can_create: true, can_update: true, can_delete: true },
       'users': { can_read: true, can_create: true, can_update: true, can_delete: true },
+      'profile': { can_read: true, can_create: true, can_update: true, can_delete: true },
       'reports': { can_read: true, can_create: true, can_update: true, can_delete: true },
       'activity_logs': { can_read: true, can_create: false, can_update: false, can_delete: false },
       'security_logs': { can_read: true, can_create: false, can_update: false, can_delete: false }

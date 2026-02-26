@@ -29,55 +29,60 @@ function StatCard({
 }: StatCardProps) {
   if (loading) {
     return (
-      <div className={cn("stat-card", className)}>
-        <div className="flex items-center justify-between mb-3">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-8 w-8 rounded-lg" />
+      <div className={cn("bg-card p-6 rounded-2xl border border-border shadow-sm", className)}>
+        <div className="flex justify-between items-start mb-4">
+          <Skeleton className="h-10 w-10 rounded-lg" />
+          <Skeleton className="h-6 w-16 rounded-full" />
         </div>
-        <Skeleton className="h-7 w-32 mb-2" />
-        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-4 w-24 mb-2" />
+        <Skeleton className="h-8 w-32" />
       </div>
     );
   }
 
+  const isPositive = trend && trend.value > 0;
+  const isNegative = trend && trend.value < 0;
+  
   const TrendIcon = trend
-    ? trend.value > 0
+    ? isPositive
       ? TrendingUp
-      : trend.value < 0
+      : isNegative
         ? TrendingDown
         : Minus
     : null;
 
-  const trendClass = trend
-    ? trend.value > 0
-      ? "trend-positive"
-      : trend.value < 0
-        ? "trend-negative"
-        : "trend-neutral"
-    : "";
+  // Déterminer la couleur de fond de l'icône — utilise primary/10 par défaut
+  let iconBgClass = "bg-primary/10";
 
   return (
-    <div className={cn("stat-card", className)}>
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-medium text-muted-foreground">{title}</p>
+    <div className={cn("bg-card p-6 rounded-2xl border border-border shadow-sm transition-all hover:shadow-md", className)}>
+      <div className="flex justify-between items-start mb-4">
         {Icon && (
-          <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center bg-primary/10", iconColor.includes("text-") ? "" : "")}>
-            <Icon className={cn("h-5 w-5", iconColor)} aria-hidden="true" />
+          <div className={cn("p-2 rounded-lg", iconBgClass)}>
+            <Icon className={cn("h-6 w-6", iconColor)} aria-hidden="true" />
           </div>
         )}
-      </div>
-      <p className="text-2xl font-bold text-foreground tabular-nums tracking-tight">{value}</p>
-      <div className="flex items-center gap-2 mt-1.5">
-        {trend && TrendIcon && (
-          <span className={trendClass}>
-            <TrendIcon className="h-3 w-3" aria-hidden="true" />
-            {Math.abs(trend.value)}%
+        
+        {trend && (
+          <span className={cn(
+            "text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1",
+            isPositive ? "text-success bg-success/10" : 
+            isNegative ? "text-destructive bg-destructive/10" : 
+            "text-muted-foreground bg-muted"
+          )}>
+            {isPositive ? "+" : ""}{trend.value}%
+            {trend.label && <span className="font-normal opacity-80 ml-1 hidden sm:inline">{trend.label}</span>}
           </span>
         )}
-        {(subtitle || trend?.label) && (
-          <span className="text-xs text-muted-foreground">{trend?.label || subtitle}</span>
+        {!trend && subtitle && (
+           <span className="text-xs font-bold text-muted-foreground bg-muted px-2 py-1 rounded-full">
+             {subtitle}
+           </span>
         )}
       </div>
+      
+      <h3 className="text-muted-foreground text-sm font-medium">{title}</h3>
+      <p className="text-2xl font-bold text-foreground mt-1 tabular-nums tracking-tight">{value}</p>
     </div>
   );
 }

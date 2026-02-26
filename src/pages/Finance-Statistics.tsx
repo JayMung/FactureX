@@ -223,7 +223,7 @@ const FinanceStatisticsPage: React.FC = () => {
                             <TabsTrigger
                                 key={option.value}
                                 value={option.value}
-                                className="data-[state=active]:bg-green-500 data-[state=active]:text-white text-sm"
+                                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
                             >
                                 {option.label}
                             </TabsTrigger>
@@ -254,7 +254,7 @@ const FinanceStatisticsPage: React.FC = () => {
                                                     </div>
                                                 )}
                                             </div>
-                                            <div className="p-3 rounded-full bg-green-500 text-white">
+                                            <div className="p-3 rounded-full text-white" style={{ background: '#21ac74' }}>
                                                 <TrendingUp className="h-5 w-5" />
                                             </div>
                                         </div>
@@ -358,7 +358,7 @@ const FinanceStatisticsPage: React.FC = () => {
                                         )}
                                         <div className="mt-4 grid grid-cols-2 gap-3">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                                                <div className="w-3 h-3 rounded-full" style={{ background: '#21ac74' }} />
                                                 <span className="text-sm text-gray-600">Revenus: {formatCurrency(stats?.totalRevenue || 0)}</span>
                                             </div>
                                             <div className="flex items-center gap-2">
@@ -499,7 +499,7 @@ const FinanceStatisticsPage: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex flex-col gap-3">
-                        <Button onClick={handleDownloadPDF} className="w-full bg-green-500 hover:bg-green-600" size="lg">
+                        <Button onClick={handleDownloadPDF} className="w-full" size="lg">
                             <Download className="mr-2 h-5 w-5" />
                             Télécharger le PDF
                         </Button>

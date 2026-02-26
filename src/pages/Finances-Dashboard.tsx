@@ -3,6 +3,7 @@ import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { KpiCard } from '@/components/ui/kpi-card';
 import { Link } from 'react-router-dom';
 import {
   Wallet, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle,
@@ -142,51 +143,12 @@ const FinancesDashboard: React.FC = () => {
           </Button>
         </div>
 
-        {/* KPIs */}
+        {/* KPIs - FreshCart style */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="col-span-2 lg:col-span-1 border-0 shadow-sm bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-emerald-100 text-sm">Solde Total</span>
-                <div className="p-2 bg-white/20 rounded-lg"><Wallet className="h-4 w-4" /></div>
-              </div>
-              {cLoading ? <div className="h-8 bg-white/20 rounded animate-pulse" /> : <div className="text-2xl font-bold">{compact(totalBalanceUSD)}</div>}
-              <p className="text-emerald-100 text-xs mt-1">{activeComptes.length} comptes actifs</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-gray-500 text-sm">Revenus / mois</span>
-                <div className="p-2 bg-emerald-50 rounded-lg"><TrendingUp className="h-4 w-4 text-emerald-600" /></div>
-              </div>
-              {sLoading ? <div className="h-8 bg-gray-100 rounded animate-pulse" /> : <div className="text-2xl font-bold text-emerald-600">{compact(ms?.totalRevenue || 0)}</div>}
-              {!!ms?.revenueChange && <p className={`text-xs mt-1 ${ms.revenueChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{ms.revenueChange >= 0 ? '+' : ''}{ms.revenueChange}% vs mois dernier</p>}
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-gray-500 text-sm">Dépenses / mois</span>
-                <div className="p-2 bg-red-50 rounded-lg"><TrendingDown className="h-4 w-4 text-red-500" /></div>
-              </div>
-              {sLoading ? <div className="h-8 bg-gray-100 rounded animate-pulse" /> : <div className="text-2xl font-bold text-red-500">{compact(ms?.totalDepenses || 0)}</div>}
-              {!!ms?.depensesChange && <p className={`text-xs mt-1 ${ms.depensesChange <= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{ms.depensesChange >= 0 ? '+' : ''}{ms.depensesChange}% vs mois dernier</p>}
-            </CardContent>
-          </Card>
-
-          <Card className={`border-0 shadow-sm ${totalUnpaid > 0 ? 'border-l-4 border-l-amber-400' : ''}`}>
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-gray-500 text-sm">À recouvrer</span>
-                <div className="p-2 bg-amber-50 rounded-lg"><AlertTriangle className="h-4 w-4 text-amber-500" /></div>
-              </div>
-              {loadingExtra ? <div className="h-8 bg-gray-100 rounded animate-pulse" /> : <div className="text-2xl font-bold text-amber-600">{compact(totalUnpaid)}</div>}
-              <p className="text-gray-400 text-xs mt-1">{unpaidFactures.length} facture(s)</p>
-            </CardContent>
-          </Card>
+          <KpiCard title="Solde Total" value={cLoading ? '...' : compact(totalBalanceUSD)} icon={Wallet} iconColor="#21ac74" iconBg="#dcfce7" loading={cLoading} />
+          <KpiCard title="Revenus / mois" value={sLoading ? '...' : compact(ms?.totalRevenue || 0)} icon={TrendingUp} iconColor="#21ac74" iconBg="#dcfce7" loading={sLoading} />
+          <KpiCard title="Dépenses / mois" value={sLoading ? '...' : compact(ms?.totalDepenses || 0)} icon={TrendingDown} iconColor="#ef4444" iconBg="#fee2e2" loading={sLoading} />
+          <KpiCard title="À recouvrer" value={loadingExtra ? '...' : compact(totalUnpaid)} icon={AlertTriangle} iconColor="#f59e0b" iconBg="#fef3c7" loading={loadingExtra} />
         </div>
 
         {/* Charts */}
@@ -194,7 +156,7 @@ const FinancesDashboard: React.FC = () => {
           <Card className="xl:col-span-2 border-0 shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
-                <BarChart3 className="h-4 w-4 text-emerald-600" />
+                <BarChart3 className="h-4 w-4" style={{ color: 'var(--primary)' }} />
                 Flux de trésorerie — 30 derniers jours
               </CardTitle>
             </CardHeader>
@@ -206,8 +168,8 @@ const FinancesDashboard: React.FC = () => {
                   <AreaChart data={dailyFlow} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
                     <defs>
                       <linearGradient id="gR" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#06B6D4" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="gD" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#ef4444" stopOpacity={0.25} />
@@ -218,7 +180,7 @@ const FinancesDashboard: React.FC = () => {
                     <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} />
                     <Tooltip formatter={(v: any) => [`$${Number(v).toFixed(2)}`, '']} />
-                    <Area type="monotone" dataKey="revenus" stroke="#10b981" strokeWidth={2} fill="url(#gR)" name="Revenus" />
+                    <Area type="monotone" dataKey="revenus" stroke="#10B981" strokeWidth={2} fill="url(#gR)" name="Revenus" />
                     <Area type="monotone" dataKey="depenses" stroke="#ef4444" strokeWidth={2} fill="url(#gD)" name="Dépenses" />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -229,7 +191,7 @@ const FinancesDashboard: React.FC = () => {
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
-                <Wallet className="h-4 w-4 text-emerald-600" />
+                <Wallet className="h-4 w-4" style={{ color: 'var(--primary)' }} />
                 Soldes par type
               </CardTitle>
             </CardHeader>
@@ -339,9 +301,9 @@ const FinancesDashboard: React.FC = () => {
               <CardContent className="space-y-2">
                 {sLoading ? <div className="space-y-2">{[1,2,3].map(i=><div key={i} className="h-8 bg-gray-50 rounded animate-pulse"/>)}</div> : (
                   <>
-                    <div className="flex justify-between items-center p-2.5 rounded-lg bg-emerald-50">
-                      <div className="flex items-center gap-2"><ArrowUpCircle className="h-4 w-4 text-emerald-600"/><span className="text-sm">Revenus</span></div>
-                      <span className="font-bold text-emerald-700">{fmt(ms?.totalRevenue || 0)}</span>
+                    <div className="flex justify-between items-center p-2.5 rounded-lg" style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}>
+                      <div className="flex items-center gap-2"><ArrowUpCircle className="h-4 w-4" style={{ color: 'var(--primary)' }}/><span className="text-sm">Revenus</span></div>
+                      <span className="font-bold" style={{ color: 'var(--primary)' }}>{fmt(ms?.totalRevenue || 0)}</span>
                     </div>
                     <div className="flex justify-between items-center p-2.5 rounded-lg bg-red-50">
                       <div className="flex items-center gap-2"><ArrowDownCircle className="h-4 w-4 text-red-500"/><span className="text-sm">Dépenses</span></div>
@@ -362,7 +324,7 @@ const FinancesDashboard: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { to: '/transactions', icon: ArrowRightLeft, label: 'Transactions', color: 'bg-blue-50 text-blue-700 hover:bg-blue-100' },
-                    { to: '/comptes', icon: Wallet, label: 'Comptes', color: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' },
+                    { to: '/comptes', icon: Wallet, label: 'Comptes', color: 'bg-primary-gradient text-white hover:opacity-90' },
                     { to: '/factures', icon: FileText, label: 'Factures', color: 'bg-purple-50 text-purple-700 hover:bg-purple-100' },
                     { to: '/finances/statistiques', icon: BarChart3, label: 'Statistiques', color: 'bg-amber-50 text-amber-700 hover:bg-amber-100' },
                   ].map(item => (

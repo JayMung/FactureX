@@ -11,19 +11,50 @@ export const useDeleteColis = () => {
       setLoading(true);
       setError(null);
 
-      const { error: deleteError } = await supabase
-        .from('colis')
+      // Step 1: Delete related paiements_colis first
+      const { error: paiementsColisError } = await supabase
+        .from('paiements_colis')
         .delete()
+        .eq('colis_id', id);
+      
+      if (paiementsColisError) {
+        console.error('Error deleting paiements_colis:', paiementsColisError);
+        // Continue anyway, might not exist
+      }
+
+      // Step 2: Delete related paiements (if colis_id column exists)
+      const { error: paiementsError } = await supabase
+        .from('paiements')
+        .delete()
+        .eq('colis_id', id);
+      
+      if (paiementsError) {
+        console.error('Error deleting paiements:', paiementsError);
+        // Continue anyway, might not exist or column might not exist
+      }
+
+      // Step 3: Delete the colis
+      const { error: deleteError, count } = await supabase
+        .from('colis')
+        .delete({ count: 'exact' })
         .eq('id', id);
 
       if (deleteError) {
-        throw new Error(deleteError.message);
+        console.error('Supabase delete error:', deleteError);
+        throw new Error(deleteError.message || 'Erreur lors de la suppression');
+      }
+
+      // Check if any row was actually deleted
+      if (count === 0) {
+        console.error('No rows deleted - RLS policy may be blocking');
+        throw new Error('Colis non trouvé ou permissions insuffisantes');
       }
 
       toast.success('Colis supprimé avec succès');
       return true;
     } catch (err: any) {
-      const errorMessage = err.message || 'Erreur lors de la suppression du colis';
+      const errorMessage = err?.message || err?.error_description || 'Erreur lors de la suppression du colis';
+      console.error('Full delete error:', err);
       setError(errorMessage);
       toast.error(errorMessage);
       return false;
@@ -32,8 +63,31 @@ export const useDeleteColis = () => {
     }
   };
 
+  const deleteMultipleColis = async (ids: string[]) => {
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const id of ids) {
+      const success = await deleteColis(id);
+      if (success) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    }
+    
+    if (failCount === 0) {
+      toast.success(`${successCount} colis supprimés avec succès`);
+    } else {
+      toast.error(`${failCount} colis n'ont pas pu être supprimés`);
+    }
+    
+    return { successCount, failCount };
+  };
+
   return {
     deleteColis,
+    deleteMultipleColis,
     loading,
     error
   };

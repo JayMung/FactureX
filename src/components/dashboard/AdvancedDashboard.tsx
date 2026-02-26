@@ -182,7 +182,7 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
           title="Revenus totaux"
           value={formatCurrency(analytics.totalRevenueUSD, 'USD')}
           icon={DollarSign}
-          iconColor="text-emerald-600"
+          iconColor="text-primary"
           trend={analytics.revenueChange ? { 
             value: analytics.revenueChange.value, 
             label: "vs période prec." 
@@ -194,7 +194,7 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
           title="Marge brute"
           value={formatCurrency(analytics.netMarginUSD, 'USD')}
           icon={Receipt}
-          iconColor="text-blue-600"
+          iconColor="text-info"
           trend={analytics.marginChange ? { 
             value: analytics.marginChange.value, 
             label: "vs période prec." 
@@ -206,7 +206,7 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
           title="Clients actifs"
           value={analytics.activeClients.toLocaleString()}
           icon={Users}
-          iconColor="text-purple-600"
+          iconColor="text-purple-500"
           className="bg-card shadow-sm hover:shadow-md transition-all border-border"
         />
 
@@ -214,7 +214,7 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
           title="Bénéfice net"
           value={formatCurrency(analytics.netProfitUSD, 'USD')}
           icon={TrendingUp}
-          iconColor="text-orange-600"
+          iconColor="text-warning"
           trend={analytics.profitChange ? { 
             value: analytics.profitChange.value, 
             label: "vs période prec." 

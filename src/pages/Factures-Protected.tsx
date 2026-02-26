@@ -46,6 +46,7 @@ import {
 import { startOfDay, startOfWeek, startOfMonth, startOfYear, endOfDay, endOfWeek, endOfMonth, endOfYear, subDays } from 'date-fns';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import PermissionGuard from '../components/auth/PermissionGuard';
+import { useSensitiveDataValue, maskCurrency } from '../hooks/useSensitiveData';
 import { UnifiedDataTable } from '@/components/ui/unified-data-table';
 import { ColumnSelector, type ColumnConfig } from '@/components/ui/column-selector';
 import { ExportDropdown } from '@/components/ui/export-dropdown';
@@ -184,9 +185,12 @@ const FacturesProtected: React.FC = () => {
     }));
   };
 
+  const isHidden = useSensitiveDataValue();
+
   const formatCurrency = (amount: number, devise: string) => {
     const formatted = amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    return devise === 'USD' ? `$${formatted}` : `${formatted} FC`;
+    const result = devise === 'USD' ? `$${formatted}` : `${formatted} FC`;
+    return isHidden ? maskCurrency(result, true) : result;
   };
 
   const getStatutBadge = (statut: string) => {

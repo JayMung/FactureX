@@ -35,7 +35,8 @@ import {
   Send,
   ArrowLeftRight,
   ArrowLeft,
-  MoreHorizontal
+  MoreHorizontal,
+  Eye
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 // @ts-ignore - Temporary workaround for Supabase types
@@ -349,15 +350,22 @@ const SettingsWithPermissions = () => {
 
   const fetchActivityLogs = async () => {
     try {
-      const { data } = await supabase
-        .from('activity_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
+      // Use the secure RPC function to get activity logs with user data
+      const { data: logsData, error: logsError } = await supabase.rpc('get_activity_logs_secure', {
+        page_num: 1,
+        page_size: 50,
+        filter_action: null,
+        filter_user_id: null,
+        filter_date_range: null
+      });
 
-      setActivityLogs(data || []);
+      if (logsError) throw logsError;
+
+      setActivityLogs(logsData || []);
     } catch (error) {
       console.error('Error fetching activity logs:', error);
+      // Fallback to empty array if error
+      setActivityLogs([]);
     }
   };
 
@@ -1559,54 +1567,60 @@ const SettingsWithPermissions = () => {
                       <p>Aucune activité enregistrée</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b bg-gray-50">
-                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Action</th>
-                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Cible</th>
-                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Utilisateur</th>
-                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Date</th>
-                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Détails</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {activityLogs.map((log) => (
-                            <tr key={log.id} className="border-b hover:bg-gray-50 transition-colors">
-                              <td className="py-3 px-4">
-                                <Badge variant="outline" className="font-medium">
-                                  {log.action}
-                                </Badge>
-                              </td>
-                              <td className="py-3 px-4 text-sm">{log.cible || '-'}</td>
-                              <td className="py-3 px-4 text-sm text-gray-600">
-                                {log.user_email || 'Système'}
-                              </td>
-                              <td className="py-3 px-4 text-sm text-gray-600">
-                                {log.created_at ? new Date(log.created_at).toLocaleString('fr-FR', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                }) : '-'}
-                              </td>
-                              <td className="py-3 px-4 text-sm text-gray-500">
-                                {log.details && typeof log.details === 'object' ? (
-                                  <span>
-                                    {log.details.facture_number ? `Facture ${log.details.facture_number}` :
-                                      log.details.client_name ? `Client: ${log.details.client_name}` :
-                                        log.details.montant ? `Montant: ${log.details.montant}` :
-                                          log.details.converted_from ? `Converti depuis ${log.details.converted_from}` :
-                                            '-'}
-                                  </span>
-                                ) : log.details ? log.details : '-'}
-                              </td>
+                    <>
+                      <div className="overflow-x-auto -mx-6 px-6">
+                        <table className="w-full min-w-[700px]">
+                          <thead>
+                            <tr className="border-b bg-gray-50">
+                              <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Action</th>
+                              <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Entité</th>
+                              <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Utilisateur</th>
+                              <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Date</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody>
+                            {activityLogs.slice(0, 10).map((log) => (
+                              <tr key={log.id} className="border-b hover:bg-gray-50 transition-colors">
+                                <td className="py-3 px-4">
+                                  <Badge variant="outline" className="font-medium">
+                                    {log.action}
+                                  </Badge>
+                                </td>
+                                <td className="py-3 px-4 text-sm">
+                                  {log.target_name || log.cible || '-'}
+                                </td>
+                                <td className="py-3 px-4 text-sm text-gray-600">
+                                  {log.user_first_name || log.user_last_name 
+                                    ? `${log.user_first_name || ''} ${log.user_last_name || ''}`.trim()
+                                    : (log.user_email || 'Système')}
+                                </td>
+                                <td className="py-3 px-4 text-sm text-gray-600">
+                                  {log.date ? new Date(log.date).toLocaleString('fr-FR', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  }) : '-'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {activityLogs.length > 10 && (
+                        <div className="mt-6 text-center">
+                          <Button
+                            variant="outline"
+                            onClick={() => navigate('/activity-logs')}
+                            className="flex items-center gap-2"
+                          >
+                            <Eye className="h-4 w-4" />
+                            Voir plus ({activityLogs.length - 10} autres)
+                          </Button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>

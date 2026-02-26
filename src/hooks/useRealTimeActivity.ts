@@ -7,42 +7,38 @@ export const useRealTimeActivity = (limit: number = 10) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [lastFetch, setLastFetch] = useState(0);
-
-  // Use refs to avoid circular dependencies in useEffect
+  
+  // Use refs to avoid circular dependencies and stabilize references
   const isLoadingRef = useRef(isLoading);
-  const lastFetchRef = useRef(lastFetch);
+  const limitRef = useRef(limit);
   
   useEffect(() => {
     isLoadingRef.current = isLoading;
-    lastFetchRef.current = lastFetch;
-  }, [isLoading, lastFetch]);
+    limitRef.current = limit;
+  }, [isLoading, limit]);
 
   // Mettre à jour le compteur de notifications non lues
   const markAsRead = useCallback(() => {
     setUnreadCount(0);
-    // Marquer comme lues dans le localStorage
     localStorage.setItem('last_read_activity', Date.now().toString());
   }, []);
 
   // Charger les activités récentes au démarrage
   const fetchRecentActivities = useCallback(async () => {
     // Débouncing - ne pas faire plus d'une requête par seconde
-    const now = Date.now();
-    if (now - lastFetchRef.current < 1000) {
-      return;
-    }
+    if (isLoadingRef.current) return;
     
-    lastFetchRef.current = now;
     setIsLoading(true);
     
     try {
+      const currentLimit = limitRef.current;
+      
       // Récupérer les activity logs
       const { data: activityData, error: activityError } = await supabase
         .from('activity_logs')
         .select('*')
         .order('date', { ascending: false })
-        .limit(limit);
+        .limit(currentLimit);
 
       if (activityError) throw activityError;
 
@@ -58,7 +54,7 @@ export const useRealTimeActivity = (limit: number = 10) => {
 
       const activitiesWithUsers = activityData?.map(log => ({
         ...log,
-        created_at: log.created_at || log.date, // Support both column names
+        created_at: log.created_at || log.date,
         user: profilesMap.get(log.user_id)
       })) || [];
 
@@ -79,7 +75,7 @@ export const useRealTimeActivity = (limit: number = 10) => {
     } finally {
       setIsLoading(false);
     }
-  }, [limit]);
+  }, []); // No dependencies - uses refs instead
 
   // Écouter les nouvelles activités en temps réel
   useEffect(() => {
@@ -101,22 +97,12 @@ export const useRealTimeActivity = (limit: number = 10) => {
 
           const activityWithUser = {
             ...newActivity,
-            created_at: newActivity.created_at || newActivity.date, // Support both
+            created_at: newActivity.created_at || newActivity.date,
             user: userData
           };
 
-          setActivities(prev => [activityWithUser, ...prev.slice(0, limit - 1)]);
+          setActivities(prev => [activityWithUser, ...prev.slice(0, limitRef.current - 1)]);
           setUnreadCount(prev => prev + 1);
-
-          // Notification optionnelle
-          if ('Notification' in window && 'permission' in window.Notification) {
-            if (Notification.permission === 'granted') {
-              new Notification('Nouvelle activité', {
-                body: `${activityWithUser.user?.first_name} ${activityWithUser.action}`,
-                icon: '/favicon.ico'
-              });
-            }
-          }
         }
       )
       .subscribe((status) => {
@@ -126,7 +112,7 @@ export const useRealTimeActivity = (limit: number = 10) => {
     return () => {
       channel.unsubscribe();
     };
-  }, [limit, fetchRecentActivities]);
+  }, [fetchRecentActivities]); // Stable dependency
 
   return {
     activities,

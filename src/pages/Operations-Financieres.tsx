@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { formatCurrency } from '@/utils/formatCurrency';
+import { useSensitiveDataValue } from '@/hooks/useSensitiveData';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import Pagination from '@/components/ui/pagination-custom';
@@ -91,6 +92,8 @@ const OperationsFinancieres: React.FC = () => {
   // Récupérer les statistiques globales de TOUTES les opérations financières
   const { stats: globalStats, loading: statsLoading, refetch: refetchStats } = useOperationsFinancieres();
 
+  const isHidden = useSensitiveDataValue();
+
   const [formData, setFormData] = useState({
     type_transaction: 'depense' as 'depense' | 'revenue',
     montant: '' as string | number,
@@ -142,7 +145,7 @@ const OperationsFinancieres: React.FC = () => {
       align: 'right',
       render: (val, item) => (
         <span className={item.type_transaction === 'depense' ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>
-          {item.type_transaction === 'depense' ? '-' : '+'}{formatCurrency(val, item.devise)}
+          {item.type_transaction === 'depense' ? '-' : '+'}{formatCurrency(val, item.devise, isHidden)}
         </span>
       ),
     },
@@ -298,7 +301,7 @@ const OperationsFinancieres: React.FC = () => {
               ) : (
                 <>
                   <div className="text-xl sm:text-2xl font-bold text-red-600">
-                    {formatCurrency(globalStats.totalDepenses, 'USD')}
+                    {formatCurrency(globalStats.totalDepenses, 'USD', isHidden)}
                   </div>
                   <p className="text-xs text-muted-foreground">{globalStats.nombreDepenses} opération(s)</p>
                 </>
@@ -317,7 +320,7 @@ const OperationsFinancieres: React.FC = () => {
               ) : (
                 <>
                   <div className="text-xl sm:text-2xl font-bold" style={{ color: '#21ac74' }}>
-                    {formatCurrency(globalStats.totalRevenus, 'USD')}
+                    {formatCurrency(globalStats.totalRevenus, 'USD', isHidden)}
                   </div>
                   <p className="text-xs text-muted-foreground">{globalStats.nombreRevenus} opération(s)</p>
                 </>
@@ -336,7 +339,7 @@ const OperationsFinancieres: React.FC = () => {
               ) : (
                 <>
                   <div className="text-xl sm:text-2xl font-bold text-blue-600">
-                    {formatCurrency(globalBalance.soldeNet, 'USD')}
+                    {formatCurrency(globalBalance.soldeNet, 'USD', isHidden)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Tous comptes confondus ({globalBalance.nombreComptes} comptes)
@@ -513,7 +516,7 @@ const OperationsFinancieres: React.FC = () => {
                   <SelectContent>
                     {comptes.map(compte => (
                       <SelectItem key={compte.id} value={compte.id}>
-                        {compte.nom} - {formatCurrency(compte.solde_actuel, compte.devise)}
+                        {compte.nom} - {formatCurrency(compte.solde_actuel, compte.devise, isHidden)}
                       </SelectItem>
                     ))}
                   </SelectContent>

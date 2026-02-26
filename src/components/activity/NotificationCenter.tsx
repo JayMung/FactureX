@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import {
   Bell,
   X,
@@ -40,18 +40,22 @@ interface NotificationCenterProps {
 const NotificationCenter: React.FC<NotificationCenterProps> = ({ className }) => {
   const { activities, unreadCount, markAsRead } = useRealTimeActivity(10);
   const navigate = useNavigate();
-  const [isOpen, setIsOpen] = useState(false);
 
-  // Define helper function BEFORE useMemo
-  const getActivityType = (action: string): 'info' | 'success' | 'warning' | 'error' => {
+  // Local read state - use ref to avoid re-renders
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const readIdsRef = useRef(readIds);
+  readIdsRef.current = readIds;
+
+  // Helper to get activity type - stable function
+  const getActivityType = useCallback((action: string): 'info' | 'success' | 'warning' | 'error' => {
     if (action.includes('Création') || action.includes('créé')) return 'success';
     if (action.includes('Modification') || action.includes('modifié')) return 'info';
     if (action.includes('Suppression') || action.includes('supprimé')) return 'warning';
     if (action.includes('Auth') && action.includes('échec')) return 'error';
     return 'info';
-  };
+  }, []);
 
-  // Convert activities to notifications directly (no useEffect needed)
+  // Convert activities to notifications - memoized
   const notifications: NotificationItem[] = useMemo(() => {
     return activities.slice(0, 10).map(activity => ({
       id: activity.id,
@@ -61,70 +65,76 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className }) =>
       timestamp: new Date(activity.created_at),
       read: false
     }));
-  }, [activities]);
+  }, [activities, getActivityType]);
 
-  // Local read state management
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  // Combine notifications with read state - memoized
+  const notificationsWithReadState = useMemo(() => {
+    return notifications.map(n => ({ ...n, read: readIds.has(n.id) }));
+  }, [notifications, readIds]);
 
-  const getNotificationIcon = (type: string) => {
+  const unreadNotifications = useMemo(() => 
+    notificationsWithReadState.filter(n => !n.read),
+    [notificationsWithReadState]
+  );
+
+  // Stable callbacks
+  const handleMarkAsRead = useCallback((id: string) => {
+    setReadIds(prev => {
+      const newSet = new Set([...prev, id]);
+      return newSet;
+    });
+    markAsRead();
+  }, [markAsRead]);
+
+  const handleMarkAllAsRead = useCallback(() => {
+    setReadIds(new Set(notifications.map(n => n.id)));
+    markAsRead();
+  }, [notifications, markAsRead]);
+
+  const handleClearAll = useCallback(() => {
+    setReadIds(new Set());
+    markAsRead();
+  }, [markAsRead]);
+
+  const handleNavigateToLogs = useCallback(() => {
+    navigate('/activity-logs');
+  }, [navigate]);
+
+  // Icon helpers - stable
+  const getNotificationIcon = useCallback((type: string) => {
     switch (type) {
       case 'success': return <CheckCircle className="h-4 w-4 text-emerald-600" />;
       case 'warning': return <AlertCircle className="h-4 w-4 text-amber-600" />;
       case 'error': return <X className="h-4 w-4 text-red-600" />;
       default: return <Info className="h-4 w-4 text-blue-600" />;
     }
-  };
+  }, []);
 
-  const getNotificationBg = (type: string) => {
+  const getNotificationBg = useCallback((type: string) => {
     switch (type) {
       case 'success': return 'bg-emerald-100 dark:bg-emerald-900/30';
       case 'warning': return 'bg-amber-100 dark:bg-amber-900/30';
       case 'error': return 'bg-red-100 dark:bg-red-900/30';
       default: return 'bg-blue-100 dark:bg-blue-900/30';
     }
-  };
+  }, []);
 
-  const formatRelativeTime = (timestamp: Date) => {
+  const formatRelativeTime = useCallback((timestamp: Date) => {
     const now = new Date();
     const diffMs = now.getTime() - timestamp.getTime();
-
     const diffMins = Math.floor(diffMs / 60000);
     if (diffMins < 1) return 'À l\'instant';
     if (diffMins < 60) return `${diffMins}min`;
-
     const diffHours = Math.floor(diffMs / 3600000);
     if (diffHours < 24) return `${diffHours}h`;
-
     const diffDays = Math.floor(diffMs / 86400000);
     return `${diffDays}j`;
-  };
-
-  const handleMarkAsRead = (id: string) => {
-    setReadIds(prev => new Set([...prev, id]));
-    markAsRead();
-  };
-
-  const handleMarkAllAsRead = () => {
-    setReadIds(new Set(notifications.map(n => n.id)));
-    markAsRead();
-  };
-
-  const handleClearAll = () => {
-    setReadIds(new Set());
-    markAsRead();
-  };
-
-  // Combine notifications with read state
-  const notificationsWithReadState = useMemo(() => {
-    return notifications.map(n => ({ ...n, read: readIds.has(n.id) }));
-  }, [notifications, readIds]);
-
-  const unreadNotifications = notificationsWithReadState.filter(n => !n.read);
+  }, []);
 
   return (
     <div className={cn("relative", className)}>
       {/* Bell icon with badge */}
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
@@ -253,7 +263,6 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className }) =>
               className="w-full justify-center text-sm text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg"
               onClick={() => {
                 navigate('/activity-logs');
-                setIsOpen(false);
               }}
             >
               <Eye className="mr-2 h-4 w-4" />

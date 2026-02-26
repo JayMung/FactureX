@@ -87,7 +87,7 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
     clientId: client?.id
   });
   
-  const colis: Colis[] = (colisData as Colis[]) || [];
+  const colis = (colisData as unknown as Colis[]) || [];
 
   const formatCurrencyValue = (amount: number, currency: string) => {
     if (currency === 'USD') {
@@ -663,18 +663,18 @@ const ClientHistoryModal: React.FC<ClientHistoryModalProps> = ({
                         </div>
                         <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0">
                           <div className="text-left sm:text-right">
-                            <p className="font-bold text-sm sm:text-base">{colisItem.frais_expedition} USD</p>
+                            <p className="font-bold text-sm sm:text-base">{(colisItem as any).frais_expedition ?? colisItem.montant_a_payer} USD</p>
                             <p className="text-xs sm:text-sm text-gray-500">
-                              Bénéfice: <span className="text-green-600 font-medium">+{colisItem.benefice} USD</span>
+                              Bénéfice: <span className="text-green-600 font-medium">+{(colisItem as any).benefice ?? 0} USD</span>
                             </p>
                           </div>
                           <Badge
                             className={
-                              colisItem.statut === 'En attente'
+                              colisItem.statut === 'en_preparation'
                                 ? 'bg-yellow-100 text-yellow-800'
-                                : colisItem.statut === 'Expédié'
+                                : colisItem.statut === 'expedie_chine'
                                   ? 'bg-blue-100 text-blue-800'
-                                  : colisItem.statut === 'Livré'
+                                  : colisItem.statut === 'livre'
                                     ? 'bg-green-100 text-green-800'
                                     : 'bg-gray-100 text-gray-800'
                             }

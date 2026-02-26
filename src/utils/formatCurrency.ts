@@ -1,12 +1,25 @@
-export const formatCurrency = (amount: number, currency: string): string => {
+export const formatCurrency = (amount: number, currency: string, isHidden?: boolean): string => {
+  let formatted: string;
   if (currency === 'USD') {
-    return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    formatted = `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   } else if (currency === 'CDF') {
-    return `${amount.toLocaleString('fr-FR')} CDF`;
+    formatted = `${amount.toLocaleString('fr-FR')} CDF`;
   } else if (currency === 'CNY') {
-    return `¥${amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    formatted = `¥${amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  } else {
+    formatted = amount.toString();
   }
-  return amount.toString();
+  
+  if (isHidden) {
+    // Replace digits with • but preserve currency symbols and formatting
+    return formatted.replace(/[0-9]/g, '•');
+  }
+  
+  return formatted;
+};
+
+export const maskCurrencyValue = (value: string): string => {
+  return value.replace(/[0-9]/g, '•');
 };
 
 export const formatDate = (dateString: string): string => {

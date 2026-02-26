@@ -34,6 +34,7 @@ import {
 } from 'recharts';
 import { useFinanceStatsByPeriod, PeriodFilter } from '@/hooks/useFinanceStatsByPeriod';
 import { generateFinanceReportPDF } from '@/utils/financeReportPdfGenerator';
+import { useSensitiveDataValue, maskCurrency } from '@/hooks/useSensitiveData';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -104,12 +105,15 @@ const FinanceStatisticsPage: React.FC = () => {
     const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
+    const isHidden = useSensitiveDataValue();
+
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
+        const formatted = new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: 'USD',
             minimumFractionDigits: 2
         }).format(amount);
+        return isHidden ? maskCurrency(formatted, true) : formatted;
     };
 
     const exportReport = async () => {

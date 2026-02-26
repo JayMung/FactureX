@@ -36,12 +36,14 @@ interface TemplateData {
   };
 }
 
-const formatCurrency = (amount: number, devise: 'USD' | 'CDF'): string => {
+const formatCurrency = (amount: number, devise: 'USD' | 'CDF' | 'CNY'): string => {
   const formatted = amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return devise === 'USD' ? `$${formatted}` : `${formatted} FC`;
+  if (devise === 'USD') return `$${formatted}`;
+  if (devise === 'CNY') return `¥${formatted}`;
+  return `${formatted} FC`;
 };
 
-const renderItemRow = (item: FactureItem, index: number, devise: 'USD' | 'CDF', modeLivraison: 'aerien' | 'maritime'): string => {
+const renderItemRow = (item: FactureItem, index: number, devise: 'USD' | 'CDF' | 'CNY', modeLivraison: 'aerien' | 'maritime'): string => {
   const bgClass = index % 2 === 0 ? 'bg-white' : 'bg-emerald-50/30';
   const imageHtml = item.image_url 
     ? `<img src="${item.image_url}" alt="Produit" class="w-16 h-16 object-cover rounded border" crossorigin="anonymous" referrerpolicy="no-referrer" />`

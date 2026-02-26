@@ -44,6 +44,7 @@ import ConfirmDialog from '@/components/ui/confirm-dialog';
 import PermissionGuard from '../components/auth/PermissionGuard';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import { usePermissions } from '../hooks/usePermissions';
+import { useSensitiveDataValue, maskCurrency } from '../hooks/useSensitiveData';
 import { UnifiedDataTable, type TableColumn } from '@/components/ui/unified-data-table';
 import { ColumnSelector, type ColumnConfig } from '@/components/ui/column-selector';
 import { ExportDropdown } from '@/components/ui/export-dropdown';
@@ -303,8 +304,11 @@ const ClientsProtected: React.FC = () => {
     setHistoryModalOpen(true);
   };
 
+  const isHidden = useSensitiveDataValue();
+
   const formatCurrency = (amount: number) => {
-    return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const formatted = `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return isHidden ? maskCurrency(formatted, true) : formatted;
   };
 
   const generateReadableId = (clientId: string, index: number) => {

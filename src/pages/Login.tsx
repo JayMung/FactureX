@@ -110,8 +110,12 @@ const Login = () => {
 
       if (error) {
         // Handle Supabase specific rate limit error (429 or generic message)
-        if (error.status === 429 || error.message?.toLowerCase().includes('rate limit')) {
-          throw new Error("Limite d'envoi d'emails atteinte. Pour des raisons de sécurité, veuillez attendre 60 secondes avant de réessayer.");
+        const errorMsg = error.message?.toLowerCase() || '';
+        if (error.status === 429 || 
+            errorMsg.includes('rate limit') || 
+            errorMsg.includes('limite d\'envoi') ||
+            errorMsg.includes('attendre')) {
+          throw new Error("Limite d'envoi d'emails atteinte. Pour des raisons de sécurité, veuillez attendre 2-3 minutes avant de réessayer.");
         }
         throw error;
       }

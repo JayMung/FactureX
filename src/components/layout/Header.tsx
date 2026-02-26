@@ -12,7 +12,9 @@ import {
   CreditCard,
   FileText,
   User,
-  ChevronDown
+  ChevronDown,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { usePermissions } from '@/hooks/usePermissions';
 import NotificationCenter from '@/components/activity/NotificationCenter';
+import { useSensitiveData } from '@/hooks/useSensitiveData';
 
 interface HeaderProps {
   title: string;
@@ -44,6 +47,7 @@ const Header: React.FC<HeaderProps> = ({
 }) => {
   const navigate = useNavigate();
   const { checkPermission } = usePermissions();
+  const { isHidden, toggle } = useSensitiveData();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -121,6 +125,17 @@ const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
             {/* Notifications temps réel */}
             <NotificationCenter />
+
+            {/* Masquer/Afficher les données sensibles */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggle}
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
+              title={isHidden ? "Afficher les montants" : "Masquer les montants"}
+            >
+              {isHidden ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </Button>
 
             {/* User menu */}
             <DropdownMenu>

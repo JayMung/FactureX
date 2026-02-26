@@ -20,6 +20,7 @@ import { formatCurrency } from '@/utils/formatCurrency';
 import { useDashboardAnalytics } from '@/hooks/useDashboardAnalytics';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useColis } from '@/hooks/useColis';
+import { useSensitiveDataValue } from '@/hooks/useSensitiveData';
 import { cn } from '@/lib/utils';
 import {
   LineChart,
@@ -55,6 +56,7 @@ const periodFilterToAnalytics = (p?: string): string => {
 const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period: periodProp }) => {
   const period = periodFilterToAnalytics(periodProp);
   const [chartType, setChartType] = useState<'revenue' | 'transactions' | 'clients'>('revenue');
+  const isHidden = useSensitiveDataValue();
 
   const { 
     analytics, 
@@ -106,7 +108,7 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
                 {entry.name}
               </span>
               <span className="font-semibold text-foreground">
-                ${entry.value?.toLocaleString('fr-FR')}
+                {isHidden ? '$•••' : `$${entry.value?.toLocaleString('fr-FR')}`}
               </span>
             </div>
           ))}
@@ -180,7 +182,7 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
       <div className="grid-responsive-4">
         <StatCard
           title="Revenus totaux"
-          value={formatCurrency(analytics.totalRevenueUSD, 'USD')}
+          value={formatCurrency(analytics.totalRevenueUSD, 'USD', isHidden)}
           icon={DollarSign}
           iconColor="text-primary"
           trend={analytics.revenueChange ? { 
@@ -192,7 +194,7 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
 
         <StatCard
           title="Marge brute"
-          value={formatCurrency(analytics.netMarginUSD, 'USD')}
+          value={formatCurrency(analytics.netMarginUSD, 'USD', isHidden)}
           icon={Receipt}
           iconColor="text-info"
           trend={analytics.marginChange ? { 
@@ -212,7 +214,7 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
 
         <StatCard
           title="Bénéfice net"
-          value={formatCurrency(analytics.netProfitUSD, 'USD')}
+          value={formatCurrency(analytics.netProfitUSD, 'USD', isHidden)}
           icon={TrendingUp}
           iconColor="text-warning"
           trend={analytics.profitChange ? { 
@@ -333,7 +335,7 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
                           {transaction.motif || 'Paiement'}
                         </p>
                         <p className="text-sm font-bold text-slate-900">
-                          {formatCurrency(transaction.montant, transaction.devise)}
+                          {formatCurrency(transaction.montant, transaction.devise, isHidden)}
                         </p>
                       </div>
                     </div>
@@ -378,7 +380,7 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
                         </span>
                       </div>
                       <p className="text-sm font-bold text-slate-900 mt-1">
-                        {formatCurrency(item.total, item.currency)}
+                        {formatCurrency(item.total, item.currency, isHidden)}
                       </p>
                     </div>
                   </div>
@@ -454,28 +456,28 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
                 <div className="space-y-2">
                   <p className="small-text font-medium">Volume Transactions USD</p>
                   <p className="heading-2 text-mono">
-                    {formatCurrency(financeStats?.totalUSD || 0, 'USD')}
+                    {formatCurrency(financeStats?.totalUSD || 0, 'USD', isHidden)}
                   </p>
                   <p className="small-text">Transactions commerciales</p>
                 </div>
                 <div className="space-y-2">
                   <p className="small-text font-medium">Commissions Perçues</p>
                   <p className="heading-2 text-status-info text-mono">
-                    {formatCurrency(financeStats?.totalFrais || 0, 'USD')}
+                    {formatCurrency(financeStats?.totalFrais || 0, 'USD', isHidden)}
                   </p>
                   <p className="small-text">Frais perçus</p>
                 </div>
                 <div className="space-y-2">
                   <p className="small-text font-medium">Bénéfice Brut</p>
                   <p className="heading-2 text-foreground text-mono">
-                    {formatCurrency(financeStats?.totalBenefice || 0, 'USD')}
+                    {formatCurrency(financeStats?.totalBenefice || 0, 'USD', isHidden)}
                   </p>
                   <p className="small-text">Commande + Transfert</p>
                 </div>
                 <div className="space-y-2">
                   <p className="small-text font-medium">Total Dépenses</p>
                   <p className="heading-2 text-status-error text-mono">
-                    {formatCurrency(financeStats?.totalDepenses || 0, 'USD')}
+                    {formatCurrency(financeStats?.totalDepenses || 0, 'USD', isHidden)}
                   </p>
                   <p className="small-text">Sorties d'argent</p>
                 </div>

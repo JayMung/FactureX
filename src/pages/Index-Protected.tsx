@@ -22,6 +22,7 @@ import {
 
 import { useDashboardWithPermissions } from '../hooks/useDashboardWithPermissions';
 import { useActivityLogs } from '../hooks/useActivityLogs';
+import { useSensitiveDataValue, maskCurrency } from '../hooks/useSensitiveData';
 
 import { usePermissions } from '../hooks/usePermissions';
 import { formatCurrency } from '../utils/formatCurrency';
@@ -62,13 +63,18 @@ const IndexProtected: React.FC = () => {
   const { stats, isLoading, error } = useDashboardWithPermissions(dateRange);
   const { logs, isLoading: logsLoading } = useActivityLogs(1, 5);
 
+  const isHidden = useSensitiveDataValue();
+
   const formatCurrencyValue = (amount: number, currency: string = 'USD') => {
+    let formatted: string;
     if (currency === 'USD') {
-      return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      formatted = `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     } else if (currency === 'CDF') {
-      return `${amount.toLocaleString('fr-FR')} CDF`;
+      formatted = `${amount.toLocaleString('fr-FR')} CDF`;
+    } else {
+      formatted = amount.toString();
     }
-    return amount.toString();
+    return isHidden ? maskCurrency(formatted, true) : formatted;
   };
 
   // Stats pour Factures & Revenus uniquement (Vue d'ensemble) - Admin seulement

@@ -67,19 +67,44 @@ export const useDeleteColis = () => {
     let successCount = 0;
     let failCount = 0;
     
+    // Supprimer tous les colis sans toast individuels
     for (const id of ids) {
-      const success = await deleteColis(id);
-      if (success) {
-        successCount++;
-      } else {
+      try {
+        // Step 1: Delete related paiements_colis first
+        await supabase
+          .from('paiements_colis')
+          .delete()
+          .eq('colis_id', id);
+
+        // Step 2: Delete related paiements
+        await supabase
+          .from('paiements')
+          .delete()
+          .eq('colis_id', id);
+
+        // Step 3: Delete the colis
+        const { error: deleteError, count } = await supabase
+          .from('colis')
+          .delete({ count: 'exact' })
+          .eq('id', id);
+
+        if (deleteError || count === 0) {
+          failCount++;
+        } else {
+          successCount++;
+        }
+      } catch {
         failCount++;
       }
     }
     
-    if (failCount === 0) {
-      toast.success(`${successCount} colis supprimés avec succès`);
+    // Un seul toast avec le résumé
+    if (successCount > 0 && failCount === 0) {
+      toast.success(`${successCount} colis supprimé${successCount > 1 ? 's' : ''} avec succès`);
+    } else if (successCount > 0 && failCount > 0) {
+      toast.success(`${successCount} colis supprimé${successCount > 1 ? 's' : ''}, ${failCount} échec${failCount > 1 ? 's' : ''}`);
     } else {
-      toast.error(`${failCount} colis n'ont pas pu être supprimés`);
+      toast.error(`Échec de la suppression - ${failCount} colis non supprimé${failCount > 1 ? 's' : ''}`);
     }
     
     return { successCount, failCount };

@@ -18,14 +18,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 import { useFinanceStatsByPeriod } from '@/hooks/useFinanceStatsByPeriod';
 import { useExchangeRates } from '@/hooks/useSettings';
+import { useSensitiveDataValue } from '@/hooks/useSensitiveData';
 import { format, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
-
-const fmt = (v: number, d = 'USD') =>
-  new Intl.NumberFormat('fr-FR', { style: 'currency', currency: d, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
-
-const compact = (v: number) =>
-  v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v.toFixed(0)}`;
 
 interface DailyFlow { date: string; revenus: number; depenses: number; }
 interface UnpaidFacture {
@@ -43,6 +38,18 @@ const FinancesDashboard: React.FC = () => {
   const [totalUnpaid, setTotalUnpaid] = useState(0);
   const [loadingExtra, setLoadingExtra] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const isHidden = useSensitiveDataValue();
+
+  const fmt = (v: number, d = 'USD') => {
+    const formatted = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: d, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
+    return isHidden ? formatted.replace(/[0-9]/g, '•') : formatted;
+  };
+
+  const compact = (v: number) => {
+    const formatted = v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v.toFixed(0)}`;
+    return isHidden ? formatted.replace(/[0-9]/g, '•') : formatted;
+  };
 
   const { comptes, loading: cLoading } = useComptesFinanciers();
   const { stats: ms, isLoading: sLoading } = useFinanceStatsByPeriod('month');

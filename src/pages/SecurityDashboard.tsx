@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Activity, AlertTriangle, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Shield, Activity, AlertTriangle, FileText, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import ActivityLogsTab from '@/components/security/ActivityLogsTab';
 import SecurityLogsTab from '@/components/security/SecurityLogsTab';
 import SecurityAlertsTab from '@/components/security/SecurityAlertsTab';
@@ -14,6 +16,7 @@ const SecurityDashboard: React.FC = () => {
     subtitle: 'Monitoring complet de la sécurité et des activités'
   });
 
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('activity');
 
   return (
@@ -30,6 +33,14 @@ const SecurityDashboard: React.FC = () => {
               Surveillance et analyse des événements de sécurité
             </p>
           </div>
+          <Button
+            variant="outline"
+            onClick={() => navigate('/settings')}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Retour aux paramètres
+          </Button>
         </div>
 
         {/* Tabs */}

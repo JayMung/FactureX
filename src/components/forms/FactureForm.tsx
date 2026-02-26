@@ -38,11 +38,20 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
   const [shippingSettings, setShippingSettings] = useState({ aerien: 16, maritime: 450 });
   const [defaultConditionsVente, setDefaultConditionsVente] = useState('');
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    client_id: string;
+    type: 'devis' | 'facture';
+    mode_livraison: 'aerien' | 'maritime';
+    devise: 'USD' | 'CDF' | 'CNY';
+    conditions_vente: string;
+    notes: string;
+    date_emission: string;
+    date_echeance: string;
+  }>({
     client_id: '',
-    type: 'devis' as 'devis' | 'facture',
-    mode_livraison: 'aerien' as 'aerien' | 'maritime',
-    devise: 'USD' as 'USD' | 'CDF',
+    type: 'devis',
+    mode_livraison: 'aerien',
+    devise: 'USD',
     conditions_vente: '',
     notes: '',
     date_emission: new Date().toISOString().split('T')[0],
@@ -355,11 +364,12 @@ const FactureForm: React.FC<FactureFormProps> = ({ isOpen, onClose, onSuccess, f
               <Label>Devise</Label>
               <select
                 value={formData.devise}
-                onChange={(e) => setFormData(prev => ({ ...prev, devise: e.target.value as 'USD' | 'CDF' }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, devise: e.target.value as 'USD' | 'CDF' | 'CNY' }))}
                 className="w-full p-2 border rounded"
               >
                 <option value="USD">USD</option>
                 <option value="CDF">CDF</option>
+                <option value="CNY">CNY</option>
               </select>
             </div>
           </div>

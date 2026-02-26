@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Plus, Search, Filter, Package, Calendar, DollarSign, Eye, Edit, Trash2, MoreVertical, ChevronDown, CheckCircle, Clock, X, Truck, MapPin, AlertCircle, Plane, PackageCheck, CreditCard, QrCode, ShoppingCart, User, Send } from 'lucide-react';
+import { Plus, Search, Filter, Package, Calendar, DollarSign, Eye, Edit, Trash2, MoreVertical, ChevronDown, CheckCircle, Clock, X, Truck, MapPin, AlertCircle, Plane, PackageCheck, CreditCard, QrCode, ShoppingCart, User, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { KpiCard } from '@/components/ui/kpi-card';
 import { Input } from '@/components/ui/input';
@@ -133,6 +133,7 @@ const ColisAeriens: React.FC = () => {
   };
   const [selectedColisIds, setSelectedColisIds] = useState<string[]>([]);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { deleteColis, deleteMultipleColis } = useDeleteColis();
   const [selectedColis, setSelectedColis] = useState<Colis | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -331,11 +332,16 @@ const ColisAeriens: React.FC = () => {
 
   // Confirmer la suppression en masse
   const handleConfirmBulkDelete = async () => {
-    const result = await deleteMultipleColis(selectedColisIds);
-    if (result.failCount === 0) {
-      setSelectedColisIds([]);
-      setBulkDeleteDialogOpen(false);
-      loadColis();
+    setIsDeleting(true);
+    try {
+      const result = await deleteMultipleColis(selectedColisIds);
+      if (result.failCount === 0) {
+        setSelectedColisIds([]);
+        setBulkDeleteDialogOpen(false);
+        loadColis();
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
   const handleViewDetails = (colis: Colis, event?: React.MouseEvent) => {
@@ -733,10 +739,20 @@ const ColisAeriens: React.FC = () => {
                       <Button
                         variant="destructive"
                         onClick={handleBulkDelete}
+                        disabled={isDeleting}
                         className="bg-red-600 hover:bg-red-700"
                       >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Supprimer ({selectedColisIds.length})
+                        {isDeleting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Suppression...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Supprimer ({selectedColisIds.length})
+                          </>
+                        )}
                       </Button>
                     )}
                     <ColumnSelector
@@ -1150,11 +1166,21 @@ const ColisAeriens: React.FC = () => {
                   </button>
                   <button
                     type="button"
-                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2"
+                    disabled={isDeleting}
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handleConfirmBulkDelete}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Supprimer {selectedColisIds.length} colis
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Suppression...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Supprimer {selectedColisIds.length} colis
+                      </>
+                    )}
                   </button>
                 </div>
               </div>

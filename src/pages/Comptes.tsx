@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, FileDown } from 'lucide-react';
 import CompteDetailModal from '@/components/comptes/CompteDetailModal';
+import { useSensitiveDataValue } from '@/hooks/useSensitiveData';
 
 const Comptes: React.FC = () => {
   const {
@@ -48,6 +49,7 @@ const Comptes: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'cards' | 'auto'>('auto');
   const [columnsConfig, setColumnsConfig] = useState<Record<string, boolean>>({});
   const isMobile = useIsMobile();
+  const isHidden = useSensitiveDataValue();
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [compteForDetail, setCompteForDetail] = useState<CompteFinancier | null>(null);
   const [typeTab, setTypeTab] = useState<'all' | 'mobile_money' | 'banque' | 'cash'>('all');
@@ -281,9 +283,13 @@ const Comptes: React.FC = () => {
       align: 'right' as const,
       render: (value: number, item: CompteFinancier) => {
         const colors = getAccountColor(item.nom, item.type_compte);
+        const symbol = item.devise === 'USD' ? '$' : item.devise === 'CNY' ? '¥' : '';
+        const suffix = item.devise === 'CDF' ? ' FC' : '';
+        const formatted = `${symbol}${value.toFixed(2)}${suffix}`;
+        const masked = isHidden ? formatted.replace(/[0-9]/g, '•') : formatted;
         return (
           <span className={cn('font-bold', colors.text)}>
-            {item.devise === 'USD' ? '$' : item.devise === 'CNY' ? '¥' : ''}{value.toFixed(2)} {item.devise === 'CDF' ? 'FC' : ''}
+            {masked}
           </span>
         )
       }
@@ -500,9 +506,9 @@ const Comptes: React.FC = () => {
       {/* Summary Cards - FreshCart style */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard title="Comptes financiers" value={activeComptes.length} icon={Wallet} iconColor="#64748b" iconBg="#f1f5f9" />
-        <KpiCard title="Solde USD" value={`$${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} icon={DollarSign} iconColor="#21ac74" iconBg="#dcfce7" />
-        <KpiCard title="Solde CDF" value={`${totalCDF.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} FC`} icon={Banknote} iconColor="#3b82f6" iconBg="#dbeafe" />
-        <KpiCard title="Solde CNY" value={`¥${totalCNY.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} icon={CreditCard} iconColor="#8b5cf6" iconBg="#ede9fe" />
+        <KpiCard title="Solde USD" value={isHidden ? '$•••' : `$${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} icon={DollarSign} iconColor="#21ac74" iconBg="#dcfce7" />
+        <KpiCard title="Solde CDF" value={isHidden ? '••• FC' : `${totalCDF.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} FC`} icon={Banknote} iconColor="#3b82f6" iconBg="#dbeafe" />
+        <KpiCard title="Solde CNY" value={isHidden ? '¥•••' : `¥${totalCNY.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} icon={CreditCard} iconColor="#8b5cf6" iconBg="#ede9fe" />
       </div>
 
       <FilterTabs
@@ -567,7 +573,7 @@ const Comptes: React.FC = () => {
                   <div className="relative">
                     <p className="text-white/60 text-[10px] uppercase tracking-widest">Solde actuel</p>
                     <p className="text-2xl font-bold text-white mt-0.5">
-                      {symbol}{item.solde_actuel.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{suffix}
+                      {isHidden ? (symbol + '•••' + suffix) : `${symbol}${item.solde_actuel.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${suffix}`}
                     </p>
                     <div className="mt-1.5">
                       <TrendBadge compteId={item.id} soldeActuel={item.solde_actuel} devise={item.devise} variant="card" />

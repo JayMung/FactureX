@@ -22,8 +22,10 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UnifiedDataTable } from '@/components/ui/unified-data-table';
 import Pagination from '@/components/ui/pagination-custom';
+import { useSensitiveDataValue } from '@/hooks/useSensitiveData';
 
 const Rapports = () => {
+    const isHidden = useSensitiveDataValue();
     usePageSetup({
         title: 'Rapports Financiers',
         subtitle: 'Générez des bilans et exportez vos données'
@@ -160,10 +162,10 @@ const Rapports = () => {
 
                 {/* Summary Cards - FreshCart style */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <KpiCard title="Recettes (USD)" value={loading ? '...' : `${data?.summary.totalRevenue.usd.toFixed(2)} $`} icon={TrendingUp} iconColor="#21ac74" iconBg="#dcfce7" loading={loading} />
-                    <KpiCard title="Dépenses (USD)" value={loading ? '...' : `${data?.summary.totalExpense.usd.toFixed(2)} $`} icon={TrendingDown} iconColor="#ef4444" iconBg="#fee2e2" loading={loading} />
+                    <KpiCard title="Recettes (USD)" value={loading ? '...' : (isHidden ? '$•••' : `${data?.summary.totalRevenue.usd.toFixed(2)} $`)} icon={TrendingUp} iconColor="#21ac74" iconBg="#dcfce7" loading={loading} />
+                    <KpiCard title="Dépenses (USD)" value={loading ? '...' : (isHidden ? '$•••' : `${data?.summary.totalExpense.usd.toFixed(2)} $`)} icon={TrendingDown} iconColor="#ef4444" iconBg="#fee2e2" loading={loading} />
                     <KpiCard title="Transactions" value={loading ? '...' : (data?.summary.transactionCount ?? 0)} icon={PieChart} iconColor="#3b82f6" iconBg="#dbeafe" loading={loading} />
-                    <KpiCard title="Solde Net (USD)" value={loading ? '...' : `${data?.summary.netProfit.toFixed(2)} $`} icon={DollarSign} iconColor="#8b5cf6" iconBg="#ede9fe" loading={loading} />
+                    <KpiCard title="Solde Net (USD)" value={loading ? '...' : (isHidden ? '$•••' : `${data?.summary.netProfit.toFixed(2)} $`)} icon={DollarSign} iconColor="#8b5cf6" iconBg="#ede9fe" loading={loading} />
                 </div>
 
                 {/* Actions */}
@@ -289,7 +291,7 @@ const Rapports = () => {
                                     align: 'right',
                                     render: (val, item) => (
                                         <span className="font-bold">
-                                            {val} {item.devise}
+                                            {isHidden ? '•••' : `${val} ${item.devise}`}
                                         </span>
                                     )
                                 }

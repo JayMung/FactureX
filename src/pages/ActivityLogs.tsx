@@ -316,8 +316,8 @@ const ActivityLogs: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="overflow-x-auto -mx-6 px-6">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b bg-gray-50">
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
@@ -325,7 +325,6 @@ const ActivityLogs: React.FC = () => {
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Action</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Utilisateur</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Cible</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Détails</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                   </tr>
                 </thead>
@@ -338,13 +337,12 @@ const ActivityLogs: React.FC = () => {
                         <td className="py-3 px-4"><Skeleton className="h-4 w-48" /></td>
                         <td className="py-3 px-4"><Skeleton className="h-4 w-32" /></td>
                         <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
-                        <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
                         <td className="py-3 px-4"><Skeleton className="h-4 w-16" /></td>
                       </tr>
                     ))
                   ) : logs.data.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center">
+                      <td colSpan={6} className="py-12 text-center">
                         <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
                         <p className="text-gray-500 text-lg">Aucune activité trouvée</p>
                         <p className="text-gray-400 text-sm mt-2">
@@ -376,28 +374,15 @@ const ActivityLogs: React.FC = () => {
                         <td className="py-3 px-4">
                           <div>
                             <p className="text-sm font-medium text-gray-900">
-                              {activity.user?.first_name} {activity.user?.last_name}
+                              {(activity as any).user_first_name} {(activity as any).user_last_name}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {activity.user?.email}
+                              {(activity as any).user_email}
                             </p>
                           </div>
                         </td>
                         <td className="py-3 px-4 text-sm text-gray-600">
-                          {activity.cible_id || '-'}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-gray-600">
-                          {activity.details ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSelectedActivity(activity)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          ) : (
-                            '-'
-                          )}
+                          {(activity as any).target_name || activity.cible_id || '-'}
                         </td>
                         <td className="py-3 px-4">
                           <Button

@@ -368,22 +368,44 @@ export const useTransactions = (
 
       const fraisUSD = amounts.frais;
       const benefice = amounts.benefice;
-      const montantCNY = amounts.montant_cny;
+      
+      // Pour les swaps (transferts cross-currency), préserver montant_converti si fourni
+      // Sinon utiliser le montant_cny calculé
+      let montantCNY = amounts.montant_cny;
+      let montantConverti = (sanitizedData as any).montant_converti;
+      
+      if (sanitizedData.type_transaction === 'transfert' && montantConverti) {
+        montantCNY = montantConverti; // Utiliser la conversion fournie par le formulaire
+        console.log(' SWAP detected - Using montant_converti:', montantConverti);
+      }
 
       // Construire l'objet complet en s'assurant que frais et benefice ne sont pas écrasés
       // On extrait les valeurs potentiellement problématiques de sanitizedData
-      const { frais, benefice: beneficeInput, ...cleanSanitizedData } = sanitizedData as any;
+      const { frais, benefice: beneficeInput, montant_converti, ...cleanSanitizedData } = sanitizedData as any;
+
+      // Pour les swaps (transferts), utiliser les frais saisis manuellement
+      // Pour les autres types, utiliser les frais calculés
+      let finalFrais = fraisUSD;
+      if (sanitizedData.type_transaction === 'transfert' && frais !== undefined) {
+        finalFrais = parseFloat(frais) || 0;
+        console.log(' SWAP detected - Using manual frais:', finalFrais);
+      }
 
       const fullTransactionData = {
         ...cleanSanitizedData,
         taux_usd_cny: rates.usdToCny,
         taux_usd_cdf: rates.usdToCdf,
         montant_cny: montantCNY,
-        frais: fraisUSD,
+        frais: finalFrais,
         benefice: benefice,
         date_paiement: sanitizedData.date_paiement || new Date().toISOString(),
         statut: sanitizedData.statut || 'En attente'
       };
+      
+      // Ajouter montant_converti si c'est un swap cross-currency
+      if (montantConverti) {
+        (fullTransactionData as any).montant_converti = montantConverti;
+      }
 
       console.log(' FINAL data sending to Supabase:', fullTransactionData);
 
@@ -457,8 +479,7 @@ export const useTransactions = (
       if (currentTransaction) {
         const transactionType = currentTransaction.type_transaction;
 
-        // SWAP (Transfert entre comptes) - NO automatic calculations
-        // Only manual frais allowed, benefice is always 0, no CNY
+        // SWAP (Transfert entre comptes) - Conversion cross-currency support
         if (transactionType === 'transfert') {
           updatedData = {
             ...updatedData,
@@ -467,9 +488,18 @@ export const useTransactions = (
             // Benefice is ALWAYS 0 for swaps
             benefice: 0,
           };
-          // I3: Ne pas envoyer null — laisser le trigger SQL gérer taux_usd_cny/montant_cny
-          delete (updatedData as any).montant_cny;
-          delete (updatedData as any).taux_usd_cny;
+          
+          // Préserver montant_converti et montant_cny pour les swaps cross-currency
+          if ((transactionData as any).montant_converti) {
+            // Swap cross-currency: garder montant_converti et montant_cny
+            updatedData.montant_cny = (transactionData as any).montant_converti;
+            console.log(' SWAP update - Using montant_converti:', (transactionData as any).montant_converti);
+          } else {
+            // Pas de conversion ou pas de montant_converti fourni
+            // I3: Ne pas envoyer null — laisser le trigger SQL gérer
+            delete (updatedData as any).montant_cny;
+            delete (updatedData as any).taux_usd_cny;
+          }
         }
         // DÉPENSE (Opération Interne - Expense) - No benefice, no CNY
         else if (transactionType === 'depense') {

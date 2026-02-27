@@ -660,22 +660,29 @@ const TransactionsProtected: React.FC = () => {
   };
 
   const handleDeleteTransaction = (transaction: Transaction) => {
+    console.log('🗑️ handleDeleteTransaction called:', transaction.id, transaction);
     setTransactionToDelete(transaction);
     setDeleteDialogOpen(true);
+    console.log('🗑️ Delete dialog should be open now');
   };
 
   const confirmDeleteTransaction = async () => {
-    if (!transactionToDelete) return;
+    console.log('🗑️ confirmDeleteTransaction called, transactionToDelete:', transactionToDelete);
+    if (!transactionToDelete) {
+      console.log('🗑️ No transaction to delete, returning');
+      return;
+    }
 
     setIsDeleting(true);
     try {
-      await deleteTransaction(transactionToDelete.id);
+      console.log('🗑️ Calling deleteTransaction for:', transactionToDelete.id);
+      const result = await deleteTransaction(transactionToDelete.id);
+      console.log('🗑️ deleteTransaction result:', result);
       setDeleteDialogOpen(false);
       setTransactionToDelete(null);
-
-      // La mise à jour optimiste dans useTransactions gère déjà l'actualisation
+      showSuccess('Transaction supprimée avec succès');
     } catch (error: any) {
-      console.error('Erreur lors de la suppression:', error);
+      console.error('🗑️ Erreur lors de la suppression:', error);
       showError(error.message || 'Erreur lors de la suppression de la transaction');
     } finally {
       setIsDeleting(false);

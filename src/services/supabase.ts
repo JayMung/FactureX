@@ -792,9 +792,15 @@ export class SupabaseService {
   // Dashboard Stats
   async getDashboardStats(filters?: { dateFrom?: string; dateTo?: string }): Promise<ApiResponse<any>> {
     try {
+      // 1. Récupérer les taux de change
+      const ratesResult = await this.getExchangeRates();
+      const rates = ratesResult.data || { usdToCny: 6.95, usdToCdf: 2200, lastUpdated: '' };
+
       let transactionsQuery = supabase
         .from('transactions')
-        .select('montant, devise, benefice, montant_cny, frais, created_at', { count: 'exact' });
+        .select('montant, devise, benefice, montant_cny, frais, created_at, type_transaction', { count: 'exact' })
+        .neq('statut', 'Annulé') // Exclure les annulés
+        .neq('statut', 'Remboursé'); // Exclure les remboursés
 
       let facturesQuery = supabase
         .from('factures')
@@ -802,13 +808,15 @@ export class SupabaseService {
 
       // Appliquer les filtres de date si présents
       if (filters?.dateFrom) {
-        transactionsQuery = transactionsQuery.gte('created_at', filters.dateFrom);
+        transactionsQuery = transactionsQuery.gte('date_paiement', filters.dateFrom);
         facturesQuery = facturesQuery.gte('created_at', filters.dateFrom);
       }
 
       if (filters?.dateTo) {
-        transactionsQuery = transactionsQuery.lte('created_at', filters.dateTo);
-        facturesQuery = facturesQuery.lte('created_at', filters.dateTo);
+        // Ajout de l'heure de fin de journée pour inclure toute la journée
+        const dateToEnd = filters.dateTo.includes('T') ? filters.dateTo : `${filters.dateTo}T23:59:59.999Z`;
+        transactionsQuery = transactionsQuery.lte('date_paiement', dateToEnd);
+        facturesQuery = facturesQuery.lte('created_at', dateToEnd);
       }
 
       const [clientsResult, transactionsResult, facturesResult] = await Promise.all([
@@ -825,22 +833,49 @@ export class SupabaseService {
       const factures = facturesResult.data || [];
       const today = new Date().toISOString().split('T')[0];
 
-      const totalUSD = transactions
-        .filter(t => t.devise === 'USD')
-        .reduce((sum, t) => sum + (t.montant || 0), 0);
+      // Helper pour convertir en USD
+      const toUSD = (amount: number, currency: string) => {
+        if (!amount) return 0;
+        if (currency === 'USD') return amount;
+        if (currency === 'CNY') return amount / rates.usdToCny;
+        if (currency === 'CDF') return amount / rates.usdToCdf;
+        return amount;
+      };
 
-      const totalCDF = transactions
-        .filter(t => t.devise === 'CDF')
-        .reduce((sum, t) => sum + (t.montant || 0), 0);
+      // Calcul des totaux convertis en USD
+      let totalVolumeUSD = 0;
+      let totalDepensesUSD = 0;
+      let totalFraisUSD = 0;
+      let beneficeNetUSD = 0;
 
-      const totalCNY = transactions
-        .reduce((sum, t) => sum + (t.montant_cny || 0), 0);
+      // Variables pour les totaux par devise (pour info)
+      let totalRawUSD = 0;
+      let totalRawCDF = 0;
+      let totalRawCNY = 0;
 
-      const beneficeNet = transactions
-        .reduce((sum, t) => sum + (t.benefice || 0), 0);
+      transactions.forEach(t => {
+        const montant = t.montant || 0;
 
-      const totalFrais = transactions
-        .reduce((sum, t) => sum + (t.frais || 0), 0);
+        // Séparation Revenus / Dépenses
+        if (t.type_transaction === 'revenue') {
+          // Volume d'affaires (Revenus)
+          totalVolumeUSD += toUSD(montant, t.devise);
+
+          // Frais et Bénéfices (toujours liés aux revenus)
+          totalFraisUSD += toUSD(t.frais || 0, t.devise);
+          beneficeNetUSD += toUSD(t.benefice || 0, t.devise);
+
+          // Totaux bruts par devise (uniquement pour les revenus)
+          if (t.devise === 'USD') totalRawUSD += montant;
+          else if (t.devise === 'CDF') totalRawCDF += montant;
+          else if (t.devise === 'CNY') totalRawCNY += t.montant_cny || montant; // Fallback montant si cny null
+
+        } else if (t.type_transaction === 'depense' || t.type_transaction === 'expense') {
+          // Dépenses
+          totalDepensesUSD += toUSD(montant, t.devise);
+        }
+        // Les transferts internes ne sont pas comptés dans le volume global pour éviter les doublons
+      });
 
       const todayTransactions = transactions
         .filter(t => t.created_at?.startsWith(today))
@@ -849,29 +884,24 @@ export class SupabaseService {
       // Statistiques des factures (validées ET payées)
       const facturesValidees = factures.filter(f => f.statut === 'validee' || f.statut === 'payee');
 
-      const facturesAmountUSD = facturesValidees
-        .filter(f => f.devise === 'USD')
-        .reduce((sum, f) => sum + (f.total_general || 0), 0);
-
-      const facturesAmountCDF = facturesValidees
-        .filter(f => f.devise === 'CDF')
-        .reduce((sum, f) => sum + (f.total_general || 0), 0);
+      // Montant facturé total en équivalent USD
+      const facturesAmountUSD = facturesValidees.reduce((sum, f) => sum + toUSD(f.total_general || 0, f.devise), 0);
 
       const stats = {
-        totalUSD,
-        totalCDF,
-        totalCNY,
-        beneficeNet,
-        totalFrais,
+        totalUSD: totalVolumeUSD, // Volume d'affaires global en USD (toutes devises)
+        totalCDF: totalRawCDF,    // Reste en devise brute pour affichage spécifique si besoin
+        totalCNY: totalRawCNY,    // Reste en devise brute
+        beneficeNet: beneficeNetUSD,
+        totalFrais: totalFraisUSD,
         clientsCount: clientsResult.count || 0,
         transactionsCount: transactions.length,
         todayTransactions,
-        monthlyRevenue: totalUSD * 0.05,
+        monthlyRevenue: totalVolumeUSD, // Revenu mensuel = Volume sur la période (nom variable legacy)
         // Nouvelles stats factures
         facturesCount: factures.length,
         facturesValidees: facturesValidees.length,
-        facturesAmountUSD,
-        facturesAmountCDF
+        facturesAmountUSD, // Montant facturé converti en USD
+        facturesAmountCDF: 0 // Plus utilisé/pertinent car tout est converti en USD pour l'affichage principal
       };
 
       return { data: stats };

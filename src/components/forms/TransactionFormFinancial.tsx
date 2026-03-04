@@ -27,6 +27,10 @@ interface TransactionFormProps {
   onSuccess?: () => void;
   transaction?: Transaction | undefined;
   defaultType?: 'revenue' | 'depense' | 'transfert';
+  /** Pré-rempli le compte source (ex: depuis CompteDetailModal) */
+  defaultCompteSourceId?: string;
+  /** Pré-rempli le compte destination (ex: depuis CompteDetailModal) */
+  defaultCompteDestinationId?: string;
 }
 
 // Catégories par défaut (Revenue) - 4 motifs essentiels
@@ -53,7 +57,9 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   onClose,
   onSuccess,
   transaction,
-  defaultType = 'revenue'
+  defaultType = 'revenue',
+  defaultCompteSourceId,
+  defaultCompteDestinationId
 }) => {
   const [formData, setFormData] = useState({
     type_transaction: defaultType as 'revenue' | 'depense' | 'transfert',
@@ -166,13 +172,18 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
   const prevTypeRef = useRef(formData.type_transaction);
   const initializedRef = useRef(false);
 
-  // Appliquer le defaultType quand le formulaire s'ouvre pour une nouvelle transaction
+  // Appliquer le defaultType + comptes par défaut quand le formulaire s'ouvre pour une nouvelle transaction
   useEffect(() => {
     if (isOpen && !isEditing) {
-      setFormData(prev => ({ ...prev, type_transaction: defaultType }));
+      setFormData(prev => ({
+        ...prev,
+        type_transaction: defaultType,
+        compte_source_id: defaultCompteSourceId || prev.compte_source_id,
+        compte_destination_id: defaultCompteDestinationId || prev.compte_destination_id
+      }));
       prevTypeRef.current = defaultType;
     }
-  }, [isOpen, isEditing, defaultType]);
+  }, [isOpen, isEditing, defaultType, defaultCompteSourceId, defaultCompteDestinationId]);
 
   // Reset catégorie when type ACTUALLY changes (only for new transactions)
   useEffect(() => {

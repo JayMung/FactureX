@@ -223,23 +223,32 @@ export const useTransactions = (
       }
 
       const { data, error } = await query;
-
       if (error) throw error;
 
-      // I4: Filtrage search côté client — même logique que fetchTransactions
+      // Filtrage côté client par recherche si nécessaire
       let filteredData = data || [];
-      if (filters.search && filteredData.length > 0) {
+      if (filters.search) {
         const searchLower = filters.search.toLowerCase().trim();
         filteredData = filteredData.filter((t: any) =>
-          t.id?.toLowerCase().includes(searchLower) ||
           t.client?.nom?.toLowerCase().includes(searchLower) ||
           t.client?.telephone?.toLowerCase().includes(searchLower) ||
           t.mode_paiement?.toLowerCase().includes(searchLower)
         );
       }
 
+      // Récupérer les taux de change
+      const { data: settingsData } = await supabase
+        .from('settings')
+        .select('cle, valeur')
+        .eq('categorie', 'taux_change')
+        .in('cle', ['usdToCny', 'usdToCdf']);
+
+      const rates: Record<string, number> = { usdToCny: 6.95, usdToCdf: 2200 };
+      settingsData?.forEach((s: any) => { rates[s.cle] = parseFloat(s.valeur); });
+
       // Calculer les totaux globaux en utilisant le module
-      const totals = calculateGlobalTotals(filteredData);
+      const totals = calculateGlobalTotals(filteredData, rates as any);
+
 
       setGlobalTotals({
         ...totals,
@@ -368,12 +377,12 @@ export const useTransactions = (
 
       const fraisUSD = amounts.frais;
       const benefice = amounts.benefice;
-      
+
       // Pour les swaps (transferts cross-currency), préserver montant_converti si fourni
       // Sinon utiliser le montant_cny calculé
       let montantCNY = amounts.montant_cny;
       let montantConverti = (sanitizedData as any).montant_converti;
-      
+
       if (sanitizedData.type_transaction === 'transfert' && montantConverti) {
         montantCNY = montantConverti; // Utiliser la conversion fournie par le formulaire
         console.log(' SWAP detected - Using montant_converti:', montantConverti);
@@ -401,7 +410,7 @@ export const useTransactions = (
         date_paiement: sanitizedData.date_paiement || new Date().toISOString(),
         statut: sanitizedData.statut || 'En attente'
       };
-      
+
       // Ajouter montant_converti si c'est un swap cross-currency
       if (montantConverti) {
         (fullTransactionData as any).montant_converti = montantConverti;
@@ -488,7 +497,7 @@ export const useTransactions = (
             // Benefice is ALWAYS 0 for swaps
             benefice: 0,
           };
-          
+
           // Préserver montant_converti et montant_cny pour les swaps cross-currency
           if ((transactionData as any).montant_converti) {
             // Swap cross-currency: garder montant_converti et montant_cny

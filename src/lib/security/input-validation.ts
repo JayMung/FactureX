@@ -32,7 +32,8 @@ export class InputValidator {
     benefice: { min: -999999999.99, max: 999999999.99, decimals: 2 },
     taux_usd_cny: { min: 0.01, max: 9999.9999, decimals: 4 },
     taux_usd_cdf: { min: 0.01, max: 99999.99, decimals: 2 },
-    montant_cny: { min: 0, max: 999999999.99, decimals: 2 }
+    montant_cny: { min: 0, max: 999999999.99, decimals: 2 },
+    montant_converti: { min: 0, max: 999999999.99, decimals: 2 }
   };
 
   /**
@@ -194,6 +195,19 @@ export class InputValidator {
       const categoryResult = this.validateUUID(data.category_id, 'category_id');
       if (categoryResult.isValid) {
         sanitized.category_id = categoryResult.sanitizedValue;
+      }
+    }
+
+    // Preserve montant_converti for cross-currency swaps (USD->CNY, etc.)
+    // This field is computed by the form before submission and must survive sanitization.
+    if (data.montant_converti !== undefined && data.montant_converti !== null) {
+      const convResult = this.validateNumeric(
+        data.montant_converti,
+        'montant_converti',
+        this.NUMERIC_CONSTRAINTS.montant_converti
+      );
+      if (convResult.isValid) {
+        sanitized.montant_converti = convResult.sanitizedValue;
       }
     }
 

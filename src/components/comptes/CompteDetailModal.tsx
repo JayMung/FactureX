@@ -25,7 +25,10 @@ import {
   Building2,
   Banknote,
   Wifi,
-  ExternalLink
+  ExternalLink,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  ArrowLeftRight
 } from 'lucide-react';
 import { useCompteMouvements, useCompteStats } from '@/hooks/useMouvementsComptes';
 import { formatCurrency } from '@/utils/formatCurrency';
@@ -33,6 +36,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { CompteFinancier } from '@/types';
 import { showSuccess } from '@/utils/toast';
+import TransactionFormFinancial from '@/components/forms/TransactionFormFinancial';
 
 interface CompteDetailModalProps {
   compte: CompteFinancier | null;
@@ -69,6 +73,22 @@ const CompteDetailModal: React.FC<CompteDetailModalProps> = ({ compte, isOpen, o
   const [mouvPage, setMouvPage] = useState(1);
   const navigate = useNavigate();
 
+  // Quick-action form state
+  const [quickForm, setQuickForm] = useState<{
+    open: boolean;
+    type: 'revenue' | 'depense' | 'transfert';
+    sourceId?: string;
+    destinationId?: string;
+  }>({ open: false, type: 'transfert' });
+
+  const openQuickAction = (
+    type: 'revenue' | 'depense' | 'transfert',
+    sourceId?: string,
+    destinationId?: string
+  ) => setQuickForm({ open: true, type, sourceId, destinationId });
+
+  const closeQuickForm = () => setQuickForm(prev => ({ ...prev, open: false }));
+
   const handleGoToTransaction = (transactionId: string) => {
     onClose();
     navigate(`/transactions?highlight=${transactionId}`);
@@ -79,7 +99,7 @@ const CompteDetailModal: React.FC<CompteDetailModalProps> = ({ compte, isOpen, o
     PAGE_SIZE,
     mouvPage
   );
-  
+
   const { stats, isLoading: isLoadingStats } = useCompteStats(compte?.id || '');
 
   if (!compte) return null;
@@ -137,8 +157,8 @@ const CompteDetailModal: React.FC<CompteDetailModalProps> = ({ compte, isOpen, o
 
   const gradient = getCardGradient(compte.nom, compte.type_compte);
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+  return (<>
+    <Dialog open={isOpen && !quickForm.open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0">
         {/* Visual bank card header */}
         <div className={`relative bg-gradient-to-br ${gradient} p-6 rounded-t-xl overflow-hidden`}>
@@ -171,291 +191,339 @@ const CompteDetailModal: React.FC<CompteDetailModalProps> = ({ compte, isOpen, o
               {formatCurrency(compte.solde_actuel, compte.devise)}
             </p>
             <p className="text-white/50 text-xs mt-1">{compte.devise}</p>
+
+            {/* Quick-action shortcut buttons */}
+            <div className="flex items-center gap-2 mt-4">
+              {/* Entrée : ce compte reçoit de l'argent (destination d'un transfert) */}
+              <button
+                type="button"
+                onClick={() => openQuickAction('transfert', undefined, compte.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-green-400/30 border border-white/20 hover:border-green-300/50 text-white text-xs font-medium transition-all duration-200 backdrop-blur-sm"
+                title="Entrée d'argent vers ce compte"
+              >
+                <ArrowDownToLine className="h-3.5 w-3.5 text-green-300" />
+                Entrée
+              </button>
+
+              {/* Sortie : dépense depuis ce compte */}
+              <button
+                type="button"
+                onClick={() => openQuickAction('depense', compte.id, undefined)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-red-400/30 border border-white/20 hover:border-red-300/50 text-white text-xs font-medium transition-all duration-200 backdrop-blur-sm"
+                title="Dépense depuis ce compte"
+              >
+                <ArrowUpFromLine className="h-3.5 w-3.5 text-red-300" />
+                Sortie
+              </button>
+
+              {/* Swap : transfert depuis ce compte vers un autre */}
+              <button
+                type="button"
+                onClick={() => openQuickAction('transfert', compte.id, undefined)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-blue-300/30 border border-white/20 hover:border-blue-200/50 text-white text-xs font-medium transition-all duration-200 backdrop-blur-sm"
+                title="Transférer depuis ce compte"
+              >
+                <ArrowLeftRight className="h-3.5 w-3.5 text-blue-200" />
+                Swap
+              </button>
+            </div>
           </div>
         </div>
 
         <div className="p-6">
 
-        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setMouvPage(1); }}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="info" className="flex items-center gap-2">
-              <Info className="h-4 w-4" />
-              Informations
-            </TabsTrigger>
-            <TabsTrigger value="mouvements" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Mouvements
-            </TabsTrigger>
-            <TabsTrigger value="stats" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Statistiques
-            </TabsTrigger>
-          </TabsList>
+          <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setMouvPage(1); }}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="info" className="flex items-center gap-2">
+                <Info className="h-4 w-4" />
+                Informations
+              </TabsTrigger>
+              <TabsTrigger value="mouvements" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Mouvements
+              </TabsTrigger>
+              <TabsTrigger value="stats" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Statistiques
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Onglet Informations */}
-          <TabsContent value="info" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Détails du compte</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Type de compte</p>
-                    <p className="text-lg font-semibold">{getAccountTypeLabel(compte.type_compte)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Devise</p>
-                    <p className="text-lg font-semibold">{compte.devise}</p>
-                  </div>
-                  {compte.numero_compte && (
+            {/* Onglet Informations */}
+            <TabsContent value="info" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Détails du compte</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Numéro de compte</p>
-                      <p className="text-lg font-mono font-semibold">{compte.numero_compte}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Type de compte</p>
+                      <p className="text-lg font-semibold">{getAccountTypeLabel(compte.type_compte)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Devise</p>
+                      <p className="text-lg font-semibold">{compte.devise}</p>
+                    </div>
+                    {compte.numero_compte && (
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Numéro de compte</p>
+                        <p className="text-lg font-mono font-semibold">{compte.numero_compte}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Statut</p>
+                      <Badge variant={compte.is_active ? 'default' : 'destructive'}>
+                        {compte.is_active ? 'Actif' : 'Inactif'}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Solde actuel</p>
+                    <p className="text-4xl font-bold text-blue-600">
+                      {formatCurrency(compte.solde_actuel, compte.devise)}
+                    </p>
+                  </div>
+
+                  {compte.description && (
+                    <div className="pt-4 border-t">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Description</p>
+                      <p className="text-gray-700 dark:text-gray-300">{compte.description}</p>
                     </div>
                   )}
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Statut</p>
-                    <Badge variant={compte.is_active ? 'default' : 'destructive'}>
-                      {compte.is_active ? 'Actif' : 'Inactif'}
-                    </Badge>
+
+                  <div className="pt-4 border-t text-xs text-gray-500">
+                    <p>Créé le : {format(new Date(compte.created_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}</p>
+                    {compte.updated_at && (
+                      <p>Modifié le : {format(new Date(compte.updated_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}</p>
+                    )}
                   </div>
-                </div>
-
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Solde actuel</p>
-                  <p className="text-4xl font-bold text-blue-600">
-                    {formatCurrency(compte.solde_actuel, compte.devise)}
-                  </p>
-                </div>
-
-                {compte.description && (
-                  <div className="pt-4 border-t">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Description</p>
-                    <p className="text-gray-700 dark:text-gray-300">{compte.description}</p>
-                  </div>
-                )}
-
-                <div className="pt-4 border-t text-xs text-gray-500">
-                  <p>Créé le : {format(new Date(compte.created_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}</p>
-                  {compte.updated_at && (
-                    <p>Modifié le : {format(new Date(compte.updated_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Onglet Mouvements */}
-          <TabsContent value="mouvements" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">
-                Mouvements
-                {totalCount > 0 && (
-                  <span className="ml-2 text-sm font-normal text-gray-500">({totalCount})</span>
-                )}
-              </h3>
-              <Button onClick={exportMouvements} variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Exporter
-              </Button>
-            </div>
-
-            {isLoadingMouvements ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-              </div>
-            ) : mouvements.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-gray-500">
-                  Aucun mouvement enregistré
                 </CardContent>
               </Card>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  {mouvements.map((mouvement) => (
-                    <Card key={mouvement.id} className="hover:shadow-md transition-shadow">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              {getTypeBadge(mouvement.type_mouvement)}
-                              <span className="text-sm text-gray-600 dark:text-gray-400">
-                                {format(new Date(mouvement.date_mouvement), 'dd/MM/yyyy HH:mm', { locale: fr })}
-                              </span>
+            </TabsContent>
+
+            {/* Onglet Mouvements */}
+            <TabsContent value="mouvements" className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">
+                  Mouvements
+                  {totalCount > 0 && (
+                    <span className="ml-2 text-sm font-normal text-gray-500">({totalCount})</span>
+                  )}
+                </h3>
+                <Button onClick={exportMouvements} variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Exporter
+                </Button>
+              </div>
+
+              {isLoadingMouvements ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                </div>
+              ) : mouvements.length === 0 ? (
+                <Card>
+                  <CardContent className="py-8 text-center text-gray-500">
+                    Aucun mouvement enregistré
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    {mouvements.map((mouvement) => (
+                      <Card key={mouvement.id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                {getTypeBadge(mouvement.type_mouvement)}
+                                <span className="text-sm text-gray-600 dark:text-gray-400">
+                                  {format(new Date(mouvement.date_mouvement), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-700 dark:text-gray-300">
+                                {mouvement.description}
+                              </p>
+                              {(mouvement as any).transaction?.id && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleGoToTransaction((mouvement as any).transaction.id)}
+                                  className="mt-1 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  Voir la transaction
+                                </button>
+                              )}
+                              <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                                <span>Solde avant: {formatCurrency(mouvement.solde_avant, compte.devise)}</span>
+                                <span className="text-gray-400">→</span>
+                                <span className={mouvement.type_mouvement === 'debit' ? 'text-red-500 font-medium' : 'text-green-500 font-medium'}>
+                                  Solde après: {formatCurrency(mouvement.solde_apres, compte.devise)}
+                                </span>
+                              </div>
                             </div>
-                            <p className="text-sm text-gray-700 dark:text-gray-300">
-                              {mouvement.description}
-                            </p>
-                            {(mouvement as any).transaction?.id && (
-                              <button
-                                type="button"
-                                onClick={() => handleGoToTransaction((mouvement as any).transaction.id)}
-                                className="mt-1 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                                Voir la transaction
-                              </button>
-                            )}
-                            <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
-                              <span>Solde avant: {formatCurrency(mouvement.solde_avant, compte.devise)}</span>
-                              <span className="text-gray-400">→</span>
-                              <span className={mouvement.type_mouvement === 'debit' ? 'text-red-500 font-medium' : 'text-green-500 font-medium'}>
-                                Solde après: {formatCurrency(mouvement.solde_apres, compte.devise)}
-                              </span>
+                            <div className="text-right">
+                              <p className={`text-xl font-bold ${mouvement.type_mouvement === 'debit' ? 'text-red-600' : 'text-green-600'
+                                }`}>
+                                {mouvement.type_mouvement === 'debit' ? '-' : '+'}
+                                {formatCurrency(mouvement.montant, compte.devise)}
+                              </p>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className={`text-xl font-bold ${
-                              mouvement.type_mouvement === 'debit' ? 'text-red-600' : 'text-green-600'
-                            }`}>
-                              {mouvement.type_mouvement === 'debit' ? '-' : '+'}
-                              {formatCurrency(mouvement.montant, compte.devise)}
-                            </p>
-                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="text-sm text-gray-500">
+                        Page {mouvPage} sur {totalPages}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setMouvPage(p => Math.max(1, p - 1))}
+                          disabled={mouvPage === 1}
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                          const start = Math.max(1, mouvPage - 2);
+                          const pageNum = start + i;
+                          if (pageNum > totalPages) return null;
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={pageNum === mouvPage ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setMouvPage(pageNum)}
+                              className="h-8 w-8 p-0 text-xs"
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        })}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setMouvPage(p => Math.min(totalPages, p + 1))}
+                          disabled={mouvPage === totalPages}
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </TabsContent>
+
+            {/* Onglet Statistiques */}
+            <TabsContent value="stats" className="space-y-4">
+              {isLoadingStats ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Crédits</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-green-600" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-green-600">
+                          {formatCurrency(stats.totalCredits, compte.devise)}
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                          {stats.nombreCredits} mouvement{stats.nombreCredits > 1 ? 's' : ''}
+                        </p>
                       </CardContent>
                     </Card>
-                  ))}
-                </div>
 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-sm text-gray-500">
-                      Page {mouvPage} sur {totalPages}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setMouvPage(p => Math.max(1, p - 1))}
-                        disabled={mouvPage === 1}
-                        className="h-8 w-8 p-0"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                        const start = Math.max(1, mouvPage - 2);
-                        const pageNum = start + i;
-                        if (pageNum > totalPages) return null;
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={pageNum === mouvPage ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setMouvPage(pageNum)}
-                            className="h-8 w-8 p-0 text-xs"
-                          >
-                            {pageNum}
-                          </Button>
-                        );
-                      })}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setMouvPage(p => Math.min(totalPages, p + 1))}
-                        disabled={mouvPage === totalPages}
-                        className="h-8 w-8 p-0"
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Débits</CardTitle>
+                        <TrendingDown className="h-4 w-4 text-red-600" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-red-600">
+                          {formatCurrency(stats.totalDebits, compte.devise)}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {stats.nombreDebits} mouvement{stats.nombreDebits > 1 ? 's' : ''}
+                        </p>
+                      </CardContent>
+                    </Card>
                   </div>
-                )}
-              </>
-            )}
-          </TabsContent>
-
-          {/* Onglet Statistiques */}
-          <TabsContent value="stats" className="space-y-4">
-            {isLoadingStats ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Total Crédits</CardTitle>
-                      <TrendingUp className="h-4 w-4 text-green-600" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-green-600">
-                        {formatCurrency(stats.totalCredits, compte.devise)}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {stats.nombreCredits} mouvement{stats.nombreCredits > 1 ? 's' : ''}
-                      </p>
-                    </CardContent>
-                  </Card>
 
                   <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Total Débits</CardTitle>
-                      <TrendingDown className="h-4 w-4 text-red-600" />
+                    <CardHeader>
+                      <CardTitle>Solde Actuel</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold text-red-600">
-                        {formatCurrency(stats.totalDebits, compte.devise)}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {stats.nombreDebits} mouvement{stats.nombreDebits > 1 ? 's' : ''}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Solde Actuel</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-4xl font-bold text-blue-600">
-                      {formatCurrency(stats.soldeActuel, compte.devise)}
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                      Solde après le dernier mouvement
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Résumé</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex justify-between items-center py-2 border-b">
-                      <span className="text-gray-600 dark:text-gray-400">Nombre total de mouvements</span>
-                      <span className="font-semibold">{stats.nombreCredits + stats.nombreDebits}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b">
-                      <span className="text-gray-600 dark:text-gray-400">Solde actuel</span>
-                      <span className="font-bold text-blue-600">
+                      <div className="text-4xl font-bold text-blue-600">
                         {formatCurrency(stats.soldeActuel, compte.devise)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-gray-600 dark:text-gray-400">Moyenne par mouvement</span>
-                      <span className="font-semibold">
-                        {formatCurrency(
-                          (stats.totalCredits + stats.totalDebits) / (stats.nombreCredits + stats.nombreDebits || 1),
-                          compte.devise
-                        )}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-          </TabsContent>
-        </Tabs>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                        Solde après le dernier mouvement
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Résumé</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div className="flex justify-between items-center py-2 border-b">
+                        <span className="text-gray-600 dark:text-gray-400">Nombre total de mouvements</span>
+                        <span className="font-semibold">{stats.nombreCredits + stats.nombreDebits}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b">
+                        <span className="text-gray-600 dark:text-gray-400">Solde actuel</span>
+                        <span className="font-bold text-blue-600">
+                          {formatCurrency(stats.soldeActuel, compte.devise)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-gray-600 dark:text-gray-400">Moyenne par mouvement</span>
+                        <span className="font-semibold">
+                          {formatCurrency(
+                            (stats.totalCredits + stats.totalDebits) / (stats.nombreCredits + stats.nombreDebits || 1),
+                            compte.devise
+                          )}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </DialogContent>
     </Dialog>
-  );
+    {/* Quick-action form — mounted outside the Detail modal so it sits on top */}
+    <TransactionFormFinancial
+      isOpen={quickForm.open}
+      onClose={closeQuickForm}
+      onSuccess={() => {
+        closeQuickForm();
+        // Reload mouvements by resetting page
+        setMouvPage(1);
+      }}
+      defaultType={quickForm.type}
+      defaultCompteSourceId={quickForm.sourceId}
+      defaultCompteDestinationId={quickForm.destinationId}
+    />
+  </>);
 };
 
 export default CompteDetailModal;

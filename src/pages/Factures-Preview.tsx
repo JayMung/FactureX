@@ -33,6 +33,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { useFactures } from '../hooks/useFactures';
 import ProtectedRouteEnhanced from '../components/auth/ProtectedRouteEnhanced';
 import { encodeHtml } from '@/lib/xss-protection';
+import { escapeHtmlAttr, escapeHtml, sanitizeImageUrl } from "@/lib/xss-protection";
 import type { Facture } from '@/types';
 
 const FacturesPreview: React.FC = () => {
@@ -406,7 +407,7 @@ const FacturesPreview: React.FC = () => {
                           </td>
                           <td className="py-3 px-3 max-w-xs">
                             <div className="line-clamp-2" title={item.description}>
-                              {encodeHtml(item.description || '-')}
+                              {encodeHtml(item.description || '-') || 'N/A'}
                             </div>
                           </td>
                           <td className="py-3 px-3 text-center font-semibold">{item.quantite}</td>

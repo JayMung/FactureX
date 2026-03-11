@@ -66,6 +66,16 @@ const Comptes: React.FC = () => {
     description: ''
   });
 
+  // Keep the detailed modal in-sync when accounts refresh (like automatically after a manual transaction)
+  React.useEffect(() => {
+    if (compteForDetail && comptes.length > 0) {
+      const updatedCompte = comptes.find(c => c.id === compteForDetail.id);
+      if (updatedCompte && updatedCompte.solde_actuel !== compteForDetail.solde_actuel) {
+        setCompteForDetail(updatedCompte);
+      }
+    }
+  }, [comptes, compteForDetail]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -564,8 +574,8 @@ const Comptes: React.FC = () => {
                     </div>
                     <div className="text-white/60">
                       {item.type_compte === 'mobile_money' ? <Wifi className="h-6 w-6" /> :
-                       item.type_compte === 'banque' ? <Building2 className="h-6 w-6" /> :
-                       <Banknote className="h-6 w-6" />}
+                        item.type_compte === 'banque' ? <Building2 className="h-6 w-6" /> :
+                          <Banknote className="h-6 w-6" />}
                     </div>
                   </div>
 
@@ -614,17 +624,17 @@ const Comptes: React.FC = () => {
           )}
         </div>
       ) : (
-      <UnifiedDataTable
-        data={filteredComptes}
-        loading={loading}
-        viewMode="table"
-        onViewModeChange={setViewMode}
-        showViewToggle={false}
-        onRowClick={handleViewDetail}
-        emptyMessage="Aucun compte trouvé"
-        emptySubMessage="Créez votre premier compte financier"
-        columns={compteColumns.filter(c => columnsConfig[c.key] !== false)}
-      />
+        <UnifiedDataTable
+          data={filteredComptes}
+          loading={loading}
+          viewMode="table"
+          onViewModeChange={setViewMode}
+          showViewToggle={false}
+          onRowClick={handleViewDetail}
+          emptyMessage="Aucun compte trouvé"
+          emptySubMessage="Créez votre premier compte financier"
+          columns={compteColumns.filter(c => columnsConfig[c.key] !== false)}
+        />
       )}
 
       {/* Edit Dialog */}
@@ -770,8 +780,8 @@ const Comptes: React.FC = () => {
               )}>
                 <div className="text-white/80">
                   {compteToDelete.type_compte === 'mobile_money' ? <Wifi className="h-5 w-5" /> :
-                   compteToDelete.type_compte === 'banque' ? <Building2 className="h-5 w-5" /> :
-                   <Banknote className="h-5 w-5" />}
+                    compteToDelete.type_compte === 'banque' ? <Building2 className="h-5 w-5" /> :
+                      <Banknote className="h-5 w-5" />}
                 </div>
                 <div>
                   <p className="font-bold text-white text-sm">{compteToDelete.nom}</p>

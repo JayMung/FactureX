@@ -1,8 +1,9 @@
-import { defineConfig } from "vite";
+import { defineConfig, type PluginOption } from "vite";
 import dyadComponentTagger from "@dyad-sh/react-vite-component-tagger";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { VitePWA } from 'vite-plugin-pwa';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 export default defineConfig(() => ({
   server: {
@@ -25,6 +26,14 @@ export default defineConfig(() => ({
   plugins: [
     /* dyadComponentTagger(), */
     react(),
+    // Bundle Analyzer — activé via `pnpm run analyze`
+    ...(process.env.ANALYZE ? [visualizer({
+      filename: './dist/bundle-report.html',
+      open: true,
+      gzipSize: true,
+      brotliSize: true,
+      template: 'treemap',
+    }) as PluginOption] : []),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',

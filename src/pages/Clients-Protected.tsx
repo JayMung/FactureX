@@ -80,6 +80,7 @@ const ClientsProtected: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | undefined>();
@@ -139,7 +140,8 @@ const ClientsProtected: React.FC = () => {
     deleteClient,
     refetch
   } = useClients(currentPage, {
-    search: searchTerm || undefined
+    search: searchTerm || undefined,
+    pageSize: pageSize
   });
 
   const safeClients = useMemo<Client[]>(() => (clients as Client[] | undefined) ?? [], [clients]);
@@ -708,8 +710,9 @@ const ClientsProtected: React.FC = () => {
                 <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-4">
                   <div className="flex items-center space-x-2">
                     <span className="small-text">Afficher</span>
-                    <Select value="10" onValueChange={(value) => {
-                      console.log('Page size:', value);
+                    <Select value={pageSize.toString()} onValueChange={(value) => {
+                      setPageSize(parseInt(value));
+                      setCurrentPage(1);
                     }}>
                       <SelectTrigger className="w-20 input-base">
                         <SelectValue />

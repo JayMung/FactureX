@@ -7,6 +7,7 @@ import { validateTransactionInput } from '@/lib/security/input-validation';
 import { detectAttackPatterns } from '@/lib/security/validation';
 import { logSecurityEvent } from '@/lib/security/error-handling';
 import type { Transaction, UpdateTransactionData, CreateTransactionData, TransactionFilters } from '@/types';
+import { useAppRefresh, triggerAppRefresh } from '@/utils/refreshEvent';
 
 // Import des modules de transactions
 import {
@@ -67,49 +68,19 @@ export const useTransactions = (
       if (filters.status) {
         query = query.eq('statut', filters.status);
       }
-      if (filters.currency) {
-        query = query.eq('devise', filters.currency);
-      }
-      if (filters.clientId) {
-        query = query.eq('client_id', filters.clientId);
-      }
-      if (filters.modePaiement) {
-        query = query.eq('mode_paiement', filters.modePaiement);
-      }
-      if (filters.dateFrom) {
-        query = query.gte('date_paiement', filters.dateFrom);
-      }
-      if (filters.dateTo) {
-        query = query.lte('date_paiement', filters.dateTo);
-      }
-      if (filters.minAmount) {
-        query = query.gte('montant', parseFloat(filters.minAmount));
-      }
-      if (filters.maxAmount) {
-        query = query.lte('montant', parseFloat(filters.maxAmount));
-      }
-
-      // Filtrer uniquement les transactions commerciales
-      if (filters.motifCommercial) {
-        query = query.in('motif', COMMERCIAL_MOTIFS);
-      }
-
-      // Filtrer par type de transaction (pour les onglets)
-      if (filters.typeTransaction && filters.typeTransaction.length > 0) {
-        query = query.in('type_transaction', filters.typeTransaction);
-      }
-
-      // Exclure certains motifs (pour les opérations internes)
-      if (filters.excludeMotifs && filters.excludeMotifs.length > 0) {
-        query = query.not('motif', 'in', `(${filters.excludeMotifs.join(',')})`);
-      }
-
-      // Filtrer les swaps (transferts sans client) vs transactions commerciales (avec client)
-      if (filters.isSwap === true) {
-        query = query.is('client_id', null);
-      } else if (filters.isSwap === false) {
-        query = query.not('client_id', 'is', null);
-      }
+      // ... (filters keep intact) ...
+      if (filters.currency) query = query.eq('devise', filters.currency);
+      if (filters.clientId) query = query.eq('client_id', filters.clientId);
+      if (filters.modePaiement) query = query.eq('mode_paiement', filters.modePaiement);
+      if (filters.dateFrom) query = query.gte('date_paiement', filters.dateFrom);
+      if (filters.dateTo) query = query.lte('date_paiement', filters.dateTo);
+      if (filters.minAmount) query = query.gte('montant', parseFloat(filters.minAmount));
+      if (filters.maxAmount) query = query.lte('montant', parseFloat(filters.maxAmount));
+      if (filters.motifCommercial) query = query.in('motif', COMMERCIAL_MOTIFS);
+      if (filters.typeTransaction && filters.typeTransaction.length > 0) query = query.in('type_transaction', filters.typeTransaction);
+      if (filters.excludeMotifs && filters.excludeMotifs.length > 0) query = query.not('motif', 'in', `(${filters.excludeMotifs.join(',')})`);
+      if (filters.isSwap === true) query = query.is('client_id', null);
+      else if (filters.isSwap === false) query = query.not('client_id', 'is', null);
 
       // Appliquer le tri AVANT la pagination
       const ascending = sortDirection === 'asc';
@@ -175,52 +146,19 @@ export const useTransactions = (
         .select('montant, devise, montant_cny, frais, benefice, motif, type_transaction, id, mode_paiement, client:clients(nom, telephone)');
 
       // Appliquer les mêmes filtres que fetchTransactions
-      if (filters.status) {
-        query = query.eq('statut', filters.status);
-      }
-      if (filters.currency) {
-        query = query.eq('devise', filters.currency);
-      }
-      if (filters.clientId) {
-        query = query.eq('client_id', filters.clientId);
-      }
-      if (filters.modePaiement) {
-        query = query.eq('mode_paiement', filters.modePaiement);
-      }
-      if (filters.dateFrom) {
-        query = query.gte('date_paiement', filters.dateFrom);
-      }
-      if (filters.dateTo) {
-        query = query.lte('date_paiement', filters.dateTo);
-      }
-      if (filters.minAmount) {
-        query = query.gte('montant', parseFloat(filters.minAmount));
-      }
-      if (filters.maxAmount) {
-        query = query.lte('montant', parseFloat(filters.maxAmount));
-      }
-
-      // Filtrer uniquement les transactions commerciales
-      if (filters.motifCommercial) {
-        query = query.in('motif', COMMERCIAL_MOTIFS);
-      }
-
-      // Filtrer par type de transaction
-      if (filters.typeTransaction && filters.typeTransaction.length > 0) {
-        query = query.in('type_transaction', filters.typeTransaction);
-      }
-
-      // Exclure certains motifs
-      if (filters.excludeMotifs && filters.excludeMotifs.length > 0) {
-        query = query.not('motif', 'in', `(${filters.excludeMotifs.join(',')})`);
-      }
-
-      // Filtrer les swaps (transferts sans client) vs transactions commerciales (avec client)
-      if (filters.isSwap === true) {
-        query = query.is('client_id', null);
-      } else if (filters.isSwap === false) {
-        query = query.not('client_id', 'is', null);
-      }
+      if (filters.status) query = query.eq('statut', filters.status);
+      if (filters.currency) query = query.eq('devise', filters.currency);
+      if (filters.clientId) query = query.eq('client_id', filters.clientId);
+      if (filters.modePaiement) query = query.eq('mode_paiement', filters.modePaiement);
+      if (filters.dateFrom) query = query.gte('date_paiement', filters.dateFrom);
+      if (filters.dateTo) query = query.lte('date_paiement', filters.dateTo);
+      if (filters.minAmount) query = query.gte('montant', parseFloat(filters.minAmount));
+      if (filters.maxAmount) query = query.lte('montant', parseFloat(filters.maxAmount));
+      if (filters.motifCommercial) query = query.in('motif', COMMERCIAL_MOTIFS);
+      if (filters.typeTransaction && filters.typeTransaction.length > 0) query = query.in('type_transaction', filters.typeTransaction);
+      if (filters.excludeMotifs && filters.excludeMotifs.length > 0) query = query.not('motif', 'in', `(${filters.excludeMotifs.join(',')})`);
+      if (filters.isSwap === true) query = query.is('client_id', null);
+      else if (filters.isSwap === false) query = query.not('client_id', 'is', null);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -247,8 +185,7 @@ export const useTransactions = (
       settingsData?.forEach((s: any) => { rates[s.cle] = parseFloat(s.valeur); });
 
       // Calculer les totaux globaux en utilisant le module
-      const totals = calculateGlobalTotals(filteredData, rates as any);
-
+      const totals = calculateGlobalTotals(filteredData);
 
       setGlobalTotals({
         ...totals,
@@ -273,9 +210,14 @@ export const useTransactions = (
 
   useEffect(() => {
     fetchTransactions();
-    // Charger les totaux de manière asynchrone (non bloquant)
     setTimeout(() => fetchGlobalTotals(), 0);
-  }, [page, filters.status, filters.currency, filters.modePaiement, filters.clientId, filters.dateFrom, filters.dateTo, filters.minAmount, filters.maxAmount, filters.search, filters.motifCommercial, JSON.stringify(filters.typeTransaction), JSON.stringify(filters.excludeMotifs), sortColumn, sortDirection, refreshTrigger]);
+  }, [fetchTransactions, fetchGlobalTotals]);
+
+  // Écouter les événements de rafraîchissement global
+  useAppRefresh(() => {
+    fetchTransactions();
+    fetchGlobalTotals();
+  });
 
   const createTransaction = async (transactionData: CreateTransactionData) => {
     setIsCreating(true);
@@ -444,6 +386,7 @@ export const useTransactions = (
 
       // Forcer le refresh immédiatement
       setRefreshTrigger(prev => prev + 1);
+      triggerAppRefresh();
       // Appel direct pour refresh immédiat
       setTimeout(() => {
         fetchTransactions();
@@ -617,6 +560,7 @@ export const useTransactions = (
 
       showSuccess('Transaction mise à jour avec succès');
       setRefreshTrigger(prev => prev + 1);
+      triggerAppRefresh();
       setTimeout(() => { fetchTransactions(); fetchGlobalTotals(); }, 100);
 
       return data;
@@ -643,6 +587,7 @@ export const useTransactions = (
       await activityLogger.logActivity('Suppression Transaction', 'transactions', id);
       showSuccess('Transaction supprimée');
       setRefreshTrigger(prev => prev + 1);
+      triggerAppRefresh();
       setTimeout(() => { fetchTransactions(); fetchGlobalTotals(); }, 100);
 
       return { message: 'Supprimée' };

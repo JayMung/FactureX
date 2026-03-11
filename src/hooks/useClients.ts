@@ -34,7 +34,7 @@ function createGenericCrudHook<T, CreateData>(
     // Queries
     const dataQuery = useQuery({
       queryKey: [options.tableName, page, filters],
-      queryFn: () => options.getAll(page, 10, filters),
+      queryFn: () => options.getAll(page, filters.pageSize || 20, filters),
       staleTime: 1000 * 60 * 5,
     });
 

@@ -13,6 +13,8 @@ export interface Colis {
   updated_at?: string;
   date_arrivee_agence?: string;
   organization_id: string;
+  type_livraison?: string;
+  poids?: number;
 }
 
 interface ColisListFilters {

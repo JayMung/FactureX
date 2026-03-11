@@ -10,6 +10,7 @@
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { PostgrestFilterBuilder } from '@supabase/postgrest-js';
+import { useAppRefresh } from '@/utils/refreshEvent';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -171,6 +172,11 @@ export function useSupabaseQuery<T, F = Record<string, unknown>>(
     ...queryOptions,
   });
 
+  // Listen to global refresh events to force React Query to refetch
+  useAppRefresh(() => {
+    queryResult.refetch();
+  });
+
   // Determine if result is paginated
   const rawData = queryResult.data;
   const isPaginated = rawData && typeof rawData === 'object' && 'totalPages' in rawData;
@@ -185,11 +191,11 @@ export function useSupabaseQuery<T, F = Record<string, unknown>>(
     /** Infos de pagination (null si pas de pagination) */
     pagination: isPaginated
       ? {
-          count: (rawData as PaginatedResult<T>).count,
-          page: (rawData as PaginatedResult<T>).page,
-          pageSize: (rawData as PaginatedResult<T>).pageSize,
-          totalPages: (rawData as PaginatedResult<T>).totalPages,
-        }
+        count: (rawData as PaginatedResult<T>).count,
+        page: (rawData as PaginatedResult<T>).page,
+        pageSize: (rawData as PaginatedResult<T>).pageSize,
+        totalPages: (rawData as PaginatedResult<T>).totalPages,
+      }
       : null,
     /** État de chargement */
     isLoading: queryResult.isLoading,

@@ -15,6 +15,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
 import { activityLogger } from '@/services/activityLogger';
+import { triggerAppRefresh } from '@/utils/refreshEvent';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -154,6 +155,8 @@ export function useSupabaseCrud<T extends { id: string }>(
     for (const key of relatedQueryKeys) {
       queryClient.invalidateQueries({ queryKey: [key] });
     }
+    // Informer les hooks qui utilisent des states locaux d'appliquer un refresh
+    triggerAppRefresh();
   };
 
   // ─── CREATE ──────────────────────────────────────────────────────────

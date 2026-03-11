@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/services/supabase';
+import { Facture, FactureItem } from '@/types';
+import { sanitizeImageUrl } from '@/lib/xss-protection';
 import { showSuccess, showError } from '@/utils/toast';
 import { logActivity } from '@/services/activityLogger';
 import type { Facture, CreateFactureData, UpdateFactureData, FactureFilters, PaginatedResponse } from '@/types';

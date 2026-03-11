@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -45,8 +45,33 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
   onDuplicate
 }) => {
   const [loading, setLoading] = useState(false);
+  const [internalClient, setInternalClient] = useState<any>(null);
+  const [loadingClient, setLoadingClient] = useState(false);
+
+  // Fetch client if missing
+  React.useEffect(() => {
+    if (!facture || !isOpen) return;
+    const cid = facture.clients?.id || (facture as any).client_id;
+    if (cid && (!facture.clients?.nom)) {
+      setLoadingClient(true);
+      import('@/integrations/supabase/client').then(({ supabase }) => {
+        supabase.from('clients').select('id, nom, telephone, email, ville').eq('id', cid).single()
+          .then(({ data }) => {
+            if (data) setInternalClient(data);
+            setLoadingClient(false);
+          });
+      });
+    } else {
+      setInternalClient(null);
+    }
+  }, [facture?.id, isOpen]);
 
   if (!facture) return null;
+
+  const client = internalClient || facture.clients || (facture as any).client;
+  const clientName = client?.nom || 'Client inconnu';
+  const clientPhone = client?.telephone || '—';
+  const clientCity = client?.ville || '—';
 
   const handleConvertToFacture = async () => {
     if (!onUpdate || facture.type !== 'devis') return;
@@ -200,7 +225,7 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
                   </label>
                   <p className="text-base font-semibold flex items-center text-gray-900">
                     <User className="mr-2 h-4 w-4 text-green-500" />
-                    {(facture as any).clients?.nom || (facture as any).client?.nom || 'N/A'}
+                    {clientName}
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -209,7 +234,7 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
                   </label>
                   <p className="text-base font-semibold flex items-center text-gray-900">
                     <Phone className="mr-2 h-4 w-4 text-green-500" />
-                    {(facture as any).clients?.telephone || (facture as any).client?.telephone || 'N/A'}
+                    {clientPhone}
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -218,7 +243,7 @@ const FactureDetailsModal: React.FC<FactureDetailsModalProps> = ({
                   </label>
                   <p className="text-base font-semibold flex items-center text-gray-900">
                     <MapPin className="mr-2 h-4 w-4 text-green-500" />
-                    {(facture as any).clients?.ville || (facture as any).client?.ville || 'N/A'}
+                    {clientCity}
                   </p>
                 </div>
               </div>

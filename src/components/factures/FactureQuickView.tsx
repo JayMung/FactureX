@@ -125,7 +125,29 @@ const FactureQuickView: React.FC<FactureQuickViewProps> = ({ facture, open, onCl
     }
   };
 
+  const [loadingClient, setLoadingClient] = useState(false);
+  const [internalClient, setInternalClient] = useState<any>(null);
+
+  // Fetch client if missing
+  useEffect(() => {
+    if (!facture || !open) return;
+    const cid = facture.clients?.id || (facture as any).client_id;
+    if (cid && (!facture.clients?.nom)) {
+      setLoadingClient(true);
+      supabase.from('clients').select('id, nom, telephone, email, ville').eq('id', cid).single()
+        .then(({ data }) => {
+          if (data) setInternalClient(data);
+          setLoadingClient(false);
+        });
+    } else {
+      setInternalClient(null);
+    }
+  }, [facture?.id, open]);
+
   if (!facture) return null;
+
+  const client = internalClient || facture.clients || (facture as any).client;
+  const clientName = client?.nom || 'Client inconnu';
 
   const statutConfig = STATUT_CONFIG[facture.statut] ?? STATUT_CONFIG.brouillon;
   const isLate = (facture as any).est_en_retard;
@@ -298,9 +320,9 @@ const FactureQuickView: React.FC<FactureQuickViewProps> = ({ facture, open, onCl
                 <div className="flex items-center gap-2">
                   <button
                     className="font-semibold text-blue-600 hover:underline text-sm"
-                    onClick={() => { onClose(); navigate(`/clients/${facture.clients?.id ?? (facture as any).client_id}`); }}
+                    onClick={() => { onClose(); navigate(`/clients?openClientId=${client?.id}`); }}
                   >
-                    {facture.clients?.nom ?? 'N/A'}
+                    {clientName}
                   </button>
                   {payerHealth && payerHealth.health !== 'unknown' && (
                     <span
@@ -309,8 +331,8 @@ const FactureQuickView: React.FC<FactureQuickViewProps> = ({ facture, open, onCl
                     />
                   )}
                 </div>
-                {facture.clients?.telephone && (
-                  <p className="text-xs text-gray-500">{facture.clients.telephone}</p>
+                {client?.telephone && (
+                  <p className="text-xs text-gray-500">{client.telephone}</p>
                 )}
                 {payerHealth && payerHealth.health !== 'unknown' && (
                   <p className={cn('text-xs mt-0.5', payerHealth.health === 'good' ? 'text-emerald-600' : payerHealth.health === 'warning' ? 'text-yellow-600' : 'text-red-600')}>

@@ -57,6 +57,9 @@ const Rapports = lazy(() => import("./pages/Rapports"));
 const AdminSetup = lazy(() => import("./pages/AdminSetup"));
 const AdminInvitation = lazy(() => import("./pages/AdminInvitation"));
 
+import { useIsMobile } from "@/hooks/use-mobile";
+import MobileApp from "@/mobile/MobileApp";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -70,6 +73,150 @@ const queryClient = new QueryClient({
   },
 });
 
+const AppContent = () => {
+  const isMobile = useIsMobile();
+
+  if (isMobile) {
+    return <MobileApp />;
+  }
+
+  return (
+    <PageProvider>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Admin setup disabled in production for security */}
+          {import.meta.env.DEV && (
+            <Route path="/admin-setup" element={<AdminSetup />} />
+          )}
+          <Route path="/login" element={<Login />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/admin-invitation" element={<AdminInvitation />} />
+          <Route path="/security_audit" element={<SecurityAudit />} />
+          <Route path="/" element={
+            <ProtectedRouteEnhanced>
+              <IndexProtected />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/clients" element={
+            <ProtectedRouteEnhanced>
+              <ClientsProtected />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/transactions" element={
+            <ProtectedRouteEnhanced requiredModule="finances">
+              <TransactionsProtected />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/factures" element={
+            <ProtectedRouteEnhanced>
+              <FacturesProtected />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/factures/new" element={
+            <ProtectedRouteEnhanced>
+              <FacturesCreate />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/factures/edit/:id" element={
+            <ProtectedRouteEnhanced>
+              <FacturesCreate />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/factures/view/:id" element={
+            <ProtectedRouteEnhanced>
+              <FacturesView />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/factures/preview/:id" element={
+            <ProtectedRouteEnhanced>
+              <FacturesPreview />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/colis/aeriens" element={
+            <ProtectedRouteEnhanced>
+              <ColisAeriens />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/colis/aeriens/nouveau" element={
+            <ProtectedRouteEnhanced>
+              <ColisAeriensCreate />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/colis/aeriens/:id/modifier" element={
+            <ProtectedRouteEnhanced>
+              <ColisAeriensCreate />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/colis/maritime" element={
+            <ProtectedRouteEnhanced>
+              <ColisMaritimePage />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRouteEnhanced>
+              <SettingsWithPermissions />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/api-keys" element={
+            <ProtectedRouteEnhanced>
+              <ApiKeys />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/webhooks" element={
+            <ProtectedRouteEnhanced>
+              <Webhooks />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/activity-logs" element={
+            <ProtectedRouteEnhanced adminOnly={false}>
+              <ActivityLogs />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/security-dashboard" element={
+            <ProtectedRouteEnhanced>
+              <SecurityDashboard />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/comptes" element={
+            <ProtectedRouteEnhanced requiredModule="finances">
+              <ComptesFinancesProtected />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/finances/dashboard" element={
+            <ProtectedRouteEnhanced requiredModule="finances">
+              <FinancesDashboard />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/finances/categories" element={
+            <ProtectedRouteEnhanced requiredModule="finances">
+              <CategoriesFinances />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/finances/statistiques" element={
+            <ProtectedRouteEnhanced requiredModule="finances">
+              <StatistiquesProtected />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="/rapports" element={
+            <ProtectedRouteEnhanced>
+              <Rapports />
+            </ProtectedRouteEnhanced>
+          } />
+          {/* Routes redirigées vers /transactions (pages fusionnées) */}
+          <Route path="/operations-financieres" element={<Navigate to="/transactions" replace />} />
+          <Route path="/finances/encaissements" element={<Navigate to="/transactions" replace />} />
+          <Route path="/permission-diagnostic" element={
+            <ProtectedRouteEnhanced>
+              <PermissionDiagnosticPage />
+            </ProtectedRouteEnhanced>
+          } />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </PageProvider>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -77,139 +224,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <ComptabiliteAIAgent />
-          <PageProvider>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                {/* Admin setup disabled in production for security */}
-                {import.meta.env.DEV && (
-                  <Route path="/admin-setup" element={<AdminSetup />} />
-                )}
-                <Route path="/login" element={<Login />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/admin-invitation" element={<AdminInvitation />} />
-                <Route path="/security_audit" element={<SecurityAudit />} />
-                <Route path="/" element={
-                  <ProtectedRouteEnhanced>
-                    <IndexProtected />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/clients" element={
-                  <ProtectedRouteEnhanced>
-                    <ClientsProtected />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/transactions" element={
-                  <ProtectedRouteEnhanced requiredModule="finances">
-                    <TransactionsProtected />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/factures" element={
-                  <ProtectedRouteEnhanced>
-                    <FacturesProtected />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/factures/new" element={
-                  <ProtectedRouteEnhanced>
-                    <FacturesCreate />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/factures/edit/:id" element={
-                  <ProtectedRouteEnhanced>
-                    <FacturesCreate />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/factures/view/:id" element={
-                  <ProtectedRouteEnhanced>
-                    <FacturesView />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/factures/preview/:id" element={
-                  <ProtectedRouteEnhanced>
-                    <FacturesPreview />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/colis/aeriens" element={
-                  <ProtectedRouteEnhanced>
-                    <ColisAeriens />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/colis/aeriens/nouveau" element={
-                  <ProtectedRouteEnhanced>
-                    <ColisAeriensCreate />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/colis/aeriens/:id/modifier" element={
-                  <ProtectedRouteEnhanced>
-                    <ColisAeriensCreate />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/colis/maritime" element={
-                  <ProtectedRouteEnhanced>
-                    <ColisMaritimePage />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/settings" element={
-                  <ProtectedRouteEnhanced>
-                    <SettingsWithPermissions />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/api-keys" element={
-                  <ProtectedRouteEnhanced>
-                    <ApiKeys />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/webhooks" element={
-                  <ProtectedRouteEnhanced>
-                    <Webhooks />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/activity-logs" element={
-                  <ProtectedRouteEnhanced adminOnly={false}>
-                    <ActivityLogs />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/security-dashboard" element={
-                  <ProtectedRouteEnhanced>
-                    <SecurityDashboard />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/comptes" element={
-                  <ProtectedRouteEnhanced requiredModule="finances">
-                    <ComptesFinancesProtected />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/finances/dashboard" element={
-                  <ProtectedRouteEnhanced requiredModule="finances">
-                    <FinancesDashboard />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/finances/categories" element={
-                  <ProtectedRouteEnhanced requiredModule="finances">
-                    <CategoriesFinances />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/finances/statistiques" element={
-                  <ProtectedRouteEnhanced requiredModule="finances">
-                    <StatistiquesProtected />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="/rapports" element={
-                  <ProtectedRouteEnhanced>
-                    <Rapports />
-                  </ProtectedRouteEnhanced>
-                } />
-                {/* Routes redirigées vers /transactions (pages fusionnées) */}
-                <Route path="/operations-financieres" element={<Navigate to="/transactions" replace />} />
-                <Route path="/finances/encaissements" element={<Navigate to="/transactions" replace />} />
-                <Route path="/permission-diagnostic" element={
-                  <ProtectedRouteEnhanced>
-                    <PermissionDiagnosticPage />
-                  </ProtectedRouteEnhanced>
-                } />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </PageProvider>
+          <AppContent />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

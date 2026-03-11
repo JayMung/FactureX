@@ -45,8 +45,8 @@ const INTERNAL_TRANSFER_MOTIFS = [
 
 const classifyTransaction = (t: { montant?: number; motif?: string; type_transaction?: string; benefice?: number }) => {
     const montant = Math.abs(t.montant || 0);
-    const motif = (t.motif || '').toLowerCase();
     const typeTransaction = (t.type_transaction || '').toLowerCase();
+    const motif = (t.motif || '').toLowerCase();
     const benefice = t.benefice || 0;
 
     if (typeTransaction === 'depense') {
@@ -56,19 +56,21 @@ const classifyTransaction = (t: { montant?: number; motif?: string; type_transac
         return { type: 'revenue', montant, benefice };
     }
 
-    // Legacy support
+    // Les vrais transferts internes de compte à compte n'impactent NI les revenus NI les dépenses
     if (typeTransaction === 'transfert') {
-        return { type: 'revenue', montant, benefice };
+        return { type: 'transfert', montant, benefice };
     }
 
-    // Legacy fallback based on strings
-    if (EXPENSE_MOTIFS.some(m => motif.includes(m.toLowerCase())) ||
-        typeTransaction === 'sortie') {
+    if (typeTransaction === 'balance_adjustment') {
+        return { type: 'transfert', montant, benefice };
+    }
+
+    // Fallbacks sécurisés par motif (au cas où d'anciens enregistrements utiliseraient un mauvais type)
+    if (EXPENSE_MOTIFS.some(m => motif.includes(m.toLowerCase())) || typeTransaction === 'sortie') {
         return { type: 'depense', montant, benefice };
     }
 
-    if (INTERNAL_TRANSFER_MOTIFS.some(m => motif.includes(m.toLowerCase())) ||
-        typeTransaction === 'swap') {
+    if (INTERNAL_TRANSFER_MOTIFS.some(m => motif.includes(m.toLowerCase())) || typeTransaction === 'swap') {
         return { type: 'transfert', montant, benefice };
     }
 

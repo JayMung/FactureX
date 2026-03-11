@@ -1,46 +1,97 @@
 /**
- * Escapes a string for safe use inside an HTML attribute value (e.g. src="...").
- * Replaces &, ", ', <, > and backtick with their HTML entities.
+ * XSS Protection Utilities
+ * Provides client-side sanitization for defense in depth
  */
-export function escapeHtmlAttr(value: string | null | undefined): string {
-  if (!value) return "";
-  return value
-    .replace(/&/g, "&")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;")
-    .replace(/</g, "<")
-    .replace(/>/g, ">")
-    .replace(/`/g, "&#x60;");
+
+/**
+ * Sanitizes HTML content to prevent XSS attacks
+ * Removes dangerous HTML tags, attributes, and protocols
+ */
+export function sanitizeHtml(input: string): string {
+  if (!input) return '';
+  
+  // Remove script tags and their content
+  let sanitized = input.replace(/<script[^>]*>.*?<\/script>/gis, '');
+  
+  // Remove all HTML tags except safe ones
+  const allowedTags = ['p', 'br', 'b', 'i', 'strong', 'em', 'u', 'span'];
+  sanitized = sanitized.replace(/<(?!\/?(p|br|b|i|strong|em|u|span)\b)[^>]*>/gis, '');
+  
+  // Remove event handlers (onclick, onload, onerror, etc.)
+  sanitized = sanitized.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gis, '');
+  
+  // Remove dangerous protocols
+  sanitized = sanitized.replace(/javascript:/gis, '');
+  sanitized = sanitized.replace(/vbscript:/gis, '');
+  sanitized = sanitized.replace(/data:(?!image\/)/gis, '');
+  
+  // Remove dangerous tags
+  const dangerousTags = ['iframe', 'object', 'embed', 'meta', 'link', 'style'];
+  dangerousTags.forEach(tag => {
+    sanitized = sanitized.replace(new RegExp(`<\\/?${tag}[^>]*>`, 'gis'), '');
+  });
+  
+  // Remove HTML comments
+  sanitized = sanitized.replace(/<!--[\s\S]*?-->/g, '');
+  
+  // Remove srcdoc attributes (can contain HTML)
+  sanitized = sanitized.replace(/\s*srcdoc\s*=\s*["'][^"']*["']/gis, '');
+  
+  // Remove form and input tags
+  sanitized = sanitized.replace(/<\/?(form|input|button|select|textarea)[^>]*>/gis, '');
+  
+  return sanitized.trim();
 }
 
 /**
- * Escapes a string for safe use as HTML text content.
+ * Sanitizes URLs to prevent XSS via javascript: or data: protocols
  */
-export function escapeHtml(value: string | null | undefined): string {
-  if (!value) return "";
-  return value
-    .replace(/&/g, "&")
-    .replace(/</g, "<")
-    .replace(/>/g, ">")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;");
-}
-
-/**
- * Validates that a URL is safe to use as an image src.
- * Only allows https:// URLs with no quotes or control characters.
- * Returns the URL if valid, or empty string if invalid.
- */
-export function sanitizeImageUrl(url: string | null | undefined): string {
-  if (!url) return "";
-  const trimmed = url.trim();
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.protocol !== "https:") return "";
-    // Reject if the URL contains quotes or angle brackets (extra safety)
-    if (/["'<>`]/.test(trimmed)) return "";
-    return trimmed;
-  } catch {
-    return "";
+export function sanitizeUrl(url: string): string {
+  if (!url) return '';
+  
+  // Remove dangerous protocols
+  let sanitized = url.replace(/javascript:/gis, '');
+  sanitized = sanitized.replace(/vbscript:/gis, '');
+  sanitized = sanitized.replace(/data:(?!image\/)/gis, '');
+  
+  // Remove script tags
+  sanitized = sanitized.replace(/<script[^>]*>.*?<\/script>/gis, '');
+  
+  // Remove HTML tags completely from URLs
+  sanitized = sanitized.replace(/<[^>]*>/g, '');
+  
+  // Basic URL validation
+  if (sanitized && !sanitized.match(/^https?:\/\//) && !sanitized.match(/^\/\//)) {
+    // If it doesn't look like a URL, return empty
+    return '';
   }
+  
+  return sanitized.trim();
+}
+
+/**
+ * Encodes HTML entities for safe display
+ */
+export function encodeHtml(input: string): string {
+  if (!input) return '';
+  
+  const div = document.createElement('div');
+  div.textContent = input;
+  return div.innerHTML;
+}
+
+/**
+ * Safe HTML rendering component props
+ */
+export interface SafeHtmlProps {
+  content: string;
+  className?: string;
+  tag?: keyof JSX.IntrinsicElements;
+}
+
+/**
+ * Creates a safe HTML string for rendering
+ */
+export function createSafeHtml(content: string): string {
+  return encodeHtml(content);
 }

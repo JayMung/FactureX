@@ -23,19 +23,6 @@ export const ReportService = {
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
 
-        // Fetch rates for conversion
-        const { data: settings } = await supabase
-            .from('settings')
-            .select('cle, valeur, categorie')
-            .in('categorie', ['taux_change'])
-            .in('cle', ['usdToCny', 'usdToCdf']);
-
-        const rates = { usdToCny: 6.95, usdToCdf: 2200 };
-        settings?.forEach((setting: any) => {
-            if (setting.cle === 'usdToCny') rates.usdToCny = parseFloat(setting.valeur) || 6.95;
-            if (setting.cle === 'usdToCdf') rates.usdToCdf = parseFloat(setting.valeur) || 2200;
-        });
-
         // Fetch paginated transactions for the table
         const { data: transactions, error, count } = await supabase
             .from('transactions')
@@ -44,9 +31,9 @@ export const ReportService = {
         client:clients(nom)
       `, { count: 'exact' })
             .in('type_transaction', ['revenue', 'depense', 'expense'])
-            .gte('date_paiement', startDate.toISOString())
-            .lte('date_paiement', endDate.toISOString())
-            .order('date_paiement', { ascending: false })
+            .gte('created_at', startDate.toISOString())
+            .lte('created_at', endDate.toISOString())
+            .order('created_at', { ascending: false })
             .range(from, to);
 
         if (error) throw error;
@@ -56,8 +43,8 @@ export const ReportService = {
             .from('transactions')
             .select('montant, devise, type_transaction')
             .in('type_transaction', ['revenue', 'depense', 'expense'])
-            .gte('date_paiement', startDate.toISOString())
-            .lte('date_paiement', endDate.toISOString());
+            .gte('created_at', startDate.toISOString())
+            .lte('created_at', endDate.toISOString());
 
         if (summaryError) throw summaryError;
 
@@ -68,36 +55,22 @@ export const ReportService = {
             transactionCount: allTransactions?.length || 0
         };
 
-        // Variables pour le calcul du Net Profit global en USD
-        let totalRevenueConvertedUSD = 0;
-        let totalExpenseConvertedUSD = 0;
-
         allTransactions?.forEach(tx => {
             const montant = Number(tx.montant) || 0;
             const devise = tx.devise as 'USD' | 'CDF' | 'CNY';
-
-            // Calcul du montant converti en USD pour le Net Profit global
-            let montantUSD = montant;
-            if (devise === 'CDF') montantUSD = montant / rates.usdToCdf;
-            else if (devise === 'CNY') montantUSD = montant / rates.usdToCny;
 
             if (tx.type_transaction === 'revenue') {
                 if (devise === 'USD') summary.totalRevenue.usd += montant;
                 else if (devise === 'CDF') summary.totalRevenue.cdf += montant;
                 else if (devise === 'CNY') summary.totalRevenue.cny += montant;
-                
-                totalRevenueConvertedUSD += montantUSD;
             } else if (tx.type_transaction === 'expense' || tx.type_transaction === 'depense') {
                 if (devise === 'USD') summary.totalExpense.usd += montant;
                 else if (devise === 'CDF') summary.totalExpense.cdf += montant;
                 else if (devise === 'CNY') summary.totalExpense.cny += montant;
-                
-                totalExpenseConvertedUSD += montantUSD;
             }
         });
 
-        // Le profit net est maintenant calculé sur la base de toutes les transactions converties en USD
-        summary.netProfit = totalRevenueConvertedUSD - totalExpenseConvertedUSD;
+        summary.netProfit = summary.totalRevenue.usd - summary.totalExpense.usd;
 
         return {
             summary,

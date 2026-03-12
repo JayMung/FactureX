@@ -35,6 +35,9 @@ import { ColumnSelector } from '@/components/ui/column-selector';
 import { ExportDropdown } from '@/components/ui/export-dropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PeriodFilterTabs } from '@/components/ui/period-filter-tabs';
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const MouvementsComptes: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -88,7 +91,7 @@ const MouvementsComptes: React.FC = () => {
     );
   });
 
-  const exportToCSV = () => {
+  const handleExport = (format: 'csv' | 'excel' | 'pdf') => {
     const headers = ['Date', 'Compte', 'Description', 'Débit', 'Crédit', 'Solde après'];
     const rows = filteredMouvements.map(m => [
       format(new Date(m.date_mouvement), 'dd/MM/yyyy HH:mm'),
@@ -99,15 +102,85 @@ const MouvementsComptes: React.FC = () => {
       m.solde_apres.toString()
     ]);
 
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `mouvements-comptes-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-    showSuccess('Export réussi');
+    const filename = `mouvements-comptes-${format(new Date(), 'yyyy-MM-dd')}`;
+
+    if (format === 'csv') {
+      const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${filename}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      showSuccess('Export CSV réussi');
+    } else if (format === 'excel') {
+      const wsData = [
+        headers,
+        ...rows.map(row => [
+          row[0],
+          row[1],
+          row[2],
+          row[3] ? Number(row[3]) : null,
+          row[4] ? Number(row[4]) : null,
+          Number(row[5])
+        ])
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      
+      // Setup some simple styling (optional but looks nice)
+      ws['!cols'] = [
+        { wch: 18 }, // Date
+        { wch: 20 }, // Compte
+        { wch: 40 }, // Description
+        { wch: 15 }, // Débit
+        { wch: 15 }, // Crédit
+        { wch: 20 }  // Solde
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Mouvements');
+      XLSX.writeFile(wb, `${filename}.xlsx`);
+      showSuccess('Export Excel réussi');
+    } else if (format === 'pdf') {
+      const doc = new jsPDF('landscape');
+      
+      doc.setFontSize(18);
+      doc.setTextColor(31, 41, 55);
+      doc.text('Historique des Mouvements', 14, 22);
+      
+      doc.setFontSize(10);
+      doc.setTextColor(107, 114, 128);
+      doc.text(`Généré le: ${format(new Date(), 'dd/MM/yyyy à HH:mm')}`, 14, 30);
+      
+      if (compteFilter !== 'all') {
+        const selectedCompte = comptes.find(c => c.id === compteFilter);
+        if (selectedCompte) {
+          doc.text(`Compte: ${selectedCompte.nom}`, 14, 36);
+        }
+      }
+
+      autoTable(doc, {
+        startY: 42,
+        head: [headers],
+        body: rows,
+        theme: 'grid',
+        headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81], fontStyle: 'bold' },
+        bodyStyles: { textColor: [31, 41, 55], fontSize: 9 },
+        columnStyles: {
+            0: { cellWidth: 35 }, 
+            1: { cellWidth: 40 }, 
+            2: { cellWidth: 'auto' }, 
+            3: { cellWidth: 30, halign: 'right', textColor: [239, 68, 68] }, 
+            4: { cellWidth: 30, halign: 'right', textColor: [16, 185, 129] }, 
+            5: { cellWidth: 35, halign: 'right', fontStyle: 'bold' }  
+        }
+      });
+
+      doc.save(`${filename}.pdf`);
+      showSuccess('Export PDF réussi');
+    }
   };
 
   const getTypeBadge = (type: 'debit' | 'credit') => {
@@ -240,11 +313,13 @@ const MouvementsComptes: React.FC = () => {
             </div>
           </div>
 
-          {/* Export Button */}
-          <Button onClick={exportToCSV} variant="outline" className="shrink-0">
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
+          {/* Export Button (only visible on mobile, uses ExportDropdown on desktop) */}
+          <div className="lg:hidden w-full flex justify-end">
+            <ExportDropdown
+              onExport={handleExport}
+              disabled={filteredMouvements.length === 0}
+            />
+          </div>
         </div>
       </div>
 
@@ -268,8 +343,9 @@ const MouvementsComptes: React.FC = () => {
                 onColumnsChange={(cols) => setColumnsConfig(cols.reduce((acc, c) => ({ ...acc, [c.key]: c.visible }), {}))}
               />
               <ExportDropdown
-                onExport={() => exportToCSV()}
+                onExport={handleExport}
                 disabled={filteredMouvements.length === 0}
+                className="hidden lg:flex"
               />
             </div>
           </div>

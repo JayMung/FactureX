@@ -14,8 +14,10 @@ import {
   PieChart,
   Activity,
   Package,
-  Wallet
+  Wallet,
+  TrendingDown
 } from 'lucide-react';
+import { getDateRange, formatDateForInput, PeriodFilter } from '@/utils/dateUtils';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { useDashboardAnalytics } from '@/hooks/useDashboardAnalytics';
 import { useTransactions } from '@/hooks/useTransactions';
@@ -58,6 +60,18 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
   const [chartType, setChartType] = useState<'revenue' | 'transactions' | 'clients'>('revenue');
   const isHidden = useSensitiveDataValue();
 
+  const { current } = getDateRange((periodProp as PeriodFilter) || 'month');
+  const dateFilters = React.useMemo(() => {
+    if (periodProp === 'all') return {};
+    if (current.start && current.end) {
+      return {
+        dateFrom: formatDateForInput(current.start),
+        dateTo: formatDateForInput(current.end)
+      };
+    }
+    return {};
+  }, [periodProp, current]);
+
   const { 
     analytics, 
     loading, 
@@ -65,8 +79,8 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
     refetch 
   } = useDashboardAnalytics(period);
 
-  // Charger les données des modules Colis et Finance
-  const { globalTotals: financeStats, loading: financeLoading } = useTransactions(1, {});
+  // Charger les données des modules Colis et Finance avec prise en compte de la période
+  const { globalTotals: financeStats, loading: financeLoading } = useTransactions(1, dateFilters);
   const { stats: colisStats, loading: colisLoading, error: colisError } = useColis(1, {});
 
   const handleExport = () => {
@@ -205,10 +219,14 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
         />
 
         <StatCard
-          title="Clients actifs"
-          value={analytics.activeClients.toLocaleString()}
-          icon={Users}
-          iconColor="text-purple-500"
+          title="Dépenses"
+          value={formatCurrency(analytics.totalExpensesUSD, 'USD', isHidden)}
+          icon={TrendingDown}
+          iconColor="text-status-error"
+          trend={analytics.expenseChange ? { 
+            value: analytics.expenseChange.value, 
+            label: "vs période prec." 
+          } : undefined}
           className="bg-card shadow-sm hover:shadow-md transition-all border-border"
         />
 
@@ -359,10 +377,14 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {analytics.currencyBreakdown.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-4">Aucune donnée de devise</p>
-              ) : (
-                analytics.currencyBreakdown.map((item) => (
+              {(() => {
+                const currencies = ['USD', 'CDF', 'CNY'];
+                const items = currencies.map((c) => {
+                  const existing = analytics.currencyBreakdown.find((x: any) => x.currency === c);
+                  return existing || { currency: c, count: 0, total: 0 };
+                });
+
+                return items.map((item) => (
                   <div key={item.currency} className="flex gap-4 items-center">
                     <div className={cn(
                       "h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0",
@@ -384,8 +406,8 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ className, period
                       </p>
                     </div>
                   </div>
-                ))
-              )}
+                ));
+              })()}
             </div>
           </CardContent>
         </Card>

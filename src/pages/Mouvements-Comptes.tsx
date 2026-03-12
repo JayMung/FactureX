@@ -166,8 +166,14 @@ const MouvementsComptes: React.FC = () => {
         const montantVal = Number(m.montant);
         const devise = m.compte?.devise || 'USD';
         
-        if (m.type_mouvement === 'debit') totalDebitUSD += convertToUSD(montantVal, devise);
-        if (m.type_mouvement === 'credit') totalCreditUSD += convertToUSD(montantVal, devise);
+        const typeTrans = m.transaction?.type_transaction;
+        
+        // On n'ajoute pas les transferts (SWAP) dans le TOTAL car ils gonflent artificiellement 
+        // les recettes et dépenses de l'entreprise (c'est juste un mouvement interne).
+        if (typeTrans !== 'transfert') {
+          if (m.type_mouvement === 'debit') totalDebitUSD += convertToUSD(montantVal, devise);
+          if (m.type_mouvement === 'credit') totalCreditUSD += convertToUSD(montantVal, devise);
+        }
 
         // We format numbers to keep raw values, but user can see 'Compte' to guess currency
         // But for clarity, we can add the devise acronym if it's CSV or PDF, however for Excel it breaks number format.
@@ -186,7 +192,7 @@ const MouvementsComptes: React.FC = () => {
       const totalRow = [
         '', 
         '', 
-        'TOTAL (Équiv. USD)', 
+        'TOTAL USD (Hors Transferts)', 
         totalDebitUSD.toFixed(2), 
         totalCreditUSD.toFixed(2), 
         ''

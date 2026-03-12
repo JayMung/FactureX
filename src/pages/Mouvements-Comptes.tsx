@@ -91,7 +91,7 @@ const MouvementsComptes: React.FC = () => {
     );
   });
 
-  const handleExport = (format: 'csv' | 'excel' | 'pdf') => {
+  const handleExport = (exportFormat: 'csv' | 'excel' | 'pdf') => {
     const headers = ['Date', 'Compte', 'Description', 'Débit', 'Crédit', 'Solde après'];
     const rows = filteredMouvements.map(m => [
       format(new Date(m.date_mouvement), 'dd/MM/yyyy HH:mm'),
@@ -104,7 +104,7 @@ const MouvementsComptes: React.FC = () => {
 
     const filename = `mouvements-comptes-${format(new Date(), 'yyyy-MM-dd')}`;
 
-    if (format === 'csv') {
+    if (exportFormat === 'csv') {
       const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -114,7 +114,7 @@ const MouvementsComptes: React.FC = () => {
       link.click();
       URL.revokeObjectURL(url);
       showSuccess('Export CSV réussi');
-    } else if (format === 'excel') {
+    } else if (exportFormat === 'excel') {
       const wsData = [
         headers,
         ...rows.map(row => [
@@ -143,7 +143,7 @@ const MouvementsComptes: React.FC = () => {
       XLSX.utils.book_append_sheet(wb, ws, 'Mouvements');
       XLSX.writeFile(wb, `${filename}.xlsx`);
       showSuccess('Export Excel réussi');
-    } else if (format === 'pdf') {
+    } else if (exportFormat === 'pdf') {
       const doc = new jsPDF('landscape');
       
       doc.setFontSize(18);

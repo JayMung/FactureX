@@ -479,8 +479,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
                   onClick={() => handleChange('type_transaction', 'revenue')}
                 >
                   <TrendingUp className="h-6 w-6 mb-2" />
-                  <span>REVENUE</span>
-                  <span className="text-xs">Entrée d'argent</span>
+                  <span>RECETTE</span>
+                  <span className="text-xs">Encaissement</span>
                 </Button>
                 <Button
                   type="button"
@@ -491,7 +491,7 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
                 >
                   <TrendingDown className="h-6 w-6 mb-2" />
                   <span>DÉPENSE</span>
-                  <span className="text-xs">Sortie d'argent</span>
+                  <span className="text-xs">Décaissement</span>
                 </Button>
                 <Button
                   type="button"
@@ -501,8 +501,8 @@ const TransactionFormFinancial: React.FC<TransactionFormProps> = ({
                   onClick={() => handleChange('type_transaction', 'transfert')}
                 >
                   <ArrowRightLeft className="h-6 w-6 mb-2" />
-                  <span>SWAP</span>
-                  <span className="text-xs">Entre comptes</span>
+                  <span>TRANSFERT</span>
+                  <span className="text-xs">Virement interne</span>
                 </Button>
               </div>
             </div>

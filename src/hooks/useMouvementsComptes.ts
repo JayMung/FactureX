@@ -40,10 +40,10 @@ export const useMouvementsComptes = (page: number = 1, filters: MouvementFilters
         query = query.eq('type_mouvement', filters.type_mouvement);
       }
       if (filters.dateFrom) {
-        query = query.gte('date_mouvement', filters.dateFrom);
+        query = query.gte('date_mouvement', `${filters.dateFrom}T00:00:00.000Z`);
       }
       if (filters.dateTo) {
-        query = query.lte('date_mouvement', filters.dateTo);
+        query = query.lte('date_mouvement', `${filters.dateTo}T23:59:59.999Z`);
       }
 
       const { data, error: fetchError, count } = await query;

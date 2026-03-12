@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useMouvementsComptes } from '@/hooks/useMouvementsComptes';
 import { useMouvementsComptesStats } from '@/hooks/useMouvementsComptesStats';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,7 +27,7 @@ import { formatCurrency } from '@/utils/formatCurrency';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import Pagination from '@/components/ui/pagination-custom';
-import { showSuccess } from '@/utils/toast';
+import { showSuccess, showError } from '@/utils/toast';
 import type { MouvementCompte } from '@/types';
 import { getDateRange, PeriodFilter } from '@/utils/dateUtils';
 import { UnifiedDataTable } from '@/components/ui/unified-data-table';
@@ -35,6 +36,9 @@ import { ColumnSelector } from '@/components/ui/column-selector';
 import { ExportDropdown } from '@/components/ui/export-dropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PeriodFilterTabs } from '@/components/ui/period-filter-tabs';
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const MouvementsComptes: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -88,26 +92,234 @@ const MouvementsComptes: React.FC = () => {
     );
   });
 
-  const exportToCSV = () => {
-    const headers = ['Date', 'Compte', 'Description', 'Débit', 'Crédit', 'Solde après'];
-    const rows = filteredMouvements.map(m => [
-      format(new Date(m.date_mouvement), 'dd/MM/yyyy HH:mm'),
-      m.compte?.nom || '',
-      m.description || '',
-      m.type_mouvement === 'debit' ? m.montant.toString() : '',
-      m.type_mouvement === 'credit' ? m.montant.toString() : '',
-      m.solde_apres.toString()
-    ]);
+  const handleExport = async (exportFormat: 'csv' | 'excel' | 'pdf') => {
+    try {
+      // Fetch 1000 items maximum for the export to bypass pagination
+      let query = supabase
+        .from('mouvements_comptes')
+        .select(`
+          *,
+          compte:comptes_financiers(nom, devise),
+          transaction:transactions(motif, type_transaction)
+        `)
+        .order('date_mouvement', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(2000);
 
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `mouvements-comptes-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-    showSuccess('Export réussi');
+      if (compteFilter !== 'all') {
+        query = query.eq('compte_id', compteFilter);
+      }
+      if (typeFilter !== 'all') {
+        query = query.eq('type_mouvement', typeFilter);
+      }
+      if (dateFrom) {
+        query = query.gte('date_mouvement', `${dateFrom}T00:00:00.000Z`);
+      }
+      if (dateTo) {
+        query = query.lte('date_mouvement', `${dateTo}T23:59:59.999Z`);
+      }
+
+      const { data: allData, error: fetchError } = await query;
+      if (fetchError) throw fetchError;
+
+      let dataToExport = allData || [];
+
+      // Appliquer la recherche locale
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        dataToExport = dataToExport.filter((m: any) => 
+          m.description?.toLowerCase().includes(search) ||
+          m.compte?.nom.toLowerCase().includes(search) ||
+          m.montant.toString().includes(search)
+        );
+      }
+
+      if (dataToExport.length === 0) {
+        showError('Aucune donnée à exporter avec les filtres actuels');
+        return;
+      }
+
+      // Fetch exchange rates from settings to calculate equivalent totals
+      const { data: ratesData } = await supabase
+        .from('settings')
+        .select('cle, valeur')
+        .eq('categorie', 'taux_change')
+        .in('cle', ['usdToCny', 'usdToCdf']);
+
+      const rates: Record<string, number> = { usdToCny: 6.95, usdToCdf: 2200 };
+      ratesData?.forEach((s: any) => {
+        rates[s.cle] = parseFloat(s.valeur) || rates[s.cle];
+      });
+
+      const convertToUSD = (montant: number, devise: string): number => {
+        if (devise === 'USD') return montant;
+        if (devise === 'CNY') return montant / rates.usdToCny;
+        if (devise === 'CDF') return montant / rates.usdToCdf;
+        return montant;
+      };
+
+      let totalDebitUSD = 0;
+      let totalCreditUSD = 0;
+
+      const headers = ['Date', 'Compte', 'Description', 'Débit', 'Crédit', 'Solde après'];
+      const rows = dataToExport.map((m: any) => {
+        const montantVal = Number(m.montant);
+        const devise = m.compte?.devise || 'USD';
+        
+        const typeTrans = m.transaction?.type_transaction;
+        
+        // On n'ajoute pas les transferts (SWAP) dans le TOTAL car ils gonflent artificiellement 
+        // les recettes et dépenses de l'entreprise (c'est juste un mouvement interne).
+        if (typeTrans !== 'transfert') {
+          if (m.type_mouvement === 'debit') totalDebitUSD += convertToUSD(montantVal, devise);
+          if (m.type_mouvement === 'credit') totalCreditUSD += convertToUSD(montantVal, devise);
+        }
+
+        // We format numbers to keep raw values, but user can see 'Compte' to guess currency
+        // But for clarity, we can add the devise acronym if it's CSV or PDF, however for Excel it breaks number format.
+        // We will keep raw numbers.
+        return [
+          format(new Date(m.date_mouvement), 'dd/MM/yyyy HH:mm'),
+          `${m.compte?.nom || ''} ${devise !== 'USD' ? `(${devise})` : ''}`.trim(),
+          m.description || '',
+          m.type_mouvement === 'debit' ? m.montant.toString() : '',
+          m.type_mouvement === 'credit' ? m.montant.toString() : '',
+          m.solde_apres.toString()
+        ];
+      });
+
+      // Ligne de totaux
+      const totalRow = [
+        '', 
+        '', 
+        'TOTAL USD (Hors Transferts)', 
+        totalDebitUSD.toFixed(2), 
+        totalCreditUSD.toFixed(2), 
+        ''
+      ];
+      
+      const dateStr = dateFrom && dateTo ? `${dateFrom}-au-${dateTo}` : format(new Date(), 'yyyy-MM-dd');
+      const filename = `mouvements-comptes-${dateStr}`;
+
+      if (exportFormat === 'csv') {
+        const csv = [headers, ...rows, totalRow].map(row => row.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${filename}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+        showSuccess('Export CSV réussi');
+      } else if (exportFormat === 'excel') {
+        const wsData = [
+          headers,
+          ...rows.map(row => [
+            row[0],
+            row[1],
+            row[2],
+            row[3] ? Number(row[3]) : null,
+            row[4] ? Number(row[4]) : null,
+            Number(row[5])
+          ]),
+          [
+            totalRow[0], 
+            totalRow[1], 
+            totalRow[2], 
+            totalRow[3] ? Number(totalRow[3]) : null, 
+            totalRow[4] ? Number(totalRow[4]) : null, 
+            null
+          ]
+        ];
+
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        
+        ws['!cols'] = [
+          { wch: 18 }, { wch: 20 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 20 }
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Mouvements');
+        XLSX.writeFile(wb, `${filename}.xlsx`);
+        showSuccess('Export Excel réussi');
+      } else if (exportFormat === 'pdf') {
+        // Fetch company name for header
+        const { data: settingsData } = await supabase
+          .from('settings')
+          .select('cle, valeur')
+          .eq('categorie', 'company');
+        const companySettings = (settingsData || []).reduce((acc: any, curr) => {
+          acc[curr.cle] = curr.valeur;
+          return acc;
+        }, {});
+        const boName = companySettings['nom_entreprise']?.toUpperCase() || 'FACTUREX';
+
+        const doc = new jsPDF('landscape');
+        
+        // Entête FactureX/Entreprise
+        doc.setFillColor(16, 185, 129); // Emerald
+        doc.rect(0, 0, doc.internal.pageSize.width, 6, 'F');
+        
+        doc.setFontSize(20);
+        doc.setTextColor(16, 185, 129);
+        doc.setFont('helvetica', 'bold');
+        doc.text(boName, 14, 20);
+
+        doc.setFontSize(16);
+        doc.setTextColor(31, 41, 55);
+        doc.text('Historique des Mouvements', 14, 30);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(107, 114, 128);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Généré le: ${format(new Date(), 'dd/MM/yyyy à HH:mm')}`, 14, 36);
+        
+        let metaY = 36;
+        if (dateFrom && dateTo) {
+          metaY += 6;
+          doc.text(`Période: Du ${format(new Date(dateFrom), 'dd/MM/yyyy')} au ${format(new Date(dateTo), 'dd/MM/yyyy')}`, 14, metaY);
+        }
+        if (compteFilter !== 'all') {
+          const selectedCompte = comptes.find(c => c.id === compteFilter);
+          if (selectedCompte) {
+            metaY += 6;
+            doc.text(`Compte: ${selectedCompte.nom}`, 14, metaY);
+          }
+        }
+
+        autoTable(doc, {
+          startY: metaY + 8,
+          head: [headers],
+          body: [...rows, totalRow],
+          theme: 'grid',
+          headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81], fontStyle: 'bold' },
+          bodyStyles: { textColor: [31, 41, 55], fontSize: 9 },
+          columnStyles: {
+              0: { cellWidth: 35 }, 
+              1: { cellWidth: 40 }, 
+              2: { cellWidth: 'auto' }, 
+              3: { cellWidth: 30, halign: 'right', textColor: [239, 68, 68] }, 
+              4: { cellWidth: 30, halign: 'right', textColor: [16, 185, 129] }, 
+              5: { cellWidth: 35, halign: 'right', fontStyle: 'bold' }  
+          },
+          didParseCell: function(data) {
+            if (data.row.index === rows.length) {
+              data.cell.styles.fontStyle = 'bold';
+              data.cell.styles.fillColor = [249, 250, 251];
+              if (data.column.index === 3) data.cell.styles.textColor = [239, 68, 68];
+              else if (data.column.index === 4) data.cell.styles.textColor = [16, 185, 129];
+              else data.cell.styles.textColor = [31, 41, 55];
+            }
+          }
+        });
+
+        doc.save(`${filename}.pdf`);
+        showSuccess('Export PDF réussi');
+      }
+    } catch (err) {
+      console.error('Erreur export:', err);
+      showError('Une erreur est survenue lors de l\'exportation');
+    }
   };
 
   const getTypeBadge = (type: 'debit' | 'credit') => {
@@ -240,11 +452,13 @@ const MouvementsComptes: React.FC = () => {
             </div>
           </div>
 
-          {/* Export Button */}
-          <Button onClick={exportToCSV} variant="outline" className="shrink-0">
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
+          {/* Export Button (only visible on mobile, uses ExportDropdown on desktop) */}
+          <div className="lg:hidden w-full flex justify-end">
+            <ExportDropdown
+              onExport={handleExport}
+              disabled={filteredMouvements.length === 0}
+            />
+          </div>
         </div>
       </div>
 
@@ -268,8 +482,9 @@ const MouvementsComptes: React.FC = () => {
                 onColumnsChange={(cols) => setColumnsConfig(cols.reduce((acc, c) => ({ ...acc, [c.key]: c.visible }), {}))}
               />
               <ExportDropdown
-                onExport={() => exportToCSV()}
+                onExport={handleExport}
                 disabled={filteredMouvements.length === 0}
+                className="hidden lg:flex"
               />
             </div>
           </div>

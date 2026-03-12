@@ -139,17 +139,42 @@ const MouvementsComptes: React.FC = () => {
         return;
       }
 
-      let totalDebit = 0;
-      let totalCredit = 0;
+      // Fetch exchange rates from settings to calculate equivalent totals
+      const { data: ratesData } = await supabase
+        .from('settings')
+        .select('cle, valeur')
+        .eq('categorie', 'taux_change')
+        .in('cle', ['usdToCny', 'usdToCdf']);
+
+      const rates: Record<string, number> = { usdToCny: 6.95, usdToCdf: 2200 };
+      ratesData?.forEach((s: any) => {
+        rates[s.cle] = parseFloat(s.valeur) || rates[s.cle];
+      });
+
+      const convertToUSD = (montant: number, devise: string): number => {
+        if (devise === 'USD') return montant;
+        if (devise === 'CNY') return montant / rates.usdToCny;
+        if (devise === 'CDF') return montant / rates.usdToCdf;
+        return montant;
+      };
+
+      let totalDebitUSD = 0;
+      let totalCreditUSD = 0;
 
       const headers = ['Date', 'Compte', 'Description', 'Débit', 'Crédit', 'Solde après'];
       const rows = dataToExport.map((m: any) => {
-        if (m.type_mouvement === 'debit') totalDebit += Number(m.montant);
-        if (m.type_mouvement === 'credit') totalCredit += Number(m.montant);
+        const montantVal = Number(m.montant);
+        const devise = m.compte?.devise || 'USD';
+        
+        if (m.type_mouvement === 'debit') totalDebitUSD += convertToUSD(montantVal, devise);
+        if (m.type_mouvement === 'credit') totalCreditUSD += convertToUSD(montantVal, devise);
 
+        // We format numbers to keep raw values, but user can see 'Compte' to guess currency
+        // But for clarity, we can add the devise acronym if it's CSV or PDF, however for Excel it breaks number format.
+        // We will keep raw numbers.
         return [
           format(new Date(m.date_mouvement), 'dd/MM/yyyy HH:mm'),
-          m.compte?.nom || '',
+          `${m.compte?.nom || ''} ${devise !== 'USD' ? `(${devise})` : ''}`.trim(),
           m.description || '',
           m.type_mouvement === 'debit' ? m.montant.toString() : '',
           m.type_mouvement === 'credit' ? m.montant.toString() : '',
@@ -161,9 +186,9 @@ const MouvementsComptes: React.FC = () => {
       const totalRow = [
         '', 
         '', 
-        'TOTAL', 
-        totalDebit.toFixed(2), 
-        totalCredit.toFixed(2), 
+        'TOTAL (Équiv. USD)', 
+        totalDebitUSD.toFixed(2), 
+        totalCreditUSD.toFixed(2), 
         ''
       ];
       

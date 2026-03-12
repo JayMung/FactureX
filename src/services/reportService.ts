@@ -6,8 +6,8 @@ import * as XLSX from 'xlsx';
 
 export interface ReportData {
     summary: {
-        totalRevenue: { usd: number; cdf: number; cny: number };
-        totalExpense: { usd: number; cdf: number; cny: number };
+        totalRevenue: { usd: number; cdf: number; cny: number; usdEquiv: number; };
+        totalExpense: { usd: number; cdf: number; cny: number; usdEquiv: number; };
         netProfit: number;
         transactionCount: number;
     };
@@ -23,6 +23,9 @@ export const ReportService = {
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
 
+        const startIOS = `${format(startDate, 'yyyy-MM-dd')}T00:00:00.000Z`;
+        const endIOS = `${format(endDate, 'yyyy-MM-dd')}T23:59:59.999Z`;
+
         // Fetch paginated transactions for the table
         const { data: transactions, error, count } = await supabase
             .from('transactions')
@@ -31,8 +34,8 @@ export const ReportService = {
         client:clients(nom)
       `, { count: 'exact' })
             .in('type_transaction', ['revenue', 'depense', 'expense'])
-            .gte('created_at', startDate.toISOString())
-            .lte('created_at', endDate.toISOString())
+            .gte('created_at', startIOS)
+            .lte('created_at', endIOS)
             .order('created_at', { ascending: false })
             .range(from, to);
 
@@ -43,34 +46,58 @@ export const ReportService = {
             .from('transactions')
             .select('montant, devise, type_transaction')
             .in('type_transaction', ['revenue', 'depense', 'expense'])
-            .gte('created_at', startDate.toISOString())
-            .lte('created_at', endDate.toISOString());
+            .gte('created_at', startIOS)
+            .lte('created_at', endIOS);
 
         if (summaryError) throw summaryError;
 
+        const { data: ratesData } = await supabase
+            .from('settings')
+            .select('cle, valeur')
+            .eq('categorie', 'taux_change')
+            .in('cle', ['usdToCny', 'usdToCdf']);
+            
+        let usdToCny = 6.95;
+        let usdToCdf = 2200;
+        
+        ratesData?.forEach((s: any) => {
+            if (s.cle === 'usdToCny' && s.valeur) usdToCny = parseFloat(s.valeur);
+            if (s.cle === 'usdToCdf' && s.valeur) usdToCdf = parseFloat(s.valeur);
+        });
+
         const summary = {
-            totalRevenue: { usd: 0, cdf: 0, cny: 0 },
-            totalExpense: { usd: 0, cdf: 0, cny: 0 },
+            totalRevenue: { usd: 0, cdf: 0, cny: 0, usdEquiv: 0 },
+            totalExpense: { usd: 0, cdf: 0, cny: 0, usdEquiv: 0 },
             netProfit: 0,
             transactionCount: allTransactions?.length || 0
+        };
+
+        const convertToUsd = (montant: number, devise: 'USD' | 'CDF' | 'CNY') => {
+            if (devise === 'USD') return montant;
+            if (devise === 'CNY') return montant / usdToCny;
+            if (devise === 'CDF') return montant / usdToCdf;
+            return montant;
         };
 
         allTransactions?.forEach(tx => {
             const montant = Number(tx.montant) || 0;
             const devise = tx.devise as 'USD' | 'CDF' | 'CNY';
+            const equiv = convertToUsd(montant, devise);
 
             if (tx.type_transaction === 'revenue') {
+                summary.totalRevenue.usdEquiv += equiv;
                 if (devise === 'USD') summary.totalRevenue.usd += montant;
                 else if (devise === 'CDF') summary.totalRevenue.cdf += montant;
                 else if (devise === 'CNY') summary.totalRevenue.cny += montant;
             } else if (tx.type_transaction === 'expense' || tx.type_transaction === 'depense') {
+                summary.totalExpense.usdEquiv += equiv;
                 if (devise === 'USD') summary.totalExpense.usd += montant;
                 else if (devise === 'CDF') summary.totalExpense.cdf += montant;
                 else if (devise === 'CNY') summary.totalExpense.cny += montant;
             }
         });
 
-        summary.netProfit = summary.totalRevenue.usd - summary.totalExpense.usd;
+        summary.netProfit = summary.totalRevenue.usdEquiv - summary.totalExpense.usdEquiv;
 
         return {
             summary,
@@ -105,12 +132,15 @@ export const ReportService = {
      * Build a jsPDF document for the given period — shared by export and preview
      */
     async _buildPDFDoc(startDate: Date, endDate: Date, period: string, summary: any): Promise<InstanceType<typeof jsPDF>> {
+        const startIOS = `${format(startDate, 'yyyy-MM-dd')}T00:00:00.000Z`;
+        const endIOS = `${format(endDate, 'yyyy-MM-dd')}T23:59:59.999Z`;
+        
         const { data: allTransactions, error } = await supabase
             .from('transactions')
             .select('*, client:clients(nom)')
             .in('type_transaction', ['revenue', 'depense', 'expense'])
-            .gte('created_at', startDate.toISOString())
-            .lte('created_at', endDate.toISOString())
+            .gte('created_at', startIOS)
+            .lte('created_at', endIOS)
             .order('created_at', { ascending: true });
 
         if (error) throw error;
@@ -189,25 +219,27 @@ export const ReportService = {
         const netUsd = summary.totalRevenue.usd - summary.totalExpense.usd;
         const netCdf = summary.totalRevenue.cdf - summary.totalExpense.cdf;
         const netCny = summary.totalRevenue.cny - summary.totalExpense.cny;
+        const netEquiv = summary.totalRevenue.usdEquiv - summary.totalExpense.usdEquiv;
 
         const summaryBody = [
-            ['ENCAISSEMENTS (+)', `${summary.totalRevenue.usd.toFixed(2)} USD`, `${summary.totalRevenue.cdf.toLocaleString()} CDF`, `${summary.totalRevenue.cny.toFixed(2)} CNY`],
-            ['DÉCAISSEMENTS (-)', `${summary.totalExpense.usd.toFixed(2)} USD`, `${summary.totalExpense.cdf.toLocaleString()} CDF`, `${summary.totalExpense.cny.toFixed(2)} CNY`],
-            ['SOLDE NET (=)', `${netUsd.toFixed(2)} USD`, `${netCdf.toLocaleString()} CDF`, `${netCny.toFixed(2)} CNY`]
+            ['ENCAISSEMENTS (+)', `${summary.totalRevenue.usd.toFixed(2)} USD`, `${summary.totalRevenue.cdf.toLocaleString()} CDF`, `${summary.totalRevenue.cny.toFixed(2)} CNY`, `${summary.totalRevenue.usdEquiv.toFixed(2)} USD`],
+            ['DÉCAISSEMENTS (-)', `${summary.totalExpense.usd.toFixed(2)} USD`, `${summary.totalExpense.cdf.toLocaleString()} CDF`, `${summary.totalExpense.cny.toFixed(2)} CNY`, `${summary.totalExpense.usdEquiv.toFixed(2)} USD`],
+            ['SOLDE NET (=)', `${netUsd.toFixed(2)} USD`, `${netCdf.toLocaleString()} CDF`, `${netCny.toFixed(2)} CNY`, `${netEquiv.toFixed(2)} USD`]
         ];
 
         autoTable(doc, {
             startY: 63,
-            head: [['Catégorie', 'Compte USD ($)', 'Compte CDF (FC)', 'Compte CNY (¥)']],
+            head: [['Catégorie', 'USD ($)', 'CDF (FC)', 'CNY (¥)', 'TOTAL Équiv USD']],
             body: summaryBody,
             theme: 'grid',
             headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81], fontStyle: 'bold', halign: 'center' },
-            bodyStyles: { textColor: [31, 41, 55], fontSize: 10 },
+            bodyStyles: { textColor: [31, 41, 55], fontSize: 9 },
             columnStyles: {
                 0: { fontStyle: 'bold', halign: 'left' },
                 1: { halign: 'right' },
                 2: { halign: 'right' },
-                3: { halign: 'right' }
+                3: { halign: 'right' },
+                4: { halign: 'right', fontStyle: 'bold' } // Highlight the total column slightly
             },
             didParseCell: function (data) {
                 // Apply green/red specifically for the last row (Solde Net)

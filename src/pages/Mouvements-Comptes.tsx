@@ -27,7 +27,7 @@ import { formatCurrency } from '@/utils/formatCurrency';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import Pagination from '@/components/ui/pagination-custom';
-import { showSuccess } from '@/utils/toast';
+import { showSuccess, showError } from '@/utils/toast';
 import type { MouvementCompte } from '@/types';
 import { getDateRange, PeriodFilter } from '@/utils/dateUtils';
 import { UnifiedDataTable } from '@/components/ui/unified-data-table';
@@ -113,10 +113,10 @@ const MouvementsComptes: React.FC = () => {
         query = query.eq('type_mouvement', typeFilter);
       }
       if (dateFrom) {
-        query = query.gte('date_mouvement', dateFrom);
+        query = query.gte('date_mouvement', `${dateFrom}T00:00:00.000Z`);
       }
       if (dateTo) {
-        query = query.lte('date_mouvement', dateTo);
+        query = query.lte('date_mouvement', `${dateTo}T23:59:59.999Z`);
       }
 
       const { data: allData, error: fetchError } = await query;

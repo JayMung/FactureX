@@ -143,6 +143,15 @@ function formatDiscordEmbed(event: string, data: any) {
       parts.push(`**Taux:** ${data.taux}`);
     }
     
+    // Impact sur le solde
+    if (data.solde_avant !== undefined && data.solde_apres !== undefined) {
+      const symbol = data.devise === 'USD' ? '$' : '';
+      const suffix = data.devise === 'CDF' ? ' CDF' : '';
+      parts.push(`\n**📊 Impact sur le Solde:**`);
+      parts.push(`• Avant : ${symbol}${data.solde_avant}${suffix}`);
+      parts.push(`• Après : ${symbol}${data.solde_apres}${suffix}`);
+    }
+    
     // Bénéfice (uniquement pour transactions commerciales, pas pour swaps/internes)
     if (data.benefice && data.benefice !== 0 && isCommercial) {
       parts.push(`**Bénéfice:** $${data.benefice}`);
@@ -197,6 +206,13 @@ function formatDiscordEmbed(event: string, data: any) {
     if (data.total_general) {
       parts.push(`**Total:** ${data.total_general} ${data.devise || 'USD'}`);
     }
+    if (data.montant_paye !== undefined) {
+      parts.push(`**Montant Payé:** ${data.montant_paye} ${data.devise || 'USD'}`);
+    }
+    if (data.reste_a_payer !== undefined) {
+      const alertIcon = data.reste_a_payer > 0 ? '⚠️' : '✅';
+      parts.push(`**Reste à Payer:** ${alertIcon} ${data.reste_a_payer} ${data.devise || 'USD'}`);
+    }
     if (data.statut) {
       parts.push(`**Statut:** ${data.statut}`);
     }
@@ -245,14 +261,20 @@ function formatDiscordEmbed(event: string, data: any) {
     if (data.poids) {
       parts.push(`**Poids:** ${data.poids} kg`);
     }
+    if (data.cbm) {
+      parts.push(`**CBM:** ${data.cbm} m³`);
+    }
     if (data.montant_a_payer) {
-      parts.push(`**Montant:** ${data.montant_a_payer} USD`);
+      parts.push(`**Montant à Payer:** ${data.montant_a_payer} USD`);
+    }
+    if (data.container_numero) {
+        parts.push(`**Container:** 🚢 ${data.container_numero}`);
     }
     if (data.statut) {
       parts.push(`**Statut:** ${data.statut}`);
     }
     if (data.type_livraison) {
-      parts.push(`**Type:** ${data.type_livraison}`);
+      parts.push(`**Type de Livraison:** 🚚 ${data.type_livraison}`);
     }
     if (data.user_info) {
       const userName = [data.user_info.prenom, data.user_info.nom].filter(Boolean).join(' ') || data.user_info.email || 'Utilisateur inconnu';

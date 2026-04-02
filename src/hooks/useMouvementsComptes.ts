@@ -26,7 +26,7 @@ export const useMouvementsComptes = (page: number = 1, filters: MouvementFilters
         .select(`
           *,
           compte:comptes_financiers(id, nom, type_compte, devise),
-          transaction:transactions(id, motif, type_transaction)
+          transaction:transactions(id, motif, type_transaction, notes)
         `, { count: 'exact' })
         .order('date_mouvement', { ascending: false })
         .order('created_at', { ascending: false })

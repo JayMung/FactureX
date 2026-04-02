@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { Button } from '@/components/ui/button';
@@ -64,6 +64,10 @@ import {
   sanitizeCSV
 } from '@/lib/security/content-sanitization';
 import { supabase } from '@/integrations/supabase/client';
+import { exportToCSV, exportToExcel, exportToPDF } from '@/utils/export-utils';
+import { format as formatDns } from 'date-fns';
+import { PeriodFilterTabs } from '@/components/ui/period-filter-tabs';
+import { getDateRange } from '@/utils/dateUtils';
 
 const ClientsProtected: React.FC = () => {
   interface ClientIntelligence {
@@ -82,9 +86,19 @@ const ClientsProtected: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [isFormOpen, setIsFormOpen] = useState(searchParams.get('new') === 'true');
+
+  useEffect(() => {
+    if (searchParams.get('new') === 'true') {
+      setIsFormOpen(true);
+      searchParams.delete('new');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   const [selectedClient, setSelectedClient] = useState<Client | undefined>();
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [columnsConfig, setColumnsConfig] = useState<ColumnConfig[]>([
     { key: 'id', label: 'ID', visible: true, required: true },
@@ -225,8 +239,23 @@ const ClientsProtected: React.FC = () => {
   }, [safeClients]);
 
   const displayedClients = useMemo(() => {
-    return sortedData;
-  }, [sortedData]);
+    let data = sortedData;
+    
+    // Apply period filter client-side if not 'all'
+    if (periodFilter !== 'all') {
+      const { current } = getDateRange(periodFilter);
+      if (current.start || current.end) {
+        data = data.filter(client => {
+          const createdAt = new Date(client.created_at);
+          if (current.start && createdAt < current.start) return false;
+          if (current.end && createdAt > current.end) return false;
+          return true;
+        });
+      }
+    }
+    
+    return data;
+  }, [sortedData, periodFilter]);
 
   const handleDeleteClient = (client: Client) => {
     setClientToDelete(client);
@@ -318,7 +347,7 @@ const ClientsProtected: React.FC = () => {
     return String(index + 1).padStart(4, '0');
   };
 
-  const exportClients = async () => {
+  const exportClients = async (format: 'csv' | 'excel' | 'pdf' = 'csv') => {
     try {
       let dataToExport: Client[] = [];
 
@@ -358,29 +387,31 @@ const ClientsProtected: React.FC = () => {
         dataToExport = rpcData?.data || [];
       }
 
-      const csv = [
-        ['nom', 'telephone', 'ville', 'total_paye', 'created_at'],
-        ...dataToExport.map((client: Client) => [
-          sanitizeCSV(client.nom || ''),
-          sanitizeCSV(client.telephone || ''),
-          sanitizeCSV(client.ville || ''),
-          sanitizeCSV(client.total_paye?.toString() || '0'),
-          sanitizeCSV(client.created_at || '')
-        ])
-      ].map(row => row.join(',')).join('\n');
+      const headers = ['ID', 'Nom', 'Téléphone', 'Ville', 'Total Payé (USD)', 'Date Création'];
+      const rows = dataToExport.map(c => [
+        c.id.substring(0, 8),
+        c.nom,
+        c.telephone || '—',
+        c.ville || '—',
+        c.total_paye?.toFixed(2) || '0.00',
+        c.created_at ? formatDns(new Date(c.created_at), 'dd/MM/yyyy') : '—'
+      ]);
 
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `clients-${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const exportConfig = {
+        headers,
+        rows,
+        filename: 'export_clients',
+        sheetName: 'Clients',
+        title: 'LISTE DES CLIENTS'
+      };
 
-      showSuccess(`${dataToExport.length} client(s) exporté(s) avec succès`);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Erreur lors de l\'export des clients';
-      showError(message);
+      if (format === 'csv') exportToCSV(exportConfig);
+      else if (format === 'excel') exportToExcel(exportConfig);
+      else if (format === 'pdf') exportToPDF(exportConfig);
+
+    } catch (error: any) {
+      console.error('Error exporting clients:', error);
+      showError(error.message || 'Erreur lors de l\'export');
     }
   };
 
@@ -456,15 +487,20 @@ const ClientsProtected: React.FC = () => {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                <PeriodFilterTabs
+                  period={periodFilter}
+                  onPeriodChange={setPeriodFilter}
+                  showAllOption={true}
+                />
+                
+                <div className="h-8 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block" />
                 <ColumnSelector
                   columns={columnsConfig}
                   onColumnsChange={setColumnsConfig}
                 />
 
                 <ExportDropdown
-                  onExport={(format) => {
-                    if (format === 'csv') exportClients();
-                  }}
+                  onExport={(format) => exportClients(format)}
                   disabled={sortedData.length === 0}
                   selectedCount={selectedClients.length}
                 />

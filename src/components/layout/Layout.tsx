@@ -10,6 +10,8 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import SessionActivityTracker from '@/components/auth/SessionActivityTracker';
 import SessionTimeoutWarning from '@/components/auth/SessionTimeoutWarning';
 import OfflinePrompt from './OfflinePrompt';
+import { MobileNav } from './MobileNav';
+import { MobileFAB } from './MobileFAB';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -130,9 +132,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             user={user}
             onMenuToggle={toggleMobileSidebar}
           />
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 md:p-6 transition-opacity duration-200">
+          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 pb-28 md:p-6 lg:pb-6 transition-opacity duration-200">
             {children}
           </main>
+          
+          {/* Mobile UI Templates */}
+          <MobileNav />
+          <MobileFAB />
         </div>
 
         {/* Session timeout warning */}

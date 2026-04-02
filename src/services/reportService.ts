@@ -271,17 +271,17 @@ export const ReportService = {
         const detailsRows = (allTransactions || []).map(tx => {
             const isRecette = tx.type_transaction === 'revenue';
             return [
-                format(new Date(tx.created_at), 'dd/MM/yyyy'),
+                format(new Date(tx.created_at), 'dd/MM/yyyy HH:mm'),
                 typeLabel(tx.type_transaction),
-                (tx.client as any)?.nom || '—',
-                tx.motif || '—',
+                tx.notes || tx.motif || '—',
+                tx.categorie || '—',
                 `${isRecette ? '+' : '-'}${Number(tx.montant).toFixed(2)} ${tx.devise}`
             ];
         });
 
         autoTable(doc, {
             startY: lastY + 20,
-            head: [['Date', 'Opération', 'Client / Tiers', 'Description', 'Montant']],
+            head: [['Date', 'Opération', 'Note / Libellé', 'Catégorie', 'Montant']],
             body: detailsRows,
             theme: 'plain',
             headStyles: {

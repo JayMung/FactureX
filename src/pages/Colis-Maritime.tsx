@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -10,9 +11,12 @@ import { useContainersMaritime } from '@/hooks/useContainersMaritime';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { exportToCSV, exportToExcel, exportToPDF } from '@/utils/export-utils';
+import { format as formatDns } from 'date-fns';
 
 import Layout from '@/components/layout/Layout';
 import { usePageSetup } from '@/hooks/use-page-setup';
+import { showSuccess, showError } from '@/utils/toast';
 import { UnifiedDataTable } from '@/components/ui/unified-data-table';
 import { FilterTabs } from '@/components/ui/filter-tabs';
 import { ColumnSelector, ColumnConfig } from '@/components/ui/column-selector';
@@ -49,8 +53,17 @@ const ColisMaritimePage: React.FC = () => {
     const isMobile = useIsMobile();
 
     // Dialog states
-    const [isColisDialogOpen, setIsColisDialogOpen] = useState(false);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [isColisDialogOpen, setIsColisDialogOpen] = useState(searchParams.get('new') === 'true');
     const [isContainerDialogOpen, setIsContainerDialogOpen] = useState(false);
+
+    useEffect(() => {
+        if (searchParams.get('new') === 'true') {
+            setIsColisDialogOpen(true);
+            searchParams.delete('new');
+            setSearchParams(searchParams, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
     const [selectedColis, setSelectedColis] = useState<ColisMaritime | null>(null);
     const [selectedContainer, setSelectedContainer] = useState<ContainerMaritime | null>(null);
 
@@ -83,6 +96,68 @@ const ColisMaritimePage: React.FC = () => {
 
         return matchesSearch && matchesStatus;
     });
+
+    const exportColis = async (format: 'csv' | 'excel' | 'pdf' = 'csv') => {
+        try {
+            const headers = ['Tracking', 'Client', 'Description', 'CBM', 'Poids', 'Statut', 'Container'];
+            const rows = filteredColis.map(c => [
+                c.tracking_number || '—',
+                c.client?.nom || '—',
+                c.description || '—',
+                c.cbm?.toString() || '0',
+                c.poids?.toString() || '0',
+                c.statut,
+                c.container?.numero || '—'
+            ]);
+
+            const exportConfig = {
+                headers,
+                rows,
+                filename: `export_colis_maritimes_${colisFilter}`,
+                sheetName: 'Colis Maritimes',
+                title: 'JOURNAL DES COLIS MARITIMES'
+            };
+
+            if (format === 'csv') exportToCSV(exportConfig);
+            else if (format === 'excel') exportToExcel(exportConfig);
+            else if (format === 'pdf') exportToPDF(exportConfig);
+
+            showSuccess('Export réussi');
+        } catch (error: any) {
+            console.error('Error exporting colis:', error);
+            showError('Erreur lors de l\'export');
+        }
+    };
+
+    const exportContainers = async (format: 'csv' | 'excel' | 'pdf' = 'csv') => {
+        try {
+            const headers = ['N° Container', 'Transitaire', 'Statut', 'Date Départ', 'Bateau'];
+            const rows = filteredContainers.map(c => [
+                c.numero,
+                c.transitaire?.nom || '—',
+                c.statut,
+                c.date_depart ? formatDns(new Date(c.date_depart), 'dd/MM/yyyy') : '—',
+                c.bateau || '—'
+            ]);
+
+            const exportConfig = {
+                headers,
+                rows,
+                filename: `export_containers_${containerFilter}`,
+                sheetName: 'Containers',
+                title: 'JOURNAL DES CONTAINERS MARITIMES'
+            };
+
+            if (format === 'csv') exportToCSV(exportConfig);
+            else if (format === 'excel') exportToExcel(exportConfig);
+            else if (format === 'pdf') exportToPDF(exportConfig);
+
+            showSuccess('Export réussi');
+        } catch (error: any) {
+            console.error('Error exporting containers:', error);
+            showError('Erreur lors de l\'export');
+        }
+    };
 
     return (
         <Layout>
@@ -187,7 +262,7 @@ const ColisMaritimePage: React.FC = () => {
                                             onColumnsChange={(cols) => setColisColumnsConfig(cols.reduce((acc, c) => ({ ...acc, [c.key]: c.visible }), {}))}
                                         />
                                         <ExportDropdown
-                                            onExport={() => { }}
+                                            onExport={(format) => exportColis(format)}
                                             disabled={filteredColis.length === 0}
                                         />
                                     </div>
@@ -248,7 +323,7 @@ const ColisMaritimePage: React.FC = () => {
                                             onColumnsChange={(cols) => setContainerColumnsConfig(cols.reduce((acc, c) => ({ ...acc, [c.key]: c.visible }), {}))}
                                         />
                                         <ExportDropdown
-                                            onExport={() => { }}
+                                            onExport={(format) => exportContainers(format)}
                                             disabled={filteredContainers.length === 0}
                                         />
                                     </div>

@@ -66,6 +66,8 @@ import type { Facture } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { exportToCSV, exportToExcel, exportToPDF } from '@/utils/export-utils';
+import { format as formatDns } from 'date-fns';
 import {
   sanitizeUserContent,
   validateContentSecurity,
@@ -346,6 +348,38 @@ const FacturesProtected: React.FC = () => {
       setSelectedFactures(new Set());
     } catch (error: any) {
       showError('Erreur lors de la suppression');
+    }
+  };
+
+  const exportFactures = async (format: 'csv' | 'excel' | 'pdf' = 'csv') => {
+    try {
+      const headers = ['N° Facture', 'Client', 'Date', 'Montant', 'Devise', 'Reste à payer', 'Statut'];
+      const rows = factures.map(f => [
+        f.facture_number,
+        f.clients?.nom || '—',
+        f.date_emission ? formatDns(new Date(f.date_emission), 'dd/MM/yyyy') : '—',
+        f.total_general.toFixed(2),
+        f.devise,
+        (f.solde_restant || 0).toFixed(2),
+        f.statut
+      ]);
+
+      const exportConfig = {
+        headers,
+        rows,
+        filename: `export_factures_${dateFilter}`,
+        sheetName: 'Factures',
+        title: 'LISTE DES FACTURES ET DEVIS'
+      };
+
+      if (format === 'csv') exportToCSV(exportConfig);
+      else if (format === 'excel') exportToExcel(exportConfig);
+      else if (format === 'pdf') exportToPDF(exportConfig);
+
+      showSuccess('Export réussi');
+    } catch (error: any) {
+      console.error('Error exporting factures:', error);
+      showError('Erreur lors de l\'export');
     }
   };
 
@@ -630,10 +664,7 @@ const FacturesProtected: React.FC = () => {
                     onColumnsChange={setColumnsConfig}
                   />
                   <ExportDropdown
-                    onExport={(format) => {
-                      console.log('Exporting as', format);
-                      // TODO: Implement actual export logic based on format
-                    }}
+                    onExport={(format) => exportFactures(format)}
                     disabled={factures.length === 0}
                     selectedCount={selectedFactures.size}
                   />

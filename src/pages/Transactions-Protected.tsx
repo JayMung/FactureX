@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { usePageSetup } from '../hooks/use-page-setup';
 import { Button } from '@/components/ui/button';
@@ -68,6 +69,8 @@ import { FilterTabs } from '@/components/ui/filter-tabs';
 import { ColumnSelector } from '@/components/ui/column-selector';
 import { ExportDropdown } from '@/components/ui/export-dropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { exportToCSV, exportToExcel, exportToPDF } from '@/utils/export-utils';
+import { format as formatDns } from 'date-fns';
 
 // Helper function to get columns compatible with UnifiedDataTable
 const getTransactionColumnsCombined = (props: any) => {
@@ -513,7 +516,17 @@ const TransactionsProtected: React.FC = () => {
   const [currencyFilter, setCurrencyFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [isFormOpen, setIsFormOpen] = useState(searchParams.get('new') === 'true');
+
+  useEffect(() => {
+    if (searchParams.get('new') === 'true') {
+      setIsFormOpen(true);
+      // Clean up the URL parameter without triggering a reload
+      searchParams.delete('new');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | undefined>();
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
   const [bulkActionOpen, setBulkActionOpen] = useState(false);
@@ -868,30 +881,35 @@ const TransactionsProtected: React.FC = () => {
     return String(index + 1).padStart(4, '0');
   };
 
-  const exportTransactions = () => {
-    const csv = [
-      ['client', 'montant', 'devise', 'motif', 'mode_paiement', 'statut', 'date_paiement', 'frais', 'benefice'],
-      ...transactions.map(transaction => [
-        transaction.client?.nom || '',
-        transaction.montant.toString(),
-        transaction.devise,
-        transaction.motif,
-        transaction.mode_paiement,
-        transaction.statut,
-        transaction.created_at,
-        transaction.frais.toString(),
-        transaction.benefice.toString()
-      ])
-    ].map(row => row.join(',')).join('\n');
+  const exportTransactions = (format: 'csv' | 'excel' | 'pdf' = 'csv') => {
+    try {
+      const headers = ['Date', 'Opération', 'Note / Libellé', 'Catégorie', 'Montant', 'Devise', 'Statut'];
+      const rows = transactions.map(tx => [
+        tx.created_at ? formatDns(new Date(tx.created_at), 'dd/MM/yyyy HH:mm') : '—',
+        tx.type_transaction === 'revenue' ? 'RECETTE' : (tx.type_transaction === 'depense' ? 'DÉPENSE' : 'TRANSFERT'),
+        tx.notes || tx.motif || '—',
+        tx.categorie || '—',
+        tx.montant.toFixed(2),
+        tx.devise,
+        tx.statut
+      ]);
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `transactions-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showSuccess('Transactions exportées avec succès');
+      const exportConfig = {
+        headers,
+        rows,
+        filename: `transactions_${activeTab}`,
+        sheetName: 'Transactions',
+        title: `JOURNAL DES TRANSACTIONS - ${tabConfig?.title.toUpperCase()}`
+      };
+
+      if (format === 'csv') exportToCSV(exportConfig);
+      else if (format === 'excel') exportToExcel(exportConfig);
+      else if (format === 'pdf') exportToPDF(exportConfig);
+
+    } catch (error: any) {
+      console.error('Error exporting transactions:', error);
+      showError('Erreur lors de l\'export');
+    }
   };
 
   if (error) {
@@ -1171,7 +1189,7 @@ const TransactionsProtected: React.FC = () => {
                   <CardTitle>{tabConfig.title}</CardTitle>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <ExportDropdown
-                      onExport={() => exportTransactions()} // Reuse existing export logic
+                      onExport={(format) => exportTransactions(format)} // Reuse existing export logic
                       disabled={transactions.length === 0}
                     />
                     <ColumnSelector
@@ -1269,8 +1287,13 @@ const TransactionsProtected: React.FC = () => {
                     ),
                     infoFields: [
                       { key: 'mode_paiement', label: 'Compte', render: (val) => val === 'AIRTEL_MONEY' ? 'Airtel' : val === 'M_PESA' ? 'M-Pesa' : val },
-                      { key: 'benefice', label: 'Bénéfice', render: (val) => <span className="text-orange-600 font-medium">{formatCurrency(val, 'USD')}</span> }
-                    ]
+                      { key: 'benefice', label: 'Bénéfice', render: (val) => <span className="text-orange-600 font-medium">{formatCurrency(val, 'USD')}</span> },
+                      { key: 'notes', label: 'Notes', render: (val) => val ? <span className="text-sm italic text-gray-500 max-w-[200px] block truncate" title={val}>{val}</span> : null }
+                    ].filter(field => {
+                      if (activeTab === 'internes' && field.key === 'benefice') return false;
+                      if (!field.render) return true;
+                      return true;
+                    })
                   }}
                 />
 

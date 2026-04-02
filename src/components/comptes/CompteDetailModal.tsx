@@ -344,6 +344,11 @@ const CompteDetailModal: React.FC<CompteDetailModalProps> = ({ compte, isOpen, o
                               <p className="text-sm text-gray-700 dark:text-gray-300">
                                 {mouvement.description}
                               </p>
+                              {(mouvement as any).transaction?.notes && (
+                                <p className="text-xs text-gray-500 mt-1 italic">
+                                  Notes: {(mouvement as any).transaction.notes}
+                                </p>
+                              )}
                               {(mouvement as any).transaction?.id && (
                                 <button
                                   type="button"

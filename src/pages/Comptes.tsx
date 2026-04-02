@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { FilterTabs } from '@/components/ui/filter-tabs';
 import { useComptesFinanciers } from '@/hooks/useComptesFinanciers';
 import { Button } from '@/components/ui/button';
@@ -43,7 +44,16 @@ const Comptes: React.FC = () => {
     getActiveComptes
   } = useComptesFinanciers();
 
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(searchParams.get('new') === 'true');
+
+  useEffect(() => {
+    if (searchParams.get('new') === 'true') {
+      setIsCreateDialogOpen(true);
+      searchParams.delete('new');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedCompte, setSelectedCompte] = useState<CompteFinancier | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'cards' | 'auto'>('auto');

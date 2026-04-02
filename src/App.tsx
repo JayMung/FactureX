@@ -58,7 +58,6 @@ const AdminSetup = lazy(() => import("./pages/AdminSetup"));
 const AdminInvitation = lazy(() => import("./pages/AdminInvitation"));
 
 import { useIsMobile } from "@/hooks/use-mobile";
-import MobileApp from "@/mobile/MobileApp";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -75,10 +74,6 @@ const queryClient = new QueryClient({
 
 const AppContent = () => {
   const isMobile = useIsMobile();
-
-  if (isMobile) {
-    return <MobileApp />;
-  }
 
   return (
     <PageProvider>

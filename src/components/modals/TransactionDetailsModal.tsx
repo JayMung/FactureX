@@ -77,7 +77,8 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
         frais: transaction.frais,
         benefice: transaction.benefice,
         montant_cny: transaction.montant_cny,
-        taux_usd_cny: transaction.taux_usd_cny
+        taux_usd_cny: transaction.taux_usd_cny,
+        notes: transaction.notes
       });
 
       // Fetch validator name if exists
@@ -559,6 +560,22 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                 <p className="text-sm sm:text-base font-medium">{creatorName || '-'}</p>
               </div>
 
+              {/* Notes */}
+              <div className="col-span-2 bg-yellow-50/50 dark:bg-yellow-900/10 rounded-lg p-4 border border-yellow-100 dark:border-yellow-900/20">
+                <Label className="text-xs text-gray-500 flex items-center gap-2 mb-2">
+                  <StickyNote className="h-4 w-4 text-yellow-600" />
+                  Notes / Description
+                </Label>
+                {isEditMode ? (
+                  <Input
+                    value={editedData.notes ?? ''}
+                    onChange={(e) => setEditedData({ ...editedData, notes: e.target.value })}
+                  />
+                ) : (
+                  <p className="text-sm sm:text-base font-medium whitespace-pre-wrap">{transaction.notes || '-'}</p>
+                )}
+              </div>
+
               {transaction.updated_at && (
                 <div>
                   <Label className="text-xs text-gray-500">Dernière modification</Label>
@@ -678,7 +695,8 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                     frais: transaction.frais,
                     benefice: transaction.benefice,
                     montant_cny: transaction.montant_cny,
-                    taux_usd_cny: transaction.taux_usd_cny
+                    taux_usd_cny: transaction.taux_usd_cny,
+                    notes: transaction.notes
                   });
                 }}
                 className="w-full sm:w-auto"

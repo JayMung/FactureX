@@ -19,6 +19,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/utils';
 import { showSuccess, showError } from '@/utils/toast';
 import { cn } from '@/lib/utils';
+import { exportToCSV, exportToExcel, exportToPDF } from '@/utils/export-utils';
+import { format as formatDns } from 'date-fns';
 import { PermissionGuard } from '@/components/auth/PermissionGuard';
 import type { Colis } from '@/types';
 import SortableHeader from '@/components/ui/sortable-header';
@@ -408,6 +410,38 @@ const ColisAeriens: React.FC = () => {
       // Recharger pour synchroniser avec la base de données
       setTimeout(() => loadColis(), 500);
     }
+  const exportColis = async (format: 'csv' | 'excel' | 'pdf' = 'csv') => {
+    try {
+      const headers = ['ID', 'Client', 'Fournisseur', 'Tracking', 'Qté', 'Poids (kg)', 'Montant ($)', 'Statut'];
+      const rows = filteredColis.map((c, index) => [
+        generateColisId(c, startIndex + index),
+        c.client?.nom || '—',
+        c.fournisseur || '—',
+        c.tracking_chine || '—',
+        c.quantite?.toString() || '0',
+        c.poids?.toString() || '0',
+        c.montant_a_payer?.toFixed(2) || '0.00',
+        c.statut
+      ]);
+
+      const exportConfig = {
+        headers,
+        rows,
+        filename: `export_colis_aeriens_${periodFilter}`,
+        sheetName: 'Colis Aériens',
+        title: 'JOURNAL DES COLIS AÉRIENS'
+      };
+
+      if (format === 'csv') exportToCSV(exportConfig);
+      else if (format === 'excel') exportToExcel(exportConfig);
+      else if (format === 'pdf') exportToPDF(exportConfig);
+
+      showSuccess('Export réussi');
+    } catch (error: any) {
+      console.error('Error exporting colis:', error);
+      showError('Erreur lors de l\'export');
+    }
+  };
   };
 
 
@@ -761,12 +795,9 @@ const ColisAeriens: React.FC = () => {
                       className="w-full sm:w-auto"
                     />
                     <ExportDropdown
-                      onExport={(format) => {
-                        console.log(`Exporting ${format}`);
-                        toast.success(`Export ${format.toUpperCase()} lancé`);
-                      }}
+                      onExport={(format) => exportColis(format)}
                       disabled={filteredColis.length === 0}
-                      selectedCount={0}
+                      selectedCount={selectedColisIds.length}
                       className="w-full sm:w-auto"
                     />
                     <Button

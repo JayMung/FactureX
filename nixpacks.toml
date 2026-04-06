@@ -5,7 +5,7 @@ nixPkgs = ['nodejs', 'nginx']
 cmds = ['rm -rf node_modules package-lock.json', 'npm install --force']
 
 [phases.build]
-cmds = ['npm run build']
+cmds = ['npm run build', 'mkdir -p /app/dist', 'cp -r dist/. /app/dist/']
 
 [start]
-cmd = 'npm run preview -- --host 0.0.0.0 --port 3000'
+cmd = 'nginx -c /app/nginx.conf -g "daemon off;"'

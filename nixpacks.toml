@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ['nodejs', 'nginx']
+nixPkgs = ['nodejs_20', 'nginx']
 
 [phases.install]
 cmds = ['rm -rf node_modules package-lock.json', 'npm install --force']

@@ -92,7 +92,7 @@ export const usePermissions = () => {
     // Subscribe to admin_roles (audit trail) and user_permissions for this user
     // Role changes propagate via JWT refresh after set_user_role() RPC
     const channel = supabase
-      .channel(`permissions:${user.id}`)
+      .channel(`permissions:${user.id}:${Date.now()}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'admin_roles', filter: `user_id=eq.${user.id}` },

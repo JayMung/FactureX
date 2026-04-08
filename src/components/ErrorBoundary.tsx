@@ -45,9 +45,11 @@ class ErrorBoundary extends React.Component<
             <p className="text-gray-600 mb-6 text-sm">
               L'application a rencontré un problème inattendu. Rechargez la page pour continuer.
             </p>
-            {import.meta.env.DEV && this.state.error && (
+            {this.state.error && (
               <pre className="text-left text-xs bg-gray-100 p-3 rounded-lg mb-6 overflow-auto max-h-40 text-red-700">
                 {this.state.error.message}
+                {'\n\n'}
+                {this.state.error.stack}
               </pre>
             )}
             <div className="flex gap-3 justify-center">

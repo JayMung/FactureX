@@ -82,7 +82,7 @@ export const useRealTimeActivity = (limit: number = 10) => {
     fetchRecentActivities();
 
     const channel = supabase
-      .channel('activity_logs')
+      .channel(`activity_logs:${Date.now()}`)
       .on('postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'activity_logs' },
         async (payload) => {

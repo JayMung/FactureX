@@ -45,7 +45,7 @@ const SecurityAlertsTab: React.FC = () => {
     fetchAlerts();
     // Subscribe to real-time updates
     const subscription = supabase
-      .channel('security_logs_changes')
+      .channel(`security_logs_changes:${Date.now()}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',

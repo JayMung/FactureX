@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -10,12 +11,16 @@ import { useComptabiliteAI } from '@/hooks/useComptabiliteAI';
 
 // Agent IA Comptabilite - runs silently inside providers
 const ComptabiliteAIAgent = () => {
-  useComptabiliteAI({
-    telegramBotToken: import.meta.env.VITE_TELEGRAM_BOT_TOKEN,
-    telegramChatId: import.meta.env.VITE_TELEGRAM_CHAT_ID,
-    maxDaysWithoutReconciliation: 3,
-    maxUnrecordedExpenses: 3,
-  });
+  try {
+    useComptabiliteAI({
+      telegramBotToken: import.meta.env.VITE_TELEGRAM_BOT_TOKEN,
+      telegramChatId: import.meta.env.VITE_TELEGRAM_CHAT_ID,
+      maxDaysWithoutReconciliation: 3,
+      maxUnrecordedExpenses: 3,
+    });
+  } catch (e) {
+    console.error('[ComptabiliteAIAgent] Error:', e);
+  }
   return null;
 };
 
@@ -213,17 +218,19 @@ const AppContent = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <ComptabiliteAIAgent />
-          <AppContent />
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <ComptabiliteAIAgent />
+            <AppContent />
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

@@ -85,57 +85,6 @@ export const usePermissions = () => {
     loadPermissions();
   }, [user?.id]);
 
-  // Realtime: listen to permission changes for current user and invalidate cache + reload
-  useEffect(() => {
-    if (!user?.id) return;
-
-    // Subscribe to admin_roles (audit trail) and user_permissions for this user
-    // Role changes propagate via JWT refresh after set_user_role() RPC
-    const channel = supabase
-      .channel(`permissions:${user.id}:${Date.now()}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'admin_roles', filter: `user_id=eq.${user.id}` },
-        async () => {
-          permissionsCache.delete(user.id);
-          // Force JWT refresh so app_metadata reflects the new role
-          await supabase.auth.refreshSession();
-          const { data: { user: refreshedUser } } = await supabase.auth.getUser();
-          const appMetaRole = refreshedUser?.app_metadata?.role as string | undefined;
-          permissionConsolidationService.getUserPermissions(user.id).then((consolidatedPerms) => {
-            setPermissions(consolidatedPerms.permissions);
-            const effectiveIsAdmin = !!(consolidatedPerms.is_admin || appMetaRole === 'super_admin' || appMetaRole === 'admin' || authIsAdmin);
-            setIsAdmin(effectiveIsAdmin);
-          }).catch(() => {/* ignore */});
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'user_permissions', filter: `user_id=eq.${user.id}` },
-        () => {
-          permissionsCache.delete(user.id);
-          permissionConsolidationService.getUserPermissions(user.id).then((consolidatedPerms) => {
-            setPermissions(consolidatedPerms.permissions);
-            const appMetaRole = user?.app_metadata?.role as string | undefined;
-            const effectiveIsAdmin = !!(consolidatedPerms.is_admin || appMetaRole === 'super_admin' || appMetaRole === 'admin' || authIsAdmin);
-            setIsAdmin(effectiveIsAdmin);
-          }).catch(() => {/* ignore */});
-        }
-      )
-      .subscribe((status) => {
-        // Silently handle subscription errors to avoid console noise
-        if (status === 'CHANNEL_ERROR') {
-          // Channel will auto-retry, no action needed
-        }
-      });
-
-    return () => {
-      try { 
-        supabase.removeChannel(channel).catch(() => {/* ignore */}); 
-      } catch {}
-    };
-  }, [user?.id]);
-
   // Vérifier une permission spécifique
   const checkPermission = useCallback((
     module: ModuleType, 
